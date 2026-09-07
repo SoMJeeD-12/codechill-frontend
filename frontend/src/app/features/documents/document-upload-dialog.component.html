@@ -1,0 +1,58 @@
+<h2 mat-dialog-title>อัปโหลดเอกสาร</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form" id="doc-upload-form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>โครงการ</mat-label>
+      <mat-select formControlName="projectId">
+        @for (p of projects(); track p.id) {
+          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ชื่อเอกสาร</mat-label>
+      <input matInput formControlName="title" />
+    </mat-form-field>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ประเภท</mat-label>
+        <mat-select formControlName="category">
+          @for (c of categories; track c) {
+            <mat-option [value]="c">{{ categoryLabels[c] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>เวอร์ชัน</mat-label>
+        <input matInput formControlName="version" />
+      </mat-form-field>
+    </div>
+
+    <label class="file-pick">
+      <span>เลือกไฟล์ (mock — เก็บแค่ชื่อ)</span>
+      <input type="file" (change)="onFilePicked($event)" />
+    </label>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ชื่อไฟล์</mat-label>
+      <input matInput formControlName="fileName" placeholder="เช่น contract-v1.pdf" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หมายเหตุ</mat-label>
+      <textarea matInput rows="2" formControlName="note"></textarea>
+    </mat-form-field>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button mat-flat-button color="primary" type="submit" form="doc-upload-form" [disabled]="saving()">
+    บันทึก
+  </button>
+</mat-dialog-actions>

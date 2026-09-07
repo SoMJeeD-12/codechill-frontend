@@ -81,23 +81,21 @@ export const routes: Routes = [
         path: 'warranties',
         canActivate: [permissionGuard('warranties')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'การรับประกัน',
-          description: 'ระยะประกันหลังส่งมอบและรายการใกล้หมดอายุ',
-          icon: 'verified_user',
-        },
+          import('./features/warranties/warranties-page.component').then(
+            (m) => m.WarrantiesPageComponent
+          ),
       },
       {
         path: 'ma',
         canActivate: [permissionGuard('ma')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'สัญญาบำรุงรักษา',
-          description: 'แผน MA สัญญา โควตา และ Add-on',
-          icon: 'handshake',
-        },
+          import('./features/ma/ma-page.component').then((m) => m.MaPageComponent),
+      },
+      {
+        path: 'ma/:id',
+        canActivate: [permissionGuard('ma')],
+        loadComponent: () =>
+          import('./features/ma/ma-detail-page.component').then((m) => m.MaDetailPageComponent),
       },
       {
         path: 'follow-ups',
@@ -125,12 +123,9 @@ export const routes: Routes = [
         path: 'documents',
         canActivate: [permissionGuard('documents')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'เอกสาร',
-          description: 'อัปโหลดและควบคุมเวอร์ชันเอกสารโครงการ',
-          icon: 'description',
-        },
+          import('./features/documents/documents-page.component').then(
+            (m) => m.DocumentsPageComponent
+          ),
       },
       {
         path: 'reports',

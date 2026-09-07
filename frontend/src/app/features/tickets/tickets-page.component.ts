@@ -29,10 +29,12 @@ import {
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketInput, TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
+import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-tickets-page',
@@ -124,6 +126,7 @@ export class TicketFormDialogComponent {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
+  private readonly maApi = inject(MaService);
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<TicketFormDialogComponent, boolean>);
@@ -193,10 +196,22 @@ export class TicketFormDialogComponent {
     };
     this.saving.set(true);
     this.error.set(null);
-    this.ticketsApi.create(payload).subscribe({
+
+    const create$ =
+      payload.billingType === 'QUOTA'
+        ? this.maApi.consumeQuota(payload.customerId).pipe(
+            switchMap(() => this.ticketsApi.create(payload))
+          )
+        : this.ticketsApi.create(payload);
+
+    create$.subscribe({
       next: () => {
         this.saving.set(false);
-        this.snack.open('เปิดปัญหาแล้ว', 'ปิด', { duration: 2500 });
+        const msg =
+          payload.billingType === 'QUOTA'
+            ? 'เปิดปัญหาแล้ว และหักโควตา MA 1 เคส'
+            : 'เปิดปัญหาแล้ว';
+        this.snack.open(msg, 'ปิด', { duration: 2800 });
         this.ref.close(true);
       },
       error: (err: Error) => {

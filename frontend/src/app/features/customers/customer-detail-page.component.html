@@ -163,7 +163,47 @@
         </div>
       </mat-tab>
       <mat-tab label="ประกัน / สัญญา">
-        <p class="placeholder-tab">จะแสดงในเฟส 3</p>
+        <div class="tab-pad two-lists">
+          <div>
+            <h3 class="subhead">การรับประกัน</h3>
+            <div class="list">
+              @for (w of warranties(); track w.id) {
+                <a class="item link-item" routerLink="/app/warranties">
+                  <div>
+                    <strong>{{ w.title }}</strong>
+                    <p>
+                      {{ warrantyCoverageLabel(w.coverage) }} ·
+                      {{ warrantyStatusLabel(w.status) }} ·
+                      ถึง {{ w.endDate }}
+                    </p>
+                  </div>
+                  <mat-icon>chevron_right</mat-icon>
+                </a>
+              } @empty {
+                <p class="empty">ยังไม่มีประกันของลูกค้ารายนี้</p>
+              }
+            </div>
+          </div>
+          <div>
+            <h3 class="subhead">สัญญา MA</h3>
+            <div class="list">
+              @for (m of contracts(); track m.id) {
+                <a class="item link-item" [routerLink]="['/app/ma', m.id]">
+                  <div>
+                    <strong>{{ m.contractNo }} · {{ m.planName }}</strong>
+                    <p>
+                      {{ maStatusLabel(m.status) }} ·
+                      โควตาเหลือ {{ remainingQuota(m) }}/{{ m.quotaTotal }}
+                    </p>
+                  </div>
+                  <mat-icon>chevron_right</mat-icon>
+                </a>
+              } @empty {
+                <p class="empty">ยังไม่มีสัญญา MA</p>
+              }
+            </div>
+          </div>
+        </div>
       </mat-tab>
       <mat-tab label="ปัญหา">
         <div class="list tab-pad">

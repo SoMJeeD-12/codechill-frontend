@@ -1,0 +1,134 @@
+.page { max-width: 1100px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+
+  h1 { margin: 0.15rem 0; font-size: 1.6rem; }
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  color: #0f766e;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.subtitle { margin: 0.35rem 0 0; color: #5b6762; }
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  mat-card {
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+
+    strong {
+      display: block;
+      font-size: 0.75rem;
+      color: #5b6762;
+      margin-bottom: 0.25rem;
+    }
+
+    a {
+      color: #0f766e;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  }
+}
+
+.quota-panel {
+  margin-bottom: 1rem;
+
+  mat-card {
+    padding: 1.1rem 1.25rem;
+    border-radius: 12px;
+  }
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+  }
+}
+
+.quota-big {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+
+  span {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0f766e;
+  }
+
+  &.low span { color: #c2410c; }
+}
+
+.hint, .note, .empty {
+  color: #5b6762;
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 1rem;
+
+  mat-card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+  }
+}
+
+.full-table { width: 100%; }
+
+.form {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.full { width: 100%; }
+
+.missing {
+  max-width: 480px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .meta-grid { grid-template-columns: 1fr 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+  .page-header { flex-direction: column; }
+}

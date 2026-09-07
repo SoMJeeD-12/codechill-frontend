@@ -125,6 +125,17 @@
   padding: 1rem 0 1.5rem;
 }
 
+.two-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.subhead {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+}
+
 .link-item {
   text-decoration: none;
   color: inherit;
@@ -147,6 +158,10 @@
   }
 
   .tab-body {
+    grid-template-columns: 1fr;
+  }
+
+  .two-lists {
     grid-template-columns: 1fr;
   }
 }

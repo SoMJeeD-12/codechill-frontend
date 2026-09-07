@@ -21,11 +21,19 @@ import {
   Customer,
 } from '../../core/models/customer.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
+import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
 import { TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
+import {
+  WARRANTY_COVERAGE_LABELS,
+  WARRANTY_STATUS_LABELS,
+  Warranty,
+} from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
+import { WarrantyService } from '../../core/services/warranty.service';
 import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
 
 @Component({
@@ -55,6 +63,8 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly api = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly ticketsApi = inject(TicketService);
+  private readonly warrantiesApi = inject(WarrantyService);
+  private readonly maApi = inject(MaService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
@@ -64,11 +74,16 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly logs = signal<CommunicationLog[]>([]);
   readonly projects = signal<Project[]>([]);
   readonly tickets = signal<Ticket[]>([]);
+  readonly warranties = signal<Warranty[]>([]);
+  readonly contracts = signal<MaContract[]>([]);
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly channelLabels = CHANNEL_LABELS;
   readonly channels = Object.keys(CHANNEL_LABELS) as CommunicationChannel[];
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;
   readonly ticketStatusLabels = TICKET_STATUS_LABELS;
+  readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
+  readonly warrantyCoverageLabels = WARRANTY_COVERAGE_LABELS;
+  readonly maStatusLabels = MA_STATUS_LABELS;
   readonly notFound = signal(false);
 
   statusLabel(status: Customer['status']): string {
@@ -110,6 +125,24 @@ export class CustomerDetailPageComponent implements OnInit {
     this.logs.set(this.api.getLogs(this.customerId));
     this.projects.set(this.projectsApi.getProjectsByCustomer(this.customerId));
     this.tickets.set(this.ticketsApi.getByCustomer(this.customerId));
+    this.warranties.set(this.warrantiesApi.getByCustomer(this.customerId));
+    this.contracts.set(this.maApi.getByCustomer(this.customerId));
+  }
+
+  remainingQuota(c: MaContract): number {
+    return this.maApi.remainingQuota(c);
+  }
+
+  warrantyCoverageLabel(coverage: Warranty['coverage']): string {
+    return this.warrantyCoverageLabels[coverage];
+  }
+
+  warrantyStatusLabel(status: Warranty['status']): string {
+    return this.warrantyStatusLabels[status];
+  }
+
+  maStatusLabel(status: MaContract['status']): string {
+    return this.maStatusLabels[status];
   }
 
   saveContact(): void {

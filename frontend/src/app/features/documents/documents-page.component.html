@@ -1,0 +1,67 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">M9 · เอกสาร</p>
+      <h1>เอกสารโครงการ</h1>
+      <p class="subtitle">อัปโหลดและควบคุมเวอร์ชันเอกสาร (เก็บชื่อไฟล์ mock ในเครื่อง)</p>
+    </div>
+    <div class="header-actions">
+      <mat-form-field appearance="outline" class="filter">
+        <mat-label>กรองโครงการ</mat-label>
+        <mat-select [value]="projectFilter()" (selectionChange)="projectFilter.set($event.value)">
+          <mat-option value="ALL">ทั้งหมด</mat-option>
+          @for (p of projects(); track p.id) {
+            <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" (click)="openCreate()">
+        <mat-icon>upload_file</mat-icon>
+        อัปโหลดเอกสาร
+      </button>
+    </div>
+  </header>
+
+  <mat-card>
+    <table mat-table [dataSource]="filtered()" class="full-table">
+      <ng-container matColumnDef="title">
+        <th mat-header-cell *matHeaderCellDef>เอกสาร</th>
+        <td mat-cell *matCellDef="let row">
+          <strong>{{ row.title }}</strong>
+          <div class="muted">{{ customerName(row.customerId) }}</div>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="project">
+        <th mat-header-cell *matHeaderCellDef>โครงการ</th>
+        <td mat-cell *matCellDef="let row">
+          <a [routerLink]="['/app/projects', row.projectId]">{{ projectLabel(row.projectId) }}</a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>ประเภท</th>
+        <td mat-cell *matCellDef="let row">{{ categoryLabel(row.category) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="version">
+        <th mat-header-cell *matHeaderCellDef>เวอร์ชันปัจจุบัน</th>
+        <td mat-cell *matCellDef="let row">{{ row.currentVersion }}</td>
+      </ng-container>
+      <ng-container matColumnDef="updatedAt">
+        <th mat-header-cell *matHeaderCellDef>อัปเดตล่าสุด</th>
+        <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'd MMM y HH:mm' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let row">
+          <button mat-button type="button" color="primary" (click)="openVersions(row)">
+            ประวัติเวอร์ชัน
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+    @if (filtered().length === 0) {
+      <p class="empty">ยังไม่มีเอกสาร</p>
+    }
+  </mat-card>
+</section>

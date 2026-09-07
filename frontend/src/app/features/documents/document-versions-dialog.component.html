@@ -1,0 +1,62 @@
+<h2 mat-dialog-title>เวอร์ชัน · {{ doc.title }}</h2>
+<mat-dialog-content>
+  <table mat-table [dataSource]="versions()" class="full-table">
+    <ng-container matColumnDef="version">
+      <th mat-header-cell *matHeaderCellDef>เวอร์ชัน</th>
+      <td mat-cell *matCellDef="let row"><strong>{{ row.version }}</strong></td>
+    </ng-container>
+    <ng-container matColumnDef="fileName">
+      <th mat-header-cell *matHeaderCellDef>ไฟล์</th>
+      <td mat-cell *matCellDef="let row">{{ row.fileName }}</td>
+    </ng-container>
+    <ng-container matColumnDef="size">
+      <th mat-header-cell *matHeaderCellDef>ขนาด</th>
+      <td mat-cell *matCellDef="let row">{{ row.sizeKb }} KB</td>
+    </ng-container>
+    <ng-container matColumnDef="by">
+      <th mat-header-cell *matHeaderCellDef>โดย</th>
+      <td mat-cell *matCellDef="let row">{{ userName(row.uploadedByUserId) }}</td>
+    </ng-container>
+    <ng-container matColumnDef="at">
+      <th mat-header-cell *matHeaderCellDef>เมื่อ</th>
+      <td mat-cell *matCellDef="let row">{{ row.uploadedAt | date: 'd MMM y HH:mm' }}</td>
+    </ng-container>
+    <ng-container matColumnDef="note">
+      <th mat-header-cell *matHeaderCellDef>หมายเหตุ</th>
+      <td mat-cell *matCellDef="let row">{{ row.note || '—' }}</td>
+    </ng-container>
+    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+  </table>
+
+  <h3 class="section-title">อัปโหลดเวอร์ชันใหม่</h3>
+  <form [formGroup]="form" class="form" id="doc-version-form" (ngSubmit)="save()">
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>เวอร์ชัน</mat-label>
+        <input matInput formControlName="version" placeholder="v1.2" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ชื่อไฟล์</mat-label>
+        <input matInput formControlName="fileName" />
+      </mat-form-field>
+    </div>
+    <label class="file-pick">
+      <span>เลือกไฟล์ (mock)</span>
+      <input type="file" (change)="onFilePicked($event)" />
+    </label>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หมายเหตุการเปลี่ยนแปลง</mat-label>
+      <input matInput formControlName="note" />
+    </mat-form-field>
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">ปิด</button>
+  <button mat-flat-button color="primary" type="submit" form="doc-version-form" [disabled]="saving()">
+    เพิ่มเวอร์ชัน
+  </button>
+</mat-dialog-actions>

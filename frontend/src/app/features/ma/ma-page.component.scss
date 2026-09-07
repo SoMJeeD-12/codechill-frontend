@@ -1,0 +1,56 @@
+.page { max-width: 1200px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+
+  h1 { margin: 0.15rem 0; font-size: 1.6rem; }
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.subtitle { margin: 0.35rem 0 0; color: #5b6762; }
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.full-table { width: 100%; }
+
+a {
+  color: #0f766e;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.low {
+  color: #c2410c;
+  font-weight: 700;
+}
+
+.status[data-status='ACTIVE'] { color: #0f766e; font-weight: 600; }
+.status[data-status='EXPIRED'],
+.status[data-status='CANCELLED'] { color: #5b6762; }
+
+.empty {
+  padding: 1.25rem;
+  text-align: center;
+  color: #5b6762;
+}
+
+@media (max-width: 800px) {
+  .page-header { flex-direction: column; }
+}

@@ -1,0 +1,84 @@
+<h2 mat-dialog-title>{{ data ? 'แก้ไขสัญญา MA' : 'สร้างสัญญา MA' }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form" id="ma-form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ลูกค้า</mat-label>
+      <mat-select formControlName="customerId">
+        @for (c of customers(); track c.id) {
+          <mat-option [value]="c.id">{{ c.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>โครงการ (ถ้ามี)</mat-label>
+      <mat-select formControlName="projectId">
+        <mat-option [value]="null">— ไม่ระบุ —</mat-option>
+        @for (p of filteredProjects(); track p.id) {
+          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ชื่อแผน</mat-label>
+      <input matInput formControlName="planName" placeholder="เช่น แผนมาตรฐาน (Gold)" />
+    </mat-form-field>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>วันเริ่ม</mat-label>
+        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>วันสิ้นสุด</mat-label>
+        <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ค่าบริการรายปี (บาท)</mat-label>
+        <input matInput type="number" formControlName="annualFee" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>โควตาเคส/ปี</mat-label>
+        <input matInput type="number" formControlName="quotaTotal" />
+      </mat-form-field>
+    </div>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>SLA ตอบรับ (ชม.)</mat-label>
+        <input matInput type="number" formControlName="slaHours" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>สถานะ</mat-label>
+        <mat-select formControlName="status">
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หมายเหตุ</mat-label>
+      <textarea matInput rows="2" formControlName="note"></textarea>
+    </mat-form-field>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button mat-flat-button color="primary" type="submit" form="ma-form" [disabled]="saving()">
+    บันทึก
+  </button>
+</mat-dialog-actions>

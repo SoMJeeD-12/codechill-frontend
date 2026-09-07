@@ -1,0 +1,112 @@
+@if (notFound()) {
+  <mat-card class="missing">
+    <h1>ไม่พบสัญญา MA</h1>
+    <a mat-button routerLink="/app/ma">กลับรายการสัญญา</a>
+  </mat-card>
+} @else {
+  @if (contract(); as c) {
+  <section class="page">
+    <header class="page-header">
+      <div>
+        <a routerLink="/app/ma" class="back">← รายการสัญญา MA</a>
+        <p class="eyebrow">M6 · รายละเอียดสัญญา</p>
+        <h1>{{ c.contractNo }}</h1>
+        <p class="subtitle">
+          {{ c.planName }} · {{ statusLabel(c.status) }} · SLA {{ c.slaHours }} ชม.
+        </p>
+      </div>
+      <button mat-stroked-button type="button" (click)="printInvoice()">
+        <mat-icon>print</mat-icon>
+        พิมพ์ใบแจ้งค่าบริการ (mock)
+      </button>
+    </header>
+
+    <div class="meta-grid">
+      <mat-card>
+        <strong>ลูกค้า</strong>
+        <a [routerLink]="['/app/customers', c.customerId]">{{ customerName(c.customerId) }}</a>
+      </mat-card>
+      <mat-card>
+        <strong>โครงการ</strong>
+        <span>{{ projectLabel(c.projectId) }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ระยะสัญญา</strong>
+        <span>{{ c.startDate | date: 'd MMM y' }} – {{ c.endDate | date: 'd MMM y' }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ค่าบริการ/ปี</strong>
+        <span>{{ c.annualFee | currency: 'THB':'symbol':'1.0-0' }}</span>
+      </mat-card>
+    </div>
+
+    <div class="quota-panel">
+      <mat-card>
+        <h2>โควตาเคสซ่อม</h2>
+        <p class="quota-big" [class.low]="remaining() <= 2 && c.status === 'ACTIVE'">
+          ใช้แล้ว {{ c.quotaUsed }} / {{ c.quotaTotal }}
+          <span>เหลือ {{ remaining() }} เคส</span>
+        </p>
+        <p class="hint">เมื่อเปิดปัญหาแบบ “ใช้โควตา” ระบบจะหักจากสัญญา ACTIVE ของลูกค้าอัตโนมัติ</p>
+        @if (c.note) {
+          <p class="note">{{ c.note }}</p>
+        }
+      </mat-card>
+    </div>
+
+    <div class="two-col">
+      <mat-card>
+        <h2>Add-on</h2>
+        <table mat-table [dataSource]="addons()" class="full-table">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>รายการ</th>
+            <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+          </ng-container>
+          <ng-container matColumnDef="qty">
+            <th mat-header-cell *matHeaderCellDef>จำนวน</th>
+            <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
+          </ng-container>
+          <ng-container matColumnDef="used">
+            <th mat-header-cell *matHeaderCellDef>ใช้แล้ว</th>
+            <td mat-cell *matCellDef="let row">{{ row.usedQuantity }}</td>
+          </ng-container>
+          <ng-container matColumnDef="price">
+            <th mat-header-cell *matHeaderCellDef>ราคา/หน่วย</th>
+            <td mat-cell *matCellDef="let row">{{ row.unitPrice | currency: 'THB':'symbol':'1.0-0' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="purchasedAt">
+            <th mat-header-cell *matHeaderCellDef>ซื้อเมื่อ</th>
+            <td mat-cell *matCellDef="let row">{{ row.purchasedAt | date: 'd MMM y' }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="addonColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: addonColumns"></tr>
+        </table>
+        @if (addons().length === 0) {
+          <p class="empty">ยังไม่มี Add-on</p>
+        }
+      </mat-card>
+
+      <mat-card class="form-card">
+        <h2>เพิ่ม Add-on</h2>
+        <form [formGroup]="addonForm" (ngSubmit)="addAddon()" class="form">
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>ชื่อแพ็ก</mat-label>
+            <input matInput formControlName="name" placeholder="เช่น แพ็กโควตาเพิ่ม +6 เคส" />
+          </mat-form-field>
+          <div class="row">
+            <mat-form-field appearance="outline">
+              <mat-label>จำนวน</mat-label>
+              <input matInput type="number" formControlName="quantity" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>ราคา/หน่วย</mat-label>
+              <input matInput type="number" formControlName="unitPrice" />
+            </mat-form-field>
+          </div>
+          <button mat-flat-button color="primary" type="submit">บันทึก Add-on</button>
+        </form>
+      </mat-card>
+    </div>
+  </section>
+  }
+}
