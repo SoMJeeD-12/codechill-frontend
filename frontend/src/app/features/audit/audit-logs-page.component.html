@@ -1,0 +1,69 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">M12 · บันทึกการใช้งาน</p>
+      <h1>บันทึกการใช้งาน</h1>
+      <p class="subtitle">ใครสร้าง แก้ไข หรือเปลี่ยนสถานะข้อมูลใด เมื่อใด (mock)</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="reload()">
+      <mat-icon>refresh</mat-icon>
+      รีเฟรช
+    </button>
+  </header>
+
+  <div class="filters">
+    <mat-form-field appearance="outline">
+      <mat-label>การกระทำ</mat-label>
+      <mat-select [value]="actionFilter()" (selectionChange)="actionFilter.set($event.value)">
+        <mat-option value="ALL">ทั้งหมด</mat-option>
+        @for (a of actions; track a) {
+          <mat-option [value]="a">{{ actionLabel(a) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>ประเภทข้อมูล</mat-label>
+      <mat-select [value]="entityFilter()" (selectionChange)="entityFilter.set($event.value)">
+        <mat-option value="ALL">ทั้งหมด</mat-option>
+        @for (e of entities; track e) {
+          <mat-option [value]="e">{{ entityLabel(e) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <mat-card>
+    <table mat-table [dataSource]="filtered()" class="full-table">
+      <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef>เวลา</th>
+        <td mat-cell *matCellDef="let row">{{ row.createdAt | date: 'd MMM y HH:mm' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actor">
+        <th mat-header-cell *matHeaderCellDef>ผู้ทำ</th>
+        <td mat-cell *matCellDef="let row">{{ row.actorName }}</td>
+      </ng-container>
+      <ng-container matColumnDef="action">
+        <th mat-header-cell *matHeaderCellDef>การกระทำ</th>
+        <td mat-cell *matCellDef="let row">{{ actionLabel(row.action) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="entity">
+        <th mat-header-cell *matHeaderCellDef>ข้อมูล</th>
+        <td mat-cell *matCellDef="let row">
+          {{ entityLabel(row.entityType) }}
+          @if (row.entityId) {
+            <span class="muted">#{{ row.entityId }}</span>
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="summary">
+        <th mat-header-cell *matHeaderCellDef>รายละเอียด</th>
+        <td mat-cell *matCellDef="let row">{{ row.summary }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+    @if (filtered().length === 0) {
+      <p class="empty">ไม่มีรายการตามตัวกรอง</p>
+    }
+  </mat-card>
+</section>

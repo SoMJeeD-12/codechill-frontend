@@ -7,6 +7,7 @@ import { MenuCode, Permission, PermissionAction } from '../models/permission.mod
 import { AuthSession, User } from '../models/user.model';
 import { RoleService } from './role.service';
 import { UserService } from './user.service';
+import { AuditService } from './audit.service';
 
 const STORAGE_KEY = 'cpams_mock_session';
 
@@ -15,6 +16,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly users = inject(UserService);
   private readonly roles = inject(RoleService);
+  private readonly audit = inject(AuditService);
 
   private readonly sessionSignal = signal<AuthSession | null>(null);
 
@@ -53,6 +55,14 @@ export class AuthService {
       tap((s) => {
         this.persist(s);
         this.sessionSignal.set(s);
+        this.audit.log({
+          actorUserId: s.user.id,
+          actorName: s.user.fullName,
+          action: 'LOGIN',
+          entityType: 'system',
+          entityId: null,
+          summary: `เข้าสู่ระบบ: ${s.user.username}`,
+        });
       })
     );
   }

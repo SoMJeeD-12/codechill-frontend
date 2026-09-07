@@ -69,7 +69,68 @@ export class ThaiCeDateAdapter extends NativeDateAdapter {
     return 0; // อาทิตย์
   }
 
-  override format(date: Date, displayFormat: Record<string, string>): string {
+  /**
+   * ต้อง parse ข้อความไทยที่ format() เขียนกลับได้
+   * ไม่งั้นเลือกวันจากปฏิทินแล้ว blur แล้วช่องว่าง
+   */
+  override parse(value: unknown): Date | null {
+    if (value == null || value === '') {
+      return null;
+    }
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return new Date(value);
+    }
+    if (value instanceof Date) {
+      return this.isValid(value) ? value : null;
+    }
+    if (typeof value !== 'string') {
+      return super.parse(value);
+    }
+
+    const text = value.trim();
+    if (!text) {
+      return null;
+    }
+
+    // YYYY-MM-DD
+    const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+    if (iso) {
+      return this.createDate(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    }
+
+    // D/M/YYYY หรือ D-M-YYYY
+    const numeric = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(text);
+    if (numeric) {
+      return this.createDate(Number(numeric[3]), Number(numeric[2]) - 1, Number(numeric[1]));
+    }
+
+    // "7 ก.ย. 2026" หรือ "7 กันยายน 2026"
+    const thai = /^(\d{1,2})\s+([^\s\d]+)\s+(\d{4})$/.exec(text);
+    if (thai) {
+      const day = Number(thai[1]);
+      const year = Number(thai[3]);
+      const monthToken = thai[2];
+      const month = this.monthIndexFromThai(monthToken);
+      if (month !== null) {
+        return this.createDate(year, month, day);
+      }
+    }
+
+    // "ก.ย. 2026" (เดือน+ปี)
+    const monthYear = /^([^\s\d]+)\s+(\d{4})$/.exec(text);
+    if (monthYear) {
+      const month = this.monthIndexFromThai(monthYear[1]);
+      const year = Number(monthYear[2]);
+      if (month !== null) {
+        return this.createDate(year, month, 1);
+      }
+    }
+
+    const fallback = new Date(text);
+    return this.isValid(fallback) ? fallback : null;
+  }
+
+  override format(date: Date, displayFormat: Record<string, string> | string): string {
     if (!this.isValid(date)) {
       return '';
     }
@@ -78,9 +139,14 @@ export class ThaiCeDateAdapter extends NativeDateAdapter {
     const month = this.getMonth(date);
     const year = this.getYear(date);
 
-    const monthStyle = displayFormat['month'];
-    const dayStyle = displayFormat['day'];
-    const yearStyle = displayFormat['year'];
+    const fmt =
+      typeof displayFormat === 'string'
+        ? { day: 'numeric', month: 'short', year: 'numeric' }
+        : displayFormat || { day: 'numeric', month: 'short', year: 'numeric' };
+
+    const monthStyle = fmt['month'];
+    const dayStyle = fmt['day'];
+    const yearStyle = fmt['year'];
 
     // หัวปฏิทินแบบเดือน+ปี เช่น "มี.ค. 2026"
     if (!dayStyle && monthStyle && yearStyle) {
@@ -94,11 +160,28 @@ export class ThaiCeDateAdapter extends NativeDateAdapter {
       monthStyle === 'long' ? THAI_MONTHS_LONG[month] : THAI_MONTHS_SHORT[month];
     return `${day} ${monthName} ${year}`;
   }
+
+  private monthIndexFromThai(token: string): number | null {
+    const normalized = token.trim();
+    const longIdx = THAI_MONTHS_LONG.indexOf(normalized);
+    if (longIdx >= 0) {
+      return longIdx;
+    }
+    const shortIdx = THAI_MONTHS_SHORT.indexOf(normalized);
+    if (shortIdx >= 0) {
+      return shortIdx;
+    }
+    // เผื่อพิมพ์โดยไม่มีจุด เช่น "ก.ย"
+    const loose = THAI_MONTHS_SHORT.findIndex(
+      (m) => m.replace(/\./g, '') === normalized.replace(/\./g, '')
+    );
+    return loose >= 0 ? loose : null;
+  }
 }
 
 export const THAI_CE_DATE_FORMATS = {
   parse: {
-    dateInput: { day: 'numeric', month: 'short', year: 'numeric' },
+    dateInput: null,
   },
   display: {
     dateInput: { day: 'numeric', month: 'short', year: 'numeric' },

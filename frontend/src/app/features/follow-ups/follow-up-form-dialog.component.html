@@ -1,0 +1,74 @@
+<h2 mat-dialog-title>{{ data ? 'แก้ไขแผนติดตาม' : 'สร้างแผนติดตาม' }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ลูกค้า</mat-label>
+      <mat-select formControlName="customerId">
+        @for (c of customers(); track c.id) {
+          <mat-option [value]="c.id">{{ c.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หัวข้อ</mat-label>
+      <input matInput formControlName="title" />
+    </mat-form-field>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>วันครบกำหนด</mat-label>
+        <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+        <mat-datepicker #duePicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ช่องทาง</mat-label>
+        <mat-select formControlName="channel">
+          @for (ch of channels; track ch) {
+            <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ผู้รับผิดชอบ</mat-label>
+        <mat-select formControlName="assigneeId">
+          <mat-option [value]="null">— ไม่ระบุ —</mat-option>
+          @for (u of users(); track u.id) {
+            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>สถานะ</mat-label>
+        <mat-select formControlName="status">
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หมายเหตุ</mat-label>
+      <textarea matInput rows="2" formControlName="note"></textarea>
+    </mat-form-field>
+
+    @if (overdueHint(); as hint) {
+      <p class="hint" [class.warn]="form.getRawValue().status !== 'PLANNED'">{{ hint }}</p>
+    }
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button mat-flat-button color="primary" type="submit" form="follow-up-form" [disabled]="saving()">
+    บันทึก
+  </button>
+</mat-dialog-actions>

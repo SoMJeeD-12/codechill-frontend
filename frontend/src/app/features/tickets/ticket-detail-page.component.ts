@@ -20,6 +20,7 @@ import {
   TicketStatus,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
+import { AuditService } from '../../core/services/audit.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
@@ -51,6 +52,7 @@ export class TicketDetailPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly audit = inject(AuditService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
 
@@ -161,7 +163,16 @@ export class TicketDetailPageComponent implements OnInit {
 
   reopen(): void {
     this.ticketsApi.reopen(this.ticketId).subscribe({
-      next: () => {
+      next: (ticket) => {
+        const actor = this.auth.currentUser();
+        this.audit.log({
+          actorUserId: actor?.id ?? null,
+          actorName: actor?.fullName ?? 'ระบบ',
+          action: 'STATUS_CHANGE',
+          entityType: 'ticket',
+          entityId: ticket.id,
+          summary: `ปัญหาเดิมกลับมา: ${ticket.ticketNo}`,
+        });
         this.snack.open('เปิดปัญหาเดิมซ้ำแล้ว (ใบเดิม)', 'ปิด', { duration: 3000 });
         this.refresh();
       },

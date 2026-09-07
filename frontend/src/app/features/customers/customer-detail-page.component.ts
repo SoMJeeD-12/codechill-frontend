@@ -22,6 +22,11 @@ import {
 } from '../../core/models/customer.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
 import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
+import {
+  FOLLOW_UP_CHANNEL_LABELS,
+  FOLLOW_UP_STATUS_LABELS,
+  FollowUp,
+} from '../../core/models/follow-up.model';
 import { TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
 import {
   WARRANTY_COVERAGE_LABELS,
@@ -30,6 +35,7 @@ import {
 } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { FollowUpService } from '../../core/services/follow-up.service';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
@@ -65,6 +71,7 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly maApi = inject(MaService);
+  private readonly followUpsApi = inject(FollowUpService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
@@ -76,6 +83,7 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly tickets = signal<Ticket[]>([]);
   readonly warranties = signal<Warranty[]>([]);
   readonly contracts = signal<MaContract[]>([]);
+  readonly followUps = signal<FollowUp[]>([]);
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly channelLabels = CHANNEL_LABELS;
   readonly channels = Object.keys(CHANNEL_LABELS) as CommunicationChannel[];
@@ -84,6 +92,8 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
   readonly warrantyCoverageLabels = WARRANTY_COVERAGE_LABELS;
   readonly maStatusLabels = MA_STATUS_LABELS;
+  readonly followUpStatusLabels = FOLLOW_UP_STATUS_LABELS;
+  readonly followUpChannelLabels = FOLLOW_UP_CHANNEL_LABELS;
   readonly notFound = signal(false);
 
   statusLabel(status: Customer['status']): string {
@@ -127,10 +137,26 @@ export class CustomerDetailPageComponent implements OnInit {
     this.tickets.set(this.ticketsApi.getByCustomer(this.customerId));
     this.warranties.set(this.warrantiesApi.getByCustomer(this.customerId));
     this.contracts.set(this.maApi.getByCustomer(this.customerId));
+    this.followUps.set(this.followUpsApi.getByCustomer(this.customerId));
   }
 
   remainingQuota(c: MaContract): number {
     return this.maApi.remainingQuota(c);
+  }
+
+  isFollowUpOverdue(f: FollowUp): boolean {
+    return this.followUpsApi.isOverdue(f);
+  }
+
+  followUpStatusLabel(f: FollowUp): string {
+    if (this.followUpsApi.isOverdue(f)) {
+      return 'เลยกำหนด';
+    }
+    return this.followUpStatusLabels[f.status];
+  }
+
+  followUpChannelLabel(channel: FollowUp['channel']): string {
+    return this.followUpChannelLabels[channel];
   }
 
   warrantyCoverageLabel(coverage: Warranty['coverage']): string {

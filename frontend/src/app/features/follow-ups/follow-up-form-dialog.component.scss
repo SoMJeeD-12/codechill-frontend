@@ -1,0 +1,39 @@
+.form {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(480px, 100%);
+  padding-top: 0.25rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.full { width: 100%; }
+
+.error {
+  margin: 0.25rem 0 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.hint {
+  margin: 0.15rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #0f766e;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.hint.warn {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+@media (max-width: 560px) {
+  .row { grid-template-columns: 1fr; }
+}

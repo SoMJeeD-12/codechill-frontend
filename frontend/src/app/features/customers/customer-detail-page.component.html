@@ -221,7 +221,26 @@
         </div>
       </mat-tab>
       <mat-tab label="การติดตาม">
-        <p class="placeholder-tab">จะแสดงในเฟส 4</p>
+        <div class="list tab-pad">
+          @for (f of followUps(); track f.id) {
+            <a class="item link-item" routerLink="/app/follow-ups">
+              <div>
+                <strong>{{ f.title }}</strong>
+                <p>
+                  {{ followUpStatusLabel(f) }} ·
+                  {{ followUpChannelLabel(f.channel) }} ·
+                  ครบกำหนด {{ f.dueDate }}
+                  @if (isFollowUpOverdue(f)) {
+                    <span class="overdue-tag">เลยกำหนด</span>
+                  }
+                </p>
+              </div>
+              <mat-icon>chevron_right</mat-icon>
+            </a>
+          } @empty {
+            <p class="empty">ยังไม่มีแผนติดตามของลูกค้ารายนี้</p>
+          }
+        </div>
       </mat-tab>
     </mat-tab-group>
   </section>

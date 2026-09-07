@@ -101,12 +101,9 @@ export const routes: Routes = [
         path: 'follow-ups',
         canActivate: [permissionGuard('follow-ups')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'ติดตามลูกค้า',
-          description: 'แผนติดตามและลูกค้าที่เลยกำหนด',
-          icon: 'event_available',
-        },
+          import('./features/follow-ups/follow-ups-page.component').then(
+            (m) => m.FollowUpsPageComponent
+          ),
       },
       {
         path: 'surveys',
@@ -142,12 +139,9 @@ export const routes: Routes = [
         path: 'notifications',
         canActivate: [permissionGuard('notifications')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'การแจ้งเตือน',
-          description: 'กติกาแจ้งเตือนและรายการแจ้งเตือนในระบบ',
-          icon: 'notifications',
-        },
+          import('./features/notifications/notifications-page.component').then(
+            (m) => m.NotificationsPageComponent
+          ),
       },
       {
         path: 'users',
@@ -165,12 +159,9 @@ export const routes: Routes = [
         path: 'audit-logs',
         canActivate: [permissionGuard('audit-logs')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'บันทึกการใช้งาน',
-          description: 'ตรวจสอบว่าใครเพิ่ม แก้ไข หรือลบข้อมูลใดเมื่อใด',
-          icon: 'history',
-        },
+          import('./features/audit/audit-logs-page.component').then(
+            (m) => m.AuditLogsPageComponent
+          ),
       },
     ],
   },
