@@ -1,0 +1,130 @@
+@if (notFound()) {
+  <mat-card class="missing">
+    <h1>ไม่พบปัญหา</h1>
+    <a mat-button routerLink="/app/tickets">กลับหน้ารายการ</a>
+  </mat-card>
+} @else {
+  @if (ticket(); as t) {
+  <section class="page">
+    <header class="page-header">
+      <div>
+        <a routerLink="/app/tickets" class="back">← รายการปัญหา</a>
+        <p class="eyebrow">{{ t.ticketNo }} · {{ ticketStatusLabel(t.status) }}</p>
+        <h1>{{ t.title }}</h1>
+        <p class="subtitle">
+          {{ customerName() }} · {{ projectName() }} ·
+          {{ billingLabel(t.billingType) }}
+          @if (t.billingType === 'PER_CASE') {
+            ({{ t.chargeAmount | currency: 'THB':'symbol':'1.0-0' }})
+          }
+        </p>
+      </div>
+      <div class="actions">
+        @if (t.status === 'RECEIVED' || t.status === 'REOPENED') {
+          <button mat-stroked-button type="button" (click)="startWork()">เริ่มดำเนินการ</button>
+        }
+        @if (t.status === 'RESOLVED' || t.status === 'CLOSED') {
+          <button mat-stroked-button type="button" (click)="reopen()">ปัญหาเดิมกลับมา</button>
+        }
+        @if (t.status !== 'CLOSED') {
+          <button mat-flat-button color="primary" type="button" (click)="closeTicket()">ปิดงาน</button>
+        }
+      </div>
+    </header>
+
+    <div class="meta-grid">
+      <mat-card>
+        <strong>รับแจ้ง</strong>
+        <span>{{ t.reportedAt | date: 'd MMM y HH:mm' }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ผู้รับเรื่อง</strong>
+        <span>{{ userName(t.receivedByUserId) }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ผู้รับผิดชอบแก้</strong>
+        <span>{{ userName(t.assigneeId) }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>รอบที่แก้แล้ว</strong>
+        <span>{{ t.resolutionCount }} รอบ</span>
+      </mat-card>
+      @if (serviceHours(); as hours) {
+        <mat-card>
+          <strong>ระยะเวลาให้บริการ</strong>
+          <span>{{ hours }}</span>
+        </mat-card>
+      }
+    </div>
+
+    <mat-card class="desc">
+      <p>{{ t.description || 'ไม่มีรายละเอียด' }}</p>
+      @if (t.attachmentName) {
+        <small>หลักฐาน: {{ t.attachmentName }}</small>
+      }
+    </mat-card>
+
+    <div class="split">
+      <div>
+        <h2>ประวัติการแก้ไข (ใบเดิม)</h2>
+        @for (r of resolutions(); track r.id) {
+          <mat-card class="round">
+            <div class="round-head">
+              <strong>รอบที่ {{ r.round }}</strong>
+              <span>{{ resultLabels[r.result] }} · {{ r.spentHour }} ชม.</span>
+            </div>
+            <p><b>สาเหตุ:</b> {{ r.rootCause }}</p>
+            <p><b>วิธีแก้:</b> {{ r.actionTaken }}</p>
+            <small>
+              โดย {{ userName(r.resolvedByUserId) }} ·
+              {{ r.resolvedAt | date: 'd MMM y HH:mm' }}
+            </small>
+          </mat-card>
+        } @empty {
+          <p class="empty">ยังไม่มีการบันทึกรอบแก้ไข</p>
+        }
+      </div>
+
+      @if (t.status !== 'CLOSED') {
+        <mat-card class="form-card">
+          <h3>เพิ่มรอบการแก้ไข</h3>
+          <p class="hint">ปัญหาเดิมกลับมาให้เพิ่มรอบในใบนี้ ไม่เปิดใบใหม่</p>
+          <form [formGroup]="resolutionForm" (ngSubmit)="addResolution()" class="form">
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>สาเหตุ</mat-label>
+              <textarea matInput rows="2" formControlName="rootCause"></textarea>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>วิธีแก้ไข</mat-label>
+              <textarea matInput rows="2" formControlName="actionTaken"></textarea>
+            </mat-form-field>
+            <div class="row">
+              <mat-form-field appearance="outline">
+                <mat-label>เวลาที่ใช้ (ชม.)</mat-label>
+                <input matInput type="number" step="0.5" formControlName="spentHour" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>ผลลัพธ์</mat-label>
+                <mat-select formControlName="result">
+                  @for (r of results; track r) {
+                    <mat-option [value]="r">{{ resultLabels[r] }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>ผู้แก้ไข</mat-label>
+              <mat-select formControlName="resolvedByUserId">
+                @for (u of users(); track u.id) {
+                  <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button mat-flat-button color="primary" type="submit">บันทึกรอบนี้</button>
+          </form>
+        </mat-card>
+      }
+    </div>
+  </section>
+  }
+}

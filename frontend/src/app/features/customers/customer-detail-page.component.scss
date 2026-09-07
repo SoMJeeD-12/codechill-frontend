@@ -1,0 +1,152 @@
+.page {
+  max-width: 1100px;
+}
+
+.page-header {
+  margin-bottom: 1rem;
+
+  h1 {
+    margin: 0.15rem 0;
+    font-size: 1.6rem;
+  }
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  color: #0f766e;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  color: #5b6762;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  mat-card {
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+
+    strong {
+      display: block;
+      font-size: 0.75rem;
+      color: #5b6762;
+      margin-bottom: 0.25rem;
+    }
+  }
+}
+
+.tab-body {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+  padding: 1rem 0 1.5rem;
+}
+
+.list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(28, 43, 40, 0.1);
+  border-radius: 10px;
+  background: #fff;
+
+  p,
+  small {
+    margin: 0.25rem 0 0;
+    color: #5b6762;
+  }
+}
+
+.primary-tag {
+  margin-left: 0.35rem;
+  font-size: 0.7rem;
+  background: #ecfdf5;
+  color: #0f766e;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+.form-card {
+  padding: 1rem;
+  border-radius: 12px;
+  align-self: start;
+
+  h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+  }
+}
+
+.form {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.full {
+  width: 100%;
+}
+
+.empty,
+.placeholder-tab {
+  color: #5b6762;
+  padding: 1rem 0;
+}
+
+.tab-pad {
+  padding: 1rem 0 1.5rem;
+}
+
+.link-item {
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+
+  mat-icon {
+    color: #0f766e;
+  }
+}
+
+.missing {
+  max-width: 480px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .meta-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tab-body {
+    grid-template-columns: 1fr;
+  }
+}

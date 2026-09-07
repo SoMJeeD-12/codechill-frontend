@@ -1,0 +1,113 @@
+.page { max-width: 1100px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+
+  h1 { margin: 0.15rem 0; font-size: 1.55rem; }
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  color: #0f766e;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.subtitle { margin: 0.35rem 0 0; color: #5b6762; }
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+
+  mat-card {
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+
+    strong {
+      display: block;
+      font-size: 0.72rem;
+      color: #5b6762;
+      margin-bottom: 0.2rem;
+    }
+  }
+}
+
+.desc {
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+
+  p { margin: 0; }
+  small { color: #5b6762; }
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+  align-items: start;
+
+  h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+}
+
+.round {
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+
+  p { margin: 0.35rem 0 0; color: #3f4a46; font-size: 0.9rem; }
+  small { color: #5b6762; }
+}
+
+.round-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.form-card {
+  padding: 1rem;
+  border-radius: 12px;
+
+  h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+}
+
+.hint {
+  margin: 0 0 0.75rem;
+  color: #0f766e;
+  font-size: 0.82rem;
+}
+
+.form { display: grid; gap: 0.35rem; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+.full { width: 100%; }
+.empty { color: #5b6762; }
+.missing { max-width: 480px; padding: 1.5rem; text-align: center; }
+
+@media (max-width: 900px) {
+  .meta-grid { grid-template-columns: 1fr 1fr; }
+  .split { grid-template-columns: 1fr; }
+  .page-header { flex-direction: column; }
+}

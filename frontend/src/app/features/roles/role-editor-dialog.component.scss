@@ -1,0 +1,37 @@
+.form {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.full {
+  width: 100%;
+}
+
+.hint {
+  margin: 0.5rem 0;
+  color: #5b6762;
+  font-size: 0.85rem;
+}
+
+.perm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+
+  th,
+  td {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 0.35rem 0.4rem;
+    text-align: center;
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+}
+
+.error {
+  color: #991b1b;
+}

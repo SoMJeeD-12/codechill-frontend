@@ -1,0 +1,46 @@
+/* Global theme — CPAMS internal admin */
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$azure-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+      typography: Sarabun,
+      density: 0,
+    )
+  );
+}
+
+:root {
+  --app-bg: #f4f1ea;
+  --app-ink: #1c2b28;
+  --app-muted: #5b6762;
+  --app-border: rgba(28, 43, 40, 0.1);
+  --app-sidebar: #ffffff;
+  --app-sidebar-text: #1c2b28;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Sarabun', 'Segoe UI', sans-serif;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}

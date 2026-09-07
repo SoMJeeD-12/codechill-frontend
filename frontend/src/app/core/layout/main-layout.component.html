@@ -1,0 +1,73 @@
+<mat-sidenav-container class="layout-shell">
+  <mat-sidenav
+    class="layout-sidenav"
+    [mode]="'side'"
+    [opened]="sidenavOpened"
+    fixedInViewport
+  >
+    <div class="brand">
+      <div class="brand-mark">CP</div>
+      <div class="brand-text">
+        <strong>CPAMS</strong>
+        <span>ลูกค้า · โครงการ · หลังการขาย</span>
+      </div>
+    </div>
+
+    @for (group of menuGroups(); track group.key) {
+      <div class="nav-group">
+        <div class="nav-group-label">{{ group.label }}</div>
+        <mat-nav-list>
+          @for (item of group.items; track item.code) {
+            <a
+              mat-list-item
+              [routerLink]="item.route"
+              routerLinkActive="active"
+            >
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      </div>
+    } @empty {
+      <div class="nav-empty">
+        <mat-icon>lock_person</mat-icon>
+        <p>ยังไม่มีเมนูที่เข้าถึงได้ รอผู้ดูแลผูกบทบาทให้บัญชีนี้</p>
+      </div>
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content class="layout-content">
+    <mat-toolbar class="topbar">
+      <button mat-icon-button type="button" (click)="sidenavOpened = !sidenavOpened" aria-label="สลับเมนู">
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <span class="topbar-title">ระบบบริหารจัดการลูกค้าและบริการหลังการขาย</span>
+      <span class="spacer"></span>
+
+      <button mat-button [matMenuTriggerFor]="userMenu" class="user-chip">
+        <mat-icon>account_circle</mat-icon>
+        <span class="user-meta">
+          <strong>{{ user()?.fullName }}</strong>
+          <small>{{ accountTypeLabel(user()?.accountType) }}</small>
+        </span>
+        <mat-icon>expand_more</mat-icon>
+      </button>
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item disabled>
+          <mat-icon>badge</mat-icon>
+          <span>{{ user()?.username }}</span>
+        </button>
+        <button mat-menu-item type="button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>ออกจากระบบ</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main class="page-area">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

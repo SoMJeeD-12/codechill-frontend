@@ -1,0 +1,9 @@
+# Root
+work-report.pdf
+*.pdf
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

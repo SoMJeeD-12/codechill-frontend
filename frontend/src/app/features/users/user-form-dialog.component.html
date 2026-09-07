@@ -1,0 +1,68 @@
+<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้' }}</h2>
+<mat-dialog-content>
+  @if (isSuper) {
+    <p class="notice">บัญชี Super Admin ไม่สามารถแก้ไขจากหน้านี้ได้</p>
+  }
+  <form [formGroup]="form" class="form">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ชื่อ-นามสกุล</mat-label>
+      <input matInput formControlName="fullName" />
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ชื่อผู้ใช้</mat-label>
+        <input matInput formControlName="username" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>อีเมล</mat-label>
+        <input matInput formControlName="email" />
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ระดับบัญชี</mat-label>
+        <mat-select formControlName="accountType">
+          <mat-option value="ADMIN">Admin</mat-option>
+          <mat-option value="USER">User</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>สถานะ</mat-label>
+        <mat-select formControlName="status">
+          <mat-option value="ACTIVE">ปฏิบัติงาน</mat-option>
+          <mat-option value="SUSPENDED">พักงาน</mat-option>
+          <mat-option value="RESIGNED">สิ้นสุดการปฏิบัติงาน</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (showRoles) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>บทบาท (เลือกได้หลายอัน)</mat-label>
+        <mat-select formControlName="roleIds" multiple>
+          @for (role of data.roles; track role.id) {
+            <mat-option [value]="role.id">{{ role.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    } @else {
+      <p class="hint">Admin เข้าถึงทุกเมนูโดยอัตโนมัติ ไม่ต้องผูกบทบาท</p>
+    }
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>{{ isEdit ? 'รหัสผ่านใหม่ (ว่างไว้ถ้าไม่เปลี่ยน)' : 'รหัสผ่าน (ว่าง = password)' }}</mat-label>
+      <input matInput type="password" formControlName="password" />
+    </mat-form-field>
+  </form>
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  @if (!isSuper) {
+    <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+      บันทึก
+    </button>
+  }
+</mat-dialog-actions>

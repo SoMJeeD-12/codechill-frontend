@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>{{ data.role ? 'แก้ไขบทบาท' : 'สร้างบทบาทใหม่' }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ชื่อบทบาท</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>คำอธิบาย</mat-label>
+      <textarea matInput rows="2" formControlName="description"></textarea>
+    </mat-form-field>
+  </form>
+
+  <p class="hint">ติ๊กสิทธิ์รายเมนู (ดู / เพิ่ม / แก้ไข / ลบ)</p>
+  <table class="perm-table">
+    <thead>
+      <tr>
+        <th>เมนู</th>
+        @for (a of actions; track a.code) {
+          <th>{{ a.label }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (menu of menus; track menu.code) {
+        <tr>
+          <td>{{ menu.label }}</td>
+          @for (a of actions; track a.code) {
+            <td>
+              <mat-checkbox
+                [checked]="has(menu.code, a.code)"
+                (change)="toggle(menu.code, a.code, $event.checked)"
+              />
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+    บันทึก
+  </button>
+</mat-dialog-actions>

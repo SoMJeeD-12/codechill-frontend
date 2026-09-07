@@ -1,0 +1,55 @@
+<h2 mat-dialog-title>แก้ไขงานย่อย</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ชื่องาน</mat-label>
+      <input matInput formControlName="title" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>รายละเอียด</mat-label>
+      <textarea matInput rows="3" formControlName="description"></textarea>
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>สถานะ</mat-label>
+        <mat-select formControlName="status">
+          @for (s of taskStatuses; track s) {
+            <mat-option [value]="s">{{ taskStatusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ความสำคัญ</mat-label>
+        <mat-select formControlName="priority">
+          @for (pr of priorities; track pr) {
+            <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ผู้รับผิดชอบ</mat-label>
+      <mat-select formControlName="assigneeId">
+        <mat-option [value]="null">—</mat-option>
+        @for (u of users(); track u.id) {
+          <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>วันครบกำหนด</mat-label>
+      <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+      <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+      <mat-datepicker #duePicker></mat-datepicker>
+    </mat-form-field>
+  </form>
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+    บันทึก
+  </button>
+</mat-dialog-actions>

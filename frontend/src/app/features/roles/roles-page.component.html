@@ -1,0 +1,49 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">M0 · บทบาทและสิทธิ์</p>
+      <h1>บทบาทและสิทธิ์</h1>
+      <p class="subtitle">
+        @if (canManage()) {
+          Super Admin สามารถสร้างบทบาทและติ๊กสิทธิ์รายเมนูได้
+        } @else {
+          คุณสามารถดูรายการบทบาทได้ — การสร้าง/แก้ไขสงวนไว้สำหรับ Super Admin
+        }
+      </p>
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="openCreate()" [disabled]="!canManage()">
+      <mat-icon>add</mat-icon>
+      สร้างบทบาท
+    </button>
+  </header>
+
+  <mat-card>
+    <table mat-table [dataSource]="roles()" class="full-table">
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>ชื่อบทบาท</th>
+        <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+      </ng-container>
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>คำอธิบาย</th>
+        <td mat-cell *matCellDef="let row">{{ row.description || '—' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="menus">
+        <th mat-header-cell *matHeaderCellDef>เมนูที่เข้าถึงได้</th>
+        <td mat-cell *matCellDef="let row">{{ menuCount(row) }} เมนู</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let row" class="actions">
+          <button mat-icon-button type="button" (click)="openEdit(row)" [disabled]="!canManage()" matTooltip="แก้ไข">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button type="button" color="warn" (click)="remove(row)" [disabled]="!canManage()" matTooltip="ลบ">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+  </mat-card>
+</section>

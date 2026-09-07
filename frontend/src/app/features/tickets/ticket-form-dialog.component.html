@@ -1,0 +1,108 @@
+<h2 mat-dialog-title>เปิดปัญหาใหม่</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form">
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ลูกค้า</mat-label>
+      <mat-select formControlName="customerId">
+        @for (c of customers(); track c.id) {
+          <mat-option [value]="c.id">{{ c.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>โครงการ (ถ้ามี)</mat-label>
+      <mat-select formControlName="projectId">
+        <mat-option [value]="null">—</mat-option>
+        @for (p of filteredProjects(); track p.id) {
+          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หัวข้อ</mat-label>
+      <input matInput formControlName="title" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>รายละเอียด</mat-label>
+      <textarea matInput rows="3" formControlName="description"></textarea>
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ประเภท</mat-label>
+        <input matInput formControlName="category" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ความเร่งด่วน</mat-label>
+        <mat-select formControlName="priority">
+          @for (p of priorities; track p) {
+            <mat-option [value]="p">{{ p }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>คิดค่าใช้จ่าย</mat-label>
+        <mat-select formControlName="billingType">
+          @for (b of billingTypes; track b) {
+            <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>จำนวนเงิน (ถ้าคิดครั้ง)</mat-label>
+        <input matInput type="number" formControlName="chargeAmount" />
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ช่องทางแจ้ง</mat-label>
+        <mat-select formControlName="reportedChannel">
+          @for (ch of channels; track ch) {
+            <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>วันที่รับแจ้ง</mat-label>
+        <input matInput [matDatepicker]="reportPicker" formControlName="reportedDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="reportPicker"></mat-datepicker-toggle>
+        <mat-datepicker #reportPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>เวลารับแจ้ง</mat-label>
+      <input matInput type="time" formControlName="reportedTime" />
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ผู้รับเรื่อง</mat-label>
+        <mat-select formControlName="receivedByUserId">
+          @for (u of users(); track u.id) {
+            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ผู้รับผิดชอบแก้</mat-label>
+        <mat-select formControlName="assigneeId">
+          <mat-option [value]="null">—</mat-option>
+          @for (u of users(); track u.id) {
+            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ไฟล์หลักฐาน (mock)</mat-label>
+      <input matInput formControlName="attachmentName" />
+    </mat-form-field>
+  </form>
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">บันทึก</button>
+</mat-dialog-actions>

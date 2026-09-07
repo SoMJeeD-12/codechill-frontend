@@ -1,0 +1,25 @@
+<section class="page">
+  <mat-card class="card">
+    <mat-icon class="icon">hourglass_empty</mat-icon>
+    <h1>รอการกำหนดสิทธิ์</h1>
+    <p>
+      สวัสดี {{ user()?.fullName }} บัญชีของคุณเข้าสู่ระบบได้แล้ว
+      แต่ยังไม่มีบทบาท จึงยังเข้าเมนูในระบบไม่ได้
+    </p>
+    <p class="hint">
+      ให้ Super Admin หรือ Admin ไปที่เมนู <strong>ผู้ใช้งาน</strong>
+      แล้วผูกบทบาทให้บัญชี <code>{{ user()?.username }}</code> จากนั้นกด “ตรวจสอบสิทธิ์อีกครั้ง”
+      หรือออกจากระบบแล้วเข้าใหม่
+    </p>
+    <div class="actions">
+      <button mat-stroked-button type="button" (click)="refresh()">
+        <mat-icon>refresh</mat-icon>
+        ตรวจสอบสิทธิ์อีกครั้ง
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        ออกจากระบบ
+      </button>
+    </div>
+  </mat-card>
+</section>

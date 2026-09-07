@@ -1,0 +1,72 @@
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatListModule } from '@angular/material/list';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MENU_ITEMS } from '../mock/mock-data';
+import { AuthService } from '../services/auth.service';
+
+@Component({
+  selector: 'app-main-layout',
+  standalone: true,
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatSidenavModule,
+    MatToolbarModule,
+    MatListModule,
+    MatIconModule,
+    MatButtonModule,
+    MatMenuModule,
+    MatTooltipModule,
+  ],
+  templateUrl: './main-layout.component.html',
+  styleUrl: './main-layout.component.scss',
+})
+export class MainLayoutComponent {
+  private readonly auth = inject(AuthService);
+
+  readonly user = this.auth.currentUser;
+  sidenavOpened = true;
+
+  readonly visibleMenus = computed(() => {
+    const codes = new Set(this.auth.getVisibleMenuCodes());
+    return MENU_ITEMS.filter((item) => codes.has(item.code));
+  });
+
+  readonly menuGroups = computed(() => {
+    const groups: { key: string; label: string; items: typeof MENU_ITEMS }[] = [
+      { key: 'main', label: 'หลัก', items: [] },
+      { key: 'ops', label: 'ปฏิบัติการ', items: [] },
+      { key: 'revenue', label: 'รายได้ต่อเนื่อง', items: [] },
+      { key: 'system', label: 'ระบบ', items: [] },
+    ];
+
+    for (const item of this.visibleMenus()) {
+      const group = groups.find((g) => g.key === item.group);
+      group?.items.push(item);
+    }
+
+    return groups.filter((g) => g.items.length > 0);
+  });
+
+  accountTypeLabel(type: string | undefined): string {
+    switch (type) {
+      case 'SUPER_ADMIN':
+        return 'Super Admin';
+      case 'ADMIN':
+        return 'Admin';
+      default:
+        return 'User';
+    }
+  }
+
+  logout(): void {
+    this.auth.logout();
+  }
+}

@@ -1,0 +1,72 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">M2 · โครงการ</p>
+      <h1>โครงการ</h1>
+      <p class="subtitle">จัดการโครงการ งานย่อย และการส่งมอบ</p>
+    </div>
+    <div class="header-actions">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter">
+        <mat-label>สถานะ</mat-label>
+        <mat-select [value]="statusFilter()" (selectionChange)="statusFilter.set($event.value)">
+          <mat-option value="ALL">ทั้งหมด</mat-option>
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" (click)="openCreate()">
+        <mat-icon>create_new_folder</mat-icon>
+        สร้างโครงการ
+      </button>
+    </div>
+  </header>
+
+  <mat-card>
+    <table mat-table [dataSource]="filtered()" class="full-table">
+      <ng-container matColumnDef="code">
+        <th mat-header-cell *matHeaderCellDef>รหัส</th>
+        <td mat-cell *matCellDef="let row">{{ row.code }}</td>
+      </ng-container>
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>ชื่อโครงการ</th>
+        <td mat-cell *matCellDef="let row">
+          <a [routerLink]="['/app/projects', row.id]">{{ row.name }}</a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="customer">
+        <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
+        <td mat-cell *matCellDef="let row">{{ customerName(row.customerId) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="dueDate">
+        <th mat-header-cell *matHeaderCellDef>กำหนดส่ง</th>
+        <td mat-cell *matCellDef="let row">{{ row.dueDate | date: 'd MMM y' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="progress">
+        <th mat-header-cell *matHeaderCellDef>ความคืบหน้า</th>
+        <td mat-cell *matCellDef="let row">{{ progress(row.id) }}%</td>
+      </ng-container>
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+        <td mat-cell *matCellDef="let row">{{ statusLabel(row.status) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="value">
+        <th mat-header-cell *matHeaderCellDef>มูลค่า</th>
+        <td mat-cell *matCellDef="let row">{{ row.contractValue | currency: 'THB':'symbol':'1.0-0' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let row" class="actions">
+          <a mat-icon-button [routerLink]="['/app/projects', row.id]" matTooltip="รายละเอียด">
+            <mat-icon>open_in_new</mat-icon>
+          </a>
+          <button mat-icon-button type="button" (click)="openEdit(row)" matTooltip="แก้ไข">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+  </mat-card>
+</section>

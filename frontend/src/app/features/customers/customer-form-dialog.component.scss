@@ -1,0 +1,26 @@
+.form {
+  display: grid;
+  gap: 0.15rem;
+  min-width: min(480px, 80vw);
+  margin-top: 0.5rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.full {
+  width: 100%;
+}
+
+.error {
+  color: #991b1b;
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

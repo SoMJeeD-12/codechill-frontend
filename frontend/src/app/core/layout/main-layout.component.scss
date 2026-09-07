@@ -1,0 +1,159 @@
+.layout-shell {
+  height: 100vh;
+  background: var(--app-bg);
+}
+
+.layout-sidenav {
+  width: 280px;
+  border-right: 1px solid var(--app-border);
+  background: var(--app-sidebar);
+  color: var(--app-sidebar-text);
+}
+
+.brand {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1.25rem 1rem 1rem;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: linear-gradient(145deg, #0f766e, #134e4a);
+  color: #ecfdf5;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+
+  strong {
+    font-size: 1.05rem;
+  }
+
+  span {
+    font-size: 0.72rem;
+    opacity: 0.75;
+  }
+}
+
+.nav-group {
+  padding: 0.25rem 0.5rem 0.75rem;
+}
+
+.nav-empty {
+  margin: 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background: rgba(15, 118, 110, 0.06);
+  color: #5b6762;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.45;
+
+  mat-icon {
+    color: #0f766e;
+    margin-bottom: 0.35rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.nav-group-label {
+  padding: 0.5rem 0.85rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+a.mat-mdc-list-item {
+  border-radius: 8px;
+  margin-bottom: 2px;
+
+  &.active {
+    background: rgba(15, 118, 110, 0.18);
+    color: #0f766e;
+  }
+}
+
+.layout-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 252, 248, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-ink);
+}
+
+.topbar-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: auto;
+  padding: 0.35rem 0.5rem;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  text-align: left;
+
+  strong {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  small {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+}
+
+.page-area {
+  flex: 1;
+  padding: 1.25rem 1.5rem 2rem;
+}
+
+@media (max-width: 768px) {
+  .topbar-title {
+    display: none;
+  }
+
+  .user-meta {
+    display: none;
+  }
+
+  .page-area {
+    padding: 1rem;
+  }
+}

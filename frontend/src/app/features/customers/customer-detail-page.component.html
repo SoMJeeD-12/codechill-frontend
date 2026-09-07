@@ -1,0 +1,189 @@
+@if (notFound()) {
+  <mat-card class="missing">
+    <h1>ไม่พบลูกค้า</h1>
+    <a mat-button routerLink="/app/customers">กลับหน้ารายชื่อ</a>
+  </mat-card>
+} @else {
+  @if (customer(); as c) {
+  <section class="page">
+    <header class="page-header">
+      <div>
+        <a routerLink="/app/customers" class="back">← รายชื่อลูกค้า</a>
+        <p class="eyebrow">M1 · Customer 360</p>
+        <h1>{{ c.name }}</h1>
+        <p class="subtitle">
+          {{ statusLabel(c.status) }} · {{ c.businessType || 'ไม่ระบุประเภทธุรกิจ' }} ·
+          มูลค่ารวม {{ c.lifetimeValue | currency: 'THB':'symbol':'1.0-0' }}
+        </p>
+      </div>
+    </header>
+
+    <div class="meta-grid">
+      <mat-card>
+        <strong>เลขผู้เสียภาษี</strong>
+        <span>{{ c.taxId || '—' }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ที่อยู่</strong>
+        <span>{{ c.address || '—' }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ผู้ติดต่อ</strong>
+        <span>{{ contacts().length }} คน</span>
+      </mat-card>
+      <mat-card>
+        <strong>ประวัติติดต่อ</strong>
+        <span>{{ logs().length }} รายการ</span>
+      </mat-card>
+    </div>
+
+    <mat-tab-group animationDuration="150ms">
+      <mat-tab label="ผู้ติดต่อ">
+        <div class="tab-body">
+          <div class="list">
+            @for (contact of contacts(); track contact.id) {
+              <div class="item">
+                <div>
+                  <strong>
+                    {{ contact.fullName }}
+                    @if (contact.isPrimary) {
+                      <span class="primary-tag">หลัก</span>
+                    }
+                  </strong>
+                  <p>{{ contact.position || 'ไม่ระบุตำแหน่ง' }} · {{ contact.phone || '—' }} · {{ contact.email || '—' }}</p>
+                </div>
+                <button mat-icon-button type="button" color="warn" (click)="removeContact(contact)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            } @empty {
+              <p class="empty">ยังไม่มีผู้ติดต่อ</p>
+            }
+          </div>
+
+          <mat-card class="form-card">
+            <h3>เพิ่มผู้ติดต่อ</h3>
+            <form [formGroup]="contactForm" (ngSubmit)="saveContact()" class="form">
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>ชื่อ-นามสกุล</mat-label>
+                <input matInput formControlName="fullName" />
+              </mat-form-field>
+              <div class="row">
+                <mat-form-field appearance="outline">
+                  <mat-label>ตำแหน่ง</mat-label>
+                  <input matInput formControlName="position" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>โทรศัพท์</mat-label>
+                  <input matInput formControlName="phone" />
+                </mat-form-field>
+              </div>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>อีเมล</mat-label>
+                <input matInput formControlName="email" />
+              </mat-form-field>
+              <mat-checkbox formControlName="isPrimary">ตั้งเป็นผู้ติดต่อหลัก</mat-checkbox>
+              <button mat-flat-button color="primary" type="submit">บันทึกผู้ติดต่อ</button>
+            </form>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="ประวัติการติดต่อ">
+        <div class="tab-body">
+          <div class="list">
+            @for (log of logs(); track log.id) {
+              <div class="item log">
+                <div>
+                  <strong>{{ channelLabels[log.channel] }} · {{ log.contactedAt | date: 'd MMM y HH:mm' }}</strong>
+                  <p>{{ log.summary }}</p>
+                  <small>
+                    โดย {{ log.createdByName }}
+                    @if (log.attachmentName) {
+                      · แนบ: {{ log.attachmentName }}
+                    }
+                  </small>
+                </div>
+              </div>
+            } @empty {
+              <p class="empty">ยังไม่มีประวัติการติดต่อ</p>
+            }
+          </div>
+
+          <mat-card class="form-card">
+            <h3>บันทึกการติดต่อ</h3>
+            <form [formGroup]="logForm" (ngSubmit)="saveLog()" class="form">
+              <div class="row">
+                <mat-form-field appearance="outline">
+                  <mat-label>ช่องทาง</mat-label>
+                  <mat-select formControlName="channel">
+                    @for (ch of channels; track ch) {
+                      <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>วันที่ติดต่อ</mat-label>
+                  <input matInput [matDatepicker]="logPicker" formControlName="contactedDate" />
+                  <mat-datepicker-toggle matIconSuffix [for]="logPicker"></mat-datepicker-toggle>
+                  <mat-datepicker #logPicker></mat-datepicker>
+                </mat-form-field>
+              </div>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>เวลาที่ติดต่อ</mat-label>
+                <input matInput type="time" formControlName="contactedTime" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>สรุปการคุย</mat-label>
+                <textarea matInput rows="3" formControlName="summary"></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>ชื่อไฟล์หลักฐาน (mock)</mat-label>
+                <input matInput formControlName="attachmentName" placeholder="เช่น line-screenshot.png" />
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="submit">บันทึกประวัติ</button>
+            </form>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="โครงการ">
+        <div class="list tab-pad">
+          @for (p of projects(); track p.id) {
+            <a class="item link-item" [routerLink]="['/app/projects', p.id]">
+              <div>
+                <strong>{{ p.code }} · {{ p.name }}</strong>
+                <p>{{ projectStatusLabels[p.status] }} · กำหนดส่ง {{ p.dueDate }}</p>
+              </div>
+              <mat-icon>chevron_right</mat-icon>
+            </a>
+          } @empty {
+            <p class="empty">ยังไม่มีโครงการของลูกค้ารายนี้</p>
+          }
+        </div>
+      </mat-tab>
+      <mat-tab label="ประกัน / สัญญา">
+        <p class="placeholder-tab">จะแสดงในเฟส 3</p>
+      </mat-tab>
+      <mat-tab label="ปัญหา">
+        <div class="list tab-pad">
+          @for (t of tickets(); track t.id) {
+            <a class="item link-item" [routerLink]="['/app/tickets', t.id]">
+              <div>
+                <strong>{{ t.ticketNo }} · {{ t.title }}</strong>
+                <p>{{ ticketStatusLabels[t.status] }} · {{ t.priority }}</p>
+              </div>
+              <mat-icon>chevron_right</mat-icon>
+            </a>
+          } @empty {
+            <p class="empty">ยังไม่มีปัญหาของลูกค้ารายนี้</p>
+          }
+        </div>
+      </mat-tab>
+      <mat-tab label="การติดตาม">
+        <p class="placeholder-tab">จะแสดงในเฟส 4</p>
+      </mat-tab>
+    </mat-tab-group>
+  </section>
+  }
+}
