@@ -4,34 +4,46 @@
     <p class="notice">บัญชี Super Admin ไม่สามารถแก้ไขจากหน้านี้ได้</p>
   }
   <form [formGroup]="form" class="form">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อ-นามสกุล</mat-label>
-      <input matInput formControlName="fullName" />
-    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ชื่อ-นามสกุล</mat-label>
+        <input matInput formControlName="fullName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ชื่อเล่น</mat-label>
+        <input matInput formControlName="nickname" />
+      </mat-form-field>
+    </div>
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>ชื่อผู้ใช้</mat-label>
         <input matInput formControlName="username" />
       </mat-form-field>
       <mat-form-field appearance="outline">
-        <mat-label>อีเมล</mat-label>
-        <input matInput formControlName="email" />
+        <mat-label>รหัสพนักงาน</mat-label>
+        <input matInput formControlName="employeeCode" />
       </mat-form-field>
     </div>
     <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>อีเมล</mat-label>
+        <input matInput formControlName="email" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>โทรศัพท์</mat-label>
+        <input matInput formControlName="phone" />
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ตำแหน่ง</mat-label>
+        <input matInput formControlName="position" />
+      </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>ระดับบัญชี</mat-label>
         <mat-select formControlName="accountType">
           <mat-option value="ADMIN">Admin</mat-option>
           <mat-option value="USER">User</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>สถานะ</mat-label>
-        <mat-select formControlName="status">
-          <mat-option value="ACTIVE">ปฏิบัติงาน</mat-option>
-          <mat-option value="SUSPENDED">พักงาน</mat-option>
-          <mat-option value="RESIGNED">สิ้นสุดการปฏิบัติงาน</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -49,10 +61,14 @@
       <p class="hint">Admin เข้าถึงทุกเมนูโดยอัตโนมัติ ไม่ต้องผูกบทบาท</p>
     }
 
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>{{ isEdit ? 'รหัสผ่านใหม่ (ว่างไว้ถ้าไม่เปลี่ยน)' : 'รหัสผ่าน (ว่าง = password)' }}</mat-label>
-      <input matInput type="password" formControlName="password" />
-    </mat-form-field>
+    @if (!isEdit) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>รหัสผ่าน</mat-label>
+        <input matInput type="password" formControlName="password" />
+      </mat-form-field>
+    } @else {
+      <p class="hint">การเปลี่ยนรหัสผ่านทำได้จากเมนูโปรไฟล์ของผู้ใช้เองเท่านั้น</p>
+    }
   </form>
   @if (error()) {
     <p class="error">{{ error() }}</p>

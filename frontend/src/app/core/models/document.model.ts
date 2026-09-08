@@ -19,7 +19,7 @@ export interface DocumentVersion {
   uploadedByUserId: number;
   uploadedAt: string;
   note: string;
-  /** mock: data URL ของไฟล์ที่เลือกอัปโหลด หรือหน้า preview */
+  /** data URL ของไฟล์ที่เลือกอัปโหลด หรือหน้า preview */
   fileDataUrl: string | null;
   mimeType: string | null;
 }

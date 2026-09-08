@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -46,7 +46,6 @@ import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
   selector: 'app-customer-detail-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -101,19 +100,23 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   readonly contactForm = this.fb.nonNullable.group({
-    fullName: ['', Validators.required],
+    name: ['', Validators.required],
+    nickname: [''],
     position: [''],
     phone: [''],
     email: [''],
+    lineId: [''],
     isPrimary: [false],
+    note: [''],
   });
 
-  readonly logForm = this.fb.group({
+  readonly logForm = this.fb.nonNullable.group({
     channel: ['LINE' as CommunicationChannel, Validators.required],
-    summary: ['', Validators.required],
-    contactedDate: [new Date() as Date | null, Validators.required],
-    contactedTime: [nowTimeString(), Validators.required],
-    attachmentName: [''],
+    contactId: [null as number | null],
+    subject: [''],
+    content: ['', Validators.required],
+    occurredDate: [new Date() as Date | null, Validators.required],
+    occurredTime: [nowTimeString(), Validators.required],
   });
 
   private customerId = 0;
@@ -121,19 +124,28 @@ export class CustomerDetailPageComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.customerId = id;
-    const customer = this.api.getCustomer(id);
-    if (!customer) {
-      this.notFound.set(true);
-      return;
-    }
-    this.customer.set(customer);
-    this.refreshChildren();
+    this.api.fetchCustomer(id).subscribe({
+      next: (customer) => {
+        this.customer.set(customer);
+        this.notFound.set(false);
+        this.refreshChildren();
+      },
+      error: () => this.notFound.set(true),
+    });
   }
 
   refreshChildren(): void {
-    this.contacts.set(this.api.getContacts(this.customerId));
-    this.logs.set(this.api.getLogs(this.customerId));
-    this.projects.set(this.projectsApi.getProjectsByCustomer(this.customerId));
+    this.api.listContacts(this.customerId).subscribe({
+      next: (rows) => this.contacts.set(rows),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+    this.api.listLogs(this.customerId).subscribe({
+      next: (rows) => this.logs.set(rows),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+    this.projectsApi.listProjects().subscribe({
+      next: () => this.projects.set(this.projectsApi.getProjectsByCustomer(this.customerId)),
+    });
     this.tickets.set(this.ticketsApi.getByCustomer(this.customerId));
     this.warranties.set(this.warrantiesApi.getByCustomer(this.customerId));
     this.contracts.set(this.maApi.getByCustomer(this.customerId));
@@ -176,24 +188,39 @@ export class CustomerDetailPageComponent implements OnInit {
       this.contactForm.markAllAsTouched();
       return;
     }
-    this.api.saveContact(this.customerId, this.contactForm.getRawValue()).subscribe({
-      next: () => {
-        this.snack.open('บันทึกผู้ติดต่อแล้ว', 'ปิด', { duration: 2500 });
-        this.contactForm.reset({
-          fullName: '',
-          position: '',
-          phone: '',
-          email: '',
-          isPrimary: false,
-        });
-        this.refreshChildren();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-    });
+    const raw = this.contactForm.getRawValue();
+    this.api
+      .saveContact(this.customerId, {
+        name: raw.name.trim(),
+        nickname: raw.nickname.trim() || undefined,
+        position: raw.position.trim() || undefined,
+        phone: raw.phone.trim() || undefined,
+        email: raw.email.trim() || undefined,
+        lineId: raw.lineId.trim() || undefined,
+        isPrimary: raw.isPrimary,
+        note: raw.note.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.snack.open('บันทึกผู้ติดต่อแล้ว', 'ปิด', { duration: 2500 });
+          this.contactForm.reset({
+            name: '',
+            nickname: '',
+            position: '',
+            phone: '',
+            email: '',
+            lineId: '',
+            isPrimary: false,
+            note: '',
+          });
+          this.refreshChildren();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
   }
 
   removeContact(contact: Contact): void {
-    if (!confirm(`ลบผู้ติดต่อ ${contact.fullName}?`)) {
+    if (!confirm(`ลบผู้ติดต่อ ${contact.name}?`)) {
       return;
     }
     this.api.removeContact(contact.id).subscribe({
@@ -210,23 +237,24 @@ export class CustomerDetailPageComponent implements OnInit {
       return;
     }
     const raw = this.logForm.getRawValue();
-    const contactedAt = combineDateAndTime(raw.contactedDate, raw.contactedTime);
     this.api
       .addLog(this.customerId, {
-        channel: raw.channel as CommunicationChannel,
-        summary: raw.summary ?? '',
-        contactedAt,
-        createdByName: this.auth.currentUser()?.fullName ?? 'ไม่ระบุ',
-        attachmentName: (raw.attachmentName ?? '').trim() || null,
+        channel: raw.channel,
+        occurredAt: combineDateAndTime(raw.occurredDate, raw.occurredTime),
+        contactId: raw.contactId ?? undefined,
+        subject: raw.subject.trim() || undefined,
+        content: raw.content.trim() || undefined,
+        handledByUserId: this.auth.currentUser()?.id,
       })
       .subscribe({
         next: () => {
           this.snack.open('บันทึกประวัติการติดต่อแล้ว', 'ปิด', { duration: 2500 });
           this.logForm.patchValue({
-            summary: '',
-            attachmentName: '',
-            contactedDate: new Date(),
-            contactedTime: nowTimeString(),
+            subject: '',
+            content: '',
+            contactId: null,
+            occurredDate: new Date(),
+            occurredTime: nowTimeString(),
           });
           this.refreshChildren();
         },

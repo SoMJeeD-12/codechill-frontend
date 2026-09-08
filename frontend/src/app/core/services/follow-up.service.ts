@@ -8,73 +8,6 @@ import {
 import { parseDateOnly, toDateOnlyString } from '../utils/date.util';
 import { AuditService } from './audit.service';
 
-const KEY = 'cpams_mock_follow_ups_v2';
-
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - n);
-  return toDateOnlyString(d);
-}
-
-function daysFromNow(n: number): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + n);
-  return toDateOnlyString(d);
-}
-
-const SEED: FollowUp[] = [
-  {
-    id: 1,
-    customerId: 1,
-    title: 'ติดตามต่อสัญญา MA ประจำปี',
-    dueDate: daysAgo(2),
-    assigneeId: 4,
-    channel: 'PHONE',
-    status: 'PLANNED',
-    note: 'เลยกำหนดแล้ว — ควรขึ้นหมวดเลยกำหนด',
-    completedAt: null,
-    createdAt: '2026-08-20T09:00:00.000Z',
-  },
-  {
-    id: 2,
-    customerId: 2,
-    title: 'ตามผล UAT แอปแจ้งซ่อม',
-    dueDate: daysFromNow(5),
-    assigneeId: 3,
-    channel: 'LINE',
-    status: 'PLANNED',
-    note: '',
-    completedAt: null,
-    createdAt: '2026-09-01T09:00:00.000Z',
-  },
-  {
-    id: 3,
-    customerId: 3,
-    title: 'นัดสำรวจไซต์ฟาร์ม',
-    dueDate: daysFromNow(13),
-    assigneeId: 4,
-    channel: 'ONSITE',
-    status: 'PLANNED',
-    note: 'เตรียมรายการเซ็นเซอร์',
-    completedAt: null,
-    createdAt: '2026-09-02T09:00:00.000Z',
-  },
-  {
-    id: 4,
-    customerId: 1,
-    title: 'สรุปการส่งมอบ v0.9',
-    dueDate: daysFromNow(16),
-    assigneeId: 2,
-    channel: 'EMAIL',
-    status: 'DONE',
-    note: 'ลูกค้ายอมรับแล้ว',
-    completedAt: '2026-07-10T15:00:00.000Z',
-    createdAt: '2026-07-01T09:00:00.000Z',
-  },
-];
-
 export interface FollowUpInput {
   customerId: number;
   title: string;
@@ -88,8 +21,8 @@ export interface FollowUpInput {
 @Injectable({ providedIn: 'root' })
 export class FollowUpService {
   private readonly audit = inject(AuditService);
-  private readonly items = signal<FollowUp[]>(this.load());
-  private nextId = this.maxId(this.items()) + 1;
+  private readonly items = signal<FollowUp[]>([]);
+  private nextId = 1;
 
   readonly followUps = this.items.asReadonly();
   readonly overdueCount = computed(() => this.listOverdue().length);
@@ -146,11 +79,7 @@ export class FollowUpService {
       completedAt: input.status === 'DONE' ? new Date().toISOString() : null,
       createdAt: new Date().toISOString(),
     };
-    this.items.update((list) => {
-      const next = [row, ...list];
-      this.save(next);
-      return next;
-    });
+    this.items.update((list) => [row, ...list]);
     this.audit.log({
       actorUserId: null,
       actorName,
@@ -181,11 +110,7 @@ export class FollowUpService {
           ? current.completedAt ?? new Date().toISOString()
           : null,
     };
-    this.items.update((list) => {
-      const next = list.map((f) => (f.id === id ? updated : f));
-      this.save(next);
-      return next;
-    });
+    this.items.update((list) => list.map((f) => (f.id === id ? updated : f)));
     this.audit.log({
       actorUserId: null,
       actorName,
@@ -215,27 +140,5 @@ export class FollowUpService {
       },
       actorName
     );
-  }
-
-  private load(): FollowUp[] {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        return JSON.parse(raw) as FollowUp[];
-      }
-    } catch {
-      /* ignore */
-    }
-    const data = structuredClone(SEED);
-    this.save(data);
-    return data;
-  }
-
-  private save(data: FollowUp[]): void {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
   }
 }

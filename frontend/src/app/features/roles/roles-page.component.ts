@@ -42,7 +42,7 @@ export class RolesPageComponent implements OnInit {
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly canManage = computed(() => this.auth.isSuperAdmin());
-  readonly columns = ['name', 'description', 'menus', 'actions'];
+  readonly columns = ['name', 'description', 'permissions', 'users', 'active', 'actions'];
 
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -73,8 +73,12 @@ export class RolesPageComponent implements OnInit {
     });
   }
 
-  menuCount(role: Role): number {
-    return role.permissions.filter((p) => p.actions.includes('view')).length;
+  permissionCount(role: Role): number {
+    return role.permissions.length;
+  }
+
+  moduleCount(role: Role): number {
+    return new Set(role.permissions.map((p) => p.module)).size;
   }
 
   openCreate(): void {

@@ -1,5 +1,10 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, throwError } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   CommunicationChannel,
   CommunicationLog,
@@ -8,328 +13,239 @@ import {
   CustomerStatus,
 } from '../models/customer.model';
 
-const CUSTOMERS_KEY = 'cpams_mock_customers';
-const CONTACTS_KEY = 'cpams_mock_contacts';
-const LOGS_KEY = 'cpams_mock_comm_logs';
-
-const SEED_CUSTOMERS: Customer[] = [
-  {
-    id: 1,
-    name: 'บริษัท แสงตะวัน เทคโนโลยี จำกัด',
-    taxId: '0105558123456',
-    address: '99 ถ.พระราม 9 แขวงบางกะปิ เขตห้วยขวาง กรุงเทพฯ',
-    businessType: 'ซอฟต์แวร์และ IoT',
-    status: 'ACTIVE',
-    lifetimeValue: 1850000,
-    createdAt: '2025-01-10T09:00:00.000Z',
-    updatedAt: '2026-08-01T10:00:00.000Z',
-  },
-  {
-    id: 2,
-    name: 'หจก. นครอินดัสทรี',
-    taxId: '0125567009988',
-    address: '12 หมู่ 3 อ.เมือง จ.นครราชสีมา',
-    businessType: 'โรงงานอุตสาหกรรม',
-    status: 'ACTIVE',
-    lifetimeValue: 920000,
-    createdAt: '2025-03-20T09:00:00.000Z',
-    updatedAt: '2026-07-15T10:00:00.000Z',
-  },
-  {
-    id: 3,
-    name: 'บริษัท ดิจิทัลฟาร์ม จำกัด',
-    taxId: '0105566111222',
-    address: '88 ถ.พหลโยธิน จ.เชียงใหม่',
-    businessType: 'เกษตรอัจฉริยะ',
-    status: 'NEW',
-    lifetimeValue: 150000,
-    createdAt: '2026-08-20T09:00:00.000Z',
-    updatedAt: '2026-08-20T09:00:00.000Z',
-  },
-  {
-    id: 4,
-    name: 'บริษัท โอเชียน คอนซัลท์ จำกัด',
-    taxId: '0105544332211',
-    address: '15 ถ.สุขุมวิท คลองเตย กรุงเทพฯ',
-    businessType: 'ที่ปรึกษา',
-    status: 'INACTIVE',
-    lifetimeValue: 430000,
-    createdAt: '2024-05-01T09:00:00.000Z',
-    updatedAt: '2025-12-01T10:00:00.000Z',
-  },
-];
-
-const SEED_CONTACTS: Contact[] = [
-  {
-    id: 1,
-    customerId: 1,
-    fullName: 'คุณอรรถพล ใจดี',
-    position: 'IT Manager',
-    phone: '081-111-2222',
-    email: 'attapon@sangtawan.co.th',
-    isPrimary: true,
-  },
-  {
-    id: 2,
-    customerId: 1,
-    fullName: 'คุณพิมพ์ใจ รักงาน',
-    position: 'Procurement',
-    phone: '082-333-4444',
-    email: 'pimjai@sangtawan.co.th',
-    isPrimary: false,
-  },
-  {
-    id: 3,
-    customerId: 2,
-    fullName: 'คุณสมบัติ ช่างใหญ่',
-    position: 'โรงงาน / ซ่อมบำรุง',
-    phone: '089-555-6666',
-    email: 'sombat@nakornind.com',
-    isPrimary: true,
-  },
-  {
-    id: 4,
-    customerId: 3,
-    fullName: 'คุณนิดา กรีน',
-    position: 'ผู้ก่อตั้ง',
-    phone: '086-777-8888',
-    email: 'nida@digitalfarm.co.th',
-    isPrimary: true,
-  },
-];
-
-const SEED_LOGS: CommunicationLog[] = [
-  {
-    id: 1,
-    customerId: 1,
-    channel: 'LINE',
-    summary: 'คุยเรื่องต่อสัญญา MA ประจำปี และนัดส่งใบเสนอราคา',
-    contactedAt: '2026-08-28T14:30:00.000Z',
-    createdByName: 'วิชัย ซัพพอร์ต',
-    attachmentName: 'line-chat-0828.png',
-  },
-  {
-    id: 2,
-    customerId: 1,
-    channel: 'PHONE',
-    summary: 'แจ้งปัญหาเซ็นเซอร์ที่ไซต์ไม่ส่งข้อมูล — เปิด ticket แล้ว',
-    contactedAt: '2026-09-01T10:15:00.000Z',
-    createdByName: 'วิชัย ซัพพอร์ต',
-    attachmentName: null,
-  },
-  {
-    id: 3,
-    customerId: 2,
-    channel: 'ONSITE',
-    summary: 'เข้าพบหน้างาน ตรวจรับมอบเฟสถัดไป',
-    contactedAt: '2026-07-10T09:00:00.000Z',
-    createdByName: 'สมหญิง ผู้ดูแลระบบ',
-    attachmentName: 'site-photo.jpg',
-  },
-];
-
+/** CreateCustomerDto / UpdateCustomerDto */
 export interface CustomerInput {
   name: string;
-  taxId: string;
-  address: string;
-  businessType: string;
-  status: CustomerStatus;
-  lifetimeValue: number;
+  code?: string;
+  taxId?: string;
+  businessType?: string;
+  address?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  lineOfficialId?: string;
+  facebookUrl?: string;
+  status?: CustomerStatus;
+  source?: string;
+  ownerUserId?: number;
+  note?: string;
 }
 
+export interface CustomerListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  status?: CustomerStatus;
+  ownerUserId?: number;
+  businessType?: string;
+  province?: string;
+  /** จำนวนวันที่ไม่ได้ติดต่อ (API ใช้ idleDays) */
+  idleDays?: number;
+}
+
+/** CreateContactDto (customerId เติมโดย service) / UpdateContactDto */
 export interface ContactInput {
-  fullName: string;
-  position: string;
-  phone: string;
-  email: string;
-  isPrimary: boolean;
+  name: string;
+  nickname?: string;
+  position?: string;
+  phone?: string;
+  email?: string;
+  lineId?: string;
+  isPrimary?: boolean;
+  note?: string;
 }
 
+/** CreateCommunicationLogDto (customerId เติมโดย service) */
 export interface LogInput {
   channel: CommunicationChannel;
-  summary: string;
-  contactedAt: string;
-  createdByName: string;
-  attachmentName: string | null;
+  occurredAt: string;
+  contactId?: number;
+  subject?: string;
+  content?: string;
+  handledByUserId?: number;
+}
+
+export interface LogListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  customerId?: number;
+  contactId?: number;
+  channel?: CommunicationChannel;
+  handledByUserId?: number;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class CustomerService {
-  private readonly customersSignal = signal<Customer[]>(this.load(CUSTOMERS_KEY, SEED_CUSTOMERS));
-  private readonly contactsSignal = signal<Contact[]>(this.load(CONTACTS_KEY, SEED_CONTACTS));
-  private readonly logsSignal = signal<CommunicationLog[]>(this.load(LOGS_KEY, SEED_LOGS));
+  private readonly http = inject(HttpClient);
+  private readonly customersBase = `${environment.apiBaseUrl}/customers`;
+  private readonly contactsBase = `${environment.apiBaseUrl}/contacts`;
+  private readonly logsBase = `${environment.apiBaseUrl}/communication-logs`;
 
-  private nextCustomerId = this.maxId(this.customersSignal()) + 1;
-  private nextContactId = this.maxId(this.contactsSignal()) + 1;
-  private nextLogId = this.maxId(this.logsSignal()) + 1;
+  private readonly customersSignal = signal<Customer[]>([]);
+  private readonly contactsSignal = signal<Contact[]>([]);
+  private readonly logsSignal = signal<CommunicationLog[]>([]);
 
   readonly customers = this.customersSignal.asReadonly();
   readonly customerCount = computed(() => this.customersSignal().length);
 
-  listCustomers(): Observable<Customer[]> {
-    return of(structuredClone(this.customersSignal())).pipe(delay(250));
+  listCustomers(params?: CustomerListParams): Observable<Customer[]> {
+    return this.http
+      .get<Customer[] | { items: Customer[] }>(this.customersBase, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map(asList),
+        tap((list) => this.customersSignal.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getCustomer(id: number): Customer | undefined {
     return this.customersSignal().find((c) => c.id === id);
   }
 
+  fetchCustomer(id: number): Observable<Customer> {
+    return this.http.get<Customer>(`${this.customersBase}/${id}`).pipe(
+      tap((row) => this.customersSignal.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
   createCustomer(input: CustomerInput): Observable<Customer> {
-    if (!input.name.trim()) {
-      return throwError(() => new Error('กรุณาระบุชื่อลูกค้า'));
-    }
-    const now = new Date().toISOString();
-    const customer: Customer = {
-      id: this.nextCustomerId++,
-      name: input.name.trim(),
-      taxId: input.taxId.trim(),
-      address: input.address.trim(),
-      businessType: input.businessType.trim(),
-      status: input.status,
-      lifetimeValue: Number(input.lifetimeValue) || 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.customersSignal.update((list) => {
-      const next = [customer, ...list];
-      this.save(CUSTOMERS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(customer)).pipe(delay(300));
+    return this.http.post<Customer>(this.customersBase, pruneUndefined(input)).pipe(
+      tap((row) => this.customersSignal.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   updateCustomer(id: number, input: CustomerInput): Observable<Customer> {
-    const current = this.getCustomer(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบลูกค้า'));
-    }
-    const updated: Customer = {
-      ...current,
-      name: input.name.trim(),
-      taxId: input.taxId.trim(),
-      address: input.address.trim(),
-      businessType: input.businessType.trim(),
-      status: input.status,
-      lifetimeValue: Number(input.lifetimeValue) || 0,
-      updatedAt: new Date().toISOString(),
-    };
-    this.customersSignal.update((list) => {
-      const next = list.map((c) => (c.id === id ? updated : c));
-      this.save(CUSTOMERS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(updated)).pipe(delay(300));
+    return this.http
+      .put<Customer>(`${this.customersBase}/${id}`, pruneUndefined(input))
+      .pipe(
+        tap((row) => this.customersSignal.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
+
+  removeCustomer(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.customersBase}/${id}`).pipe(
+      tap(() => this.customersSignal.update((list) => list.filter((c) => c.id !== id))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /* ——— ผู้ติดต่อ ——— */
 
   getContacts(customerId: number): Contact[] {
     return this.contactsSignal().filter((c) => c.customerId === customerId);
   }
 
-  saveContact(customerId: number, input: ContactInput, contactId?: number): Observable<Contact> {
-    if (!input.fullName.trim()) {
-      return throwError(() => new Error('กรุณาระบุชื่อผู้ติดต่อ'));
-    }
+  listContacts(customerId: number): Observable<Contact[]> {
+    return this.http
+      .get<Contact[] | { items: Contact[] }>(this.contactsBase, {
+        params: toHttpParams({ customerId }),
+      })
+      .pipe(
+        map(asList),
+        tap((rows) => {
+          this.contactsSignal.update((all) => [
+            ...all.filter((c) => c.customerId !== customerId),
+            ...rows,
+          ]);
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
 
-    if (contactId) {
-      const updated: Contact = {
-        id: contactId,
-        customerId,
-        fullName: input.fullName.trim(),
-        position: input.position.trim(),
-        phone: input.phone.trim(),
-        email: input.email.trim(),
-        isPrimary: input.isPrimary,
-      };
-      this.contactsSignal.update((list) => {
-        let next = list.map((c) => (c.id === contactId ? updated : c));
-        if (input.isPrimary) {
-          next = next.map((c) =>
-            c.customerId === customerId && c.id !== contactId ? { ...c, isPrimary: false } : c
-          );
-        }
-        this.save(CONTACTS_KEY, next);
-        return next;
-      });
-      return of(structuredClone(updated)).pipe(delay(250));
-    }
+  saveContact(
+    customerId: number,
+    input: ContactInput,
+    contactId?: number
+  ): Observable<Contact> {
+    const req$ = contactId
+      ? this.http.put<Contact>(`${this.contactsBase}/${contactId}`, pruneUndefined(input))
+      : this.http.post<Contact>(this.contactsBase, {
+          ...pruneUndefined(input),
+          customerId,
+        });
 
-    const created: Contact = {
-      id: this.nextContactId++,
-      customerId,
-      fullName: input.fullName.trim(),
-      position: input.position.trim(),
-      phone: input.phone.trim(),
-      email: input.email.trim(),
-      isPrimary: input.isPrimary,
-    };
-    this.contactsSignal.update((list) => {
-      let next = [...list, created];
-      if (input.isPrimary) {
-        next = next.map((c) =>
-          c.customerId === customerId && c.id !== created.id ? { ...c, isPrimary: false } : c
-        );
-      }
-      this.save(CONTACTS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(created)).pipe(delay(250));
+    return req$.pipe(
+      tap((row) => {
+        this.contactsSignal.update((list) => {
+          let next = upsertById(list, row);
+          if (row.isPrimary) {
+            next = next.map((c) =>
+              c.customerId === customerId && c.id !== row.id ? { ...c, isPrimary: false } : c
+            );
+          }
+          return next;
+        });
+      }),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   removeContact(contactId: number): Observable<void> {
-    this.contactsSignal.update((list) => {
-      const next = list.filter((c) => c.id !== contactId);
-      this.save(CONTACTS_KEY, next);
-      return next;
-    });
-    return of(void 0).pipe(delay(200));
+    return this.http.delete<void>(`${this.contactsBase}/${contactId}`).pipe(
+      tap(() => this.contactsSignal.update((list) => list.filter((c) => c.id !== contactId))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
+
+  /* ——— ประวัติการติดต่อ ——— */
 
   getLogs(customerId: number): CommunicationLog[] {
     return this.logsSignal()
       .filter((l) => l.customerId === customerId)
-      .sort((a, b) => b.contactedAt.localeCompare(a.contactedAt));
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+  }
+
+  listLogs(customerId: number, params?: LogListParams): Observable<CommunicationLog[]> {
+    return this.http
+      .get<CommunicationLog[] | { items: CommunicationLog[] }>(this.logsBase, {
+        params: toHttpParams({ ...params, customerId }),
+      })
+      .pipe(
+        map(asList),
+        tap((rows) => {
+          this.logsSignal.update((all) => [
+            ...all.filter((l) => l.customerId !== customerId),
+            ...rows,
+          ]);
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   addLog(customerId: number, input: LogInput): Observable<CommunicationLog> {
-    if (!input.summary.trim()) {
-      return throwError(() => new Error('กรุณาระบุสรุปการติดต่อ'));
-    }
-    const log: CommunicationLog = {
-      id: this.nextLogId++,
-      customerId,
-      channel: input.channel,
-      summary: input.summary.trim(),
-      contactedAt: input.contactedAt || new Date().toISOString(),
-      createdByName: input.createdByName,
-      attachmentName: input.attachmentName,
-    };
-    this.logsSignal.update((list) => {
-      const next = [log, ...list];
-      this.save(LOGS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(log)).pipe(delay(250));
+    return this.http
+      .post<CommunicationLog>(this.logsBase, { ...pruneUndefined(input), customerId })
+      .pipe(
+        tap((row) => this.logsSignal.update((list) => [row, ...list])),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  private load<T>(key: string, seed: T[]): T[] {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        return JSON.parse(raw) as T[];
-      }
-    } catch {
-      /* ignore */
-    }
-    const data = structuredClone(seed);
-    this.save(key, data);
-    return data;
+  updateLog(logId: number, input: Partial<LogInput>): Observable<CommunicationLog> {
+    return this.http
+      .put<CommunicationLog>(`${this.logsBase}/${logId}`, pruneUndefined(input))
+      .pipe(
+        tap((row) => this.logsSignal.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  private save<T>(key: string, data: T[]): void {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
+  removeLog(logId: number): Observable<void> {
+    return this.http.delete<void>(`${this.logsBase}/${logId}`).pipe(
+      tap(() => this.logsSignal.update((list) => list.filter((l) => l.id !== logId))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 }

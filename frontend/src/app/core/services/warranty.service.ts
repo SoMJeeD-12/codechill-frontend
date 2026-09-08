@@ -8,59 +8,6 @@ import {
 } from '../models/warranty.model';
 import { parseDateOnly, toDateOnlyString } from '../utils/date.util';
 
-const KEY = 'cpams_mock_warranties';
-
-const SEED: Warranty[] = [
-  {
-    id: 1,
-    customerId: 1,
-    projectId: 1,
-    deliveryId: 1,
-    title: 'ประกันแดชบอร์ด IoT หลังส่งมอบ v0.9',
-    coverage: 'SOFTWARE',
-    startDate: '2026-07-01',
-    endDate: '2027-07-01',
-    status: 'ACTIVE',
-    note: 'ครอบคลุมบั๊กซอฟต์แวร์และแพตช์ความปลอดภัย',
-  },
-  {
-    id: 2,
-    customerId: 1,
-    projectId: 1,
-    deliveryId: null,
-    title: 'ประกัน Gateway / เซ็นเซอร์ชุดติดตั้ง',
-    coverage: 'HARDWARE',
-    startDate: '2026-05-15',
-    endDate: '2026-09-20',
-    status: 'ACTIVE',
-    note: 'ใกล้หมดอายุ — ควรเสนอต่อสัญญา MA',
-  },
-  {
-    id: 3,
-    customerId: 2,
-    projectId: 2,
-    deliveryId: null,
-    title: 'ประกันแอปแจ้งซ่อม',
-    coverage: 'SOFTWARE',
-    startDate: '2026-04-01',
-    endDate: '2026-09-15',
-    status: 'ACTIVE',
-    note: '',
-  },
-  {
-    id: 4,
-    customerId: 2,
-    projectId: 2,
-    deliveryId: null,
-    title: 'ประกันรอบทดสอบเก่า',
-    coverage: 'BOTH',
-    startDate: '2025-01-01',
-    endDate: '2026-01-01',
-    status: 'EXPIRED',
-    note: 'หมดอายุแล้ว',
-  },
-];
-
 export interface WarrantyInput {
   customerId: number;
   projectId: number | null;
@@ -75,8 +22,8 @@ export interface WarrantyInput {
 
 @Injectable({ providedIn: 'root' })
 export class WarrantyService {
-  private readonly items = signal<Warranty[]>(this.load());
-  private nextId = this.maxId(this.items()) + 1;
+  private readonly items = signal<Warranty[]>([]);
+  private nextId = 1;
 
   readonly warranties = this.items.asReadonly();
   readonly nearExpiryCount = computed(
@@ -141,11 +88,7 @@ export class WarrantyService {
       status: input.status,
       note: input.note.trim(),
     };
-    this.items.update((list) => {
-      const next = [row, ...list];
-      this.save(next);
-      return next;
-    });
+    this.items.update((list) => [row, ...list]);
     return of(structuredClone(row)).pipe(delay(220));
   }
 
@@ -169,33 +112,7 @@ export class WarrantyService {
       status: input.status,
       note: input.note.trim(),
     };
-    this.items.update((list) => {
-      const next = list.map((w) => (w.id === id ? updated : w));
-      this.save(next);
-      return next;
-    });
+    this.items.update((list) => list.map((w) => (w.id === id ? updated : w)));
     return of(structuredClone(updated)).pipe(delay(200));
-  }
-
-  private load(): Warranty[] {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        return JSON.parse(raw) as Warranty[];
-      }
-    } catch {
-      /* ignore */
-    }
-    const data = structuredClone(SEED);
-    this.save(data);
-    return data;
-  }
-
-  private save(data: Warranty[]): void {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
   }
 }

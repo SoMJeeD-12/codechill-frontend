@@ -1,4 +1,3 @@
-import { CurrencyPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -24,7 +23,6 @@ import { CustomerFormDialogComponent } from './customer-form-dialog.component';
   selector: 'app-customers-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
     RouterLink,
     ReactiveFormsModule,
     MatCardModule,
@@ -51,7 +49,7 @@ export class CustomersPageComponent implements OnInit {
   readonly search = signal('');
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
-  readonly columns = ['name', 'taxId', 'businessType', 'status', 'lifetimeValue', 'actions'];
+  readonly columns = ['name', 'code', 'taxId', 'businessType', 'province', 'owner', 'status', 'actions'];
   readonly searchControl = this.fb.nonNullable.control('');
 
   readonly filtered = computed(() => {
@@ -62,8 +60,10 @@ export class CustomersPageComponent implements OnInit {
       const matchQ =
         !q ||
         c.name.toLowerCase().includes(q) ||
-        c.taxId.includes(q) ||
-        c.businessType.toLowerCase().includes(q);
+        (c.code ?? '').toLowerCase().includes(q) ||
+        (c.taxId ?? '').includes(q) ||
+        (c.businessType ?? '').toLowerCase().includes(q) ||
+        (c.province ?? '').toLowerCase().includes(q);
       return matchStatus && matchQ;
     });
   });

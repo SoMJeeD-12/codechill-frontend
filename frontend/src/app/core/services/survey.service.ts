@@ -9,134 +9,6 @@ import {
   SurveyStatus,
 } from '../models/survey.model';
 
-const SURVEYS_KEY = 'cpams_mock_surveys';
-const RESPONSES_KEY = 'cpams_mock_survey_responses';
-
-const SEED_SURVEYS: Survey[] = [
-  {
-    id: 1,
-    title: 'ความพึงพอใจหลังส่งมอบ',
-    description: 'ประเมินคุณภาพงานและการสื่อสารหลังส่งมอบโครงการ',
-    status: 'ACTIVE',
-    questions: [
-      {
-        id: 1,
-        text: 'ความพึงพอใจโดยรวมต่อผลงาน',
-        type: 'RATING',
-        required: true,
-        options: [],
-      },
-      {
-        id: 2,
-        text: 'ความชัดเจนของการสื่อสารทีม',
-        type: 'RATING',
-        required: true,
-        options: [],
-      },
-      {
-        id: 3,
-        text: 'จะแนะนำเราให้ผู้อื่นหรือไม่',
-        type: 'CHOICE',
-        required: true,
-        options: ['แน่นอน', 'น่าจะใช่', 'ยังไม่แน่ใจ', 'ไม่แนะนำ'],
-      },
-      {
-        id: 4,
-        text: 'ข้อเสนอแนะเพิ่มเติม',
-        type: 'TEXT',
-        required: false,
-        options: [],
-      },
-    ],
-    createdAt: '2026-08-01T09:00:00.000Z',
-    updatedAt: '2026-08-01T09:00:00.000Z',
-  },
-  {
-    id: 2,
-    title: 'ประเมินบริการซัพพอร์ต',
-    description: 'หลังปิดใบปัญหา',
-    status: 'ACTIVE',
-    questions: [
-      {
-        id: 1,
-        text: 'ความรวดเร็วในการตอบรับ',
-        type: 'RATING',
-        required: true,
-        options: [],
-      },
-      {
-        id: 2,
-        text: 'คุณภาพการแก้ไข',
-        type: 'RATING',
-        required: true,
-        options: [],
-      },
-    ],
-    createdAt: '2026-09-01T09:00:00.000Z',
-    updatedAt: '2026-09-01T09:00:00.000Z',
-  },
-  {
-    id: 3,
-    title: 'แบบร่าง — ประเมิน MA',
-    description: 'ยังไม่เปิดรับคำตอบ',
-    status: 'DRAFT',
-    questions: [
-      {
-        id: 1,
-        text: 'ความคุ้มค่าของสัญญา MA',
-        type: 'RATING',
-        required: true,
-        options: [],
-      },
-    ],
-    createdAt: '2026-09-05T09:00:00.000Z',
-    updatedAt: '2026-09-05T09:00:00.000Z',
-  },
-];
-
-const SEED_RESPONSES: SurveyResponse[] = [
-  {
-    id: 1,
-    surveyId: 1,
-    customerId: 1,
-    answers: [
-      { questionId: 1, value: 5 },
-      { questionId: 2, value: 4 },
-      { questionId: 3, value: 'แน่นอน' },
-      { questionId: 4, value: 'ทีมตอบเร็ว ดีมาก' },
-    ],
-    submittedAt: '2026-08-15T10:00:00.000Z',
-    submittedByName: 'วิชัย ซัพพอร์ต',
-    ratingAverage: 4.5,
-  },
-  {
-    id: 2,
-    surveyId: 1,
-    customerId: 2,
-    answers: [
-      { questionId: 1, value: 4 },
-      { questionId: 2, value: 3 },
-      { questionId: 3, value: 'น่าจะใช่' },
-      { questionId: 4, value: '' },
-    ],
-    submittedAt: '2026-08-20T11:00:00.000Z',
-    submittedByName: 'นภา ดูแลหลายด้าน',
-    ratingAverage: 3.5,
-  },
-  {
-    id: 3,
-    surveyId: 2,
-    customerId: 1,
-    answers: [
-      { questionId: 1, value: 5 },
-      { questionId: 2, value: 5 },
-    ],
-    submittedAt: '2026-09-02T14:00:00.000Z',
-    submittedByName: 'วิชัย ซัพพอร์ต',
-    ratingAverage: 5,
-  },
-];
-
 export interface SurveyInput {
   title: string;
   description: string;
@@ -163,12 +35,10 @@ export interface SurveySummary {
 
 @Injectable({ providedIn: 'root' })
 export class SurveyService {
-  private readonly surveysSignal = signal<Survey[]>(this.load(SURVEYS_KEY, SEED_SURVEYS));
-  private readonly responsesSignal = signal<SurveyResponse[]>(
-    this.load(RESPONSES_KEY, SEED_RESPONSES)
-  );
-  private nextSurveyId = this.maxId(this.surveysSignal()) + 1;
-  private nextResponseId = this.maxId(this.responsesSignal()) + 1;
+  private readonly surveysSignal = signal<Survey[]>([]);
+  private readonly responsesSignal = signal<SurveyResponse[]>([]);
+  private nextSurveyId = 1;
+  private nextResponseId = 1;
 
   readonly surveys = this.surveysSignal.asReadonly();
   readonly activeCount = computed(
@@ -246,11 +116,7 @@ export class SurveyService {
       createdAt: now,
       updatedAt: now,
     };
-    this.surveysSignal.update((list) => {
-      const next = [row, ...list];
-      this.save(SURVEYS_KEY, next);
-      return next;
-    });
+    this.surveysSignal.update((list) => [row, ...list]);
     return of(structuredClone(row)).pipe(delay(220));
   }
 
@@ -260,11 +126,7 @@ export class SurveyService {
       return throwError(() => new Error('ไม่พบแบบประเมิน'));
     }
     const updated: Survey = { ...current, status, updatedAt: new Date().toISOString() };
-    this.surveysSignal.update((list) => {
-      const next = list.map((s) => (s.id === id ? updated : s));
-      this.save(SURVEYS_KEY, next);
-      return next;
-    });
+    this.surveysSignal.update((list) => list.map((s) => (s.id === id ? updated : s)));
     return of(structuredClone(updated)).pipe(delay(150));
   }
 
@@ -307,33 +169,7 @@ export class SurveyService {
       submittedByName: input.submittedByName || 'ไม่ระบุ',
       ratingAverage,
     };
-    this.responsesSignal.update((list) => {
-      const next = [row, ...list];
-      this.save(RESPONSES_KEY, next);
-      return next;
-    });
+    this.responsesSignal.update((list) => [row, ...list]);
     return of(structuredClone(row)).pipe(delay(220));
-  }
-
-  private load<T>(key: string, seed: T[]): T[] {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        return JSON.parse(raw) as T[];
-      }
-    } catch {
-      /* ignore */
-    }
-    const data = structuredClone(seed);
-    this.save(key, data);
-    return data;
-  }
-
-  private save<T>(key: string, data: T[]): void {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
   }
 }

@@ -40,5 +40,5 @@ export const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = 
 
 export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = {
   IN_APP: 'ในระบบ',
-  LINE_MOCK: 'LINE (mock)',
+  LINE_MOCK: 'LINE',
 };

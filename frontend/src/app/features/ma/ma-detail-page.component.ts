@@ -144,7 +144,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 .total{margin-top:1rem;font-size:1.1rem;font-weight:700}
 @media print{button{display:none}}
 </style></head><body>
-<p class="muted">CPAMS · ใบแจ้งค่าบริการ (mock)</p>
+<p class="muted">CPAMS · ใบแจ้งค่าบริการ</p>
 <h1>${c.contractNo} · ${c.planName}</h1>
 <p>ลูกค้า: ${customer}<br>ระยะสัญญา: ${c.startDate} – ${c.endDate}<br>พิมพ์โดย: ${user}</p>
 <table>

@@ -49,9 +49,19 @@
           <th mat-header-cell *matHeaderCellDef>คำอธิบาย</th>
           <td mat-cell *matCellDef="let row">{{ row.description || '—' }}</td>
         </ng-container>
-        <ng-container matColumnDef="menus">
-          <th mat-header-cell *matHeaderCellDef>เมนูที่เข้าถึงได้</th>
-          <td mat-cell *matCellDef="let row">{{ menuCount(row) }} เมนู</td>
+        <ng-container matColumnDef="permissions">
+          <th mat-header-cell *matHeaderCellDef>สิทธิ์ที่ได้รับ</th>
+          <td mat-cell *matCellDef="let row">
+            {{ permissionCount(row) }} สิทธิ์ · {{ moduleCount(row) }} โมดูล
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="users">
+          <th mat-header-cell *matHeaderCellDef>ผู้ใช้</th>
+          <td mat-cell *matCellDef="let row">{{ row.userCount }} คน</td>
+        </ng-container>
+        <ng-container matColumnDef="active">
+          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <td mat-cell *matCellDef="let row">{{ row.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
@@ -59,7 +69,7 @@
             <button mat-icon-button type="button" (click)="openEdit(row)" [disabled]="!canManage()" matTooltip="แก้ไข">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button type="button" color="warn" (click)="remove(row)" [disabled]="!canManage()" matTooltip="ลบ">
+            <button mat-icon-button type="button" color="warn" (click)="remove(row)" [disabled]="!canManage() || row.isSystem" matTooltip="ลบ">
               <mat-icon>delete</mat-icon>
             </button>
           </td>

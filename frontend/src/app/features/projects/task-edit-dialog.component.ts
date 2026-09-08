@@ -12,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
+  TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
   TASK_STATUSES,
   TASK_STATUS_LABELS,
@@ -19,13 +20,15 @@ import {
   TaskPriority,
   TaskStatus,
 } from '../../core/models/project.model';
-import { ProjectService } from '../../core/services/project.service';
+import { ProjectService, TaskInput } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 
 export interface TaskDialogData {
   projectId: number;
   task: TaskItem | null;
+  /** ใช้ตอนสร้างงานย่อยใต้งานอื่น */
+  parentTaskId?: number | null;
 }
 
 @Component({
@@ -57,7 +60,7 @@ export class TaskEditDialogComponent {
   readonly taskStatuses = TASK_STATUSES;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
-  readonly priorities = Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[];
+  readonly priorities = TASK_PRIORITIES;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -65,9 +68,11 @@ export class TaskEditDialogComponent {
     title: [this.data.task?.title ?? '', Validators.required],
     description: [this.data.task?.description ?? ''],
     status: [(this.data.task?.status ?? 'TODO') as TaskStatus, Validators.required],
-    priority: [(this.data.task?.priority ?? 'MEDIUM') as TaskPriority, Validators.required],
-    assigneeId: [this.data.task?.assigneeId ?? (null as number | null)],
+    priority: [(this.data.task?.priority ?? 'NORMAL') as TaskPriority, Validators.required],
+    assignedUserId: [this.data.task?.assignedUserId ?? (null as number | null)],
+    startDate: [parseDateOnly(this.data.task?.startDate) as Date | null],
     dueDate: [parseDateOnly(this.data.task?.dueDate) as Date | null],
+    estimatedHours: [this.data.task?.estimatedHours ?? (null as number | null)],
   });
 
   save(): void {
@@ -76,20 +81,22 @@ export class TaskEditDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
-    const payload = {
-      title: raw.title ?? '',
-      description: raw.description ?? '',
+    const payload: TaskInput = {
+      title: (raw.title ?? '').trim(),
+      description: (raw.description ?? '').trim(),
       status: raw.status as TaskStatus,
       priority: raw.priority as TaskPriority,
-      assigneeId: raw.assigneeId,
+      assignedUserId: raw.assignedUserId,
+      startDate: toDateOnlyString(raw.startDate) || null,
       dueDate: toDateOnlyString(raw.dueDate) || null,
-      dependsOnTaskId: this.data.task?.dependsOnTaskId ?? null,
+      estimatedHours: raw.estimatedHours == null ? undefined : String(raw.estimatedHours),
+      parentTaskId: this.data.task?.parentTaskId ?? this.data.parentTaskId ?? null,
     };
     this.saving.set(true);
     this.error.set(null);
 
     const req = this.isEdit
-      ? this.projectsApi.updateTask(this.data.task!.id, payload)
+      ? this.projectsApi.updateTask(this.data.projectId, this.data.task!.id, payload)
       : this.projectsApi.createTask(this.data.projectId, payload);
 
     req.subscribe({

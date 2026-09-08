@@ -67,6 +67,15 @@ export const BILLING_TYPE_LABELS: Record<BillingType, string> = {
   FREE: 'ไม่คิดเงิน',
 };
 
+export const REPORTED_CHANNEL_LABELS: Record<ReportedChannel, string> = {
+  LINE: 'LINE',
+  FACEBOOK: 'Facebook',
+  PHONE: 'โทรศัพท์',
+  EMAIL: 'อีเมล',
+  ONSITE: 'พบหน้า',
+  OTHER: 'อื่นๆ',
+};
+
 export const RESOLUTION_RESULT_LABELS: Record<ResolutionResult, string> = {
   SUCCESS: 'สำเร็จ',
   PARTIAL: 'สำเร็จบางส่วน',

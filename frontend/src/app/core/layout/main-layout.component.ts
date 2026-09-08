@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -8,7 +8,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MENU_ITEMS } from '../mock/mock-data';
+import { MENU_ITEMS } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 
@@ -31,7 +31,7 @@ import { NotificationService } from '../services/notification.service';
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
-export class MainLayoutComponent {
+export class MainLayoutComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
 
@@ -68,6 +68,9 @@ export class MainLayoutComponent {
     return groups.filter((g) => g.items.length > 0);
   });
 
+  ngOnInit(): void {
+    this.auth.refreshSession();
+  }
   accountTypeLabel(type: string | undefined): string {
     switch (type) {
       case 'SUPER_ADMIN':

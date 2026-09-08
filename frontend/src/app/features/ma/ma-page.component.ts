@@ -89,6 +89,8 @@ export class MaPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
+    this.customersApi.listCustomers().subscribe();
+    this.projectsApi.listProjects().subscribe();
     this.reload();
   }
 

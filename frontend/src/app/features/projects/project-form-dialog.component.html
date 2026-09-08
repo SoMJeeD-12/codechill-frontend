@@ -5,6 +5,16 @@
       <mat-label>ชื่อโครงการ</mat-label>
       <input matInput formControlName="name" />
     </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>รหัสโครงการ</mat-label>
+        <input matInput formControlName="code" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ประเภทโครงการ</mat-label>
+        <input matInput formControlName="projectType" />
+      </mat-form-field>
+    </div>
     <mat-form-field appearance="outline" class="full">
       <mat-label>ลูกค้า</mat-label>
       <mat-select formControlName="customerId">
@@ -19,17 +29,48 @@
         <input matInput type="number" formControlName="contractValue" />
       </mat-form-field>
       <mat-form-field appearance="outline">
+        <mat-label>จำนวนฟังก์ชัน</mat-label>
+        <input matInput type="number" formControlName="functionCount" />
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>วันเริ่มโครงการ</mat-label>
+        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
         <mat-label>กำหนดส่งมอบ</mat-label>
-        <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+        <input matInput [matDatepicker]="duePicker" formControlName="targetEndDate" />
         <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
         <mat-datepicker #duePicker></mat-datepicker>
       </mat-form-field>
     </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>สถานะ</mat-label>
+        <mat-select formControlName="status">
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ความสำคัญ</mat-label>
+        <mat-select formControlName="priority">
+          @for (pr of priorities; track pr) {
+            <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>สถานะ</mat-label>
-      <mat-select formControlName="status">
-        @for (s of statuses; track s) {
-          <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+      <mat-label>ผู้จัดการโครงการ</mat-label>
+      <mat-select formControlName="managerUserId">
+        <mat-option [value]="null">—</mat-option>
+        @for (u of users(); track u.id) {
+          <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
         }
       </mat-select>
     </mat-form-field>

@@ -2,87 +2,6 @@ import { Injectable, computed, signal } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { MaAddon, MaContract, MaContractStatus } from '../models/ma.model';
 
-const CONTRACTS_KEY = 'cpams_mock_ma_contracts';
-const ADDONS_KEY = 'cpams_mock_ma_addons';
-
-const SEED_CONTRACTS: MaContract[] = [
-  {
-    id: 1,
-    contractNo: 'MA-2026-001',
-    customerId: 1,
-    projectId: 1,
-    planName: 'แผนมาตรฐาน (Gold)',
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
-    status: 'ACTIVE',
-    annualFee: 180000,
-    quotaTotal: 24,
-    quotaUsed: 5,
-    slaHours: 8,
-    note: 'รวม onsite 4 ครั้ง/ปี',
-  },
-  {
-    id: 2,
-    contractNo: 'MA-2026-002',
-    customerId: 2,
-    projectId: 2,
-    planName: 'แผนพื้นฐาน (Silver)',
-    startDate: '2026-03-01',
-    endDate: '2027-02-28',
-    status: 'ACTIVE',
-    annualFee: 96000,
-    quotaTotal: 12,
-    quotaUsed: 11,
-    slaHours: 24,
-    note: 'โควตาใกล้หมด',
-  },
-  {
-    id: 3,
-    contractNo: 'MA-2025-008',
-    customerId: 2,
-    projectId: null,
-    planName: 'แผนพื้นฐาน (Silver)',
-    startDate: '2025-01-01',
-    endDate: '2025-12-31',
-    status: 'EXPIRED',
-    annualFee: 90000,
-    quotaTotal: 12,
-    quotaUsed: 12,
-    slaHours: 24,
-    note: 'สัญญาปีก่อน',
-  },
-];
-
-const SEED_ADDONS: MaAddon[] = [
-  {
-    id: 1,
-    contractId: 1,
-    name: 'แพ็กโควตาเพิ่ม +6 เคส',
-    quantity: 6,
-    usedQuantity: 1,
-    unitPrice: 15000,
-    purchasedAt: '2026-06-15T09:00:00.000Z',
-  },
-  {
-    id: 2,
-    contractId: 1,
-    name: 'Onsite ด่วนนอกเวลา',
-    quantity: 2,
-    usedQuantity: 0,
-    unitPrice: 8000,
-    purchasedAt: '2026-08-01T09:00:00.000Z',
-  },
-  {
-    id: 3,
-    contractId: 2,
-    name: 'แพ็กโควตาเพิ่ม +3 เคส',
-    quantity: 3,
-    usedQuantity: 2,
-    unitPrice: 9000,
-    purchasedAt: '2026-07-20T09:00:00.000Z',
-  },
-];
-
 export interface MaContractInput {
   customerId: number;
   projectId: number | null;
@@ -104,10 +23,10 @@ export interface MaAddonInput {
 
 @Injectable({ providedIn: 'root' })
 export class MaService {
-  private readonly contractsSignal = signal<MaContract[]>(this.load(CONTRACTS_KEY, SEED_CONTRACTS));
-  private readonly addonsSignal = signal<MaAddon[]>(this.load(ADDONS_KEY, SEED_ADDONS));
-  private nextContractId = this.maxId(this.contractsSignal()) + 1;
-  private nextAddonId = this.maxId(this.addonsSignal()) + 1;
+  private readonly contractsSignal = signal<MaContract[]>([]);
+  private readonly addonsSignal = signal<MaAddon[]>([]);
+  private nextContractId = 1;
+  private nextAddonId = 1;
 
   readonly contracts = this.contractsSignal.asReadonly();
   readonly addons = this.addonsSignal.asReadonly();
@@ -162,11 +81,7 @@ export class MaService {
       slaHours: Math.max(1, Number(input.slaHours) || 24),
       note: input.note.trim(),
     };
-    this.contractsSignal.update((list) => {
-      const next = [row, ...list];
-      this.save(CONTRACTS_KEY, next);
-      return next;
-    });
+    this.contractsSignal.update((list) => [row, ...list]);
     return of(structuredClone(row)).pipe(delay(220));
   }
 
@@ -188,11 +103,7 @@ export class MaService {
       slaHours: Math.max(1, Number(input.slaHours) || 24),
       note: input.note.trim(),
     };
-    this.contractsSignal.update((list) => {
-      const next = list.map((c) => (c.id === id ? updated : c));
-      this.save(CONTRACTS_KEY, next);
-      return next;
-    });
+    this.contractsSignal.update((list) => list.map((c) => (c.id === id ? updated : c)));
     return of(structuredClone(updated)).pipe(delay(200));
   }
 
@@ -213,11 +124,7 @@ export class MaService {
       unitPrice: Number(input.unitPrice) || 0,
       purchasedAt: new Date().toISOString(),
     };
-    this.addonsSignal.update((list) => {
-      const next = [...list, row];
-      this.save(ADDONS_KEY, next);
-      return next;
-    });
+    this.addonsSignal.update((list) => [...list, row]);
     return of(structuredClone(row)).pipe(delay(200));
   }
 
@@ -234,11 +141,7 @@ export class MaService {
       ...contract,
       quotaUsed: contract.quotaUsed + 1,
     };
-    this.contractsSignal.update((list) => {
-      const next = list.map((c) => (c.id === contract.id ? updated : c));
-      this.save(CONTRACTS_KEY, next);
-      return next;
-    });
+    this.contractsSignal.update((list) => list.map((c) => (c.id === contract.id ? updated : c)));
     return of(structuredClone(updated)).pipe(delay(120));
   }
 
@@ -249,33 +152,7 @@ export class MaService {
       return throwError(() => new Error('ไม่มี Add-on ที่ใช้ได้ในสัญญานี้'));
     }
     const updated: MaAddon = { ...addon, usedQuantity: addon.usedQuantity + 1 };
-    this.addonsSignal.update((list) => {
-      const next = list.map((a) => (a.id === addon.id ? updated : a));
-      this.save(ADDONS_KEY, next);
-      return next;
-    });
+    this.addonsSignal.update((list) => list.map((a) => (a.id === addon.id ? updated : a)));
     return of(structuredClone(updated)).pipe(delay(120));
-  }
-
-  private load<T>(key: string, seed: T[]): T[] {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        return JSON.parse(raw) as T[];
-      }
-    } catch {
-      /* ignore */
-    }
-    const data = structuredClone(seed);
-    this.save(key, data);
-    return data;
-  }
-
-  private save<T>(key: string, data: T[]): void {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
   }
 }

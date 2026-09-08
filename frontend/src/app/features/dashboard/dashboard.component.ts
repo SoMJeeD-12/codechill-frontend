@@ -3,8 +3,9 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MENU_ITEMS } from '../../core/mock/mock-data';
+import { MENU_ITEMS } from '../../core/nav/menu-items';
 import { MenuItem } from '../../core/models/permission.model';
+import { OPEN_PROJECT_STATUSES } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
@@ -43,7 +44,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     const openProjects = this.projects
       .projects()
-      .filter((p) => ['PLANNING', 'IN_PROGRESS', 'ON_HOLD'].includes(p.status)).length;
+      .filter((p) => OPEN_PROJECT_STATUSES.includes(p.status)).length;
     this.stats.set([
       {
         label: 'ลูกค้า',

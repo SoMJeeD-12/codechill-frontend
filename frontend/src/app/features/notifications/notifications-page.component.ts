@@ -123,10 +123,10 @@ export class NotificationsPageComponent implements OnInit {
       return;
     }
     this.api
-      .pushMock(
+      .pushSample(
         userId,
         'แจ้งเตือนตัวอย่าง',
-        'สร้างจากปุ่มทดสอบบนหน้าการแจ้งเตือน (mock)',
+        'สร้างจากปุ่มทดสอบบนหน้าการแจ้งเตือน',
         'MANUAL',
         '/app/notifications'
       )

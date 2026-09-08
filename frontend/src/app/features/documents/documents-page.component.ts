@@ -27,13 +27,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import {
   DocumentService,
-  buildMockFilePreview,
+  buildFilePreview,
 } from '../../core/services/document.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 
-const MAX_MOCK_FILE_BYTES = 1_500_000;
+const MAX_LOCAL_FILE_BYTES = 1_500_000;
 
 /** Chrome/Edge บล็อก navigation ไป data: URL → แปลงเป็น blob: ก่อนเปิด */
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -57,7 +57,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 
 function openDocumentFile(ver: DocumentVersion): void {
   const dataUrl =
-    ver.fileDataUrl || buildMockFilePreview(ver.fileName, ver.version, ver.note);
+    ver.fileDataUrl || buildFilePreview(ver.fileName, ver.version, ver.note);
   let url = dataUrl;
   try {
     if (dataUrl.startsWith('data:')) {
@@ -66,7 +66,7 @@ function openDocumentFile(ver: DocumentVersion): void {
       setTimeout(() => URL.revokeObjectURL(url), 120_000);
     }
   } catch {
-    url = buildMockFilePreview(ver.fileName, ver.version, ver.note);
+    url = buildFilePreview(ver.fileName, ver.version, ver.note);
     url = URL.createObjectURL(dataUrlToBlob(url));
     setTimeout(() => URL.revokeObjectURL(url), 120_000);
   }
@@ -82,8 +82,8 @@ function openDocumentFile(ver: DocumentVersion): void {
 
 function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: string; sizeKb: number }> {
   return new Promise((resolve, reject) => {
-    if (file.size > MAX_MOCK_FILE_BYTES) {
-      reject(new Error('ไฟล์ใหญ่เกิน 1.5MB สำหรับ mock — จะใช้หน้าตัวอย่างแทน'));
+    if (file.size > MAX_LOCAL_FILE_BYTES) {
+      reject(new Error('ไฟล์ใหญ่เกิน 1.5MB — จะใช้หน้าตัวอย่างแทน'));
       return;
     }
     const reader = new FileReader();

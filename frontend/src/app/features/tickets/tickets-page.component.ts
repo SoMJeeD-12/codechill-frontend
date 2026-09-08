@@ -16,10 +16,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { CHANNEL_LABELS } from '../../core/models/customer.model';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
+  REPORTED_CHANNEL_LABELS,
   ReportedChannel,
   TICKET_STATUS_LABELS,
   Ticket,
@@ -163,8 +163,8 @@ export class TicketFormDialogComponent {
   readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
   readonly projects = this.projectsApi.projects;
-  readonly channelLabels = CHANNEL_LABELS;
-  readonly channels = Object.keys(CHANNEL_LABELS) as ReportedChannel[];
+  readonly channelLabels = REPORTED_CHANNEL_LABELS;
+  readonly channels = Object.keys(REPORTED_CHANNEL_LABELS) as ReportedChannel[];
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly billingTypes = Object.keys(BILLING_TYPE_LABELS) as BillingType[];
   readonly priorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];

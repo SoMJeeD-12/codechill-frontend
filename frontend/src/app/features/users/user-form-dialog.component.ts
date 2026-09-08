@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Observable, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -11,8 +12,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Role } from '../../core/models/permission.model';
-import { AccountType, User, UserStatus } from '../../core/models/user.model';
-import { UserInput, UserService } from '../../core/services/user.service';
+import { AccountType, User } from '../../core/models/user.model';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-user-form-dialog',
@@ -42,31 +43,38 @@ export class UserFormDialogComponent {
   readonly isSuper = this.data.user?.accountType === 'SUPER_ADMIN';
 
   readonly form = this.fb.nonNullable.group({
-    username: [{ value: '', disabled: this.isSuper }, Validators.required],
-    email: [{ value: '', disabled: this.isSuper }, [Validators.required, Validators.email]],
-    fullName: [{ value: '', disabled: this.isSuper }, Validators.required],
-    accountType: ['USER' as AccountType, Validators.required],
-    status: ['ACTIVE' as UserStatus, Validators.required],
-    roleIds: [[] as number[]],
+    username: [{ value: '', disabled: this.isEdit }, Validators.required],
     password: [''],
+    fullName: ['', Validators.required],
+    nickname: [''],
+    employeeCode: [''],
+    email: ['', Validators.email],
+    phone: [''],
+    position: [''],
+    accountType: ['USER' as AccountType, Validators.required],
+    roleIds: [[] as number[]],
   });
 
   constructor() {
-    if (this.data.user) {
+    const user = this.data.user;
+    if (user) {
       this.form.patchValue({
-        username: this.data.user.username,
-        email: this.data.user.email,
-        fullName: this.data.user.fullName,
-        accountType:
-          this.data.user.accountType === 'SUPER_ADMIN'
-            ? 'USER'
-            : this.data.user.accountType,
-        status: this.data.user.status,
-        roleIds: [...this.data.user.roleIds],
+        username: user.username,
+        fullName: user.fullName,
+        nickname: user.nickname ?? '',
+        employeeCode: user.employeeCode ?? '',
+        email: user.email ?? '',
+        phone: user.phone ?? '',
+        position: user.position ?? '',
+        accountType: user.accountType === 'SUPER_ADMIN' ? 'USER' : user.accountType,
+        roleIds: (user.roles ?? []).map((r) => r.id),
       });
-      if (this.data.user.accountType === 'SUPER_ADMIN') {
+      if (this.isSuper) {
         this.form.disable();
       }
+    } else {
+      this.form.controls.password.addValidators(Validators.required);
+      this.form.controls.password.updateValueAndValidity();
     }
   }
 
@@ -84,21 +92,37 @@ export class UserFormDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
-    const payload: UserInput = {
-      username: raw.username,
-      email: raw.email,
-      fullName: raw.fullName,
+    const roleIds = raw.accountType === 'USER' ? raw.roleIds : [];
+    const profile = {
+      fullName: raw.fullName.trim(),
+      employeeCode: optional(raw.employeeCode),
+      email: optional(raw.email),
+      nickname: optional(raw.nickname),
+      phone: optional(raw.phone),
+      position: optional(raw.position),
       accountType: raw.accountType,
-      status: raw.status,
-      roleIds: raw.accountType === 'USER' ? raw.roleIds : [],
-      password: raw.password || undefined,
     };
 
     this.saving.set(true);
     this.error.set(null);
-    const req$ = this.data.user
-      ? this.usersApi.update(this.data.user.id, payload)
-      : this.usersApi.create(payload);
+
+    const existing = this.data.user;
+    const req$: Observable<User> = existing
+      ? this.usersApi
+          .update(existing.id, profile)
+          .pipe(
+            switchMap((user) =>
+              sameRoles(existing.roles.map((r) => r.id), roleIds)
+                ? of(user)
+                : this.usersApi.assignRoles(existing.id, roleIds)
+            )
+          )
+      : this.usersApi.create({
+          ...profile,
+          username: raw.username.trim(),
+          password: raw.password,
+          roleIds,
+        });
 
     req$.subscribe({
       next: () => {
@@ -112,4 +136,17 @@ export class UserFormDialogComponent {
       },
     });
   }
+}
+
+function optional(value: string): string | undefined {
+  const v = value.trim();
+  return v === '' ? undefined : v;
+}
+
+function sameRoles(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const set = new Set(a);
+  return b.every((id) => set.has(id));
 }

@@ -7,17 +7,61 @@
     </mat-form-field>
     <div class="row">
       <mat-form-field appearance="outline">
+        <mat-label>รหัสลูกค้า</mat-label>
+        <input matInput formControlName="code" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
         <mat-label>เลขผู้เสียภาษี</mat-label>
         <input matInput formControlName="taxId" />
       </mat-form-field>
+    </div>
+    <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>ประเภทธุรกิจ</mat-label>
         <input matInput formControlName="businessType" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ที่มาของลูกค้า</mat-label>
+        <input matInput formControlName="source" />
       </mat-form-field>
     </div>
     <mat-form-field appearance="outline" class="full">
       <mat-label>ที่อยู่</mat-label>
       <textarea matInput rows="2" formControlName="address"></textarea>
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>จังหวัด</mat-label>
+        <input matInput formControlName="province" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>รหัสไปรษณีย์</mat-label>
+        <input matInput formControlName="postalCode" />
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>โทรศัพท์</mat-label>
+        <input matInput formControlName="phone" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>อีเมล</mat-label>
+        <input matInput formControlName="email" />
+      </mat-form-field>
+    </div>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>เว็บไซต์</mat-label>
+        <input matInput formControlName="website" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>LINE Official ID</mat-label>
+        <input matInput formControlName="lineOfficialId" />
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Facebook URL</mat-label>
+      <input matInput formControlName="facebookUrl" />
     </mat-form-field>
     <div class="row">
       <mat-form-field appearance="outline">
@@ -29,10 +73,19 @@
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
-        <mat-label>มูลค่ารวม (บาท)</mat-label>
-        <input matInput type="number" formControlName="lifetimeValue" />
+        <mat-label>ผู้ดูแล</mat-label>
+        <mat-select formControlName="ownerUserId">
+          <mat-option [value]="null">—</mat-option>
+          @for (u of users(); track u.id) {
+            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+          }
+        </mat-select>
       </mat-form-field>
     </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หมายเหตุ</mat-label>
+      <textarea matInput rows="2" formControlName="note"></textarea>
+    </mat-form-field>
   </form>
   @if (error()) {
     <p class="error">{{ error() }}</p>

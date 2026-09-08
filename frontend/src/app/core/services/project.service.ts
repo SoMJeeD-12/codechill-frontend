@@ -1,187 +1,74 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, of, throwError } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   Delivery,
   DeliveryAcceptance,
   Project,
+  ProjectPriority,
   ProjectStatus,
   TaskItem,
   TaskPriority,
   TaskStatus,
 } from '../models/project.model';
 
-const PROJECTS_KEY = 'cpams_mock_projects';
-const TASKS_KEY = 'cpams_mock_tasks';
-const DELIVERIES_KEY = 'cpams_mock_deliveries';
-
-const SEED_PROJECTS: Project[] = [
-  {
-    id: 1,
-    code: 'PRJ-2025-001',
-    name: 'ระบบมอนิเตอร์ IoT โรงงาน',
-    customerId: 1,
-    contractValue: 850000,
-    dueDate: '2026-10-15',
-    status: 'IN_PROGRESS',
-    description: 'ติดตั้งเซ็นเซอร์และแดชบอร์ดติดตามเครื่องจักร',
-    createdAt: '2025-11-01T09:00:00.000Z',
-    updatedAt: '2026-09-01T09:00:00.000Z',
-  },
-  {
-    id: 2,
-    code: 'PRJ-2025-002',
-    name: 'แอปสั่งงานซ่อมบำรุง',
-    customerId: 2,
-    contractValue: 420000,
-    dueDate: '2026-08-30',
-    status: 'IN_PROGRESS',
-    description: 'Mobile + Admin สำหรับแจ้งซ่อมในโรงงาน',
-    createdAt: '2026-02-10T09:00:00.000Z',
-    updatedAt: '2026-08-20T09:00:00.000Z',
-  },
-  {
-    id: 3,
-    code: 'PRJ-2026-003',
-    name: 'ระบบฟาร์มอัจฉริยะเฟส 1',
-    customerId: 3,
-    contractValue: 150000,
-    dueDate: '2026-12-01',
-    status: 'PLANNING',
-    description: 'เซ็นเซอร์ความชื้นดิน + แจ้งเตือน',
-    createdAt: '2026-08-22T09:00:00.000Z',
-    updatedAt: '2026-08-22T09:00:00.000Z',
-  },
-];
-
-const SEED_TASKS: TaskItem[] = [
-  {
-    id: 1,
-    projectId: 1,
-    title: 'สำรวจไซต์และวางผังเซ็นเซอร์',
-    description: '',
-    status: 'DONE',
-    priority: 'HIGH',
-    assigneeId: 2,
-    dueDate: '2026-03-01',
-    sortOrder: 1,
-    dependsOnTaskId: null,
-  },
-  {
-    id: 2,
-    projectId: 1,
-    title: 'ติดตั้ง Gateway',
-    description: '',
-    status: 'DONE',
-    priority: 'HIGH',
-    assigneeId: 3,
-    dueDate: '2026-05-15',
-    sortOrder: 2,
-    dependsOnTaskId: 1,
-  },
-  {
-    id: 3,
-    projectId: 1,
-    title: 'พัฒนาแดชบอร์ด Realtime',
-    description: '',
-    status: 'IN_PROGRESS',
-    priority: 'URGENT',
-    assigneeId: 2,
-    dueDate: '2026-09-20',
-    sortOrder: 3,
-    dependsOnTaskId: 2,
-  },
-  {
-    id: 4,
-    projectId: 1,
-    title: 'ทดสอบรับมอบกับลูกค้า',
-    description: '',
-    status: 'TODO',
-    priority: 'MEDIUM',
-    assigneeId: 3,
-    dueDate: '2026-10-10',
-    sortOrder: 4,
-    dependsOnTaskId: 3,
-  },
-  {
-    id: 5,
-    projectId: 2,
-    title: 'ออกแบบ UI แจ้งซ่อม',
-    description: '',
-    status: 'DONE',
-    priority: 'MEDIUM',
-    assigneeId: 4,
-    dueDate: '2026-04-01',
-    sortOrder: 1,
-    dependsOnTaskId: null,
-  },
-  {
-    id: 6,
-    projectId: 2,
-    title: 'API งานซ่อม',
-    description: '',
-    status: 'REVIEW',
-    priority: 'HIGH',
-    assigneeId: 2,
-    dueDate: '2026-08-15',
-    sortOrder: 2,
-    dependsOnTaskId: 5,
-  },
-  {
-    id: 7,
-    projectId: 2,
-    title: 'UAT กับทีมซ่อมบำรุง',
-    description: '',
-    status: 'TODO',
-    priority: 'HIGH',
-    assigneeId: 3,
-    dueDate: '2026-08-25',
-    sortOrder: 3,
-    dependsOnTaskId: 6,
-  },
-];
-
-const SEED_DELIVERIES: Delivery[] = [
-  {
-    id: 1,
-    projectId: 1,
-    version: 'v0.9',
-    deliveredAt: '2026-07-01T10:00:00.000Z',
-    deliveredByUserId: 2,
-    receivedByContactId: 1,
-    acceptance: 'ACCEPTED',
-    note: 'ส่งมอบแดชบอร์ดรอบทดสอบ',
-    attachmentName: 'delivery-v09.pdf',
-  },
-  {
-    id: 2,
-    projectId: 1,
-    version: 'v1.0-rc',
-    deliveredAt: '2026-08-28T14:00:00.000Z',
-    deliveredByUserId: 2,
-    receivedByContactId: 1,
-    acceptance: 'PENDING',
-    note: 'รอลูกค้าตรวจรับเฟสหลัก',
-    attachmentName: null,
-  },
-];
-
+/** CreateProjectDto / UpdateProjectDto */
 export interface ProjectInput {
-  name: string;
-  customerId: number;
-  contractValue: number;
-  dueDate: string;
-  status: ProjectStatus;
-  description: string;
+  customerId?: number;
+  name?: string;
+  code?: string;
+  description?: string;
+  projectType?: string;
+  status?: ProjectStatus;
+  priority?: ProjectPriority;
+  startDate?: string;
+  targetEndDate?: string;
+  actualEndDate?: string;
+  /** API รับเป็น decimal string */
+  contractValue?: string;
+  functionCount?: number;
+  managerUserId?: number;
 }
 
+export interface ProjectListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  status?: ProjectStatus;
+  customerId?: number;
+  priority?: ProjectPriority;
+  managerUserId?: number;
+}
+
+/** CreateTaskDto / UpdateTaskDto */
 export interface TaskInput {
-  title: string;
-  description: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  assigneeId: number | null;
-  dueDate: string | null;
-  dependsOnTaskId: number | null;
+  title?: string;
+  parentTaskId?: number | null;
+  description?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assignedUserId?: number | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  estimatedHours?: string;
+  actualHours?: string;
+  sortOrder?: number;
+}
+
+export interface TaskListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assignedUserId?: number;
+  parentTaskId?: number;
 }
 
 export interface DeliveryInput {
@@ -194,25 +81,58 @@ export interface DeliveryInput {
   attachmentName: string | null;
 }
 
+/** รูปดิบจาก API — contractValue/estimatedHours เป็น decimal string, subTasks ซ้อนกัน */
+type ApiProject = Omit<Project, 'contractValue'> & { contractValue: string | number | null };
+type ApiTask = Omit<TaskItem, 'estimatedHours' | 'actualHours'> & {
+  estimatedHours: string | number | null;
+  actualHours: string | number | null;
+  subTasks?: ApiTask[];
+};
+
+function toNumber(value: string | number | null | undefined): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
-  private readonly projectsSignal = signal<Project[]>(this.load(PROJECTS_KEY, SEED_PROJECTS));
-  private readonly tasksSignal = signal<TaskItem[]>(this.load(TASKS_KEY, SEED_TASKS));
-  private readonly deliveriesSignal = signal<Delivery[]>(this.load(DELIVERIES_KEY, SEED_DELIVERIES));
+  private readonly http = inject(HttpClient);
+  private readonly base = `${environment.apiBaseUrl}/projects`;
+  private readonly tasksBase = `${environment.apiBaseUrl}/tasks`;
 
-  private nextProjectId = this.maxId(this.projectsSignal()) + 1;
-  private nextTaskId = this.maxId(this.tasksSignal()) + 1;
-  private nextDeliveryId = this.maxId(this.deliveriesSignal()) + 1;
+  private readonly projectsSignal = signal<Project[]>([]);
+  private readonly tasksSignal = signal<TaskItem[]>([]);
+  private readonly deliveriesSignal = signal<Delivery[]>([]);
+  private nextDeliveryId = 1;
 
   readonly projects = this.projectsSignal.asReadonly();
   readonly projectCount = computed(() => this.projectsSignal().length);
 
-  listProjects(): Observable<Project[]> {
-    return of(structuredClone(this.projectsSignal())).pipe(delay(200));
+  listProjects(params?: ProjectListParams): Observable<Project[]> {
+    return this.http
+      .get<ApiProject[] | { items: ApiProject[] }>(this.base, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => asList(body).map((row) => this.normalizeProject(row))),
+        tap((list) => this.projectsSignal.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getProject(id: number): Project | undefined {
     return this.projectsSignal().find((p) => p.id === id);
+  }
+
+  fetchProject(id: number): Observable<Project> {
+    return this.http.get<ApiProject>(`${this.base}/${id}`).pipe(
+      map((row) => this.normalizeProject(row)),
+      tap((project) => this.projectsSignal.update((list) => upsertById(list, project))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   getProjectsByCustomer(customerId: number): Project[] {
@@ -220,52 +140,22 @@ export class ProjectService {
   }
 
   createProject(input: ProjectInput): Observable<Project> {
-    if (!input.name.trim() || !input.customerId) {
-      return throwError(() => new Error('กรุณาระบุชื่อโครงการและลูกค้า'));
-    }
-    const now = new Date().toISOString();
-    const project: Project = {
-      id: this.nextProjectId++,
-      code: `PRJ-${new Date().getFullYear()}-${String(this.nextProjectId).padStart(3, '0')}`,
-      name: input.name.trim(),
-      customerId: input.customerId,
-      contractValue: Number(input.contractValue) || 0,
-      dueDate: input.dueDate,
-      status: input.status,
-      description: input.description.trim(),
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.projectsSignal.update((list) => {
-      const next = [project, ...list];
-      this.save(PROJECTS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(project)).pipe(delay(250));
+    return this.http.post<ApiProject>(this.base, pruneUndefined(input)).pipe(
+      map((row) => this.normalizeProject(row)),
+      tap((project) => this.projectsSignal.update((list) => upsertById(list, project))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   updateProject(id: number, input: ProjectInput): Observable<Project> {
-    const current = this.getProject(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบโครงการ'));
-    }
-    const updated: Project = {
-      ...current,
-      name: input.name.trim(),
-      customerId: input.customerId,
-      contractValue: Number(input.contractValue) || 0,
-      dueDate: input.dueDate,
-      status: input.status,
-      description: input.description.trim(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.projectsSignal.update((list) => {
-      const next = list.map((p) => (p.id === id ? updated : p));
-      this.save(PROJECTS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(updated)).pipe(delay(250));
+    return this.http.put<ApiProject>(`${this.base}/${id}`, pruneUndefined(input)).pipe(
+      map((row) => this.normalizeProject(row)),
+      tap((project) => this.projectsSignal.update((list) => upsertById(list, project))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
+
+  /* ——— งานย่อย ——— */
 
   getTasks(projectId: number): TaskItem[] {
     return this.tasksSignal()
@@ -273,79 +163,108 @@ export class ProjectService {
       .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
   }
 
+  listTasks(projectId: number, params?: TaskListParams): Observable<TaskItem[]> {
+    return this.http
+      .get<ApiTask[] | { items: ApiTask[] }>(`${this.base}/${projectId}/tasks`, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => this.flattenTasks(asList(body), projectId)),
+        tap((rows) => {
+          this.tasksSignal.update((all) => [
+            ...all.filter((t) => t.projectId !== projectId),
+            ...rows,
+          ]);
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** % จาก progress ของ project ถ้ามี ไม่งั้นคำนวณจาก task ที่โหลดไว้ */
   progressPercent(projectId: number): number {
-    const tasks = this.getTasks(projectId);
-    if (!tasks.length) {
-      return 0;
+    const percent = this.getProject(projectId)?.progress?.percent;
+    if (typeof percent === 'number') {
+      return percent;
     }
-    const done = tasks.filter((t) => t.status === 'DONE').length;
-    return Math.round((done / tasks.length) * 100);
+    return this.computeProgress(this.getTasks(projectId));
   }
 
   createTask(projectId: number, input: TaskInput): Observable<TaskItem> {
-    if (!input.title.trim()) {
-      return throwError(() => new Error('กรุณาระบุชื่องาน'));
-    }
-    const tasks = this.getTasks(projectId);
-    const task: TaskItem = {
-      id: this.nextTaskId++,
-      projectId,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      status: input.status,
-      priority: input.priority,
-      assigneeId: input.assigneeId,
-      dueDate: input.dueDate,
-      sortOrder: tasks.length + 1,
-      dependsOnTaskId: input.dependsOnTaskId,
-    };
-    this.tasksSignal.update((list) => {
-      const next = [...list, task];
-      this.save(TASKS_KEY, next);
-      return next;
-    });
-    this.touchProject(projectId);
-    return of(structuredClone(task)).pipe(delay(200));
+    return this.http
+      .post<ApiTask>(`${this.base}/${projectId}/tasks`, pruneUndefined(input))
+      .pipe(
+        map((row) => this.normalizeTask(row, projectId)),
+        tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
+  updateTask(projectId: number, taskId: number, input: TaskInput): Observable<TaskItem> {
+    return this.http
+      .put<ApiTask>(`${this.base}/${projectId}/tasks/${taskId}`, pruneUndefined(input))
+      .pipe(
+        map((row) => this.normalizeTask(row, projectId)),
+        tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  removeTask(projectId: number, taskId: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${projectId}/tasks/${taskId}`).pipe(
+      tap(() => this.tasksSignal.update((list) => list.filter((t) => t.id !== taskId))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /** PATCH /tasks/{id}/status */
   updateTaskStatus(taskId: number, status: TaskStatus): Observable<TaskItem> {
-    const current = this.tasksSignal().find((t) => t.id === taskId);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบงานย่อย'));
-    }
-    const updated = { ...current, status };
-    this.tasksSignal.update((list) => {
-      const next = list.map((t) => (t.id === taskId ? updated : t));
-      this.save(TASKS_KEY, next);
-      return next;
-    });
-    this.touchProject(current.projectId);
-    return of(structuredClone(updated)).pipe(delay(150));
+    return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/status`, { status }).pipe(
+      map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
+      tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
-  updateTask(taskId: number, input: TaskInput): Observable<TaskItem> {
-    const current = this.tasksSignal().find((t) => t.id === taskId);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบงานย่อย'));
-    }
-    const updated: TaskItem = {
-      ...current,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      status: input.status,
-      priority: input.priority,
-      assigneeId: input.assigneeId,
-      dueDate: input.dueDate,
-      dependsOnTaskId: input.dependsOnTaskId,
-    };
-    this.tasksSignal.update((list) => {
-      const next = list.map((t) => (t.id === taskId ? updated : t));
-      this.save(TASKS_KEY, next);
-      return next;
-    });
-    this.touchProject(current.projectId);
-    return of(structuredClone(updated)).pipe(delay(200));
+  /** PATCH /tasks/{id}/order */
+  updateTaskOrder(taskId: number, sortOrder: number): Observable<TaskItem> {
+    return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/order`, { sortOrder }).pipe(
+      map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
+      tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
+
+  overdueTasks(): TaskItem[] {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.tasksSignal().filter(
+      (t) => t.isOverdue || (t.dueDate != null && t.dueDate < today && t.status !== 'DONE')
+    );
+  }
+
+  listOverdueTasks(params?: {
+    projectId?: number;
+    assignedUserId?: number;
+  }): Observable<TaskItem[]> {
+    return this.http
+      .get<ApiTask[] | { items: ApiTask[] }>(`${this.tasksBase}/overdue`, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => asList(body).map((t) => this.normalizeTask(t, t.projectId))),
+        tap((rows) => {
+          this.tasksSignal.update((all) => {
+            const byId = new Map(all.map((t) => [t.id, t]));
+            for (const row of rows) {
+              byId.set(row.id, row);
+            }
+            return Array.from(byId.values());
+          });
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /* ——— Deliveries: in-memory จนกว่า API พร้อม ——— */
 
   getDeliveries(projectId: number): Delivery[] {
     return this.deliveriesSignal()
@@ -368,13 +287,8 @@ export class ProjectService {
       note: input.note.trim(),
       attachmentName: input.attachmentName,
     };
-    this.deliveriesSignal.update((list) => {
-      const next = [delivery, ...list];
-      this.save(DELIVERIES_KEY, next);
-      return next;
-    });
-    this.touchProject(projectId);
-    return of(structuredClone(delivery)).pipe(delay(250));
+    this.deliveriesSignal.update((list) => [delivery, ...list]);
+    return of(structuredClone(delivery));
   }
 
   updateDeliveryAcceptance(id: number, acceptance: DeliveryAcceptance): Observable<Delivery> {
@@ -383,50 +297,58 @@ export class ProjectService {
       return throwError(() => new Error('ไม่พบการส่งมอบ'));
     }
     const updated = { ...current, acceptance };
-    this.deliveriesSignal.update((list) => {
-      const next = list.map((d) => (d.id === id ? updated : d));
-      this.save(DELIVERIES_KEY, next);
-      return next;
-    });
-    return of(structuredClone(updated)).pipe(delay(150));
+    this.deliveriesSignal.update((list) => list.map((d) => (d.id === id ? updated : d)));
+    return of(structuredClone(updated));
   }
 
-  overdueTasks(): TaskItem[] {
-    const today = new Date().toISOString().slice(0, 10);
-    return this.tasksSignal().filter(
-      (t) => t.dueDate && t.dueDate < today && t.status !== 'DONE'
-    );
+  private projectIdOf(taskId: number, row: ApiTask): number {
+    return row.projectId ?? this.tasksSignal().find((t) => t.id === taskId)?.projectId ?? 0;
   }
 
-  private touchProject(id: number): void {
-    this.projectsSignal.update((list) => {
-      const next = list.map((p) =>
-        p.id === id ? { ...p, updatedAt: new Date().toISOString() } : p
-      );
-      this.save(PROJECTS_KEY, next);
-      return next;
-    });
+  private normalizeProject(row: ApiProject): Project {
+    return { ...row, contractValue: toNumber(row.contractValue) };
   }
 
-  private load<T>(key: string, seed: T[]): T[] {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        return JSON.parse(raw) as T[];
+  private flattenTasks(nodes: ApiTask[], projectId: number): TaskItem[] {
+    const out: TaskItem[] = [];
+    const walk = (list: ApiTask[], parentId: number | null) => {
+      for (const node of list) {
+        out.push(this.normalizeTask({ ...node, parentTaskId: node.parentTaskId ?? parentId }, projectId));
+        if (node.subTasks?.length) {
+          walk(node.subTasks, node.id);
+        }
       }
-    } catch {
-      /* ignore */
+    };
+    walk(nodes, null);
+    return out;
+  }
+
+  private normalizeTask(row: ApiTask, projectId: number): TaskItem {
+    return {
+      id: row.id,
+      projectId: row.projectId ?? projectId,
+      parentTaskId: row.parentTaskId ?? null,
+      title: row.title,
+      description: row.description ?? null,
+      status: row.status,
+      priority: row.priority,
+      assignedUserId: row.assignedUserId ?? null,
+      assignedUser: row.assignedUser ?? null,
+      startDate: row.startDate ?? null,
+      dueDate: row.dueDate ?? null,
+      completedAt: row.completedAt ?? null,
+      estimatedHours: toNumber(row.estimatedHours),
+      actualHours: toNumber(row.actualHours),
+      sortOrder: row.sortOrder ?? 0,
+      isOverdue: row.isOverdue ?? false,
+    };
+  }
+
+  private computeProgress(tasks: TaskItem[]): number {
+    if (!tasks.length) {
+      return 0;
     }
-    const data = structuredClone(seed);
-    this.save(key, data);
-    return data;
-  }
-
-  private save<T>(key: string, data: T[]): void {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
+    const done = tasks.filter((t) => t.status === 'DONE').length;
+    return Math.round((done / tasks.length) * 100);
   }
 }

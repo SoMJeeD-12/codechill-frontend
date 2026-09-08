@@ -1,18 +1,21 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { debounceTime } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
+  AUDIT_ACTIONS,
   AUDIT_ACTION_LABELS,
-  AUDIT_ENTITY_LABELS,
+  AUDIT_TABLES,
   AuditAction,
-  AuditEntityType,
   AuditLog,
+  auditTableLabel,
 } from '../../core/models/audit.model';
 import { AuditService } from '../../core/services/audit.service';
 
@@ -28,6 +31,7 @@ import { AuditService } from '../../core/services/audit.service';
     MatTableModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatTooltipModule,
   ],
   templateUrl: './audit-logs-page.component.html',
   styleUrl: './audit-logs-page.component.scss',
@@ -37,56 +41,94 @@ export class AuditLogsPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly logs = signal<AuditLog[]>([]);
+  readonly loading = signal(false);
   readonly actionFilter = signal<AuditAction | 'ALL'>('ALL');
-  readonly entityFilter = signal<AuditEntityType | 'ALL'>('ALL');
+  readonly tableFilter = signal<string | 'ALL'>('ALL');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
-  readonly columns = ['createdAt', 'actor', 'action', 'entity', 'summary'];
+  readonly columns = ['createdAt', 'actor', 'action', 'table', 'record', 'ip'];
 
-  readonly actions = Object.keys(AUDIT_ACTION_LABELS) as AuditAction[];
-  readonly entities = Object.keys(AUDIT_ENTITY_LABELS) as AuditEntityType[];
+  readonly actions = AUDIT_ACTIONS;
+  readonly tables = AUDIT_TABLES;
   readonly actionLabels = AUDIT_ACTION_LABELS;
-  readonly entityLabels = AUDIT_ENTITY_LABELS;
-
-  readonly filtered = computed(() => {
-    const action = this.actionFilter();
-    const entity = this.entityFilter();
-    const q = this.search().trim().toLowerCase();
-    return this.logs().filter((row) => {
-      if (action !== 'ALL' && row.action !== action) {
-        return false;
-      }
-      if (entity !== 'ALL' && row.entityType !== entity) {
-        return false;
-      }
-      if (!q) {
-        return true;
-      }
-      const entityId = row.entityId != null ? String(row.entityId) : '';
-      return (
-        row.actorName.toLowerCase().includes(q) ||
-        row.summary.toLowerCase().includes(q) ||
-        this.actionLabel(row.action).toLowerCase().includes(q) ||
-        this.entityLabel(row.entityType).toLowerCase().includes(q) ||
-        entityId.includes(q)
-      );
-    });
-  });
 
   ngOnInit(): void {
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
+    this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
+      this.search.set(v);
+      this.reload();
+    });
     this.reload();
   }
 
   reload(): void {
-    this.api.list().subscribe((list) => this.logs.set(list));
+    const action = this.actionFilter();
+    const tableName = this.tableFilter();
+    this.loading.set(true);
+    this.api
+      .list({
+        search: this.search().trim() || undefined,
+        action: action === 'ALL' ? undefined : action,
+        tableName: tableName === 'ALL' ? undefined : tableName,
+      })
+      .subscribe({
+        next: (list) => {
+          this.logs.set(list);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
+  }
+
+  setActionFilter(action: AuditAction | 'ALL'): void {
+    this.actionFilter.set(action);
+    this.reload();
+  }
+
+  setTableFilter(tableName: string | 'ALL'): void {
+    this.tableFilter.set(tableName);
+    this.reload();
   }
 
   actionLabel(action: AuditAction): string {
-    return this.actionLabels[action];
+    return this.actionLabels[action] ?? action;
   }
 
-  entityLabel(entity: AuditEntityType): string {
-    return this.entityLabels[entity];
+  tableLabel(tableName: string): string {
+    return auditTableLabel(tableName);
   }
+
+  actorName(log: AuditLog): string {
+    return log.user?.fullName ?? (log.userId != null ? `#${log.userId}` : 'ระบบ');
+  }
+
+  changeSummary(log: AuditLog): string {
+    const fields = changedFields(log.oldValue, log.newValue);
+    if (!fields.length) {
+      return '—';
+    }
+    return fields.slice(0, 6).join(', ') + (fields.length > 6 ? ` +${fields.length - 6}` : '');
+  }
+}
+
+function changedFields(oldValue: unknown, newValue: unknown): string[] {
+  const before = asRecord(oldValue);
+  const after = asRecord(newValue);
+  if (!before && !after) {
+    return [];
+  }
+  if (!before) {
+    return Object.keys(after ?? {});
+  }
+  if (!after) {
+    return Object.keys(before);
+  }
+  return Object.keys({ ...before, ...after }).filter(
+    (key) => JSON.stringify(before[key]) !== JSON.stringify(after[key])
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }

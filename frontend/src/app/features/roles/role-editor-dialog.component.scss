@@ -9,27 +9,66 @@
 }
 
 .hint {
-  margin: 0.5rem 0;
+  margin: 0.75rem 0 0.5rem;
   color: #5b6762;
   font-size: 0.85rem;
 }
 
-.perm-table {
-  width: 100%;
-  border-collapse: collapse;
+.perm-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  color: #5b6762;
   font-size: 0.85rem;
+}
 
-  th,
-  td {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    padding: 0.35rem 0.4rem;
-    text-align: center;
-  }
+.perm-groups {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
 
-  th:first-child,
-  td:first-child {
-    text-align: left;
+.perm-group {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem 0.75rem;
+
+  header {
+    font-weight: 600;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.35rem;
   }
+}
+
+.perm-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.15rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.perm-code {
+  margin-left: 0.35rem;
+  color: #7b8783;
+  font-size: 0.75rem;
+}
+
+.perm-flag {
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.7rem;
+}
+
+.empty {
+  color: #5b6762;
+  font-size: 0.85rem;
 }
 
 .error {

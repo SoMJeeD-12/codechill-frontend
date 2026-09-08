@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">M10 · รายงาน</p>
       <h1>รายงานผู้บริหาร</h1>
-      <p class="subtitle">สรุปรายได้ การดำเนินงาน และความพึงพอใจจากข้อมูล mock ในระบบ</p>
+      <p class="subtitle">สรุปรายได้ การดำเนินงาน และความพึงพอใจจากข้อมูลในระบบ</p>
     </div>
     <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
       <mat-icon>refresh</mat-icon>
@@ -38,7 +38,7 @@
 
     <div class="sections">
       <mat-card>
-        <h2>รายได้ / มูลค่า (mock)</h2>
+        <h2>รายได้ / มูลค่า</h2>
         @for (row of r.revenue; track row.label) {
           <div class="metric">
             <div class="metric-top">

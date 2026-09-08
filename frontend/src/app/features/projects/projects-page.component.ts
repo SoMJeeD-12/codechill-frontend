@@ -19,12 +19,17 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
+  PRIORITY_LABELS,
+  PROJECT_PRIORITIES,
+  PROJECT_STATUSES,
   PROJECT_STATUS_LABELS,
   Project,
+  ProjectPriority,
   ProjectStatus,
 } from '../../core/models/project.model';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectInput, ProjectService } from '../../core/services/project.service';
+import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 
 @Component({
@@ -60,13 +65,24 @@ export class ProjectsPageComponent implements OnInit {
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = PROJECT_STATUS_LABELS;
-  readonly statuses = Object.keys(PROJECT_STATUS_LABELS) as ProjectStatus[];
-  readonly columns = ['code', 'name', 'customer', 'dueDate', 'progress', 'status', 'value', 'actions'];
+  readonly statuses = PROJECT_STATUSES;
+  readonly priorityLabels = PRIORITY_LABELS;
+  readonly columns = [
+    'code',
+    'name',
+    'customer',
+    'priority',
+    'targetEndDate',
+    'progress',
+    'status',
+    'value',
+    'actions',
+  ];
 
   readonly filtered = computed(() => {
     const status = this.statusFilter();
     const q = this.search().trim().toLowerCase();
-    let list = this.projects().filter((p) => {
+    const list = this.projects().filter((p) => {
       const matchStatus = status === 'ALL' || p.status === status;
       if (!matchStatus) {
         return false;
@@ -76,17 +92,17 @@ export class ProjectsPageComponent implements OnInit {
       }
       const customer = this.customerName(p.customerId).toLowerCase();
       return (
-        p.code.toLowerCase().includes(q) ||
+        (p.code ?? '').toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
         customer.includes(q) ||
-        p.description.toLowerCase().includes(q)
+        (p.description ?? '').toLowerCase().includes(q)
       );
     });
     const statusRank: Record<ProjectStatus, number> = {
       IN_PROGRESS: 0,
-      PLANNING: 1,
-      ON_HOLD: 2,
-      COMPLETED: 3,
+      DRAFT: 1,
+      DELIVERED: 2,
+      CLOSED: 3,
       CANCELLED: 4,
     };
     return [...list].sort((a, b) => {
@@ -94,11 +110,14 @@ export class ProjectsPageComponent implements OnInit {
       if (byStatus !== 0) {
         return byStatus;
       }
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      const aEnd = a.targetEndDate ? new Date(a.targetEndDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const bEnd = b.targetEndDate ? new Date(b.targetEndDate).getTime() : Number.MAX_SAFE_INTEGER;
+      return aEnd - bEnd;
     });
   });
 
   ngOnInit(): void {
+    this.customersApi.listCustomers().subscribe();
     this.reload();
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
   }
@@ -117,6 +136,10 @@ export class ProjectsPageComponent implements OnInit {
 
   statusLabel(status: ProjectStatus): string {
     return this.statusLabels[status];
+  }
+
+  priorityLabel(priority: ProjectPriority): string {
+    return this.priorityLabels[priority];
   }
 
   openCreate(): void {
@@ -161,42 +184,64 @@ export class ProjectFormDialogComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
+  private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<ProjectFormDialogComponent, boolean>);
   readonly data = inject<{ project: Project | null }>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
-  readonly statuses = Object.keys(PROJECT_STATUS_LABELS) as ProjectStatus[];
+  readonly users = this.usersApi.users;
+  readonly statuses = PROJECT_STATUSES;
   readonly statusLabels = PROJECT_STATUS_LABELS;
+  readonly priorities = PROJECT_PRIORITIES;
+  readonly priorityLabels = PRIORITY_LABELS;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.data.project;
 
   readonly form = this.fb.group({
     name: ['', Validators.required],
+    code: [''],
     customerId: [0, Validators.min(1)],
-    contractValue: [0, Validators.min(0)],
-    dueDate: [null as Date | null, Validators.required],
-    status: ['PLANNING' as ProjectStatus, Validators.required],
+    projectType: [''],
+    contractValue: [null as number | null, Validators.min(0)],
+    functionCount: [null as number | null, Validators.min(0)],
+    startDate: [null as Date | null],
+    targetEndDate: [null as Date | null],
+    status: ['DRAFT' as ProjectStatus, Validators.required],
+    priority: ['NORMAL' as ProjectPriority, Validators.required],
+    managerUserId: [null as number | null],
     description: [''],
   });
 
   constructor() {
+    this.usersApi.list().subscribe({ error: () => undefined });
+    this.customersApi.listCustomers().subscribe({
+      next: () => {
+        if (!this.data.project) {
+          const first = this.customers()[0];
+          if (first && !this.form.value.customerId) {
+            this.form.patchValue({ customerId: first.id });
+          }
+        }
+      },
+    });
     if (this.data.project) {
       const p = this.data.project;
       this.form.patchValue({
         name: p.name,
+        code: p.code ?? '',
         customerId: p.customerId,
+        projectType: p.projectType ?? '',
         contractValue: p.contractValue,
-        dueDate: parseDateOnly(p.dueDate),
+        functionCount: p.functionCount,
+        startDate: parseDateOnly(p.startDate),
+        targetEndDate: parseDateOnly(p.targetEndDate),
         status: p.status,
-        description: p.description,
+        priority: p.priority,
+        managerUserId: p.managerUserId,
+        description: p.description ?? '',
       });
-    } else {
-      const first = this.customers()[0];
-      if (first) {
-        this.form.patchValue({ customerId: first.id });
-      }
     }
   }
 
@@ -207,12 +252,18 @@ export class ProjectFormDialogComponent {
     }
     const raw = this.form.getRawValue();
     const payload: ProjectInput = {
-      name: raw.name ?? '',
+      name: (raw.name ?? '').trim(),
+      code: (raw.code ?? '').trim() || undefined,
       customerId: Number(raw.customerId),
-      contractValue: Number(raw.contractValue) || 0,
-      dueDate: toDateOnlyString(raw.dueDate),
+      projectType: (raw.projectType ?? '').trim() || undefined,
+      contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
+      functionCount: raw.functionCount ?? undefined,
+      startDate: toDateOnlyString(raw.startDate) || undefined,
+      targetEndDate: toDateOnlyString(raw.targetEndDate) || undefined,
       status: raw.status as ProjectStatus,
-      description: raw.description ?? '',
+      priority: raw.priority as ProjectPriority,
+      managerUserId: raw.managerUserId ?? undefined,
+      description: (raw.description ?? '').trim() || undefined,
     };
     this.saving.set(true);
     this.error.set(null);

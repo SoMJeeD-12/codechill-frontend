@@ -4,12 +4,13 @@
     <h1>รอการกำหนดสิทธิ์</h1>
     <p>
       สวัสดี {{ user()?.fullName }} บัญชีของคุณเข้าสู่ระบบได้แล้ว
-      แต่ยังไม่มีบทบาท จึงยังเข้าเมนูในระบบไม่ได้
+      แต่ยังไม่มีสิทธิ์ใช้งานเมนูในระบบ
     </p>
     <p class="hint">
-      ให้ Super Admin หรือ Admin ไปที่เมนู <strong>ผู้ใช้งาน</strong>
+      บัญชีระดับ USER ต้องให้ Super Admin หรือ Admin ไปที่เมนู <strong>ผู้ใช้งาน</strong>
       แล้วผูกบทบาทให้บัญชี <code>{{ user()?.username }}</code> จากนั้นกด “ตรวจสอบสิทธิ์อีกครั้ง”
       หรือออกจากระบบแล้วเข้าใหม่
+      (บัญชี SUPER_ADMIN / ADMIN ไม่ต้องผูกบทบาท — ใช้สิทธิ์จากระบบโดยตรง)
     </p>
     <div class="actions">
       <button mat-stroked-button type="button" (click)="refresh()">

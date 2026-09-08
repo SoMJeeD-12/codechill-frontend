@@ -1,78 +1,86 @@
-import { MenuCode, PermissionAction } from './permission.model';
+import { UserSummary } from './user.model';
 
-export type CustomerStatus = 'NEW' | 'ACTIVE' | 'INACTIVE' | 'CANCELLED';
+export type CustomerStatus = 'PROSPECT' | 'ACTIVE' | 'INACTIVE' | 'CHURNED';
 
-export type CommunicationChannel = 'LINE' | 'FACEBOOK' | 'PHONE' | 'EMAIL' | 'ONSITE' | 'OTHER';
+export type CommunicationChannel =
+  | 'LINE'
+  | 'PHONE'
+  | 'EMAIL'
+  | 'FACEBOOK'
+  | 'MEETING'
+  | 'OTHER';
 
-export interface Customer {
+/** ContactResponseDto */
+export interface Contact {
   id: number;
+  customerId: number;
   name: string;
-  taxId: string;
-  address: string;
-  businessType: string;
-  status: CustomerStatus;
-  lifetimeValue: number;
+  nickname: string | null;
+  position: string | null;
+  phone: string | null;
+  email: string | null;
+  lineId: string | null;
+  isPrimary: boolean;
+  note: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Contact {
+/** CustomerResponseDto */
+export interface Customer {
   id: number;
-  customerId: number;
-  fullName: string;
-  position: string;
-  phone: string;
-  email: string;
-  isPrimary: boolean;
+  code: string | null;
+  name: string;
+  taxId: string | null;
+  businessType: string | null;
+  address: string | null;
+  province: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  lineOfficialId: string | null;
+  facebookUrl: string | null;
+  status: CustomerStatus;
+  source: string | null;
+  ownerUserId: number | null;
+  owner: UserSummary | null;
+  lastContactedAt: string | null;
+  daysSinceLastContact: number | null;
+  note: string | null;
+  contacts: Contact[];
+  createdAt: string;
+  updatedAt: string;
 }
 
+/** CommunicationLogResponseDto */
 export interface CommunicationLog {
   id: number;
   customerId: number;
+  contactId: number | null;
   channel: CommunicationChannel;
-  summary: string;
-  contactedAt: string;
-  createdByName: string;
-  /** mock: ชื่อไฟล์หลักฐาน */
-  attachmentName: string | null;
+  occurredAt: string;
+  subject: string | null;
+  content: string | null;
+  handledByUserId: number | null;
+  handledBy: UserSummary | null;
+  contactName: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
-  NEW: 'ลูกค้าใหม่',
+  PROSPECT: 'ผู้มุ่งหวัง',
   ACTIVE: 'ปัจจุบัน',
   INACTIVE: 'ไม่ได้ใช้บริการแล้ว',
-  CANCELLED: 'ยกเลิก',
+  CHURNED: 'ยกเลิก',
 };
 
 export const CHANNEL_LABELS: Record<CommunicationChannel, string> = {
   LINE: 'LINE',
-  FACEBOOK: 'Facebook',
   PHONE: 'โทรศัพท์',
   EMAIL: 'อีเมล',
-  ONSITE: 'พบหน้า',
+  FACEBOOK: 'Facebook',
+  MEETING: 'พบหน้า',
   OTHER: 'อื่นๆ',
 };
-
-export const PERMISSION_ACTIONS: { code: PermissionAction; label: string }[] = [
-  { code: 'view', label: 'ดู' },
-  { code: 'create', label: 'เพิ่ม' },
-  { code: 'edit', label: 'แก้ไข' },
-  { code: 'delete', label: 'ลบ' },
-];
-
-export const ROLE_EDITABLE_MENUS: { code: MenuCode; label: string }[] = [
-  { code: 'dashboard', label: 'ภาพรวม' },
-  { code: 'customers', label: 'ลูกค้า' },
-  { code: 'projects', label: 'โครงการ' },
-  { code: 'tickets', label: 'ปัญหา / ซัพพอร์ต' },
-  { code: 'warranties', label: 'การรับประกัน' },
-  { code: 'ma', label: 'สัญญาบำรุงรักษา' },
-  { code: 'follow-ups', label: 'ติดตามลูกค้า' },
-  { code: 'surveys', label: 'แบบประเมิน' },
-  { code: 'documents', label: 'เอกสาร' },
-  { code: 'reports', label: 'รายงาน' },
-  { code: 'notifications', label: 'การแจ้งเตือน' },
-  { code: 'users', label: 'ผู้ใช้งาน' },
-  { code: 'roles', label: 'บทบาทและสิทธิ์' },
-  { code: 'audit-logs', label: 'บันทึกการใช้งาน' },
-];

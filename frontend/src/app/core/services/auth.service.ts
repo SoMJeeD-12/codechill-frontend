@@ -1,119 +1,188 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, delay, of, throwError } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { ALL_PERMISSIONS, MENU_ITEMS } from '../mock/mock-data';
-import { MenuCode, Permission, PermissionAction } from '../models/permission.model';
-import { AuthSession, User } from '../models/user.model';
-import { RoleService } from './role.service';
-import { UserService } from './user.service';
-import { AuditService } from './audit.service';
+import { Observable, catchError, finalize, shareReplay, throwError } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { permissionCode, MENU_PERMISSION_MODULE } from '../auth/permission-codes';
+import { apiErrorMessage } from '../http/api-error';
+import { MENU_ITEMS } from '../nav/menu-items';
+import { MenuCode, PermissionAction } from '../models/permission.model';
+import {
+  AuthProfile,
+  AuthSession,
+  User,
+  mapAuthProfileToUser,
+} from '../models/user.model';
 
-const STORAGE_KEY = 'cpams_mock_session';
+const STORAGE_KEY = 'cpams_auth_session';
+
+interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface LoginResponse extends AuthTokens {
+  tokenType?: string;
+  user: AuthProfile;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
-  private readonly users = inject(UserService);
-  private readonly roles = inject(RoleService);
-  private readonly audit = inject(AuditService);
+  private readonly base = `${environment.apiBaseUrl}/auth`;
 
   private readonly sessionSignal = signal<AuthSession | null>(null);
+  private refreshInFlight$: Observable<AuthTokens> | null = null;
 
   readonly session = this.sessionSignal.asReadonly();
   readonly currentUser = computed(() => this.sessionSignal()?.user ?? null);
-  readonly isAuthenticated = computed(() => !!this.sessionSignal());
+  readonly isAuthenticated = computed(() => !!this.sessionSignal()?.accessToken);
   readonly isSuperAdmin = computed(() => this.currentUser()?.accountType === 'SUPER_ADMIN');
   readonly isAdminLevel = computed(() => {
     const type = this.currentUser()?.accountType;
     return type === 'SUPER_ADMIN' || type === 'ADMIN';
   });
 
+  get accessToken(): string | null {
+    return this.sessionSignal()?.accessToken ?? null;
+  }
+
+  get refreshToken(): string | null {
+    return this.sessionSignal()?.refreshToken ?? null;
+  }
+
   constructor() {
-    this.rehydrate();
+    this.restoreFromStorage();
   }
 
   login(username: string, password: string): Observable<AuthSession> {
-    const user = this.users.findByUsername(username);
-
-    if (!user || !this.users.verifyPassword(user.id, password)) {
-      return throwError(() => new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')).pipe(delay(400));
-    }
-
-    if (user.status !== 'ACTIVE') {
-      return throwError(() => new Error('บัญชีนี้ไม่สามารถเข้าสู่ระบบได้ (พักงานหรือสิ้นสุดการปฏิบัติงาน)')).pipe(
-        delay(400)
-      );
-    }
-
-    this.users.touchLogin(user.id);
-    const fresh = this.users.getById(user.id)!;
-    const session = this.buildSession(fresh);
-
-    return of(session).pipe(
-      delay(450),
-      tap((s) => {
-        this.persist(s);
-        this.sessionSignal.set(s);
-        this.audit.log({
-          actorUserId: s.user.id,
-          actorName: s.user.fullName,
-          action: 'LOGIN',
-          entityType: 'system',
-          entityId: null,
-          summary: `เข้าสู่ระบบ: ${s.user.username}`,
-        });
-      })
+    return this.http.post<LoginResponse>(`${this.base}/login`, { username, password }).pipe(
+      map((res) => this.toSession(res)),
+      tap((session) => this.setSession(session)),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err, 'เข้าสู่ระบบไม่สำเร็จ'))))
     );
   }
 
+  /** ต่ออายุ access + refresh (หมุนใบใหม่ทับเสมอ) */
+  refresh(): Observable<AuthTokens> {
+    if (this.refreshInFlight$) {
+      return this.refreshInFlight$;
+    }
+    const refreshToken = this.refreshToken;
+    if (!refreshToken) {
+      this.clearSession();
+      return throwError(() => new Error('ไม่มี refresh token'));
+    }
+
+    this.refreshInFlight$ = this.http
+      .post<AuthTokens>(`${this.base}/refresh`, { refreshToken })
+      .pipe(
+        tap((tokens) => {
+          const current = this.sessionSignal();
+          if (!current) {
+            return;
+          }
+          this.setSession({
+            ...current,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+          });
+        }),
+        catchError((err) => {
+          this.clearSession();
+          void this.router.navigateByUrl('/login');
+          return throwError(() => err);
+        }),
+        finalize(() => {
+          this.refreshInFlight$ = null;
+        }),
+        shareReplay(1)
+      );
+
+    return this.refreshInFlight$;
+  }
+
   logout(): void {
-    localStorage.removeItem(STORAGE_KEY);
-    this.sessionSignal.set(null);
-    void this.router.navigateByUrl('/login');
+    const refreshToken = this.refreshToken;
+    const clearAndGo = () => {
+      this.clearSession();
+      void this.router.navigateByUrl('/login');
+    };
+
+    if (!refreshToken) {
+      clearAndGo();
+      return;
+    }
+
+    this.http.post<void>(`${this.base}/logout`, { refreshToken }).subscribe({
+      next: () => clearAndGo(),
+      error: () => clearAndGo(),
+    });
   }
 
-  /** เรียกหลังแก้บทบาท/ผูกบทบาท เพื่ออัปเดตเมนูของ session ปัจจุบัน */
+  /** ดึงโปรไฟล์ + permissions ล่าสุดจากเซิร์ฟเวอร์ */
   refreshSession(): void {
-    const current = this.sessionSignal();
-    if (!current) {
+    if (!this.accessToken) {
       return;
     }
-    const user = this.users.getById(current.user.id);
-    if (!user || user.status !== 'ACTIVE') {
-      this.logout();
-      return;
-    }
-    const session = this.buildSession(user);
-    this.persist(session);
-    this.sessionSignal.set(session);
+    this.http.get<AuthProfile>(`${this.base}/me`).subscribe({
+      next: (profile) => {
+        const current = this.sessionSignal();
+        if (!current) {
+          return;
+        }
+        this.setSession({
+          ...current,
+          user: mapAuthProfileToUser(profile),
+          permissions: profile.permissions ?? [],
+        });
+      },
+      error: () => {
+        /* คง session เดิม — ถ้า 401 interceptor จะ refresh / logout */
+      },
+    });
   }
 
-  hasPermission(menuCode: MenuCode, action: PermissionAction = 'view'): boolean {
+  /** เช็คสิทธิ์แบบ API เช่น customer.view */
+  hasPermission(menuCode: MenuCode, action: PermissionAction | string = 'view'): boolean {
     const session = this.sessionSignal();
     if (!session) {
       return false;
     }
-    // สร้าง/แก้บทบาทสงวน Super Admin แม้ Admin จะมีสิทธิ์เมนู roles
     if (menuCode === 'roles' && action !== 'view' && session.user.accountType !== 'SUPER_ADMIN') {
       return false;
     }
-    const perm = session.permissions.find((p) => p.menuCode === menuCode);
-    return !!perm?.actions.includes(action);
+    const code = permissionCode(menuCode, action);
+    if (session.permissions.includes(code)) {
+      return true;
+    }
+    // บางโมดูลใช้ action พิเศษ (เช่น role.manage) — ถือว่ามีสิทธิ์ดูเมนูได้ถ้ามี permission ของโมดูลนั้น
+    if (action === 'view') {
+      const prefix = `${MENU_PERMISSION_MODULE[menuCode]}.`;
+      return session.permissions.some((p) => p.startsWith(prefix));
+    }
+    return false;
   }
 
   getVisibleMenuCodes(): MenuCode[] {
-    return (this.sessionSignal()?.permissions ?? [])
-      .filter((p) => p.actions.includes('view'))
-      .map((p) => p.menuCode);
+    const perms = this.sessionSignal()?.permissions ?? [];
+    if (!perms.length) {
+      return [];
+    }
+    return MENU_ITEMS.filter((item) => this.hasPermission(item.code, 'view')).map((item) => item.code);
   }
 
+  /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — ต้องดู permissions เท่านั้น */
   hasAnyMenuAccess(): boolean {
-    return this.getVisibleMenuCodes().length > 0;
+    return (this.sessionSignal()?.permissions.length ?? 0) > 0;
   }
 
-  /** หน้าแรกหลังล็อกอิน / เมื่อไม่มีสิทธิ์หน้าที่ขอ */
   defaultAppPath(): string {
+    if (!this.hasAnyMenuAccess()) {
+      return '/app/no-access';
+    }
     const codes = this.getVisibleMenuCodes();
     if (codes.includes('dashboard')) {
       return '/app/dashboard';
@@ -122,59 +191,45 @@ export class AuthService {
     return first?.route ?? '/app/no-access';
   }
 
-  private buildSession(user: User): AuthSession {
+  private toSession(res: LoginResponse): AuthSession {
+    const profile = res.user;
     return {
-      token: `mock-jwt-${user.id}-${Date.now()}`,
-      user: { ...user },
-      permissions: this.resolvePermissions(user),
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
+      user: mapAuthProfileToUser(profile),
+      permissions: profile.permissions ?? [],
     };
   }
 
-  private resolvePermissions(user: User): Permission[] {
-    if (user.accountType === 'SUPER_ADMIN' || user.accountType === 'ADMIN') {
-      return structuredClone(ALL_PERMISSIONS);
-    }
-
-    const merged = new Map<MenuCode, Set<PermissionAction>>();
-    for (const roleId of user.roleIds) {
-      const role = this.roles.getById(roleId);
-      if (!role) {
-        continue;
-      }
-      for (const perm of role.permissions) {
-        const set = merged.get(perm.menuCode) ?? new Set<PermissionAction>();
-        perm.actions.forEach((a: PermissionAction) => set.add(a));
-        merged.set(perm.menuCode, set);
-      }
-    }
-
-    return Array.from(merged.entries()).map(([menuCode, actions]) => ({
-      menuCode,
-      actions: Array.from(actions),
-    }));
+  private setSession(session: AuthSession): void {
+    this.sessionSignal.set(session);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }
 
-  private rehydrate(): void {
+  private clearSession(): void {
+    this.sessionSignal.set(null);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  private restoreFromStorage(): void {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
         return;
       }
       const stored = JSON.parse(raw) as AuthSession;
-      const user = this.users.getById(stored.user.id);
-      if (!user || user.status !== 'ACTIVE') {
+      if (!stored?.accessToken || !stored?.refreshToken || !stored?.user) {
         localStorage.removeItem(STORAGE_KEY);
         return;
       }
-      const session = this.buildSession(user);
-      this.persist(session);
-      this.sessionSignal.set(session);
+      // session เก่าที่เก็บ permissions เป็น object[] ให้ทิ้ง แล้วล็อกอินใหม่
+      if (!Array.isArray(stored.permissions) || stored.permissions.some((p) => typeof p !== 'string')) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      this.sessionSignal.set(stored);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
     }
-  }
-
-  private persist(session: AuthSession): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }
 }

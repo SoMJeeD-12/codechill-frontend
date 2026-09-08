@@ -11,7 +11,13 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Role } from '../../core/models/permission.model';
-import { AccountType, User, UserStatus } from '../../core/models/user.model';
+import {
+  ACCOUNT_TYPE_LABELS,
+  AccountType,
+  USER_STATUS_LABELS,
+  User,
+  UserStatus,
+} from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
@@ -74,7 +80,7 @@ export class UsersPageComponent implements OnInit {
       return (
         u.fullName.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
+        (u.email ?? '').toLowerCase().includes(q) ||
         this.accountLabel(u.accountType).toLowerCase().includes(q) ||
         this.roleNames(u).toLowerCase().includes(q) ||
         this.statusLabel(u.status).toLowerCase().includes(q)
@@ -96,34 +102,18 @@ export class UsersPageComponent implements OnInit {
     if (user.accountType !== 'USER') {
       return '— (ใช้สิทธิ์ระดับบัญชี)';
     }
-    if (!user.roleIds.length) {
+    if (!user.roles?.length) {
       return 'ยังไม่มีบทบาท';
     }
-    return user.roleIds
-      .map((id) => this.roles().find((r) => r.id === id)?.name ?? `#${id}`)
-      .join(', ');
+    return user.roles.map((r) => r.name).join(', ');
   }
 
   accountLabel(type: AccountType): string {
-    switch (type) {
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      case 'ADMIN':
-        return 'Admin';
-      default:
-        return 'User';
-    }
+    return ACCOUNT_TYPE_LABELS[type];
   }
 
   statusLabel(status: UserStatus): string {
-    switch (status) {
-      case 'ACTIVE':
-        return 'ปฏิบัติงาน';
-      case 'SUSPENDED':
-        return 'พักงาน';
-      case 'RESIGNED':
-        return 'สิ้นสุดการปฏิบัติงาน';
-    }
+    return USER_STATUS_LABELS[status];
   }
 
   openCreate(): void {

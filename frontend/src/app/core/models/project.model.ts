@@ -1,38 +1,78 @@
-export type ProjectStatus = 'PLANNING' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+import { UserSummary } from './user.model';
 
-export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
+export type ProjectStatus =
+  | 'DRAFT'
+  | 'IN_PROGRESS'
+  | 'DELIVERED'
+  | 'CLOSED'
+  | 'CANCELLED';
 
-export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ProjectPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export type TaskStatus = 'TODO' | 'DOING' | 'WAITING' | 'REVIEW' | 'DONE';
+
+export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
 export type DeliveryAcceptance = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
+export interface CustomerSummary {
+  id: number;
+  name: string;
+}
+
+/** ProjectProgressDto */
+export interface ProjectProgress {
+  totalTasks: number;
+  doneTasks: number;
+  percent: number;
+  overdueTasks: number;
+  byStatus: Partial<Record<TaskStatus, number>>;
+}
+
+/** ProjectResponseDto */
 export interface Project {
   id: number;
-  code: string;
-  name: string;
   customerId: number;
-  contractValue: number;
-  dueDate: string;
+  customer: CustomerSummary | null;
+  code: string | null;
+  name: string;
+  description: string | null;
+  projectType: string | null;
   status: ProjectStatus;
-  description: string;
+  priority: ProjectPriority;
+  startDate: string | null;
+  targetEndDate: string | null;
+  actualEndDate: string | null;
+  contractValue: number | null;
+  functionCount: number | null;
+  managerUserId: number | null;
+  manager: UserSummary | null;
+  progress: ProjectProgress | null;
   createdAt: string;
   updatedAt: string;
 }
 
+/** TaskResponseDto (subTasks ถูก flatten เก็บใน store) */
 export interface TaskItem {
   id: number;
   projectId: number;
+  parentTaskId: number | null;
   title: string;
-  description: string;
+  description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  assigneeId: number | null;
+  assignedUserId: number | null;
+  assignedUser: UserSummary | null;
+  startDate: string | null;
   dueDate: string | null;
+  completedAt: string | null;
+  estimatedHours: number | null;
+  actualHours: number | null;
   sortOrder: number;
-  /** งานที่ต้องเสร็จก่อน (optional) */
-  dependsOnTaskId: number | null;
+  isOverdue: boolean;
 }
 
+/** ยังไม่มี API — เก็บใน memory เท่านั้น */
 export interface Delivery {
   id: number;
   projectId: number;
@@ -46,28 +86,46 @@ export interface Delivery {
 }
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  PLANNING: 'วางแผน',
+  DRAFT: 'ร่าง',
   IN_PROGRESS: 'กำลังดำเนินการ',
-  ON_HOLD: 'พักไว้',
-  COMPLETED: 'เสร็จสิ้น',
+  DELIVERED: 'ส่งมอบแล้ว',
+  CLOSED: 'ปิดโครงการ',
   CANCELLED: 'ยกเลิก',
 };
 
+export const PROJECT_STATUSES: ProjectStatus[] = [
+  'DRAFT',
+  'IN_PROGRESS',
+  'DELIVERED',
+  'CLOSED',
+  'CANCELLED',
+];
+
+/** สถานะที่ถือว่าโครงการยังเปิดอยู่ */
+export const OPEN_PROJECT_STATUSES: ProjectStatus[] = ['DRAFT', 'IN_PROGRESS'];
+
+export const PRIORITY_LABELS: Record<ProjectPriority, string> = {
+  LOW: 'ต่ำ',
+  NORMAL: 'ปานกลาง',
+  HIGH: 'สูง',
+  URGENT: 'ด่วนมาก',
+};
+
+export const PROJECT_PRIORITIES: ProjectPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   TODO: 'รอดำเนินการ',
-  IN_PROGRESS: 'กำลังทำ',
+  DOING: 'กำลังทำ',
+  WAITING: 'รอข้อมูล',
   REVIEW: 'รอตรวจ',
   DONE: 'เสร็จ',
 };
 
-export const TASK_STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'];
+export const TASK_STATUSES: TaskStatus[] = ['TODO', 'DOING', 'WAITING', 'REVIEW', 'DONE'];
 
-export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  LOW: 'ต่ำ',
-  MEDIUM: 'ปานกลาง',
-  HIGH: 'สูง',
-  URGENT: 'ด่วนมาก',
-};
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = PRIORITY_LABELS;
+
+export const TASK_PRIORITIES: TaskPriority[] = PROJECT_PRIORITIES;
 
 export const DELIVERY_ACCEPTANCE_LABELS: Record<DeliveryAcceptance, string> = {
   PENDING: 'รอตรวจรับ',

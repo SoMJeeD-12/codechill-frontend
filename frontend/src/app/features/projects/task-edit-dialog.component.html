@@ -29,18 +29,30 @@
     </div>
     <mat-form-field appearance="outline" class="full">
       <mat-label>ผู้รับผิดชอบ</mat-label>
-      <mat-select formControlName="assigneeId">
+      <mat-select formControlName="assignedUserId">
         <mat-option [value]="null">—</mat-option>
         @for (u of users(); track u.id) {
           <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>วันเริ่มงาน</mat-label>
+        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>วันครบกำหนด</mat-label>
+        <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+        <mat-datepicker #duePicker></mat-datepicker>
+      </mat-form-field>
+    </div>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>วันครบกำหนด</mat-label>
-      <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
-      <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
-      <mat-datepicker #duePicker></mat-datepicker>
+      <mat-label>ชั่วโมงที่ประเมิน</mat-label>
+      <input matInput type="number" formControlName="estimatedHours" />
     </mat-form-field>
   </form>
   @if (error()) {

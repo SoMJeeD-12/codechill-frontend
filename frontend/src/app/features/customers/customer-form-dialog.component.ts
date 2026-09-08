@@ -16,6 +16,7 @@ import {
   CustomerStatus,
 } from '../../core/models/customer.model';
 import { CustomerInput, CustomerService } from '../../core/services/customer.service';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-customer-form-dialog',
@@ -35,34 +36,58 @@ import { CustomerInput, CustomerService } from '../../core/services/customer.ser
 export class CustomerFormDialogComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(CustomerService);
+  private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<CustomerFormDialogComponent, boolean>);
   readonly data = inject<{ customer: Customer | null }>(MAT_DIALOG_DATA);
 
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
+  readonly users = this.usersApi.users;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.data.customer;
 
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
+    code: [''],
     taxId: [''],
-    address: [''],
     businessType: [''],
-    status: ['NEW' as CustomerStatus, Validators.required],
-    lifetimeValue: [0, Validators.min(0)],
+    address: [''],
+    province: [''],
+    postalCode: [''],
+    phone: [''],
+    email: ['', Validators.email],
+    website: [''],
+    lineOfficialId: [''],
+    facebookUrl: [''],
+    status: ['PROSPECT' as CustomerStatus, Validators.required],
+    source: [''],
+    ownerUserId: [null as number | null],
+    note: [''],
   });
 
   constructor() {
-    if (this.data.customer) {
+    this.usersApi.list().subscribe({ error: () => undefined });
+    const c = this.data.customer;
+    if (c) {
       this.form.patchValue({
-        name: this.data.customer.name,
-        taxId: this.data.customer.taxId,
-        address: this.data.customer.address,
-        businessType: this.data.customer.businessType,
-        status: this.data.customer.status,
-        lifetimeValue: this.data.customer.lifetimeValue,
+        name: c.name,
+        code: c.code ?? '',
+        taxId: c.taxId ?? '',
+        businessType: c.businessType ?? '',
+        address: c.address ?? '',
+        province: c.province ?? '',
+        postalCode: c.postalCode ?? '',
+        phone: c.phone ?? '',
+        email: c.email ?? '',
+        website: c.website ?? '',
+        lineOfficialId: c.lineOfficialId ?? '',
+        facebookUrl: c.facebookUrl ?? '',
+        status: c.status,
+        source: c.source ?? '',
+        ownerUserId: c.ownerUserId ?? null,
+        note: c.note ?? '',
       });
     }
   }
@@ -74,12 +99,22 @@ export class CustomerFormDialogComponent {
     }
     const raw = this.form.getRawValue();
     const payload: CustomerInput = {
-      name: raw.name,
-      taxId: raw.taxId,
-      address: raw.address,
-      businessType: raw.businessType,
+      name: raw.name.trim(),
+      code: trimmed(raw.code),
+      taxId: trimmed(raw.taxId),
+      businessType: trimmed(raw.businessType),
+      address: trimmed(raw.address),
+      province: trimmed(raw.province),
+      postalCode: trimmed(raw.postalCode),
+      phone: trimmed(raw.phone),
+      email: trimmed(raw.email),
+      website: trimmed(raw.website),
+      lineOfficialId: trimmed(raw.lineOfficialId),
+      facebookUrl: trimmed(raw.facebookUrl),
       status: raw.status,
-      lifetimeValue: Number(raw.lifetimeValue) || 0,
+      source: trimmed(raw.source),
+      ownerUserId: raw.ownerUserId ?? undefined,
+      note: trimmed(raw.note),
     };
     this.saving.set(true);
     this.error.set(null);
@@ -98,4 +133,9 @@ export class CustomerFormDialogComponent {
       },
     });
   }
+}
+
+function trimmed(value: string): string | undefined {
+  const v = value.trim();
+  return v === '' ? undefined : v;
 }

@@ -15,7 +15,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ชื่อ / เลขผู้เสียภาษี / ประเภทธุรกิจ"
+            placeholder="ชื่อ / รหัส / เลขผู้เสียภาษี / ประเภทธุรกิจ / จังหวัด"
             aria-label="ค้นหาลูกค้า"
           />
         </label>
@@ -54,6 +54,10 @@
             <a [routerLink]="['/app/customers', row.id]">{{ row.name }}</a>
           </td>
         </ng-container>
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>รหัส</th>
+          <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
+        </ng-container>
         <ng-container matColumnDef="taxId">
           <th mat-header-cell *matHeaderCellDef>เลขผู้เสียภาษี</th>
           <td mat-cell *matCellDef="let row">{{ row.taxId || '—' }}</td>
@@ -62,13 +66,17 @@
           <th mat-header-cell *matHeaderCellDef>ประเภทธุรกิจ</th>
           <td mat-cell *matCellDef="let row">{{ row.businessType || '—' }}</td>
         </ng-container>
+        <ng-container matColumnDef="province">
+          <th mat-header-cell *matHeaderCellDef>จังหวัด</th>
+          <td mat-cell *matCellDef="let row">{{ row.province || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="owner">
+          <th mat-header-cell *matHeaderCellDef>ผู้ดูแล</th>
+          <td mat-cell *matCellDef="let row">{{ row.owner?.fullName || '—' }}</td>
+        </ng-container>
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>สถานะ</th>
           <td mat-cell *matCellDef="let row">{{ statusLabel(row.status) }}</td>
-        </ng-container>
-        <ng-container matColumnDef="lifetimeValue">
-          <th mat-header-cell *matHeaderCellDef>มูลค่ารวม</th>
-          <td mat-cell *matCellDef="let row">{{ row.lifetimeValue | currency: 'THB':'symbol':'1.0-0' }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>

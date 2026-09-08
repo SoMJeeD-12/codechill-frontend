@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -9,13 +9,33 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import {
-  PERMISSION_ACTIONS,
-  ROLE_EDITABLE_MENUS,
-} from '../../core/models/customer.model';
-import { Permission, PermissionAction, Role } from '../../core/models/permission.model';
+import { PermissionGroup, PermissionItem, Role } from '../../core/models/permission.model';
 import { RoleService } from '../../core/services/role.service';
+
+/** ชื่อโมดูลภาษาไทย — โมดูลที่ไม่รู้จักจะแสดงรหัสตามที่ API ส่งมา */
+const MODULE_LABELS: Record<string, string> = {
+  dashboard: 'ภาพรวม',
+  user: 'ผู้ใช้งาน',
+  role: 'บทบาทและสิทธิ์',
+  permission: 'สิทธิ์',
+  customer: 'ลูกค้า',
+  contact: 'ผู้ติดต่อ',
+  communication_log: 'ประวัติการติดต่อ',
+  project: 'โครงการ',
+  task: 'งานย่อย',
+  ticket: 'ปัญหา / ซัพพอร์ต',
+  warranty: 'การรับประกัน',
+  ma: 'สัญญาบำรุงรักษา',
+  follow_up: 'ติดตามลูกค้า',
+  survey: 'แบบประเมิน',
+  document: 'เอกสาร',
+  report: 'รายงาน',
+  notification: 'การแจ้งเตือน',
+  audit_log: 'บันทึกการใช้งาน',
+};
 
 @Component({
   selector: 'app-role-editor-dialog',
@@ -27,6 +47,8 @@ import { RoleService } from '../../core/services/role.service';
     MatInputModule,
     MatButtonModule,
     MatCheckboxModule,
+    MatSlideToggleModule,
+    MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
   templateUrl: './role-editor-dialog.component.html',
@@ -39,52 +61,83 @@ export class RoleEditorDialogComponent {
   private readonly ref = inject(MatDialogRef<RoleEditorDialogComponent, boolean>);
   readonly data = inject<{ role: Role | null }>(MAT_DIALOG_DATA);
 
-  readonly menus = ROLE_EDITABLE_MENUS;
-  readonly actions = PERMISSION_ACTIONS;
+  readonly groups = signal<PermissionGroup[]>([]);
+  readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
-  private matrix = new Map<string, Set<PermissionAction>>();
+  private readonly selected = signal<ReadonlySet<number>>(new Set<number>());
+  readonly selectedCount = computed(() => this.selected().size);
 
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
     description: [''],
+    isActive: [true],
   });
 
   constructor() {
-    if (this.data.role) {
+    const role = this.data.role;
+    if (role) {
       this.form.patchValue({
-        name: this.data.role.name,
-        description: this.data.role.description,
+        name: role.name,
+        description: role.description ?? '',
+        isActive: role.isActive,
       });
-      for (const p of this.data.role.permissions) {
-        this.matrix.set(p.menuCode, new Set(p.actions));
-      }
+      this.selected.set(new Set(role.permissions.map((p) => p.id)));
     }
+    this.rolesApi.listPermissions().subscribe({
+      next: (groups) => {
+        this.groups.set(groups);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.error.set(err.message);
+        this.loading.set(false);
+      },
+    });
   }
 
-  has(menu: string, action: PermissionAction): boolean {
-    return this.matrix.get(menu)?.has(action) ?? false;
+  moduleLabel(module: string): string {
+    return MODULE_LABELS[module] ?? module;
   }
 
-  toggle(menu: string, action: PermissionAction, checked: boolean): void {
-    const set = this.matrix.get(menu) ?? new Set<PermissionAction>();
+  permissionLabel(permission: PermissionItem): string {
+    return permission.description || permission.code;
+  }
+
+  isChecked(permissionId: number): boolean {
+    return this.selected().has(permissionId);
+  }
+
+  toggle(permissionId: number, checked: boolean): void {
+    const next = new Set(this.selected());
     if (checked) {
-      set.add(action);
-      if (action !== 'view') {
-        set.add('view');
-      }
+      next.add(permissionId);
     } else {
-      set.delete(action);
-      if (action === 'view') {
-        set.clear();
+      next.delete(permissionId);
+    }
+    this.selected.set(next);
+  }
+
+  isGroupChecked(group: PermissionGroup): boolean {
+    return group.permissions.length > 0 && group.permissions.every((p) => this.isChecked(p.id));
+  }
+
+  isGroupPartial(group: PermissionGroup): boolean {
+    const some = group.permissions.some((p) => this.isChecked(p.id));
+    return some && !this.isGroupChecked(group);
+  }
+
+  toggleGroup(group: PermissionGroup, checked: boolean): void {
+    const next = new Set(this.selected());
+    for (const p of group.permissions) {
+      if (checked) {
+        next.add(p.id);
+      } else {
+        next.delete(p.id);
       }
     }
-    if (set.size === 0) {
-      this.matrix.delete(menu);
-    } else {
-      this.matrix.set(menu, set);
-    }
+    this.selected.set(next);
   }
 
   save(): void {
@@ -92,16 +145,13 @@ export class RoleEditorDialogComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const permissions: Permission[] = Array.from(this.matrix.entries()).map(
-      ([menuCode, actions]) => ({
-        menuCode: menuCode as Permission['menuCode'],
-        actions: Array.from(actions),
-      })
-    );
+    const raw = this.form.getRawValue();
+    const permissionIds = Array.from(this.selected());
     const payload = {
-      name: this.form.getRawValue().name,
-      description: this.form.getRawValue().description,
-      permissions,
+      name: raw.name.trim(),
+      description: raw.description.trim() || undefined,
+      isActive: raw.isActive,
+      permissionIds,
     };
 
     this.saving.set(true);

@@ -20,6 +20,7 @@ import {
   DeliveryAcceptance,
   PROJECT_STATUS_LABELS,
   Project,
+  TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
   TASK_STATUSES,
   TASK_STATUS_LABELS,
@@ -80,7 +81,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskStatusLabels = TASK_STATUS_LABELS;
   readonly taskStatuses = TASK_STATUSES;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
-  readonly priorities = Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[];
+  readonly priorities = TASK_PRIORITIES;
   readonly acceptanceLabels = DELIVERY_ACCEPTANCE_LABELS;
   readonly acceptances = Object.keys(DELIVERY_ACCEPTANCE_LABELS) as DeliveryAcceptance[];
   readonly users = this.usersApi.users;
@@ -97,10 +98,10 @@ export class ProjectDetailPageComponent implements OnInit {
       if (!q) {
         return true;
       }
-      const assignee = this.userName(t.assigneeId).toLowerCase();
+      const assignee = this.userName(t.assignedUserId).toLowerCase();
       return (
         t.title.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
+        (t.description ?? '').toLowerCase().includes(q) ||
         assignee.includes(q) ||
         (t.dueDate ?? '').toLowerCase().includes(q) ||
         this.taskStatusLabels[t.status].toLowerCase().includes(q) ||
@@ -110,7 +111,7 @@ export class ProjectDetailPageComponent implements OnInit {
     const priorityRank: Record<TaskPriority, number> = {
       URGENT: 0,
       HIGH: 1,
-      MEDIUM: 2,
+      NORMAL: 2,
       LOW: 3,
     };
     return [...list].sort((a, b) => {
@@ -129,7 +130,8 @@ export class ProjectDetailPageComponent implements OnInit {
     const counts: Record<TaskStatus | 'ALL', number> = {
       ALL: list.length,
       TODO: 0,
-      IN_PROGRESS: 0,
+      DOING: 0,
+      WAITING: 0,
       REVIEW: 0,
       DONE: 0,
     };
@@ -154,18 +156,22 @@ export class ProjectDetailPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
-    const project = this.projectsApi.getProject(this.projectId);
-    if (!project) {
-      this.notFound.set(true);
-      return;
-    }
-    this.project.set(project);
-    const me = this.auth.currentUser();
-    if (me) {
-      this.deliveryForm.patchValue({ deliveredByUserId: me.id });
-    }
+    this.usersApi.list().subscribe();
+    this.projectsApi.fetchProject(this.projectId).subscribe({
+      next: (project) => {
+        this.project.set(project);
+        this.notFound.set(false);
+        this.customersApi.fetchCustomer(project.customerId).subscribe();
+        this.customersApi.listContacts(project.customerId).subscribe();
+        const me = this.auth.currentUser();
+        if (me) {
+          this.deliveryForm.patchValue({ deliveredByUserId: me.id });
+        }
+        this.refresh();
+      },
+      error: () => this.notFound.set(true),
+    });
     this.taskSearchControl.valueChanges.subscribe((v) => this.taskSearch.set(v));
-    this.refresh();
   }
 
   customerName(): string {
@@ -189,7 +195,7 @@ export class ProjectDetailPageComponent implements OnInit {
     if (!id) {
       return '—';
     }
-    return this.contacts().find((c) => c.id === id)?.fullName ?? `#${id}`;
+    return this.contacts().find((c) => c.id === id)?.name ?? `#${id}`;
   }
 
   projectStatusLabel(status: Project['status']): string {
@@ -197,13 +203,21 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   refresh(): void {
-    this.tasks.set(this.projectsApi.getTasks(this.projectId));
-    this.progress.set(this.projectsApi.progressPercent(this.projectId));
+    this.projectsApi.fetchProject(this.projectId).subscribe({
+      next: (project) => {
+        this.project.set(project);
+        this.progress.set(project.progress?.percent ?? 0);
+      },
+      error: () => undefined,
+    });
+    this.projectsApi.listTasks(this.projectId).subscribe({
+      next: (tasks) => {
+        this.tasks.set(tasks);
+        this.progress.set(this.projectsApi.progressPercent(this.projectId));
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
     this.deliveries.set(this.projectsApi.getDeliveries(this.projectId));
-    const p = this.projectsApi.getProject(this.projectId);
-    if (p) {
-      this.project.set(p);
-    }
   }
 
   setStatusFilter(filter: TaskStatus | 'ALL'): void {
@@ -232,40 +246,20 @@ export class ProjectDetailPageComponent implements OnInit {
     if (task.priority === priority) {
       return;
     }
-    this.projectsApi
-      .updateTask(task.id, {
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority,
-        assigneeId: task.assigneeId,
-        dueDate: task.dueDate,
-        dependsOnTaskId: task.dependsOnTaskId,
-      })
-      .subscribe({
-        next: () => this.refresh(),
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3000 }),
-      });
+    this.projectsApi.updateTask(task.projectId, task.id, { priority }).subscribe({
+      next: () => this.refresh(),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3000 }),
+    });
   }
 
-  changeAssignee(task: TaskItem, assigneeId: number | null): void {
-    if (task.assigneeId === assigneeId) {
+  changeAssignee(task: TaskItem, assignedUserId: number | null): void {
+    if (task.assignedUserId === assignedUserId) {
       return;
     }
-    this.projectsApi
-      .updateTask(task.id, {
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        assigneeId,
-        dueDate: task.dueDate,
-        dependsOnTaskId: task.dependsOnTaskId,
-      })
-      .subscribe({
-        next: () => this.refresh(),
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3000 }),
-      });
+    this.projectsApi.updateTask(task.projectId, task.id, { assignedUserId }).subscribe({
+      next: () => this.refresh(),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3000 }),
+    });
   }
 
   /** กดปุ่มเลื่อนสถานะไปขั้นถัดไป */

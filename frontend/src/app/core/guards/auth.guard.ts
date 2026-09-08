@@ -24,7 +24,7 @@ export const guestGuard: CanActivateFn = () => {
   return router.parseUrl(auth.defaultAppPath());
 };
 
-/** พาไปหน้าแรกตามสิทธิ์ (หรือหน้าขอสิทธิ์ถ้ายังไม่มีบทบาท) */
+/** พาไปหน้าแรกตามสิทธิ์ (หรือหน้าขอสิทธิ์ถ้า permissions ว่าง) */
 export const defaultAppRedirectGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);

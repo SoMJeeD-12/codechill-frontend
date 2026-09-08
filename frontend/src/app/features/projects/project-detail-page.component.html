@@ -9,11 +9,11 @@
     <header class="page-header">
       <div>
         <a routerLink="/app/projects" class="back">← รายการโครงการ</a>
-        <p class="eyebrow">{{ p.code }} · {{ projectStatusLabel(p.status) }}</p>
+        <p class="eyebrow">{{ p.code || '—' }} · {{ projectStatusLabel(p.status) }}</p>
         <h1>{{ p.name }}</h1>
         <p class="subtitle">
-          {{ customerName() }} · กำหนดส่ง {{ p.dueDate }} ·
-          มูลค่า {{ p.contractValue | currency: 'THB':'symbol':'1.0-0' }} ·
+          {{ customerName() }} · กำหนดส่ง {{ p.targetEndDate || '—' }} ·
+          มูลค่า {{ p.contractValue != null ? (p.contractValue | currency: 'THB':'symbol':'1.0-0') : '—' }} ·
           ความคืบหน้า {{ progress() }}%
         </p>
       </div>
@@ -100,7 +100,7 @@
                   <td mat-cell *matCellDef="let row">
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-select wide">
                       <mat-select
-                        [value]="row.assigneeId"
+                        [value]="row.assignedUserId"
                         (selectionChange)="changeAssignee(row, $event.value)"
                       >
                         <mat-option [value]="null">—</mat-option>
@@ -245,7 +245,7 @@
                 <mat-select formControlName="receivedByContactId">
                   <mat-option [value]="null">—</mat-option>
                   @for (c of contacts(); track c.id) {
-                    <mat-option [value]="c.id">{{ c.fullName }}</mat-option>
+                    <mat-option [value]="c.id">{{ c.name }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -262,7 +262,7 @@
                 <textarea matInput rows="2" formControlName="note"></textarea>
               </mat-form-field>
               <mat-form-field appearance="outline" class="full">
-                <mat-label>ไฟล์หลักฐาน (mock)</mat-label>
+                <mat-label>ไฟล์หลักฐาน</mat-label>
                 <input matInput formControlName="attachmentName" />
               </mat-form-field>
               <button mat-flat-button color="primary" type="submit">บันทึกส่งมอบ</button>

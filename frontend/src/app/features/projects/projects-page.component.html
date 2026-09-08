@@ -50,7 +50,7 @@
       <table mat-table [dataSource]="filtered()" class="data-table">
         <ng-container matColumnDef="code">
           <th mat-header-cell *matHeaderCellDef>รหัส</th>
-          <td mat-cell *matCellDef="let row">{{ row.code }}</td>
+          <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อโครงการ</th>
@@ -62,9 +62,15 @@
           <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
           <td mat-cell *matCellDef="let row">{{ customerName(row.customerId) }}</td>
         </ng-container>
-        <ng-container matColumnDef="dueDate">
+        <ng-container matColumnDef="priority">
+          <th mat-header-cell *matHeaderCellDef>ความสำคัญ</th>
+          <td mat-cell *matCellDef="let row">{{ priorityLabel(row.priority) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="targetEndDate">
           <th mat-header-cell *matHeaderCellDef>กำหนดส่ง</th>
-          <td mat-cell *matCellDef="let row">{{ row.dueDate | date: 'd MMM y' }}</td>
+          <td mat-cell *matCellDef="let row">
+            {{ row.targetEndDate ? (row.targetEndDate | date: 'd MMM y') : '—' }}
+          </td>
         </ng-container>
         <ng-container matColumnDef="progress">
           <th mat-header-cell *matHeaderCellDef>ความคืบหน้า</th>
@@ -76,7 +82,9 @@
         </ng-container>
         <ng-container matColumnDef="value">
           <th mat-header-cell *matHeaderCellDef>มูลค่า</th>
-          <td mat-cell *matCellDef="let row">{{ row.contractValue | currency: 'THB':'symbol':'1.0-0' }}</td>
+          <td mat-cell *matCellDef="let row">
+            {{ row.contractValue != null ? (row.contractValue | currency: 'THB':'symbol':'1.0-0') : '—' }}
+          </td>
         </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>

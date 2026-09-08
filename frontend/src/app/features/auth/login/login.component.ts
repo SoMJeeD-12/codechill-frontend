@@ -34,17 +34,9 @@ export class LoginComponent {
   hidePassword = true;
 
   readonly form = this.fb.nonNullable.group({
-    username: ['superadmin', Validators.required],
-    password: ['password', Validators.required],
+    username: ['', Validators.required],
+    password: ['', Validators.required],
   });
-
-  readonly demoAccounts = [
-    { user: 'superadmin', role: 'Super Admin — ทุกเมนู + จัดการบทบาท' },
-    { user: 'admin', role: 'Admin — ทุกเมนู แต่แก้บทบาทไม่ได้' },
-    { user: 'support', role: 'User / ซัพพอร์ต' },
-    { user: 'multi', role: 'User / ซัพพอร์ต + การตลาด' },
-    { user: 'newbie', role: 'User — ยังไม่มีบทบาท (หน้าขอสิทธิ์)' },
-  ];
 
   submit(): void {
     if (this.form.invalid || this.loading()) {
@@ -66,10 +58,5 @@ export class LoginComponent {
         this.error.set(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
       },
     });
-  }
-
-  fillDemo(username: string): void {
-    this.form.patchValue({ username, password: 'password' });
-    this.error.set(null);
   }
 }

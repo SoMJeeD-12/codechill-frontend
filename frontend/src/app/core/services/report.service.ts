@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
+import { OPEN_PROJECT_STATUSES } from '../models/project.model';
 import { CustomerService } from './customer.service';
 import { FollowUpService } from './follow-up.service';
 import { MaService } from './ma.service';
@@ -45,13 +46,11 @@ export class ReportService {
     const projectList = this.projects.projects();
     const ticketList = this.tickets.tickets();
     const contractList = this.ma.contracts();
-    const openProjects = projectList.filter((p) =>
-      ['PLANNING', 'IN_PROGRESS', 'ON_HOLD'].includes(p.status)
-    );
+    const openProjects = projectList.filter((p) => OPEN_PROJECT_STATUSES.includes(p.status));
     const openTickets = this.tickets.openQueue();
     const activeMa = contractList.filter((c) => c.status === 'ACTIVE');
     const maAnnual = activeMa.reduce((s, c) => s + c.annualFee, 0);
-    const projectValue = projectList.reduce((s, c) => s + c.contractValue, 0);
+    const projectValue = projectList.reduce((s, c) => s + (c.contractValue ?? 0), 0);
     const nearWarranty = this.warranties.listNearExpiry().length;
     const overdueFollowUps = this.followUps.listOverdue().length;
     const lowQuota = activeMa.filter((c) => this.ma.remainingQuota(c) <= 2).length;
@@ -83,7 +82,7 @@ export class ReportService {
       alerts.push(`ปัญหาค้างในคิว ${openTickets.length} ใบ`);
     }
     if (alerts.length === 0) {
-      alerts.push('ไม่มีจุดเตือนเร่งด่วนจากข้อมูล mock ปัจจุบัน');
+      alerts.push('ไม่มีจุดเตือนเร่งด่วนในขณะนี้');
     }
 
     const report: ExecutiveReport = {

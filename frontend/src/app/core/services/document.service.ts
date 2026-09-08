@@ -6,11 +6,8 @@ import {
   ProjectDocument,
 } from '../models/document.model';
 
-const DOCS_KEY = 'cpams_mock_documents';
-const VERSIONS_KEY = 'cpams_mock_document_versions';
-
 /** สร้างหน้า HTML ตัวอย่างให้เปิดดูได้เมื่อยังไม่มีไฟล์จริง */
-export function buildMockFilePreview(
+export function buildFilePreview(
   fileName: string,
   version: string,
   note = ''
@@ -33,7 +30,7 @@ export function buildMockFilePreview(
 <body>
   <div class="card">
     <h1>${escapeHtml(fileName)}</h1>
-    <p class="meta">เวอร์ชัน ${escapeHtml(version)} · ไฟล์ตัวอย่าง (mock)</p>
+    <p class="meta">เวอร์ชัน ${escapeHtml(version)} · ไฟล์ตัวอย่าง</p>
     <p class="note">${escapeHtml(note || 'ไม่มีหมายเหตุ')}</p>
     <hr />
     <p class="hint">ในระบบจริง ไฟล์นี้จะเปิดหรือดาวน์โหลดจากที่เก็บเอกสาร</p>
@@ -50,97 +47,6 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
-
-function withPreview(v: Omit<DocumentVersion, 'fileDataUrl' | 'mimeType'> & Partial<DocumentVersion>): DocumentVersion {
-  return {
-    ...v,
-    fileDataUrl: v.fileDataUrl ?? buildMockFilePreview(v.fileName, v.version, v.note),
-    mimeType: v.mimeType ?? 'text/html',
-  };
-}
-
-const SEED_DOCS: ProjectDocument[] = [
-  {
-    id: 1,
-    projectId: 1,
-    customerId: 1,
-    title: 'สัญญาจ้างพัฒนาระบบ IoT',
-    category: 'CONTRACT',
-    currentVersion: 'v1.1',
-    updatedAt: '2026-02-10T09:00:00.000Z',
-  },
-  {
-    id: 2,
-    projectId: 1,
-    customerId: 1,
-    title: 'เอกสารส่งมอบแดชบอร์ด',
-    category: 'DELIVERY',
-    currentVersion: 'v0.9',
-    updatedAt: '2026-07-01T10:30:00.000Z',
-  },
-  {
-    id: 3,
-    projectId: 2,
-    customerId: 2,
-    title: 'ข้อกำหนดฟังก์ชันแอปแจ้งซ่อม',
-    category: 'SPEC',
-    currentVersion: 'v2.0',
-    updatedAt: '2026-03-15T08:00:00.000Z',
-  },
-];
-
-const SEED_VERSIONS: DocumentVersion[] = [
-  withPreview({
-    id: 1,
-    documentId: 1,
-    version: 'v1.0',
-    fileName: 'contract-iot-v1.pdf',
-    sizeKb: 420,
-    uploadedByUserId: 2,
-    uploadedAt: '2025-11-05T09:00:00.000Z',
-    note: 'ร่างแรก',
-  }),
-  withPreview({
-    id: 2,
-    documentId: 1,
-    version: 'v1.1',
-    fileName: 'contract-iot-v1.1.pdf',
-    sizeKb: 438,
-    uploadedByUserId: 1,
-    uploadedAt: '2026-02-10T09:00:00.000Z',
-    note: 'แก้เงื่อนไข SLA',
-  }),
-  withPreview({
-    id: 3,
-    documentId: 2,
-    version: 'v0.9',
-    fileName: 'delivery-dashboard-v09.pdf',
-    sizeKb: 890,
-    uploadedByUserId: 2,
-    uploadedAt: '2026-07-01T10:30:00.000Z',
-    note: 'รอบทดสอบ',
-  }),
-  withPreview({
-    id: 4,
-    documentId: 3,
-    version: 'v1.0',
-    fileName: 'srs-repair-app-v1.docx',
-    sizeKb: 210,
-    uploadedByUserId: 4,
-    uploadedAt: '2026-02-20T08:00:00.000Z',
-    note: '',
-  }),
-  withPreview({
-    id: 5,
-    documentId: 3,
-    version: 'v2.0',
-    fileName: 'srs-repair-app-v2.docx',
-    sizeKb: 256,
-    uploadedByUserId: 2,
-    uploadedAt: '2026-03-15T08:00:00.000Z',
-    note: 'เพิ่ม flow อนุมัติงาน',
-  }),
-];
 
 export interface DocumentCreateInput {
   projectId: number;
@@ -168,12 +74,10 @@ export interface DocumentVersionInput {
 
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
-  private readonly docsSignal = signal<ProjectDocument[]>(this.load(DOCS_KEY, SEED_DOCS));
-  private readonly versionsSignal = signal<DocumentVersion[]>(
-    this.loadVersions(VERSIONS_KEY, SEED_VERSIONS)
-  );
-  private nextDocId = this.maxId(this.docsSignal()) + 1;
-  private nextVersionId = this.maxId(this.versionsSignal()) + 1;
+  private readonly docsSignal = signal<ProjectDocument[]>([]);
+  private readonly versionsSignal = signal<DocumentVersion[]>([]);
+  private nextDocId = 1;
+  private nextVersionId = 1;
 
   readonly documents = this.docsSignal.asReadonly();
 
@@ -228,19 +132,11 @@ export class DocumentService {
       uploadedByUserId: input.uploadedByUserId,
       uploadedAt: new Date().toISOString(),
       note,
-      fileDataUrl: input.fileDataUrl || buildMockFilePreview(fileName, version, note),
+      fileDataUrl: input.fileDataUrl || buildFilePreview(fileName, version, note),
       mimeType: input.mimeType || (input.fileDataUrl ? null : 'text/html'),
     };
-    this.docsSignal.update((list) => {
-      const next = [doc, ...list];
-      this.save(DOCS_KEY, next);
-      return next;
-    });
-    this.versionsSignal.update((list) => {
-      const next = [...list, ver];
-      this.save(VERSIONS_KEY, next);
-      return next;
-    });
+    this.docsSignal.update((list) => [doc, ...list]);
+    this.versionsSignal.update((list) => [...list, ver]);
     return of(structuredClone(doc)).pipe(delay(220));
   }
 
@@ -264,23 +160,17 @@ export class DocumentService {
       uploadedByUserId: input.uploadedByUserId,
       uploadedAt: new Date().toISOString(),
       note,
-      fileDataUrl: input.fileDataUrl || buildMockFilePreview(fileName, version, note),
+      fileDataUrl: input.fileDataUrl || buildFilePreview(fileName, version, note),
       mimeType: input.mimeType || (input.fileDataUrl ? null : 'text/html'),
     };
-    this.versionsSignal.update((list) => {
-      const next = [...list, ver];
-      this.save(VERSIONS_KEY, next);
-      return next;
-    });
-    this.docsSignal.update((list) => {
-      const next = list.map((d) =>
+    this.versionsSignal.update((list) => [...list, ver]);
+    this.docsSignal.update((list) =>
+      list.map((d) =>
         d.id === documentId
           ? { ...d, currentVersion: ver.version, updatedAt: ver.uploadedAt }
           : d
-      );
-      this.save(DOCS_KEY, next);
-      return next;
-    });
+      )
+    );
     return of(structuredClone(ver)).pipe(delay(200));
   }
 
@@ -288,16 +178,8 @@ export class DocumentService {
     if (!this.getById(documentId)) {
       return throwError(() => new Error('ไม่พบเอกสาร'));
     }
-    this.docsSignal.update((list) => {
-      const next = list.filter((d) => d.id !== documentId);
-      this.save(DOCS_KEY, next);
-      return next;
-    });
-    this.versionsSignal.update((list) => {
-      const next = list.filter((v) => v.documentId !== documentId);
-      this.save(VERSIONS_KEY, next);
-      return next;
-    });
+    this.docsSignal.update((list) => list.filter((d) => d.id !== documentId));
+    this.versionsSignal.update((list) => list.filter((v) => v.documentId !== documentId));
     return of(void 0).pipe(delay(150));
   }
 
@@ -309,59 +191,15 @@ export class DocumentService {
     if (remaining.length === 0) {
       return throwError(() => new Error('ต้องเหลืออย่างน้อย 1 เวอร์ชัน — หรือลบทั้งเอกสารแทน'));
     }
-    this.versionsSignal.update((list) => {
-      const next = list.filter((v) => v.id !== versionId);
-      this.save(VERSIONS_KEY, next);
-      return next;
-    });
+    this.versionsSignal.update((list) => list.filter((v) => v.id !== versionId));
     const latest = remaining[0];
-    this.docsSignal.update((list) => {
-      const next = list.map((d) =>
+    this.docsSignal.update((list) =>
+      list.map((d) =>
         d.id === documentId
           ? { ...d, currentVersion: latest.version, updatedAt: new Date().toISOString() }
           : d
-      );
-      this.save(DOCS_KEY, next);
-      return next;
-    });
-    return of(structuredClone(remaining)).pipe(delay(150));
-  }
-
-  private load<T>(key: string, seed: T[]): T[] {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        return JSON.parse(raw) as T[];
-      }
-    } catch {
-      /* ignore */
-    }
-    const data = structuredClone(seed);
-    this.save(key, data);
-    return data;
-  }
-
-  private loadVersions(key: string, seed: DocumentVersion[]): DocumentVersion[] {
-    const list = this.load(key, seed).map((v) =>
-      withPreview({
-        ...v,
-        fileDataUrl: (v as DocumentVersion).fileDataUrl ?? null,
-        mimeType: (v as DocumentVersion).mimeType ?? null,
-      })
+      )
     );
-    this.save(key, list);
-    return list;
-  }
-
-  private save<T>(key: string, data: T[]): void {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch {
-      /* quota — ignore for oversized file data */
-    }
-  }
-
-  private maxId(items: { id: number }[]): number {
-    return items.reduce((max, i) => Math.max(max, i.id), 0);
+    return of(structuredClone(remaining)).pipe(delay(150));
   }
 }

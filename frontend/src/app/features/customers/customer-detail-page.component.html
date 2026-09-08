@@ -13,7 +13,7 @@
         <h1>{{ c.name }}</h1>
         <p class="subtitle">
           {{ statusLabel(c.status) }} · {{ c.businessType || 'ไม่ระบุประเภทธุรกิจ' }} ·
-          มูลค่ารวม {{ c.lifetimeValue | currency: 'THB':'symbol':'1.0-0' }}
+          ผู้ดูแล {{ c.owner?.fullName || '—' }}
         </p>
       </div>
     </header>
@@ -32,8 +32,13 @@
         <span>{{ contacts().length }} คน</span>
       </mat-card>
       <mat-card>
-        <strong>ประวัติติดต่อ</strong>
-        <span>{{ logs().length }} รายการ</span>
+        <strong>ติดต่อล่าสุด</strong>
+        <span>
+          {{ c.lastContactedAt ? (c.lastContactedAt | date: 'd MMM y') : '—' }}
+          @if (c.daysSinceLastContact != null) {
+            ({{ c.daysSinceLastContact }} วัน)
+          }
+        </span>
       </mat-card>
     </div>
 
@@ -45,7 +50,10 @@
               <div class="item">
                 <div>
                   <strong>
-                    {{ contact.fullName }}
+                    {{ contact.name }}
+                    @if (contact.nickname) {
+                      <span class="muted">({{ contact.nickname }})</span>
+                    }
                     @if (contact.isPrimary) {
                       <span class="primary-tag">หลัก</span>
                     }
@@ -64,10 +72,16 @@
           <mat-card class="form-card">
             <h3>เพิ่มผู้ติดต่อ</h3>
             <form [formGroup]="contactForm" (ngSubmit)="saveContact()" class="form">
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ชื่อ-นามสกุล</mat-label>
-                <input matInput formControlName="fullName" />
-              </mat-form-field>
+              <div class="row">
+                <mat-form-field appearance="outline">
+                  <mat-label>ชื่อ-นามสกุล</mat-label>
+                  <input matInput formControlName="name" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>ชื่อเล่น</mat-label>
+                  <input matInput formControlName="nickname" />
+                </mat-form-field>
+              </div>
               <div class="row">
                 <mat-form-field appearance="outline">
                   <mat-label>ตำแหน่ง</mat-label>
@@ -78,9 +92,19 @@
                   <input matInput formControlName="phone" />
                 </mat-form-field>
               </div>
+              <div class="row">
+                <mat-form-field appearance="outline">
+                  <mat-label>อีเมล</mat-label>
+                  <input matInput formControlName="email" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>LINE ID</mat-label>
+                  <input matInput formControlName="lineId" />
+                </mat-form-field>
+              </div>
               <mat-form-field appearance="outline" class="full">
-                <mat-label>อีเมล</mat-label>
-                <input matInput formControlName="email" />
+                <mat-label>หมายเหตุ</mat-label>
+                <textarea matInput rows="2" formControlName="note"></textarea>
               </mat-form-field>
               <mat-checkbox formControlName="isPrimary">ตั้งเป็นผู้ติดต่อหลัก</mat-checkbox>
               <button mat-flat-button color="primary" type="submit">บันทึกผู้ติดต่อ</button>
@@ -95,12 +119,17 @@
             @for (log of logs(); track log.id) {
               <div class="item log">
                 <div>
-                  <strong>{{ channelLabels[log.channel] }} · {{ log.contactedAt | date: 'd MMM y HH:mm' }}</strong>
-                  <p>{{ log.summary }}</p>
+                  <strong>
+                    {{ channelLabels[log.channel] }} · {{ log.occurredAt | date: 'd MMM y HH:mm' }}
+                    @if (log.subject) {
+                      · {{ log.subject }}
+                    }
+                  </strong>
+                  <p>{{ log.content || '—' }}</p>
                   <small>
-                    โดย {{ log.createdByName }}
-                    @if (log.attachmentName) {
-                      · แนบ: {{ log.attachmentName }}
+                    โดย {{ log.handledBy?.fullName || 'ไม่ระบุ' }}
+                    @if (log.contactName) {
+                      · ผู้ติดต่อ: {{ log.contactName }}
                     }
                   </small>
                 </div>
@@ -124,22 +153,33 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>วันที่ติดต่อ</mat-label>
-                  <input matInput [matDatepicker]="logPicker" formControlName="contactedDate" />
+                  <input matInput [matDatepicker]="logPicker" formControlName="occurredDate" />
                   <mat-datepicker-toggle matIconSuffix [for]="logPicker"></mat-datepicker-toggle>
                   <mat-datepicker #logPicker></mat-datepicker>
                 </mat-form-field>
               </div>
+              <div class="row">
+                <mat-form-field appearance="outline">
+                  <mat-label>เวลาที่ติดต่อ</mat-label>
+                  <input matInput type="time" formControlName="occurredTime" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>ผู้ติดต่อ</mat-label>
+                  <mat-select formControlName="contactId">
+                    <mat-option [value]="null">—</mat-option>
+                    @for (contact of contacts(); track contact.id) {
+                      <mat-option [value]="contact.id">{{ contact.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
               <mat-form-field appearance="outline" class="full">
-                <mat-label>เวลาที่ติดต่อ</mat-label>
-                <input matInput type="time" formControlName="contactedTime" />
+                <mat-label>หัวข้อ</mat-label>
+                <input matInput formControlName="subject" />
               </mat-form-field>
               <mat-form-field appearance="outline" class="full">
                 <mat-label>สรุปการคุย</mat-label>
-                <textarea matInput rows="3" formControlName="summary"></textarea>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ชื่อไฟล์หลักฐาน (mock)</mat-label>
-                <input matInput formControlName="attachmentName" placeholder="เช่น line-screenshot.png" />
+                <textarea matInput rows="3" formControlName="content"></textarea>
               </mat-form-field>
               <button mat-flat-button color="primary" type="submit">บันทึกประวัติ</button>
             </form>
@@ -152,8 +192,8 @@
           @for (p of projects(); track p.id) {
             <a class="item link-item" [routerLink]="['/app/projects', p.id]">
               <div>
-                <strong>{{ p.code }} · {{ p.name }}</strong>
-                <p>{{ projectStatusLabels[p.status] }} · กำหนดส่ง {{ p.dueDate }}</p>
+                <strong>{{ p.code || '—' }} · {{ p.name }}</strong>
+                <p>{{ projectStatusLabels[p.status] }} · กำหนดส่ง {{ p.targetEndDate || '—' }}</p>
               </div>
               <mat-icon>chevron_right</mat-icon>
             </a>

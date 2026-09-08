@@ -5,14 +5,13 @@
       <h1>CPAMS</h1>
       <p class="lead">
         บริหารลูกค้า โครงการ และการบริการหลังการขายในที่เดียว
-        — เฟสนี้ใช้ข้อมูลจำลอง ยังไม่เชื่อมต่อแบ็กเอนด์
       </p>
     </div>
 
     <mat-card class="login-card">
       <mat-card-header>
         <mat-card-title>เข้าสู่ระบบ</mat-card-title>
-        <mat-card-subtitle>รหัสผ่าน mock ทุกบัญชี: <code>password</code></mat-card-subtitle>
+        <mat-card-subtitle>กรอกชื่อผู้ใช้และรหัสผ่านที่ได้รับจากผู้ดูแลระบบ</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
@@ -55,18 +54,6 @@
             }
           </button>
         </form>
-
-        <div class="demo-block">
-          <p>บัญชีทดลอง (คลิกเพื่อเติม)</p>
-          <div class="demo-list">
-            @for (acc of demoAccounts; track acc.user) {
-              <button type="button" class="demo-chip" (click)="fillDemo(acc.user)">
-                <strong>{{ acc.user }}</strong>
-                <span>{{ acc.role }}</span>
-              </button>
-            }
-          </div>
-        </div>
       </mat-card-content>
     </mat-card>
   </div>
