@@ -31,6 +31,7 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
     CurrencyPipe,
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -45,10 +46,14 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 export class MaPageComponent implements OnInit {
   private readonly api = inject(MaService);
   private readonly customersApi = inject(CustomerService);
+  private readonly projectsApi = inject(ProjectService);
   private readonly dialog = inject(MatDialog);
+  private readonly fb = inject(FormBuilder);
 
   readonly contracts = signal<MaContract[]>([]);
   readonly view = signal<'active' | 'all'>('active');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = MA_STATUS_LABELS;
   readonly columns = [
     'contractNo',
@@ -63,10 +68,27 @@ export class MaPageComponent implements OnInit {
 
   readonly filtered = computed(() => {
     const list = this.contracts();
-    return this.view() === 'active' ? list.filter((c) => c.status === 'ACTIVE') : list;
+    let rows = this.view() === 'active' ? list.filter((c) => c.status === 'ACTIVE') : list;
+    const q = this.search().trim().toLowerCase();
+    if (!q) {
+      return rows;
+    }
+    return rows.filter((c) => {
+      const project = c.projectId != null ? this.projectsApi.getProject(c.projectId) : null;
+      const projectText = project ? `${project.code} ${project.name}`.toLowerCase() : '';
+      return (
+        c.contractNo.toLowerCase().includes(q) ||
+        c.planName.toLowerCase().includes(q) ||
+        this.customerName(c.customerId).toLowerCase().includes(q) ||
+        projectText.includes(q) ||
+        this.statusLabel(c.status).toLowerCase().includes(q) ||
+        (c.note ?? '').toLowerCase().includes(q)
+      );
+    });
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 

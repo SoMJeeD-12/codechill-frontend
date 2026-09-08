@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,6 +21,7 @@ import { AuditService } from '../../core/services/audit.service';
   standalone: true,
   imports: [
     DatePipe,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -32,10 +34,13 @@ import { AuditService } from '../../core/services/audit.service';
 })
 export class AuditLogsPageComponent implements OnInit {
   private readonly api = inject(AuditService);
+  private readonly fb = inject(FormBuilder);
 
   readonly logs = signal<AuditLog[]>([]);
   readonly actionFilter = signal<AuditAction | 'ALL'>('ALL');
   readonly entityFilter = signal<AuditEntityType | 'ALL'>('ALL');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly columns = ['createdAt', 'actor', 'action', 'entity', 'summary'];
 
   readonly actions = Object.keys(AUDIT_ACTION_LABELS) as AuditAction[];
@@ -46,6 +51,7 @@ export class AuditLogsPageComponent implements OnInit {
   readonly filtered = computed(() => {
     const action = this.actionFilter();
     const entity = this.entityFilter();
+    const q = this.search().trim().toLowerCase();
     return this.logs().filter((row) => {
       if (action !== 'ALL' && row.action !== action) {
         return false;
@@ -53,11 +59,22 @@ export class AuditLogsPageComponent implements OnInit {
       if (entity !== 'ALL' && row.entityType !== entity) {
         return false;
       }
-      return true;
+      if (!q) {
+        return true;
+      }
+      const entityId = row.entityId != null ? String(row.entityId) : '';
+      return (
+        row.actorName.toLowerCase().includes(q) ||
+        row.summary.toLowerCase().includes(q) ||
+        this.actionLabel(row.action).toLowerCase().includes(q) ||
+        this.entityLabel(row.entityType).toLowerCase().includes(q) ||
+        entityId.includes(q)
+      );
     });
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 

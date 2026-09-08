@@ -37,6 +37,7 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
   imports: [
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -53,9 +54,12 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly dialog = inject(MatDialog);
+  private readonly fb = inject(FormBuilder);
 
   readonly warranties = signal<Warranty[]>([]);
   readonly view = signal<'near' | 'active' | 'all'>('near');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly coverageLabels = WARRANTY_COVERAGE_LABELS;
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
@@ -72,17 +76,33 @@ export class WarrantiesPageComponent implements OnInit {
   readonly filtered = computed(() => {
     const list = this.warranties();
     const view = this.view();
+    let rows = list;
     if (view === 'near') {
       const nearIds = new Set(this.api.listNearExpiry().map((w) => w.id));
-      return list.filter((w) => nearIds.has(w.id));
+      rows = list.filter((w) => nearIds.has(w.id));
+    } else if (view === 'active') {
+      rows = list.filter((w) => w.status === 'ACTIVE');
     }
-    if (view === 'active') {
-      return list.filter((w) => w.status === 'ACTIVE');
+    const q = this.search().trim().toLowerCase();
+    if (!q) {
+      return rows;
     }
-    return list;
+    return rows.filter((w) => {
+      const project = w.projectId != null ? this.projectsApi.getProject(w.projectId) : null;
+      const projectText = project ? `${project.code} ${project.name}`.toLowerCase() : '';
+      return (
+        w.title.toLowerCase().includes(q) ||
+        this.customerName(w.customerId).toLowerCase().includes(q) ||
+        projectText.includes(q) ||
+        this.coverageLabel(w.coverage).toLowerCase().includes(q) ||
+        this.statusLabel(w.status).toLowerCase().includes(q) ||
+        (w.note ?? '').toLowerCase().includes(q)
+      );
+    });
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 

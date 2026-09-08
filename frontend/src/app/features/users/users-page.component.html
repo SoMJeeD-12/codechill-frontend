@@ -12,23 +12,32 @@
   <div class="data-card">
     <div class="data-card__head">
       <div class="data-card__row">
-        <div class="ui-chips" role="tablist" aria-label="กรองสถานะผู้ใช้">
-          <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">
-            ทั้งหมด
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ACTIVE'" (click)="statusFilter.set('ACTIVE')">
-            ปฏิบัติงาน
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'SUSPENDED'" (click)="statusFilter.set('SUSPENDED')">
-            พักงาน
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'RESIGNED'" (click)="statusFilter.set('RESIGNED')">
-            สิ้นสุดการปฏิบัติงาน
-          </button>
-        </div>
+        <label class="ui-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ชื่อ / ชื่อผู้ใช้ / อีเมล / บทบาท"
+            aria-label="ค้นหาผู้ใช้งาน"
+          />
+        </label>
         <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
           <mat-icon>person_add</mat-icon>
           เพิ่มผู้ใช้
+        </button>
+      </div>
+      <div class="ui-chips" role="tablist" aria-label="กรองสถานะผู้ใช้">
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">
+          ทั้งหมด
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ACTIVE'" (click)="statusFilter.set('ACTIVE')">
+          ปฏิบัติงาน
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'SUSPENDED'" (click)="statusFilter.set('SUSPENDED')">
+          พักงาน
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'RESIGNED'" (click)="statusFilter.set('RESIGNED')">
+          สิ้นสุดการปฏิบัติงาน
         </button>
       </div>
     </div>
@@ -95,6 +104,11 @@
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+      @if (filteredUsers().length === 0) {
+        <p class="data-empty">
+          {{ search().trim() || statusFilter() !== 'ALL' ? 'ไม่พบผู้ใช้ตามคำค้นหา/ตัวกรอง' : 'ยังไม่มีผู้ใช้' }}
+        </p>
+      }
     </div>
   </div>
 </section>

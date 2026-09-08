@@ -10,6 +10,21 @@
   <div class="data-card">
     <div class="data-card__head">
       <div class="data-card__row">
+        <label class="ui-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ผู้ทำ / รายละเอียด / การกระทำ / ข้อมูล"
+            aria-label="ค้นหาบันทึกการใช้งาน"
+          />
+        </label>
+        <button mat-stroked-button type="button" class="ui-add-btn" (click)="reload()">
+          <mat-icon>refresh</mat-icon>
+          รีเฟรช
+        </button>
+      </div>
+      <div class="data-card__row">
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
           <mat-label>การกระทำ</mat-label>
           <mat-select [value]="actionFilter()" (selectionChange)="actionFilter.set($event.value)">
@@ -28,10 +43,6 @@
             }
           </mat-select>
         </mat-form-field>
-        <button mat-stroked-button type="button" class="ui-add-btn" (click)="reload()">
-          <mat-icon>refresh</mat-icon>
-          รีเฟรช
-        </button>
       </div>
     </div>
 
@@ -66,7 +77,9 @@
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
       @if (filtered().length === 0) {
-        <p class="data-empty">ไม่มีรายการตามตัวกรอง</p>
+        <p class="data-empty">
+          {{ search().trim() || actionFilter() !== 'ALL' || entityFilter() !== 'ALL' ? 'ไม่พบบันทึกตามคำค้นหา/ตัวกรอง' : 'ยังไม่มีบันทึก' }}
+        </p>
       }
     </div>
   </div>

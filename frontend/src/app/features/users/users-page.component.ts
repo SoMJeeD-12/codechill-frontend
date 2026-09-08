@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -21,6 +22,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
   standalone: true,
   imports: [
     DatePipe,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -40,10 +42,13 @@ export class UsersPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly fb = inject(FormBuilder);
 
   readonly users = signal<User[]>([]);
   readonly roles = signal<Role[]>([]);
   readonly statusFilter = signal<UserStatus | 'ALL'>('ALL');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
 
   readonly columns = [
     'fullName',
@@ -57,11 +62,28 @@ export class UsersPageComponent implements OnInit {
 
   readonly filteredUsers = computed(() => {
     const filter = this.statusFilter();
-    const list = this.users();
-    return filter === 'ALL' ? list : list.filter((u) => u.status === filter);
+    let list = this.users();
+    if (filter !== 'ALL') {
+      list = list.filter((u) => u.status === filter);
+    }
+    const q = this.search().trim().toLowerCase();
+    if (!q) {
+      return list;
+    }
+    return list.filter((u) => {
+      return (
+        u.fullName.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        this.accountLabel(u.accountType).toLowerCase().includes(q) ||
+        this.roleNames(u).toLowerCase().includes(q) ||
+        this.statusLabel(u.status).toLowerCase().includes(q)
+      );
+    });
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
     this.rolesApi.list().subscribe((roles) => this.roles.set(roles));
   }

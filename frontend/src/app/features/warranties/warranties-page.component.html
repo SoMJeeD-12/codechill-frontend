@@ -10,20 +10,29 @@
   <div class="data-card">
     <div class="data-card__head">
       <div class="data-card__row">
-        <div class="ui-chips" role="tablist" aria-label="มุมมองประกัน">
-          <button type="button" class="ui-chip" [class.is-active]="view() === 'near'" (click)="view.set('near')">
-            ใกล้หมดอายุ
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="view() === 'active'" (click)="view.set('active')">
-            ใช้งานอยู่
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
-            ทั้งหมด
-          </button>
-        </div>
+        <label class="ui-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="รายการ / ลูกค้า / โครงการ / ความครอบคลุม"
+            aria-label="ค้นหาการรับประกัน"
+          />
+        </label>
         <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
           <mat-icon>add</mat-icon>
           เพิ่มประกัน
+        </button>
+      </div>
+      <div class="ui-chips" role="tablist" aria-label="มุมมองประกัน">
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'near'" (click)="view.set('near')">
+          ใกล้หมดอายุ
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'active'" (click)="view.set('active')">
+          ใช้งานอยู่
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
+          ทั้งหมด
         </button>
       </div>
     </div>
@@ -77,7 +86,9 @@
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
       @if (filtered().length === 0) {
-        <p class="data-empty">ไม่มีรายการในมุมมองนี้</p>
+        <p class="data-empty">
+          {{ search().trim() ? 'ไม่พบรายการตามคำค้นหา' : 'ไม่มีรายการในมุมมองนี้' }}
+        </p>
       }
     </div>
   </div>
