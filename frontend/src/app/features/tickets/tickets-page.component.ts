@@ -3,11 +3,9 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
-  MAT_DIALOG_DATA,
   MatDialog,
   MatDialogModule,
   MatDialogRef,
@@ -47,7 +45,6 @@ import { switchMap } from 'rxjs/operators';
     MatButtonModule,
     MatIconModule,
     MatTableModule,
-    MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
   ],

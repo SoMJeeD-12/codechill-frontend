@@ -13,20 +13,29 @@
   <div class="data-card">
     <div class="data-card__head">
       <div class="data-card__row">
-        <div class="ui-chips" role="tablist" aria-label="มุมมองติดตาม">
-          <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
-            ทั้งหมด
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="view() === 'planned'" (click)="view.set('planned')">
-            วางแผนไว้
-          </button>
-          <button type="button" class="ui-chip" [class.is-active]="view() === 'overdue'" (click)="view.set('overdue')">
-            เลยกำหนด
-          </button>
-        </div>
+        <label class="ui-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="หัวข้อ / ลูกค้า / ผู้รับผิดชอบ / ช่องทาง"
+            aria-label="ค้นหาติดตามลูกค้า"
+          />
+        </label>
         <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
           <mat-icon>add</mat-icon>
           สร้างแผนติดตาม
+        </button>
+      </div>
+      <div class="ui-chips" role="tablist" aria-label="มุมมองติดตาม">
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
+          ทั้งหมด
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'planned'" (click)="view.set('planned')">
+          วางแผนไว้
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'overdue'" (click)="view.set('overdue')">
+          เลยกำหนด
         </button>
       </div>
     </div>
@@ -104,7 +113,9 @@
       </table>
       @if (filtered().length === 0) {
         <p class="data-empty">
-          @if (view() === 'overdue') {
+          @if (search().trim()) {
+            ไม่พบรายการตามคำค้นหา/ตัวกรอง
+          } @else if (view() === 'overdue') {
             ไม่มีรายการเลยกำหนด — ตั้งวันครบกำหนดเป็นวันก่อนวันนี้
             และสถานะต้องเป็น「วางแผนไว้」(ยังไม่กดเสร็จแล้ว)
           } @else {

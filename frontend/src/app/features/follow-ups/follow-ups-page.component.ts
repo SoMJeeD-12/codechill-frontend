@@ -37,6 +37,7 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
   imports: [
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -55,9 +56,12 @@ export class FollowUpsPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly fb = inject(FormBuilder);
 
   readonly items = signal<FollowUp[]>([]);
   readonly view = signal<'all' | 'overdue' | 'planned'>('all');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly columns = [
     'title',
     'customer',
@@ -77,10 +81,27 @@ export class FollowUpsPageComponent implements OnInit {
     } else if (view === 'planned') {
       list = list.filter((f) => f.status === 'PLANNED');
     }
+    const q = this.search().trim().toLowerCase();
+    if (q) {
+      list = list.filter((f) => {
+        const customer = this.customerName(f.customerId).toLowerCase();
+        const assignee = this.userName(f.assigneeId).toLowerCase();
+        return (
+          f.title.toLowerCase().includes(q) ||
+          (f.note ?? '').toLowerCase().includes(q) ||
+          customer.includes(q) ||
+          assignee.includes(q) ||
+          this.channelLabel(f.channel).toLowerCase().includes(q) ||
+          this.statusLabel(f).toLowerCase().includes(q) ||
+          f.dueDate.toLowerCase().includes(q)
+        );
+      });
+    }
     return [...list].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 

@@ -75,6 +75,26 @@ const SEED_TICKETS: Ticket[] = [
     closedAt: '2026-06-20T16:00:00.000Z',
     attachmentName: null,
   },
+  {
+    id: 4,
+    ticketNo: 'TK-2026-004',
+    customerId: 2,
+    projectId: null,
+    title: 'สอบถามขั้นตอนเคลมทั่วไป',
+    description: 'ลูกค้าโทรถามขั้นตอน ยังไม่ได้ผูกกับโครงการใด',
+    category: 'สอบถาม',
+    priority: 'URGENT',
+    status: 'RECEIVED',
+    billingType: 'FREE',
+    chargeAmount: 0,
+    reportedChannel: 'PHONE',
+    reportedAt: '2026-09-08T04:30:00.000Z',
+    receivedByUserId: 3,
+    assigneeId: null,
+    resolutionCount: 0,
+    closedAt: null,
+    attachmentName: null,
+  },
 ];
 
 const SEED_RESOLUTIONS: TicketResolution[] = [

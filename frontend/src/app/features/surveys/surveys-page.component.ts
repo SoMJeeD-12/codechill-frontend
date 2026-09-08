@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +30,7 @@ import { SurveyService } from '../../core/services/survey.service';
   imports: [
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -44,12 +45,30 @@ export class SurveysPageComponent implements OnInit {
   private readonly api = inject(SurveyService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly fb = inject(FormBuilder);
 
   readonly surveys = signal<Survey[]>([]);
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly columns = ['title', 'status', 'questions', 'responses', 'avg', 'updatedAt', 'actions'];
   readonly statusLabels = SURVEY_STATUS_LABELS;
 
+  readonly filtered = computed(() => {
+    const q = this.search().trim().toLowerCase();
+    const list = this.surveys();
+    if (!q) {
+      return list;
+    }
+    return list.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        this.statusLabels[s.status].toLowerCase().includes(q)
+    );
+  });
+
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 
