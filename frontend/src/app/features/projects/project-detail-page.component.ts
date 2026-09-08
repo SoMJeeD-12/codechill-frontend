@@ -31,11 +31,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
-import {
-  combineDateAndTime,
-  nowTimeString,
-  toDateOnlyString,
-} from '../../core/utils/date.util';
+import { combineDateAndTime, nowTimeString, toDateOnlyString } from '../../core/utils/date.util';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 
 @Component({
@@ -77,6 +73,8 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly progress = signal(0);
   readonly tasks = signal<TaskItem[]>([]);
   readonly statusFilter = signal<TaskStatus | 'ALL'>('ALL');
+  readonly taskSearch = signal('');
+  readonly taskSearchControl = this.fb.nonNullable.control('');
   readonly deliveries = signal<Delivery[]>([]);
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
@@ -90,8 +88,25 @@ export class ProjectDetailPageComponent implements OnInit {
 
   readonly filteredTasks = computed(() => {
     const filter = this.statusFilter();
-    const list = this.tasks();
-    return filter === 'ALL' ? list : list.filter((t) => t.status === filter);
+    const q = this.taskSearch().trim().toLowerCase();
+    return this.tasks().filter((t) => {
+      const matchStatus = filter === 'ALL' || t.status === filter;
+      if (!matchStatus) {
+        return false;
+      }
+      if (!q) {
+        return true;
+      }
+      const assignee = this.userName(t.assigneeId).toLowerCase();
+      return (
+        t.title.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        assignee.includes(q) ||
+        (t.dueDate ?? '').toLowerCase().includes(q) ||
+        this.taskStatusLabels[t.status].toLowerCase().includes(q) ||
+        this.priorityLabels[t.priority].toLowerCase().includes(q)
+      );
+    });
   });
 
   readonly statusCounts = computed(() => {
@@ -110,15 +125,6 @@ export class ProjectDetailPageComponent implements OnInit {
   });
 
   private projectId = 0;
-
-  readonly taskForm = this.fb.group({
-    title: ['', Validators.required],
-    description: [''],
-    status: ['TODO' as TaskStatus],
-    priority: ['MEDIUM' as TaskPriority],
-    assigneeId: [null as number | null],
-    dueDate: [null as Date | null],
-  });
 
   readonly deliveryForm = this.fb.group({
     version: ['', Validators.required],
@@ -143,6 +149,7 @@ export class ProjectDetailPageComponent implements OnInit {
     if (me) {
       this.deliveryForm.patchValue({ deliveredByUserId: me.id });
     }
+    this.taskSearchControl.valueChanges.subscribe((v) => this.taskSearch.set(v));
     this.refresh();
   }
 
@@ -256,11 +263,11 @@ export class ProjectDetailPageComponent implements OnInit {
     this.changeStatus(task, order[idx + 1]);
   }
 
-  openEditTask(task: TaskItem): void {
+  openCreateTask(): void {
     const ref = this.dialog.open(TaskEditDialogComponent, {
-      width: '520px',
+      width: '560px',
       maxWidth: '95vw',
-      data: { task },
+      data: { projectId: this.projectId, task: null },
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
@@ -269,37 +276,17 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  addTask(): void {
-    if (this.taskForm.invalid) {
-      this.taskForm.markAllAsTouched();
-      return;
-    }
-    const raw = this.taskForm.getRawValue();
-    this.projectsApi
-      .createTask(this.projectId, {
-        title: raw.title ?? '',
-        description: raw.description ?? '',
-        status: (raw.status as TaskStatus) ?? 'TODO',
-        priority: (raw.priority as TaskPriority) ?? 'MEDIUM',
-        assigneeId: raw.assigneeId,
-        dueDate: toDateOnlyString(raw.dueDate) || null,
-        dependsOnTaskId: null,
-      })
-      .subscribe({
-        next: () => {
-          this.snack.open('เพิ่มงานย่อยแล้ว', 'ปิด', { duration: 2500 });
-          this.taskForm.reset({
-            title: '',
-            description: '',
-            status: 'TODO',
-            priority: 'MEDIUM',
-            assigneeId: null,
-            dueDate: null,
-          });
-          this.refresh();
-        },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-      });
+  openEditTask(task: TaskItem): void {
+    const ref = this.dialog.open(TaskEditDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      data: { projectId: this.projectId, task },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.refresh();
+      }
+    });
   }
 
   addDelivery(): void {

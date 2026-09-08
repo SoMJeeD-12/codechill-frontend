@@ -1,5 +1,6 @@
 /* Global theme — CPAMS internal admin */
 @use '@angular/material' as mat;
+@use './styles/list-panel';
 
 html {
   @include mat.theme(

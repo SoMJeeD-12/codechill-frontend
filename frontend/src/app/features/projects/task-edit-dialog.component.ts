@@ -23,6 +23,11 @@ import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 
+export interface TaskDialogData {
+  projectId: number;
+  task: TaskItem | null;
+}
+
 @Component({
   selector: 'app-task-edit-dialog',
   standalone: true,
@@ -45,8 +50,9 @@ export class TaskEditDialogComponent {
   private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<TaskEditDialogComponent, boolean>);
-  readonly data = inject<{ task: TaskItem }>(MAT_DIALOG_DATA);
+  readonly data = inject<TaskDialogData>(MAT_DIALOG_DATA);
 
+  readonly isEdit = !!this.data.task;
   readonly users = this.usersApi.users;
   readonly taskStatuses = TASK_STATUSES;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
@@ -56,12 +62,12 @@ export class TaskEditDialogComponent {
   readonly error = signal<string | null>(null);
 
   readonly form = this.fb.group({
-    title: [this.data.task.title, Validators.required],
-    description: [this.data.task.description],
-    status: [this.data.task.status as TaskStatus, Validators.required],
-    priority: [this.data.task.priority as TaskPriority, Validators.required],
-    assigneeId: [this.data.task.assigneeId as number | null],
-    dueDate: [parseDateOnly(this.data.task.dueDate) as Date | null],
+    title: [this.data.task?.title ?? '', Validators.required],
+    description: [this.data.task?.description ?? ''],
+    status: [(this.data.task?.status ?? 'TODO') as TaskStatus, Validators.required],
+    priority: [(this.data.task?.priority ?? 'MEDIUM') as TaskPriority, Validators.required],
+    assigneeId: [this.data.task?.assigneeId ?? (null as number | null)],
+    dueDate: [parseDateOnly(this.data.task?.dueDate) as Date | null],
   });
 
   save(): void {
@@ -70,28 +76,34 @@ export class TaskEditDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
+    const payload = {
+      title: raw.title ?? '',
+      description: raw.description ?? '',
+      status: raw.status as TaskStatus,
+      priority: raw.priority as TaskPriority,
+      assigneeId: raw.assigneeId,
+      dueDate: toDateOnlyString(raw.dueDate) || null,
+      dependsOnTaskId: this.data.task?.dependsOnTaskId ?? null,
+    };
     this.saving.set(true);
     this.error.set(null);
-    this.projectsApi
-      .updateTask(this.data.task.id, {
-        title: raw.title ?? '',
-        description: raw.description ?? '',
-        status: raw.status as TaskStatus,
-        priority: raw.priority as TaskPriority,
-        assigneeId: raw.assigneeId,
-        dueDate: toDateOnlyString(raw.dueDate) || null,
-        dependsOnTaskId: this.data.task.dependsOnTaskId,
-      })
-      .subscribe({
-        next: () => {
-          this.saving.set(false);
-          this.snack.open('แก้ไขงานย่อยแล้ว', 'ปิด', { duration: 2500 });
-          this.ref.close(true);
-        },
-        error: (err: Error) => {
-          this.saving.set(false);
-          this.error.set(err.message);
-        },
-      });
+
+    const req = this.isEdit
+      ? this.projectsApi.updateTask(this.data.task!.id, payload)
+      : this.projectsApi.createTask(this.data.projectId, payload);
+
+    req.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.snack.open(this.isEdit ? 'แก้ไขงานย่อยแล้ว' : 'เพิ่มงานย่อยแล้ว', 'ปิด', {
+          duration: 2500,
+        });
+        this.ref.close(true);
+      },
+      error: (err: Error) => {
+        this.saving.set(false);
+        this.error.set(err.message);
+      },
+    });
   }
 }

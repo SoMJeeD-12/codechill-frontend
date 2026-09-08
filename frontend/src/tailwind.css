@@ -1,0 +1,18 @@
+/* Utilities + theme only — skip preflight so Angular Material keeps its styles. */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source "./app/**/*.{html,ts}";
+@source "./index.html";
+
+@theme {
+  --color-brand: #0f766e;
+  --color-brand-dark: #115e59;
+  --color-brand-soft: #f0fdfa;
+  --color-ink: #1c2b28;
+  --color-muted: #5b6762;
+  --color-surface: #ffffff;
+  --color-line: #d8e5e1;
+}

@@ -34,11 +34,13 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
     CurrencyPipe,
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
     MatFormFieldModule,
+    MatInputModule,
     MatSelectModule,
     MatDialogModule,
     MatSnackBarModule,
@@ -51,20 +53,40 @@ export class ProjectsPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
   private readonly dialog = inject(MatDialog);
+  private readonly fb = inject(FormBuilder);
 
   readonly projects = signal<Project[]>([]);
   readonly statusFilter = signal<ProjectStatus | 'ALL'>('ALL');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly statuses = Object.keys(PROJECT_STATUS_LABELS) as ProjectStatus[];
   readonly columns = ['code', 'name', 'customer', 'dueDate', 'progress', 'status', 'value', 'actions'];
 
   readonly filtered = computed(() => {
     const status = this.statusFilter();
-    return this.projects().filter((p) => status === 'ALL' || p.status === status);
+    const q = this.search().trim().toLowerCase();
+    return this.projects().filter((p) => {
+      const matchStatus = status === 'ALL' || p.status === status;
+      if (!matchStatus) {
+        return false;
+      }
+      if (!q) {
+        return true;
+      }
+      const customer = this.customerName(p.customerId).toLowerCase();
+      return (
+        p.code.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        customer.includes(q) ||
+        p.description.toLowerCase().includes(q)
+      );
+    });
   });
 
   ngOnInit(): void {
     this.reload();
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
   }
 
   reload(): void {

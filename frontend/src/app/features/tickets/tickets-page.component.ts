@@ -42,6 +42,7 @@ import { switchMap } from 'rxjs/operators';
   imports: [
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -57,21 +58,40 @@ export class TicketsPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
   private readonly dialog = inject(MatDialog);
+  private readonly fb = inject(FormBuilder);
 
   readonly tickets = signal<Ticket[]>([]);
-  readonly view = signal<'open' | 'all'>('open');
+  readonly view = signal<'open' | 'all'>('all');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly columns = ['ticketNo', 'title', 'customer', 'status', 'priority', 'billing', 'reportedAt', 'actions'];
 
   readonly filtered = computed(() => {
-    const list = this.tickets();
+    let list = this.tickets();
     if (this.view() === 'open') {
-      return list.filter((t) => ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status));
+      list = list.filter((t) => ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status));
     }
-    return list;
+    const q = this.search().trim().toLowerCase();
+    if (!q) {
+      return list;
+    }
+    return list.filter((t) => {
+      const customer = this.customerName(t.customerId).toLowerCase();
+      return (
+        t.ticketNo.toLowerCase().includes(q) ||
+        t.title.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        customer.includes(q) ||
+        this.statusLabels[t.status].toLowerCase().includes(q) ||
+        t.priority.toLowerCase().includes(q) ||
+        BILLING_TYPE_LABELS[t.billingType].toLowerCase().includes(q)
+      );
+    });
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 

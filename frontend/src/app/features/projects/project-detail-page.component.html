@@ -21,38 +21,63 @@
 
     <mat-tab-group animationDuration="150ms">
       <mat-tab label="งานย่อย">
-        <div class="tasks-wrap">
-          <div class="tasks-main">
-            <div class="status-filters">
-              <button
-                type="button"
-                class="filter-chip"
-                [class.active]="statusFilter() === 'ALL'"
-                (click)="setStatusFilter('ALL')"
-              >
-                ทั้งหมด ({{ statusCounts().ALL }})
-              </button>
-              @for (status of taskStatuses; track status) {
+        <div class="tasks-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row">
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="taskSearchControl"
+                    placeholder="ค้นหาชื่อ รายละเอียด หรือผู้รับผิดชอบ"
+                    aria-label="ค้นหางานย่อย"
+                  />
+                </label>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  class="ui-add-btn"
+                  (click)="openCreateTask()"
+                >
+                  <mat-icon>add</mat-icon>
+                  เพิ่มงานย่อย
+                </button>
+              </div>
+
+              <div class="ui-chips" role="tablist" aria-label="กรองสถานะงาน">
                 <button
                   type="button"
-                  class="filter-chip"
-                  [class.active]="statusFilter() === status"
-                  (click)="setStatusFilter(status)"
+                  class="ui-chip"
+                  [class.is-active]="statusFilter() === 'ALL'"
+                  (click)="setStatusFilter('ALL')"
                 >
-                  {{ taskStatusLabels[status] }} ({{ statusCounts()[status] }})
+                  ทั้งหมด
+                  <span class="ui-chip__count">{{ statusCounts().ALL }}</span>
                 </button>
-              }
+                @for (status of taskStatuses; track status) {
+                  <button
+                    type="button"
+                    class="ui-chip"
+                    [class.is-active]="statusFilter() === status"
+                    (click)="setStatusFilter(status)"
+                  >
+                    {{ taskStatusLabels[status] }}
+                    <span class="ui-chip__count">{{ statusCounts()[status] }}</span>
+                  </button>
+                }
+              </div>
             </div>
 
-            <mat-card class="table-card">
-              <table mat-table [dataSource]="filteredTasks()" class="full-table">
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredTasks()" class="data-table tasks-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>งาน</th>
                   <td mat-cell *matCellDef="let row">
-                    <strong>{{ row.title }}</strong>
-                    @if (row.description) {
-                      <small class="muted">{{ row.description }}</small>
-                    }
+                    <button type="button" class="task-link" (click)="openEditTask(row)">
+                      {{ row.title }}
+                    </button>
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="priority">
@@ -88,7 +113,7 @@
                 </ng-container>
                 <ng-container matColumnDef="dueDate">
                   <th mat-header-cell *matHeaderCellDef>ครบกำหนด</th>
-                  <td mat-cell *matCellDef="let row">{{ row.dueDate || '—' }}</td>
+                  <td mat-cell *matCellDef="let row" class="due-cell">{{ row.dueDate || '—' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>สถานะ</th>
@@ -112,18 +137,18 @@
                       mat-icon-button
                       type="button"
                       (click)="openEditTask(row)"
-                      matTooltip="แก้ไข"
+                      matTooltip="ดู / แก้ไขรายละเอียด"
                     >
-                      <mat-icon>edit</mat-icon>
+                      <mat-icon>open_in_new</mat-icon>
                     </button>
                     @if (row.status !== 'DONE') {
                       <button
                         mat-stroked-button
                         type="button"
+                        class="next-btn"
                         (click)="advanceStatus(row)"
                         matTooltip="เลื่อนไปสถานะถัดไป"
                       >
-                        <mat-icon>arrow_forward</mat-icon>
                         ขั้นถัดไป
                       </button>
                     } @else {
@@ -134,60 +159,22 @@
                 <tr mat-header-row *matHeaderRowDef="taskColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: taskColumns"></tr>
               </table>
-              @if (filteredTasks().length === 0) {
-                <p class="empty">ไม่มีงานในสถานะนี้</p>
-              }
-            </mat-card>
-          </div>
 
-          <mat-card class="side-form">
-            <h3>เพิ่มงานย่อย</h3>
-            <form [formGroup]="taskForm" (ngSubmit)="addTask()" class="form">
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ชื่องาน</mat-label>
-                <input matInput formControlName="title" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>รายละเอียด</mat-label>
-                <textarea matInput rows="2" formControlName="description"></textarea>
-              </mat-form-field>
-              <div class="row">
-                <mat-form-field appearance="outline">
-                  <mat-label>สถานะเริ่มต้น</mat-label>
-                  <mat-select formControlName="status">
-                    @for (s of taskStatuses; track s) {
-                      <mat-option [value]="s">{{ taskStatusLabels[s] }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>ความสำคัญ</mat-label>
-                  <mat-select formControlName="priority">
-                    @for (pr of priorities; track pr) {
-                      <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ผู้รับผิดชอบ</mat-label>
-                <mat-select formControlName="assigneeId">
-                  <mat-option [value]="null">—</mat-option>
-                  @for (u of users(); track u.id) {
-                    <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>วันครบกำหนด</mat-label>
-                <input matInput [matDatepicker]="taskDuePicker" formControlName="dueDate" />
-                <mat-datepicker-toggle matIconSuffix [for]="taskDuePicker"></mat-datepicker-toggle>
-                <mat-datepicker #taskDuePicker></mat-datepicker>
-              </mat-form-field>
-              <button mat-flat-button color="primary" type="submit">เพิ่มงาน</button>
-            </form>
-          </mat-card>
+              @if (filteredTasks().length === 0) {
+                <p class="data-empty">
+                  {{ taskSearch().trim() ? 'ไม่พบงานย่อยตามคำค้นหา/ตัวกรอง' : 'ไม่มีงานในสถานะนี้' }}
+                </p>
+              }
+            </div>
+          </div>
         </div>
+      </mat-tab>
+
+      <mat-tab label="รายละเอียด">
+        <mat-card class="info-card">
+          <p>{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
+          <small>อัปเดตล่าสุด {{ p.updatedAt | date: 'd MMM y HH:mm' }}</small>
+        </mat-card>
       </mat-tab>
 
       <mat-tab label="การส่งมอบ">
@@ -215,10 +202,10 @@
                   ผู้รับ {{ contactName(d.receivedByContactId) }}
                 </p>
                 @if (d.note) {
-                  <p>{{ d.note }}</p>
+                  <p class="note">{{ d.note }}</p>
                 }
                 @if (d.attachmentName) {
-                  <small>แนบ: {{ d.attachmentName }}</small>
+                  <small class="attach">แนบ: {{ d.attachmentName }}</small>
                 }
               </mat-card>
             } @empty {
@@ -282,13 +269,6 @@
             </form>
           </mat-card>
         </div>
-      </mat-tab>
-
-      <mat-tab label="รายละเอียด">
-        <mat-card class="info-card">
-          <p>{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
-          <small>อัปเดตล่าสุด {{ p.updatedAt | date: 'd MMM y HH:mm' }}</small>
-        </mat-card>
       </mat-tab>
     </mat-tab-group>
   </section>
