@@ -1,14 +1,14 @@
 <section class="dashboard">
   <header class="page-header">
     <div>
-      <p class="eyebrow">เฟส 0 · Mock Frontend</p>
+      <p class="eyebrow">CPAMS · Mock Frontend</p>
       <h1>สวัสดี, {{ user()?.fullName }}</h1>
       <p class="subtitle">เลือกเมนูด้านซ้าย หรือทางลัดด้านล่างเพื่อไปยังโมดูลถัดไป</p>
     </div>
   </header>
 
   <div class="stat-grid">
-    @for (stat of stats; track stat.label) {
+    @for (stat of stats(); track stat.label) {
       <mat-card class="stat-card">
         <mat-icon>{{ stat.icon }}</mat-icon>
         <div>
@@ -26,10 +26,10 @@
     </mat-card-header>
     <mat-card-content>
       <ol>
-        <li><strong>เฟส 0 (ตอนนี้)</strong> — Login, Layout, สิทธิ์เมนู</li>
-        <li><strong>เฟส 1</strong> — ผู้ใช้ / บทบาท / ลูกค้า</li>
-        <li><strong>เฟส 2</strong> — โครงการ / ส่งมอบ / ปัญหา</li>
-        <li><strong>เฟส 3+</strong> — ประกัน, MA, เอกสาร, แจ้งเตือน</li>
+        <li><strong>เฟส 0–1</strong> — Login, สิทธิ์, ผู้ใช้, ลูกค้า</li>
+        <li><strong>เฟส 2–3</strong> — โครงการ, ปัญหา, ประกัน, MA, เอกสาร</li>
+        <li><strong>เฟส 4</strong> — ติดตาม, แจ้งเตือน, audit</li>
+        <li><strong>เฟส 5 (ตอนนี้)</strong> — แบบประเมิน + รายงาน</li>
       </ol>
     </mat-card-content>
   </mat-card>

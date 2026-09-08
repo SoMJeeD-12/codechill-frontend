@@ -1,0 +1,64 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">M8 · แบบประเมิน</p>
+      <h1>แบบประเมิน</h1>
+      <p class="subtitle">สร้างแบบประเมิน บันทึกคำตอบ และดูสรุปความพึงพอใจ</p>
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      สร้างแบบประเมิน
+    </button>
+  </header>
+
+  <mat-card>
+    <table mat-table [dataSource]="surveys()" class="full-table">
+      <ng-container matColumnDef="title">
+        <th mat-header-cell *matHeaderCellDef>แบบประเมิน</th>
+        <td mat-cell *matCellDef="let row">
+          <a [routerLink]="['/app/surveys', row.id]"><strong>{{ row.title }}</strong></a>
+          <div class="muted">{{ row.description || '—' }}</div>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+        <td mat-cell *matCellDef="let row">
+          <span class="status" [attr.data-status]="row.status">{{ statusLabel(row.status) }}</span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="questions">
+        <th mat-header-cell *matHeaderCellDef>คำถาม</th>
+        <td mat-cell *matCellDef="let row">{{ row.questions.length }}</td>
+      </ng-container>
+      <ng-container matColumnDef="responses">
+        <th mat-header-cell *matHeaderCellDef>คำตอบ</th>
+        <td mat-cell *matCellDef="let row">{{ responseCount(row.id) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="avg">
+        <th mat-header-cell *matHeaderCellDef>คะแนนเฉลี่ย</th>
+        <td mat-cell *matCellDef="let row">{{ avg(row.id) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="updatedAt">
+        <th mat-header-cell *matHeaderCellDef>อัปเดต</th>
+        <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'd MMM y' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let row">
+          <a mat-button [routerLink]="['/app/surveys', row.id]">เปิด</a>
+          @if (row.status === 'DRAFT') {
+            <button mat-button type="button" color="primary" (click)="setStatus(row, 'ACTIVE')">เปิดรับ</button>
+          }
+          @if (row.status === 'ACTIVE') {
+            <button mat-button type="button" (click)="setStatus(row, 'CLOSED')">ปิด</button>
+          }
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+    @if (surveys().length === 0) {
+      <p class="empty">ยังไม่มีแบบประเมิน</p>
+    }
+  </mat-card>
+</section>

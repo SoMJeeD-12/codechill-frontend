@@ -1,0 +1,88 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">M10 · รายงาน</p>
+      <h1>รายงานผู้บริหาร</h1>
+      <p class="subtitle">สรุปรายได้ การดำเนินงาน และความพึงพอใจจากข้อมูล mock ในระบบ</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      รีเฟรช
+    </button>
+  </header>
+
+  @if (report(); as r) {
+    <p class="generated">สร้างเมื่อ {{ r.generatedAt | date: 'd MMM y HH:mm' }}</p>
+
+    <div class="kpi-grid">
+      @for (k of r.kpis; track k.label) {
+        <mat-card class="kpi">
+          <mat-icon>{{ k.icon }}</mat-icon>
+          <div>
+            <strong>{{ k.value }}</strong>
+            <span>{{ k.label }}</span>
+            <small>{{ k.hint }}</small>
+          </div>
+        </mat-card>
+      }
+    </div>
+
+    <div class="alerts">
+      <h2>จุดที่ควรจับตา</h2>
+      <ul>
+        @for (a of r.alerts; track a) {
+          <li>{{ a }}</li>
+        }
+      </ul>
+    </div>
+
+    <div class="sections">
+      <mat-card>
+        <h2>รายได้ / มูลค่า (mock)</h2>
+        @for (row of r.revenue; track row.label) {
+          <div class="metric">
+            <div class="metric-top">
+              <span>{{ row.label }}</span>
+              <strong>{{ row.display }}</strong>
+            </div>
+            <div class="track">
+              <div class="fill" [style.width.%]="barWidth(row.value, r.revenue)"></div>
+            </div>
+          </div>
+        }
+      </mat-card>
+
+      <mat-card>
+        <h2>การดำเนินงาน</h2>
+        @for (row of r.operations; track row.label) {
+          <div class="metric">
+            <div class="metric-top">
+              <span>{{ row.label }}</span>
+              <strong>{{ row.display }}</strong>
+            </div>
+            <div class="track">
+              <div class="fill ops" [style.width.%]="barWidth(row.value, r.operations)"></div>
+            </div>
+          </div>
+        }
+      </mat-card>
+
+      <mat-card>
+        <h2>ความพึงพอใจตามแบบประเมิน</h2>
+        @for (row of r.satisfaction; track row.label) {
+          <div class="sat-row">
+            <div>
+              <strong>{{ row.label }}</strong>
+              <p>{{ row.display }}</p>
+            </div>
+            <a mat-button routerLink="/app/surveys">ดูแบบประเมิน</a>
+          </div>
+        } @empty {
+          <p class="empty">ยังไม่มีแบบประเมิน</p>
+        }
+      </mat-card>
+    </div>
+  } @else if (loading()) {
+    <p class="empty">กำลังโหลดรายงาน…</p>
+  }
+</section>

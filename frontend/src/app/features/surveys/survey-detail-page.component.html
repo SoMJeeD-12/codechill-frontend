@@ -1,0 +1,131 @@
+@if (notFound()) {
+  <mat-card class="missing">
+    <h1>ไม่พบแบบประเมิน</h1>
+    <a mat-button routerLink="/app/surveys">กลับรายการ</a>
+  </mat-card>
+} @else {
+  @if (survey(); as s) {
+  <section class="page">
+    <header class="page-header">
+      <div>
+        <a routerLink="/app/surveys" class="back">← รายการแบบประเมิน</a>
+        <p class="eyebrow">M8 · รายละเอียด</p>
+        <h1>{{ s.title }}</h1>
+        <p class="subtitle">{{ statusLabel(s.status) }} · {{ s.description || 'ไม่มีคำอธิบาย' }}</p>
+      </div>
+    </header>
+
+    @if (summary(); as sum) {
+      <div class="meta-grid">
+        <mat-card>
+          <strong>จำนวนคำตอบ</strong>
+          <span>{{ sum.responseCount }}</span>
+        </mat-card>
+        <mat-card>
+          <strong>คะแนนเฉลี่ย</strong>
+          <span>{{ sum.averageRating ?? '—' }}</span>
+        </mat-card>
+        <mat-card class="dist-card">
+          <strong>การกระจายคะแนน</strong>
+          <div class="bars">
+            @for (score of [5, 4, 3, 2, 1]; track score) {
+              <div class="bar-row">
+                <span>{{ score }}★</span>
+                <div class="track">
+                  <div class="fill" [style.width.%]="distPercent($any(score))"></div>
+                </div>
+                <span class="pct">{{ distPercent($any(score)) }}%</span>
+              </div>
+            }
+          </div>
+        </mat-card>
+      </div>
+    }
+
+    <div class="two-col">
+      <mat-card>
+        <h2>คำตอบล่าสุด</h2>
+        <table mat-table [dataSource]="responses()" class="full-table">
+          <ng-container matColumnDef="customer">
+            <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
+            <td mat-cell *matCellDef="let row">{{ customerName(row.customerId) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="avg">
+            <th mat-header-cell *matHeaderCellDef>เฉลี่ย</th>
+            <td mat-cell *matCellDef="let row">{{ row.ratingAverage ?? '—' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="by">
+            <th mat-header-cell *matHeaderCellDef>บันทึกโดย</th>
+            <td mat-cell *matCellDef="let row">{{ row.submittedByName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="at">
+            <th mat-header-cell *matHeaderCellDef>เมื่อ</th>
+            <td mat-cell *matCellDef="let row">{{ row.submittedAt | date: 'd MMM y HH:mm' }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+        @if (responses().length === 0) {
+          <p class="empty">ยังไม่มีคำตอบ</p>
+        }
+      </mat-card>
+
+      <mat-card class="form-card">
+        <h2>บันทึกคำตอบ (mock)</h2>
+        @if (s.status !== 'ACTIVE') {
+          <p class="empty">เปิดสถานะ「เปิดรับคำตอบ」ก่อนจึงจะบันทึกได้</p>
+        } @else {
+          <form [formGroup]="responseForm" (ngSubmit)="submit()" class="form">
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>ลูกค้า</mat-label>
+              <mat-select formControlName="customerId">
+                @for (c of customers(); track c.id) {
+                  <mat-option [value]="c.id">{{ c.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            @for (q of s.questions; track q.id) {
+              <div class="question">
+                <label>
+                  {{ q.text }}
+                  @if (q.required) {
+                    <span class="req">*</span>
+                  }
+                  <small>{{ typeLabel(q.type) }}</small>
+                </label>
+
+                @if (q.type === 'RATING') {
+                  <mat-radio-group [formControl]="answerControls[q.id]" class="rating">
+                    @for (n of [1, 2, 3, 4, 5]; track n) {
+                      <mat-radio-button [value]="n">{{ n }}</mat-radio-button>
+                    }
+                  </mat-radio-group>
+                } @else if (q.type === 'CHOICE') {
+                  <mat-form-field appearance="outline" class="full">
+                    <mat-label>เลือก</mat-label>
+                    <mat-select [formControl]="answerControls[q.id]">
+                      @for (opt of q.options; track opt) {
+                        <mat-option [value]="opt">{{ opt }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field appearance="outline" class="full">
+                    <mat-label>คำตอบ</mat-label>
+                    <textarea matInput rows="2" [formControl]="answerControls[q.id]"></textarea>
+                  </mat-form-field>
+                }
+              </div>
+            }
+
+            <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+              บันทึกคำตอบ
+            </button>
+          </form>
+        }
+      </mat-card>
+    </div>
+  </section>
+  }
+}

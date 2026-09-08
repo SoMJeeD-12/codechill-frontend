@@ -1,11 +1,15 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService } from '../../core/services/auth.service';
 import { MENU_ITEMS } from '../../core/mock/mock-data';
 import { MenuItem } from '../../core/models/permission.model';
+import { AuthService } from '../../core/services/auth.service';
+import { CustomerService } from '../../core/services/customer.service';
+import { FollowUpService } from '../../core/services/follow-up.service';
+import { ProjectService } from '../../core/services/project.service';
+import { TicketService } from '../../core/services/ticket.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -14,17 +18,20 @@ import { MenuItem } from '../../core/models/permission.model';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly customers = inject(CustomerService);
+  private readonly projects = inject(ProjectService);
+  private readonly tickets = inject(TicketService);
+  private readonly followUps = inject(FollowUpService);
 
   readonly user = this.auth.currentUser;
-
-  readonly stats = [
-    { label: 'ลูกค้า (mock)', value: '128', icon: 'business' },
-    { label: 'โครงการเปิดอยู่', value: '24', icon: 'folder_special' },
-    { label: 'ปัญหาค้าง', value: '7', icon: 'support_agent' },
-    { label: 'สัญญาใกล้หมดอายุ', value: '3', icon: 'handshake' },
-  ];
+  readonly stats = signal([
+    { label: 'ลูกค้า', value: '0', icon: 'business' },
+    { label: 'โครงการเปิดอยู่', value: '0', icon: 'folder_special' },
+    { label: 'ปัญหาค้าง', value: '0', icon: 'support_agent' },
+    { label: 'ติดตามเลยกำหนด', value: '0', icon: 'event_available' },
+  ]);
 
   readonly quickLinks = computed(() => {
     const codes = new Set(this.auth.getVisibleMenuCodes());
@@ -32,4 +39,32 @@ export class DashboardComponent {
       (m: MenuItem) => codes.has(m.code) && m.code !== 'dashboard'
     ).slice(0, 6);
   });
+
+  ngOnInit(): void {
+    const openProjects = this.projects
+      .projects()
+      .filter((p) => ['PLANNING', 'IN_PROGRESS', 'ON_HOLD'].includes(p.status)).length;
+    this.stats.set([
+      {
+        label: 'ลูกค้า',
+        value: String(this.customers.customers().length),
+        icon: 'business',
+      },
+      {
+        label: 'โครงการเปิดอยู่',
+        value: String(openProjects),
+        icon: 'folder_special',
+      },
+      {
+        label: 'ปัญหาค้าง',
+        value: String(this.tickets.openQueue().length),
+        icon: 'support_agent',
+      },
+      {
+        label: 'ติดตามเลยกำหนด',
+        value: String(this.followUps.listOverdue().length),
+        icon: 'event_available',
+      },
+    ]);
+  }
 }

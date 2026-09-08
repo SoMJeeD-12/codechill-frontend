@@ -109,12 +109,15 @@ export const routes: Routes = [
         path: 'surveys',
         canActivate: [permissionGuard('surveys')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'แบบประเมิน',
-          description: 'สร้างแบบประเมินและสรุปความพึงพอใจ',
-          icon: 'rate_review',
-        },
+          import('./features/surveys/surveys-page.component').then((m) => m.SurveysPageComponent),
+      },
+      {
+        path: 'surveys/:id',
+        canActivate: [permissionGuard('surveys')],
+        loadComponent: () =>
+          import('./features/surveys/survey-detail-page.component').then(
+            (m) => m.SurveyDetailPageComponent
+          ),
       },
       {
         path: 'documents',
@@ -128,12 +131,7 @@ export const routes: Routes = [
         path: 'reports',
         canActivate: [permissionGuard('reports')],
         loadComponent: () =>
-          import('./shared/components/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-        data: {
-          title: 'รายงาน',
-          description: 'รายได้ ต้นทุน และแดชบอร์ดผู้บริหาร',
-          icon: 'analytics',
-        },
+          import('./features/reports/reports-page.component').then((m) => m.ReportsPageComponent),
       },
       {
         path: 'notifications',
