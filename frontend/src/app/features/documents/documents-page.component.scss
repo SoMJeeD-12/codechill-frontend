@@ -1,4 +1,4 @@
-.page { max-width: 1200px; }
+.page { max-width: none; width: 100%; }
 
 .page-header {
   display: flex;
@@ -42,10 +42,31 @@
   font-weight: 400;
 }
 
+.file-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 a {
   color: #0f766e;
   text-decoration: none;
   font-weight: 600;
+}
+
+.btn-danger {
+  color: #dc2626 !important;
+}
+
+.btn-danger mat-icon {
+  color: #dc2626;
 }
 
 .empty {

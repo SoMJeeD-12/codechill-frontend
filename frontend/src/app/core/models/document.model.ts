@@ -19,6 +19,9 @@ export interface DocumentVersion {
   uploadedByUserId: number;
   uploadedAt: string;
   note: string;
+  /** mock: data URL ของไฟล์ที่เลือกอัปโหลด หรือหน้า preview */
+  fileDataUrl: string | null;
+  mimeType: string | null;
 }
 
 export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {

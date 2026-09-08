@@ -10,6 +10,15 @@
   <div class="data-card">
     <div class="data-card__head">
       <div class="data-card__row">
+        <label class="ui-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ชื่อเอกสาร / ชื่อไฟล์ / ลูกค้า / โครงการ"
+            aria-label="ค้นหาเอกสาร"
+          />
+        </label>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
           <mat-label>กรองโครงการ</mat-label>
           <mat-select [value]="projectFilter()" (selectionChange)="projectFilter.set($event.value)">
@@ -45,6 +54,14 @@
           <th mat-header-cell *matHeaderCellDef>ประเภท</th>
           <td mat-cell *matCellDef="let row">{{ categoryLabel(row.category) }}</td>
         </ng-container>
+        <ng-container matColumnDef="file">
+          <th mat-header-cell *matHeaderCellDef>ไฟล์ล่าสุด</th>
+          <td mat-cell *matCellDef="let row">
+            <button type="button" class="file-link" (click)="viewCurrentFile(row)" matTooltip="เปิดดูไฟล์">
+              {{ currentFileName(row) }}
+            </button>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="version">
           <th mat-header-cell *matHeaderCellDef>เวอร์ชันปัจจุบัน</th>
           <td mat-cell *matCellDef="let row">{{ row.currentVersion }}</td>
@@ -59,13 +76,24 @@
             <button mat-button type="button" color="primary" (click)="openVersions(row)">
               ประวัติเวอร์ชัน
             </button>
+            <button
+              mat-icon-button
+              type="button"
+              class="btn-danger"
+              (click)="removeDocument(row)"
+              matTooltip="ลบเอกสาร"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
       @if (filtered().length === 0) {
-        <p class="data-empty">ยังไม่มีเอกสาร</p>
+        <p class="data-empty">
+          {{ search().trim() || projectFilter() !== 'ALL' ? 'ไม่พบเอกสารตามคำค้นหา/ตัวกรอง' : 'ยังไม่มีเอกสาร' }}
+        </p>
       }
     </div>
   </div>

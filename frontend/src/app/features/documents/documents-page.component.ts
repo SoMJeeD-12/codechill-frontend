@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   DOCUMENT_CATEGORY_LABELS,
   DocumentCategory,
@@ -24,9 +25,79 @@ import {
 } from '../../core/models/document.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { DocumentService } from '../../core/services/document.service';
+import {
+  DocumentService,
+  buildMockFilePreview,
+} from '../../core/services/document.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+
+const MAX_MOCK_FILE_BYTES = 1_500_000;
+
+/** Chrome/Edge บล็อก navigation ไป data: URL → แปลงเป็น blob: ก่อนเปิด */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) {
+    throw new Error('invalid data URL');
+  }
+  const header = dataUrl.slice(0, comma);
+  const data = dataUrl.slice(comma + 1);
+  const mime = header.match(/^data:([^;,]+)/i)?.[1] || 'application/octet-stream';
+  if (/;base64/i.test(header)) {
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  }
+  return new Blob([decodeURIComponent(data)], { type: mime });
+}
+
+function openDocumentFile(ver: DocumentVersion): void {
+  const dataUrl =
+    ver.fileDataUrl || buildMockFilePreview(ver.fileName, ver.version, ver.note);
+  let url = dataUrl;
+  try {
+    if (dataUrl.startsWith('data:')) {
+      url = URL.createObjectURL(dataUrlToBlob(dataUrl));
+      // ปล่อยให้แท็บใหม่โหลดเสร็จก่อน revoke
+      setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    }
+  } catch {
+    url = buildMockFilePreview(ver.fileName, ver.version, ver.note);
+    url = URL.createObjectURL(dataUrlToBlob(url));
+    setTimeout(() => URL.revokeObjectURL(url), 120_000);
+  }
+  const opened = window.open(url, '_blank');
+  if (!opened) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.click();
+  }
+}
+
+function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: string; sizeKb: number }> {
+  return new Promise((resolve, reject) => {
+    if (file.size > MAX_MOCK_FILE_BYTES) {
+      reject(new Error('ไฟล์ใหญ่เกิน 1.5MB สำหรับ mock — จะใช้หน้าตัวอย่างแทน'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        dataUrl: String(reader.result ?? ''),
+        mimeType: file.type || 'application/octet-stream',
+        sizeKb: Math.max(1, Math.round(file.size / 1024)),
+      });
+    };
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+    reader.readAsDataURL(file);
+  });
+}
 
 @Component({
   selector: 'app-documents-page',
@@ -34,6 +105,7 @@ import { UserService } from '../../core/services/user.service';
   imports: [
     DatePipe,
     RouterLink,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -42,6 +114,7 @@ import { UserService } from '../../core/services/user.service';
     MatSelectModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './documents-page.component.html',
   styleUrl: './documents-page.component.scss',
@@ -51,20 +124,50 @@ export class DocumentsPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
   private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
+  private readonly fb = inject(FormBuilder);
 
   readonly documents = signal<ProjectDocument[]>([]);
   readonly projectFilter = signal<number | 'ALL'>('ALL');
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly categoryLabels = DOCUMENT_CATEGORY_LABELS;
   readonly projects = this.projectsApi.projects;
-  readonly columns = ['title', 'project', 'category', 'version', 'updatedAt', 'actions'];
+  readonly columns = ['title', 'project', 'category', 'file', 'version', 'updatedAt', 'actions'];
 
   readonly filtered = computed(() => {
     const filter = this.projectFilter();
-    const list = this.documents();
-    return filter === 'ALL' ? list : list.filter((d) => d.projectId === filter);
+    const q = this.search().trim().toLowerCase();
+    let list = this.documents();
+    if (filter !== 'ALL') {
+      list = list.filter((d) => d.projectId === filter);
+    }
+    if (!q) {
+      return list;
+    }
+    return list.filter((d) => {
+      const project = this.projectsApi.getProject(d.projectId);
+      const projectText = project ? `${project.code} ${project.name}`.toLowerCase() : '';
+      const versions = this.api.getVersions(d.id);
+      const fileMatch = versions.some(
+        (v) =>
+          v.fileName.toLowerCase().includes(q) ||
+          v.version.toLowerCase().includes(q) ||
+          (v.note ?? '').toLowerCase().includes(q)
+      );
+      return (
+        d.title.toLowerCase().includes(q) ||
+        this.customerName(d.customerId).toLowerCase().includes(q) ||
+        projectText.includes(q) ||
+        this.categoryLabels[d.category].toLowerCase().includes(q) ||
+        d.currentVersion.toLowerCase().includes(q) ||
+        fileMatch
+      );
+    });
   });
 
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 
@@ -83,6 +186,18 @@ export class DocumentsPageComponent implements OnInit {
 
   categoryLabel(category: ProjectDocument['category']): string {
     return this.categoryLabels[category];
+  }
+
+  currentFileName(doc: ProjectDocument): string {
+    return this.api.getLatestVersion(doc.id)?.fileName ?? '—';
+  }
+
+  viewCurrentFile(doc: ProjectDocument): void {
+    const ver = this.api.getLatestVersion(doc.id);
+    if (!ver) {
+      return;
+    }
+    openDocumentFile(ver);
   }
 
   openCreate(): void {
@@ -108,6 +223,25 @@ export class DocumentsPageComponent implements OnInit {
       if (saved) {
         this.reload();
       }
+    });
+  }
+
+  removeDocument(doc: ProjectDocument): void {
+    openConfirmDialog(this.dialog, {
+      title: 'ลบเอกสาร',
+      message: `ลบเอกสาร「${doc.title}」และทุกเวอร์ชันหรือไม่?`,
+      confirmLabel: 'ลบเอกสาร',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.deleteDocument(doc.id).subscribe({
+        next: () => {
+          this.snack.open('ลบเอกสารแล้ว', 'ปิด', { duration: 2200 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
     });
   }
 }
@@ -140,6 +274,7 @@ export class DocumentUploadDialogComponent {
   readonly categories = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  private pendingFile: { dataUrl: string; mimeType: string; sizeKb: number } | null = null;
 
   readonly form = this.fb.group({
     projectId: [0, Validators.min(1)],
@@ -167,6 +302,16 @@ export class DocumentUploadDialogComponent {
       fileName: file.name,
       title: this.form.getRawValue().title || file.name.replace(/\.[^.]+$/, ''),
     });
+    this.pendingFile = null;
+    readFileAsDataUrl(file)
+      .then((data) => {
+        this.pendingFile = data;
+        this.error.set(null);
+      })
+      .catch((err: Error) => {
+        this.pendingFile = null;
+        this.error.set(err.message);
+      });
   }
 
   save(): void {
@@ -192,12 +337,18 @@ export class DocumentUploadDialogComponent {
         version: raw.version ?? 'v1.0',
         note: raw.note ?? '',
         uploadedByUserId: this.auth.currentUser()?.id ?? 1,
-        sizeKb: Math.floor(100 + Math.random() * 500),
+        sizeKb: this.pendingFile?.sizeKb ?? Math.floor(100 + Math.random() * 500),
+        fileDataUrl: this.pendingFile?.dataUrl ?? null,
+        mimeType: this.pendingFile?.mimeType ?? null,
       })
       .subscribe({
         next: () => {
           this.saving.set(false);
-          this.snack.open('อัปโหลดเอกสารแล้ว (mock)', 'ปิด', { duration: 2500 });
+          this.snack.open(
+            this.pendingFile ? 'อัปโหลดเอกสารแล้ว (เปิดดูไฟล์ได้)' : 'อัปโหลดเอกสารแล้ว (หน้าตัวอย่าง)',
+            'ปิด',
+            { duration: 2500 }
+          );
           this.ref.close(true);
         },
         error: (err: Error) => {
@@ -218,8 +369,10 @@ export class DocumentUploadDialogComponent {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     MatTableModule,
     MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './document-versions-dialog.component.html',
   styleUrl: './document-versions-dialog.component.scss',
@@ -230,14 +383,16 @@ export class DocumentVersionsDialogComponent {
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly ref = inject(MatDialogRef<DocumentVersionsDialogComponent, boolean>);
   readonly doc = inject<ProjectDocument>(MAT_DIALOG_DATA);
 
   readonly versions = signal<DocumentVersion[]>(this.api.getVersions(this.doc.id));
-  readonly columns = ['version', 'fileName', 'size', 'by', 'at', 'note'];
+  readonly columns = ['version', 'fileName', 'size', 'by', 'at', 'note', 'actions'];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   private changed = false;
+  private pendingFile: { dataUrl: string; mimeType: string; sizeKb: number } | null = null;
 
   readonly form = this.fb.nonNullable.group({
     version: ['', Validators.required],
@@ -249,6 +404,34 @@ export class DocumentVersionsDialogComponent {
     return this.usersApi.getById(id)?.fullName ?? `#${id}`;
   }
 
+  viewFile(ver: DocumentVersion): void {
+    openDocumentFile(ver);
+  }
+
+  removeVersion(ver: DocumentVersion): void {
+    if (this.versions().length <= 1) {
+      this.snack.open('ต้องเหลืออย่างน้อย 1 เวอร์ชัน', 'ปิด', { duration: 2500 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบเวอร์ชัน',
+      message: `ลบเวอร์ชัน ${ver.version} (${ver.fileName}) หรือไม่?`,
+      confirmLabel: 'ลบเวอร์ชัน',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.deleteVersion(this.doc.id, ver.id).subscribe({
+        next: (list) => {
+          this.changed = true;
+          this.versions.set(list);
+          this.snack.open('ลบเวอร์ชันแล้ว', 'ปิด', { duration: 2200 });
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
+    });
+  }
+
   onFilePicked(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -256,6 +439,16 @@ export class DocumentVersionsDialogComponent {
       return;
     }
     this.form.patchValue({ fileName: file.name });
+    this.pendingFile = null;
+    readFileAsDataUrl(file)
+      .then((data) => {
+        this.pendingFile = data;
+        this.error.set(null);
+      })
+      .catch((err: Error) => {
+        this.pendingFile = null;
+        this.error.set(err.message);
+      });
   }
 
   save(): void {
@@ -272,11 +465,15 @@ export class DocumentVersionsDialogComponent {
         fileName: raw.fileName,
         note: raw.note,
         uploadedByUserId: this.auth.currentUser()?.id ?? 1,
+        sizeKb: this.pendingFile?.sizeKb,
+        fileDataUrl: this.pendingFile?.dataUrl ?? null,
+        mimeType: this.pendingFile?.mimeType ?? null,
       })
       .subscribe({
         next: () => {
           this.saving.set(false);
           this.changed = true;
+          this.pendingFile = null;
           this.versions.set(this.api.getVersions(this.doc.id));
           this.form.reset({ version: '', fileName: '', note: '' });
           this.snack.open('เพิ่มเวอร์ชันแล้ว', 'ปิด', { duration: 2500 });

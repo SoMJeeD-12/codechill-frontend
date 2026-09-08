@@ -3,6 +3,19 @@
   margin-bottom: 1rem;
 }
 
+.file-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .section-title {
   margin: 1rem 0 0.5rem;
   font-size: 1rem;
@@ -33,6 +46,19 @@
   margin: 0.25rem 0 0;
   color: #b91c1c;
   font-size: 0.9rem;
+}
+
+.btn-danger {
+  color: #dc2626 !important;
+}
+
+.btn-danger mat-icon {
+  color: #dc2626;
+}
+
+.btn-danger:disabled,
+.btn-danger:disabled mat-icon {
+  color: rgba(220, 38, 38, 0.35) !important;
 }
 
 @media (max-width: 560px) {
