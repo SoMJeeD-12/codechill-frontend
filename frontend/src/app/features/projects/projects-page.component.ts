@@ -66,7 +66,7 @@ export class ProjectsPageComponent implements OnInit {
   readonly filtered = computed(() => {
     const status = this.statusFilter();
     const q = this.search().trim().toLowerCase();
-    return this.projects().filter((p) => {
+    let list = this.projects().filter((p) => {
       const matchStatus = status === 'ALL' || p.status === status;
       if (!matchStatus) {
         return false;
@@ -81,6 +81,20 @@ export class ProjectsPageComponent implements OnInit {
         customer.includes(q) ||
         p.description.toLowerCase().includes(q)
       );
+    });
+    const statusRank: Record<ProjectStatus, number> = {
+      IN_PROGRESS: 0,
+      PLANNING: 1,
+      ON_HOLD: 2,
+      COMPLETED: 3,
+      CANCELLED: 4,
+    };
+    return [...list].sort((a, b) => {
+      const byStatus = statusRank[a.status] - statusRank[b.status];
+      if (byStatus !== 0) {
+        return byStatus;
+      }
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     });
   });
 

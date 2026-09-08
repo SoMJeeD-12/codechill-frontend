@@ -73,20 +73,32 @@ export class TicketsPageComponent implements OnInit {
       list = list.filter((t) => ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status));
     }
     const q = this.search().trim().toLowerCase();
-    if (!q) {
-      return list;
+    if (q) {
+      list = list.filter((t) => {
+        const customer = this.customerName(t.customerId).toLowerCase();
+        return (
+          t.ticketNo.toLowerCase().includes(q) ||
+          t.title.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          customer.includes(q) ||
+          this.statusLabels[t.status].toLowerCase().includes(q) ||
+          t.priority.toLowerCase().includes(q) ||
+          BILLING_TYPE_LABELS[t.billingType].toLowerCase().includes(q)
+        );
+      });
     }
-    return list.filter((t) => {
-      const customer = this.customerName(t.customerId).toLowerCase();
-      return (
-        t.ticketNo.toLowerCase().includes(q) ||
-        t.title.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        customer.includes(q) ||
-        this.statusLabels[t.status].toLowerCase().includes(q) ||
-        t.priority.toLowerCase().includes(q) ||
-        BILLING_TYPE_LABELS[t.billingType].toLowerCase().includes(q)
-      );
+    const priorityRank: Record<TicketPriority, number> = {
+      URGENT: 0,
+      HIGH: 1,
+      MEDIUM: 2,
+      LOW: 3,
+    };
+    return [...list].sort((a, b) => {
+      const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
+      if (byPriority !== 0) {
+        return byPriority;
+      }
+      return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
     });
   });
 

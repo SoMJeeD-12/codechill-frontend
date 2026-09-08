@@ -89,7 +89,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly filteredTasks = computed(() => {
     const filter = this.statusFilter();
     const q = this.taskSearch().trim().toLowerCase();
-    return this.tasks().filter((t) => {
+    let list = this.tasks().filter((t) => {
       const matchStatus = filter === 'ALL' || t.status === filter;
       if (!matchStatus) {
         return false;
@@ -106,6 +106,21 @@ export class ProjectDetailPageComponent implements OnInit {
         this.taskStatusLabels[t.status].toLowerCase().includes(q) ||
         this.priorityLabels[t.priority].toLowerCase().includes(q)
       );
+    });
+    const priorityRank: Record<TaskPriority, number> = {
+      URGENT: 0,
+      HIGH: 1,
+      MEDIUM: 2,
+      LOW: 3,
+    };
+    return [...list].sort((a, b) => {
+      const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
+      if (byPriority !== 0) {
+        return byPriority;
+      }
+      const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      return aDue - bDue;
     });
   });
 
