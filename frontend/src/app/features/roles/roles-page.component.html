@@ -11,22 +11,36 @@
         }
       </p>
     </div>
-    <button
-      mat-flat-button
-      color="primary"
-      type="button"
-      class="ui-add-btn"
-      (click)="openCreate()"
-      [disabled]="!canManage()"
-    >
-      <mat-icon>add</mat-icon>
-      สร้างบทบาท
-    </button>
   </header>
 
   <div class="data-card">
+    <div class="data-card__head">
+      <div class="data-card__row">
+        <label class="ui-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ชื่อบทบาท / คำอธิบาย"
+            aria-label="ค้นหาบทบาท"
+          />
+        </label>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          class="ui-add-btn"
+          (click)="openCreate()"
+          [disabled]="!canManage()"
+        >
+          <mat-icon>add</mat-icon>
+          สร้างบทบาท
+        </button>
+      </div>
+    </div>
+
     <div class="data-card__body">
-      <table mat-table [dataSource]="roles()" class="data-table">
+      <table mat-table [dataSource]="filtered()" class="data-table">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อบทบาท</th>
           <td mat-cell *matCellDef="let row">{{ row.name }}</td>
@@ -53,6 +67,11 @@
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+      @if (filtered().length === 0) {
+        <p class="data-empty">
+          {{ search().trim() ? 'ไม่พบบทบาทตามคำค้นหา' : 'ยังไม่มีบทบาท' }}
+        </p>
+      }
     </div>
   </div>
 </section>

@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -16,6 +17,7 @@ import { RoleEditorDialogComponent } from './role-editor-dialog.component';
   selector: 'app-roles-page',
   standalone: true,
   imports: [
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -33,13 +35,30 @@ export class RolesPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly fb = inject(FormBuilder);
 
   readonly roles = signal<Role[]>([]);
   readonly loading = signal(false);
+  readonly search = signal('');
+  readonly searchControl = this.fb.nonNullable.control('');
   readonly canManage = computed(() => this.auth.isSuperAdmin());
   readonly columns = ['name', 'description', 'menus', 'actions'];
 
+  readonly filtered = computed(() => {
+    const q = this.search().trim().toLowerCase();
+    const list = this.roles();
+    if (!q) {
+      return list;
+    }
+    return list.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        (r.description ?? '').toLowerCase().includes(q)
+    );
+  });
+
   ngOnInit(): void {
+    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
   }
 
