@@ -1,4 +1,5 @@
-import { DatePipe, Location } from '@angular/common';
+import { Location } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -23,9 +24,9 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
   selector: 'app-ma-detail-page',
   standalone: true,
   imports: [
+    ThaiDatePipe,
     BahtPipe,
-    DatePipe,
-    RouterLink,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

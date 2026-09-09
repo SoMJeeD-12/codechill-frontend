@@ -1,4 +1,4 @@
-import { DatePipe, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -34,17 +34,20 @@ import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { combineDateAndTime, nowTimeString, toDateOnlyString } from '../../core/utils/date.util';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
+import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 
 @Component({
   selector: 'app-project-detail-page',
   standalone: true,
   imports: [
+    ThaiDatePipe,
+    ThaiTimeInputDirective,
     BahtPipe,
-    DatePipe,
-    ReactiveFormsModule,
+        ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,

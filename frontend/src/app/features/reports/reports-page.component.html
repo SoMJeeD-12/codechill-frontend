@@ -12,7 +12,7 @@
   </header>
 
   @if (report(); as r) {
-    <p class="generated">สร้างเมื่อ {{ r.generatedAt | date: 'd MMM y HH:mm' }}</p>
+    <p class="generated">สร้างเมื่อ {{ r.generatedAt | thaiDate }}</p>
 
     <div class="kpi-grid">
       @for (k of r.kpis; track k.label) {

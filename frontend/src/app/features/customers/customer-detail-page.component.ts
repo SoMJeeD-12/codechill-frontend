@@ -1,4 +1,4 @@
-import { DatePipe, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -40,16 +40,20 @@ import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { WarrantyService } from '../../core/services/warranty.service';
 import { combineDateAndTime, nowTimeString, toTimeString } from '../../core/utils/date.util';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
+import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 
 @Component({
   selector: 'app-customer-detail-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+    ThaiTimeInputDirective,
+    PhoneInputDirective,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -61,7 +65,6 @@ import { PhoneInputDirective } from '../../shared/directives/phone-input.directi
     MatCheckboxModule,
     MatSnackBarModule,
     MatDatepickerModule,
-    PhoneInputDirective,
   ],
   templateUrl: './customer-detail-page.component.html',
   styleUrl: './customer-detail-page.component.scss',

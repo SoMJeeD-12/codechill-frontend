@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -35,8 +35,8 @@ import {
   selector: 'app-warranties-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

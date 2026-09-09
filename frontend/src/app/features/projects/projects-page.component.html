@@ -69,7 +69,7 @@
         <ng-container matColumnDef="targetEndDate">
           <th mat-header-cell *matHeaderCellDef>กำหนดส่ง</th>
           <td mat-cell *matCellDef="let row">
-            {{ row.targetEndDate ? (row.targetEndDate | date: 'd MMM y') : '—' }}
+            {{ row.targetEndDate ? (row.targetEndDate | thaiDate: 'date') : '—' }}
           </td>
         </ng-container>
         <ng-container matColumnDef="progress">

@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,8 +24,8 @@ import { UserService } from '../../core/services/user.service';
   selector: 'app-notifications-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+        RouterLink,
     MatCardModule,
     MatButtonModule,
     MatIconModule,

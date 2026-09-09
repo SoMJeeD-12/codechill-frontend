@@ -31,7 +31,7 @@
           ความคืบหน้า {{ progress() }}%
         </p>
         <p class="description">{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
-        <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | date: 'd MMM y HH:mm' }}</p>
+        <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | thaiDate }}</p>
       </div>
     </header>
 
@@ -211,7 +211,7 @@
                   </mat-form-field>
                 </div>
                 <p>
-                  ส่งเมื่อ {{ d.deliveredAt | date: 'd MMM y HH:mm' }} ·
+                  ส่งเมื่อ {{ d.deliveredAt | thaiDate }} ·
                   โดย {{ userName(d.deliveredByUserId) }} ·
                   ผู้รับ {{ contactName(d.acceptedByContactId) }}
                 </p>
@@ -253,7 +253,8 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>เวลาที่ส่ง</mat-label>
-                  <input matInput type="time" formControlName="deliveredTime" />
+                  <input matInput appThaiTimeInput formControlName="deliveredTime" />
+                  <span matTextSuffix>น.</span>
                 </mat-form-field>
               </div>
               <mat-form-field appearance="outline" class="full">

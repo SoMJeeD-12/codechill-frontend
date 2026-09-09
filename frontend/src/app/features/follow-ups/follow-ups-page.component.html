@@ -60,7 +60,7 @@
           <th mat-header-cell *matHeaderCellDef>ครบกำหนด</th>
           <td mat-cell *matCellDef="let row">
             <span [class.overdue]="daysLeftClass(row) === 'overdue'" [class.soon]="daysLeftClass(row) === 'soon'">
-              {{ row.dueDate | date: 'd MMM y' }}
+              {{ row.dueDate | thaiDate: 'date' }}
             </span>
           </td>
         </ng-container>

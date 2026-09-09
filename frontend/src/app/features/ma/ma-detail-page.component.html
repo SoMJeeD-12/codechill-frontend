@@ -38,7 +38,7 @@
       </mat-card>
       <mat-card>
         <strong>ระยะสัญญา</strong>
-        <span>{{ c.startDate | date: 'd MMM y' }} – {{ c.endDate | date: 'd MMM y' }}</span>
+        <span>{{ c.startDate | thaiDate: 'date' }} – {{ c.endDate | thaiDate: 'date' }}</span>
       </mat-card>
       <mat-card>
         <strong>ค่าบริการ/ปี</strong>
@@ -82,7 +82,7 @@
           </ng-container>
           <ng-container matColumnDef="purchasedAt">
             <th mat-header-cell *matHeaderCellDef>ซื้อเมื่อ</th>
-            <td mat-cell *matCellDef="let row">{{ row.purchasedAt | date: 'd MMM y' }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.purchasedAt | thaiDate: 'date' }}</td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="addonColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: addonColumns"></tr>

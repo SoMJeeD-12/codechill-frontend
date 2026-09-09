@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime } from 'rxjs/operators';
@@ -23,8 +23,8 @@ import { AuditService } from '../../core/services/audit.service';
   selector: 'app-audit-logs-page',
   standalone: true,
   imports: [
-    DatePipe,
-    ReactiveFormsModule,
+    ThaiDatePipe,
+        ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,

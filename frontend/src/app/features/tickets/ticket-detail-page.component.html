@@ -43,7 +43,7 @@
     <div class="meta-grid">
       <mat-card>
         <strong>รับแจ้ง</strong>
-        <span>{{ t.reportedAt | date: 'd MMM y HH:mm' }}</span>
+        <span>{{ t.reportedAt | thaiDate }}</span>
       </mat-card>
       <mat-card>
         <strong>ผู้รับเรื่อง</strong>
@@ -84,7 +84,7 @@
             <p><b>วิธีแก้:</b> {{ r.detail }}</p>
             <small>
               โดย {{ userName(r.resolvedByUserId) }} ·
-              {{ r.resolvedAt | date: 'd MMM y HH:mm' }}
+              {{ r.resolvedAt | thaiDate }}
             </small>
           </mat-card>
         } @empty {

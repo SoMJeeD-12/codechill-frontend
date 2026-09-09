@@ -90,7 +90,7 @@
         <ng-container matColumnDef="lastLoginAt">
           <th mat-header-cell *matHeaderCellDef>เข้าสู่ระบบล่าสุด</th>
           <td mat-cell *matCellDef="let row">
-            {{ row.lastLoginAt ? (row.lastLoginAt | date: 'd MMM y HH:mm') : '—' }}
+            {{ row.lastLoginAt ? (row.lastLoginAt | thaiDate) : '—' }}
           </td>
         </ng-container>
         <ng-container matColumnDef="actions">

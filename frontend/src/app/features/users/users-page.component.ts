@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,8 +27,8 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
   selector: 'app-users-page',
   standalone: true,
   imports: [
-    DatePipe,
-    ReactiveFormsModule,
+    ThaiDatePipe,
+        ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,

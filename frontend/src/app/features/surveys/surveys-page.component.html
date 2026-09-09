@@ -55,7 +55,7 @@
         </ng-container>
         <ng-container matColumnDef="updatedAt">
           <th mat-header-cell *matHeaderCellDef>อัปเดต</th>
-          <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'd MMM y' }}</td>
+          <td mat-cell *matCellDef="let row">{{ row.updatedAt | thaiDate: 'date' }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>

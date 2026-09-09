@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -30,13 +29,14 @@ import { CustomerService } from '../../core/services/customer.service';
 import { FollowUpInput, FollowUpService } from '../../core/services/follow-up.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 
 @Component({
   selector: 'app-follow-ups-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

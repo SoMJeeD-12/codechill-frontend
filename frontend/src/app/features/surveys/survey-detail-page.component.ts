@@ -1,4 +1,5 @@
-import { DatePipe, Location } from '@angular/common';
+import { Location } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,8 +30,8 @@ import { navigateBack } from '../../core/utils/navigation.util';
   selector: 'app-survey-detail-page',
   standalone: true,
   imports: [
-    DatePipe,
-    ReactiveFormsModule,
+    ThaiDatePipe,
+        ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,

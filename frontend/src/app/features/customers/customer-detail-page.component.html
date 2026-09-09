@@ -44,7 +44,7 @@
       <mat-card>
         <strong>ติดต่อล่าสุด</strong>
         <span>
-          {{ c.lastContactedAt ? (c.lastContactedAt | date: 'd MMM y') : '—' }}
+          {{ c.lastContactedAt ? (c.lastContactedAt | thaiDate: 'date') : '—' }}
           @if (c.daysSinceLastContact != null) {
             ({{ c.daysSinceLastContact }} วัน)
           }
@@ -157,7 +157,7 @@
               <div class="item log" [class.editing]="editingLogId() === log.id">
                 <div>
                   <strong>
-                    {{ channelLabels[log.channel] }} · {{ log.occurredAt | date: 'd MMM y HH:mm' }}
+                    {{ channelLabels[log.channel] }} · {{ log.occurredAt | thaiDate }}
                     @if (log.subject) {
                       · {{ log.subject }}
                     }
@@ -206,7 +206,8 @@
               <div class="row">
                 <mat-form-field appearance="outline">
                   <mat-label>เวลาที่ติดต่อ</mat-label>
-                  <input matInput type="time" formControlName="occurredTime" />
+                  <input matInput appThaiTimeInput formControlName="occurredTime" />
+                  <span matTextSuffix>น.</span>
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>ผู้ติดต่อ</mat-label>

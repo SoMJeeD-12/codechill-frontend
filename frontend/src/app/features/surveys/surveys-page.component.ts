@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -29,8 +29,8 @@ import { CustomerService } from '../../core/services/customer.service';
   selector: 'app-surveys-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

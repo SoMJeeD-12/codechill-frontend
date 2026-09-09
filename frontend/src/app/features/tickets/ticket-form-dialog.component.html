@@ -62,7 +62,8 @@
     </div>
     <mat-form-field appearance="outline" class="full">
       <mat-label>เวลารับแจ้ง</mat-label>
-      <input matInput type="time" formControlName="reportedTime" />
+      <input matInput appThaiTimeInput formControlName="reportedTime" />
+      <span matTextSuffix>น.</span>
     </mat-form-field>
     <div class="row">
       <mat-form-field appearance="outline">

@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -23,15 +22,16 @@ import { CustomerService } from '../../core/services/customer.service';
 import { MaContractInput, MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 
 @Component({
   selector: 'app-ma-page',
   standalone: true,
   imports: [
+    ThaiDatePipe,
     BahtPipe,
-    DatePipe,
-    RouterLink,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

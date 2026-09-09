@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -103,8 +103,8 @@ function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: str
   selector: 'app-documents-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -378,8 +378,8 @@ export class DocumentUploadDialogComponent {
   selector: 'app-document-versions-dialog',
   standalone: true,
   imports: [
-    DatePipe,
-    ReactiveFormsModule,
+    ThaiDatePipe,
+        ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,

@@ -23,7 +23,7 @@
     </ng-container>
     <ng-container matColumnDef="at">
       <th mat-header-cell *matHeaderCellDef>เมื่อ</th>
-      <td mat-cell *matCellDef="let row">{{ row.uploadedAt | date: 'd MMM y HH:mm' }}</td>
+      <td mat-cell *matCellDef="let row">{{ row.uploadedAt | thaiDate }}</td>
     </ng-container>
     <ng-container matColumnDef="note">
       <th mat-header-cell *matHeaderCellDef>หมายเหตุ</th>

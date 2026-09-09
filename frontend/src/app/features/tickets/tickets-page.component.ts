@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -32,13 +31,15 @@ import { ProjectService } from '../../core/services/project.service';
 import { TicketCreateInput, TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 
 @Component({
   selector: 'app-tickets-page',
   standalone: true,
   imports: [
-    DatePipe,
-    RouterLink,
+    ThaiDatePipe,
+        RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -162,6 +163,7 @@ export class TicketsPageComponent implements OnInit {
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    ThaiTimeInputDirective,
   ],
   templateUrl: './ticket-form-dialog.component.html',
   styleUrl: './ticket-form-dialog.component.scss',

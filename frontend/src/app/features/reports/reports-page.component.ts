@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,7 +9,7 @@ import { ExecutiveReport, ReportService } from '../../core/services/report.servi
 @Component({
   selector: 'app-reports-page',
   standalone: true,
-  imports: [DatePipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [ThaiDatePipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule],
   templateUrl: './reports-page.component.html',
   styleUrl: './reports-page.component.scss',
 })
