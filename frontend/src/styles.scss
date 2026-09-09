@@ -7,8 +7,8 @@ html {
     (
       color: (
         theme-type: light,
-        primary: mat.$azure-palette,
-        tertiary: mat.$cyan-palette,
+        primary: mat.$cyan-palette,
+        tertiary: mat.$azure-palette,
       ),
       typography: Sarabun,
       density: 0,
@@ -21,6 +21,8 @@ html {
   --app-ink: #1c2b28;
   --app-muted: #5b6762;
   --app-border: rgba(28, 43, 40, 0.1);
+  --app-accent: #0f766e;
+  --app-accent-soft: #ecfdf5;
   --app-sidebar: #ffffff;
   --app-sidebar-text: #1c2b28;
 }
@@ -44,4 +46,21 @@ body {
 
 a {
   color: inherit;
+}
+
+/* ปุ่มย้อนกลับ — โทนเขียวน้ำทะเลให้เข้ากับธีมแอป */
+button.back.mat-mdc-outlined-button {
+  margin-bottom: 0.65rem;
+  font-weight: 600;
+  --mdc-outlined-button-label-text-color: var(--app-accent);
+  --mdc-outlined-button-outline-color: rgba(15, 118, 110, 0.4);
+  --mat-outlined-button-state-layer-color: var(--app-accent);
+
+  &:hover {
+    background: var(--app-accent-soft);
+  }
+
+  .mat-icon {
+    color: var(--app-accent);
+  }
 }

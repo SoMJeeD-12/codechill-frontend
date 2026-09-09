@@ -32,34 +32,51 @@ export function parseMoneyValue(raw: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** ตัด 0 นำหน้า เช่น 0120 → 120, 000 → 0, ว่าง → ว่าง */
+function normalizeIntDigits(digits: string): string {
+  if (!digits) {
+    return '';
+  }
+  const stripped = digits.replace(/^0+/, '');
+  return stripped === '' ? '0' : stripped;
+}
+
+function withThousandCommas(intDigits: string): string {
+  if (!intDigits) {
+    return '';
+  }
+  return intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 /**
- * กรอง/จัดรูปขณะพิมพ์: เก็บเฉพาะตัวเลข จุดทศนิยม คอมม่า
- * คืนค่าข้อความที่จัดรูปแล้ว
+ * กรอง/จัดรูปขณะพิมพ์: ตัวเลข + คอมม่า + ทศนิยม (ตัด 0 นำหน้า)
  */
 export function sanitizeMoneyTyping(raw: string, allowDecimal = true): string {
-  let s = raw.replace(/[^\d.,]/g, '');
+  let s = raw.replace(/[^\d.]/g, '');
   if (!allowDecimal) {
     s = s.replace(/\./g, '');
   }
-  s = s.replace(/,/g, '');
 
   if (allowDecimal) {
     const firstDot = s.indexOf('.');
     if (firstDot >= 0) {
-      const intPart = s.slice(0, firstDot).replace(/\D/g, '') || '0';
-      let decPart = s.slice(firstDot + 1).replace(/\D/g, '').slice(0, 2);
-      // อนุญาตพิมพ์จุดค้างไว้ตอนยังไม่ใส่ทศนิยม
-      if (raw.includes('.') && decPart === '' && !/\.\d/.test(raw.replace(/,/g, ''))) {
-        return `${intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.`;
+      const intRaw = s.slice(0, firstDot).replace(/\D/g, '');
+      const intPart = normalizeIntDigits(intRaw) || '0';
+      const decPart = s.slice(firstDot + 1).replace(/\D/g, '').slice(0, 2);
+      // อนุญาตพิมพ์จุดค้าง เช่น 0. หรือ 120.
+      if (raw.includes('.') && decPart === '') {
+        return `${withThousandCommas(intPart)}.`;
       }
-      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      return decPart.length ? `${formattedInt}.${decPart}` : formattedInt;
+      return decPart.length
+        ? `${withThousandCommas(intPart)}.${decPart}`
+        : withThousandCommas(intPart);
     }
   }
 
-  const digits = s.replace(/\D/g, '');
+  const digits = normalizeIntDigits(s.replace(/\D/g, ''));
   if (!digits) {
     return '';
   }
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  // อย่าแสดง 0 ค้างถ้าผู้ใช้ลบจนว่างแล้วเหลือแค่ 0 จาก normalize — เก็บ 0 ได้ตามปกติ
+  return withThousandCommas(digits);
 }

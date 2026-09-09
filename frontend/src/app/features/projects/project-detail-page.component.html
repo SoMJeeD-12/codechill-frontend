@@ -1,27 +1,37 @@
 @if (notFound()) {
   <mat-card class="missing">
     <h1>ไม่พบโครงการ</h1>
-    <a mat-button type="button" (click)="goBack()">
+    <button mat-stroked-button type="button" class="back" (click)="goBack()">
       <mat-icon>arrow_back</mat-icon>
       กลับหน้ารายการ
-    </a>
+    </button>
   </mat-card>
 } @else {
   @if (project(); as p) {
   <section class="page">
     <header class="page-header">
       <div>
-        <button type="button" class="back" (click)="goBack()">
+        <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
         <p class="eyebrow">{{ p.code || '—' }} · {{ projectStatusLabel(p.status) }}</p>
         <h1>{{ p.name }}</h1>
         <p class="subtitle">
-          {{ customerName() }} · กำหนดส่ง {{ p.targetEndDate || '—' }} ·
+          {{ customerName() }} ·
+          ประเภท {{ p.projectType || '—' }} ·
+          ความสำคัญ {{ projectPriorityLabel(p.priority) }} ·
+          ผู้จัดการ {{ p.manager?.fullName || userName(p.managerUserId) }}
+        </p>
+        <p class="subtitle">
+          วันเริ่ม {{ p.startDate || '—' }} ·
+          กำหนดส่ง {{ p.targetEndDate || '—' }} ·
           มูลค่า {{ p.contractValue | baht }} ·
+          ฟังก์ชัน {{ p.functionCount != null ? p.functionCount : '—' }} ·
           ความคืบหน้า {{ progress() }}%
         </p>
+        <p class="description">{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
+        <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | date: 'd MMM y HH:mm' }}</p>
       </div>
     </header>
 
@@ -174,13 +184,6 @@
             </div>
           </div>
         </div>
-      </mat-tab>
-
-      <mat-tab label="รายละเอียด">
-        <mat-card class="info-card">
-          <p>{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
-          <small>อัปเดตล่าสุด {{ p.updatedAt | date: 'd MMM y HH:mm' }}</small>
-        </mat-card>
       </mat-tab>
 
       <mat-tab label="การส่งมอบ">

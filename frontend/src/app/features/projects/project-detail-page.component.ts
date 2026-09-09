@@ -1,7 +1,7 @@
 import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -18,6 +18,7 @@ import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
   DeliveryAcceptance,
+  PRIORITY_LABELS,
   PROJECT_STATUS_LABELS,
   Project,
   TASK_PRIORITIES,
@@ -43,7 +44,6 @@ import { TaskEditDialogComponent } from './task-edit-dialog.component';
   imports: [
     BahtPipe,
     DatePipe,
-    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -82,6 +82,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskSearchControl = this.fb.nonNullable.control('');
   readonly deliveries = signal<Delivery[]>([]);
   readonly statusLabels = PROJECT_STATUS_LABELS;
+  readonly projectPriorityLabels = PRIORITY_LABELS;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
   readonly taskStatuses = TASK_STATUSES;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
@@ -208,6 +209,10 @@ export class ProjectDetailPageComponent implements OnInit {
 
   projectStatusLabel(status: Project['status']): string {
     return this.statusLabels[status];
+  }
+
+  projectPriorityLabel(priority: Project['priority']): string {
+    return this.projectPriorityLabels[priority];
   }
 
   refresh(): void {

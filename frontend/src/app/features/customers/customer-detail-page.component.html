@@ -1,17 +1,17 @@
 @if (notFound()) {
   <mat-card class="missing">
     <h1>ไม่พบลูกค้า</h1>
-    <a mat-button type="button" (click)="goBack()">
+    <button mat-stroked-button type="button" class="back" (click)="goBack()">
       <mat-icon>arrow_back</mat-icon>
       กลับหน้ารายชื่อ
-    </a>
+    </button>
   </mat-card>
 } @else {
   @if (customer(); as c) {
   <section class="page">
     <header class="page-header">
       <div>
-        <button type="button" class="back" (click)="goBack()">
+        <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
