@@ -10,10 +10,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Role } from '../../core/models/permission.model';
 import {
   ACCOUNT_TYPE_LABELS,
   AccountType,
+  RoleSummary,
   USER_STATUS_LABELS,
   User,
   UserStatus,
@@ -51,7 +51,8 @@ export class UsersPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly users = signal<User[]>([]);
-  readonly roles = signal<Role[]>([]);
+  /** ดรอปดาวน์มอบบทบาท — จาก /roles/assignable ไม่ใช่ GET /roles */
+  readonly roles = signal<RoleSummary[]>([]);
   readonly statusFilter = signal<UserStatus | 'ALL'>('ALL');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
@@ -91,7 +92,10 @@ export class UsersPageComponent implements OnInit {
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
-    this.rolesApi.list().subscribe((roles) => this.roles.set(roles));
+    this.rolesApi.listAssignable().subscribe({
+      next: (roles) => this.roles.set(roles),
+      error: () => this.roles.set([]),
+    });
   }
 
   reload(): void {

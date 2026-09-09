@@ -18,7 +18,10 @@
         <p class="eyebrow">M6 · รายละเอียดสัญญา</p>
         <h1>{{ c.contractNo || ('#' + c.id) }}</h1>
         <p class="subtitle">
-          {{ c.planName }} · {{ statusLabel(c.status) }} · SLA {{ c.slaHours }} ชม.
+          {{ planName(c) }} · {{ statusLabel(c.status) }} · {{ slaLabel(c) }}
+          @if (!c.isCurrentlyActive && c.status === 'ACTIVE') {
+            · หมดอายุแล้ว ({{ c.daysUntilExpiry }} วัน)
+          }
         </p>
       </div>
       <button mat-stroked-button type="button" (click)="printInvoice()">
@@ -30,30 +33,39 @@
     <div class="meta-grid">
       <mat-card>
         <strong>ลูกค้า</strong>
-        <a [routerLink]="['/app/customers', c.customerId]">{{ customerName(c.customerId) }}</a>
+        <a [routerLink]="['/app/customers', c.customerId]">{{ customerName(c) }}</a>
       </mat-card>
       <mat-card>
         <strong>โครงการ</strong>
-        <span>{{ projectLabel(c.projectId) }}</span>
+        <span>{{ projectLabel(c) }}</span>
       </mat-card>
       <mat-card>
         <strong>ระยะสัญญา</strong>
         <span>{{ c.startDate | thaiDate: 'date' }} – {{ c.endDate | thaiDate: 'date' }}</span>
       </mat-card>
       <mat-card>
-        <strong>ค่าบริการ/ปี</strong>
-        <span>{{ c.annualFee | baht }}</span>
+        <strong>ค่าบริการ ({{ billingLabels[c.billingCycle] }})</strong>
+        <span>{{ c.price | baht }}</span>
       </mat-card>
     </div>
 
     <div class="quota-panel">
       <mat-card>
-        <h2>โควตาเคสซ่อม</h2>
-        <p class="quota-big" [class.low]="remaining() <= 2 && c.status === 'ACTIVE'">
-          ใช้แล้ว {{ c.quotaUsed }} / {{ c.quotaTotal }}
-          <span>เหลือ {{ remaining() }} เคส</span>
+        <h2>โควตาเคสซ่อม (รอบปัจจุบัน)</h2>
+        @if (quota(); as q) {
+          <p class="quota-period">
+            รอบ {{ q.periodStart | thaiDate: 'date' }} – {{ q.periodEnd | thaiDate: 'date' }}
+          </p>
+          <p class="quota-big" [class.low]="q.remaining <= 2 && c.isCurrentlyActive">
+            ใช้แล้ว {{ q.used }} / {{ q.quota }}
+            <span>เหลือ {{ q.remaining }} เคส{{ q.isExhausted ? ' (หมดแล้ว)' : '' }}</span>
+          </p>
+        } @else {
+          <p class="hint">กำลังโหลดโควตา…</p>
+        }
+        <p class="hint">
+          โควตานับจากวันเริ่มสัญญา ไม่ยกยอดไปรอบหน้า · หักครั้งเดียวต่อใบเมื่อปิดแบบใช้โควตา MA
         </p>
-        <p class="hint">เมื่อเปิดปัญหาแบบ “ใช้โควตา MA” ระบบจะหักจากสัญญา ACTIVE ของลูกค้า (mock จนกว่า Phase 8 พร้อม)</p>
         @if (c.note) {
           <p class="note">{{ c.note }}</p>
         }
@@ -64,28 +76,62 @@
       <mat-card>
         <h2>Add-on</h2>
         <table mat-table [dataSource]="addons()" class="full-table">
-          <ng-container matColumnDef="name">
+          <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>รายการ</th>
-            <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.title }}</td>
           </ng-container>
-          <ng-container matColumnDef="qty">
-            <th mat-header-cell *matHeaderCellDef>จำนวน</th>
-            <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
-          </ng-container>
-          <ng-container matColumnDef="used">
-            <th mat-header-cell *matHeaderCellDef>ใช้แล้ว</th>
-            <td mat-cell *matCellDef="let row">{{ row.usedQuantity }}</td>
+          <ng-container matColumnDef="extraQuota">
+            <th mat-header-cell *matHeaderCellDef>โควตาเพิ่ม</th>
+            <td mat-cell *matCellDef="let row">{{ row.extraQuota }}</td>
           </ng-container>
           <ng-container matColumnDef="price">
-            <th mat-header-cell *matHeaderCellDef>ราคา/หน่วย</th>
-            <td mat-cell *matCellDef="let row">{{ row.unitPrice | baht }}</td>
+            <th mat-header-cell *matHeaderCellDef>ราคา</th>
+            <td mat-cell *matCellDef="let row">{{ row.price | baht }}</td>
           </ng-container>
-          <ng-container matColumnDef="purchasedAt">
-            <th mat-header-cell *matHeaderCellDef>ซื้อเมื่อ</th>
-            <td mat-cell *matCellDef="let row">{{ row.purchasedAt | thaiDate: 'date' }}</td>
+          <ng-container matColumnDef="effective">
+            <th mat-header-cell *matHeaderCellDef>มีผล</th>
+            <td mat-cell *matCellDef="let row">
+              @if (row.effectiveYear != null && row.effectiveMonth != null) {
+                {{ row.effectiveMonth }}/{{ row.effectiveYear }}
+              } @else {
+                ตลอดสัญญา
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef>เพิ่มเมื่อ</th>
+            <td mat-cell *matCellDef="let row">{{ row.createdAt | thaiDate: 'date' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="addon-actions">
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="แก้ไข"
+                (click)="startEditAddon(row)"
+                aria-label="แก้ไข Add-on"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                color="warn"
+                matTooltip="ลบ"
+                (click)="deleteAddon(row)"
+                aria-label="ลบ Add-on"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="addonColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: addonColumns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: addonColumns"
+            [class.is-editing]="editingAddonId() === row.id"
+          ></tr>
         </table>
         @if (addons().length === 0) {
           <p class="empty">ยังไม่มี Add-on</p>
@@ -93,23 +139,30 @@
       </mat-card>
 
       <mat-card class="form-card">
-        <h2>เพิ่ม Add-on</h2>
-        <form [formGroup]="addonForm" (ngSubmit)="addAddon()" class="form">
+        <h2>{{ editingAddonId() ? 'แก้ไข Add-on' : 'เพิ่ม Add-on' }}</h2>
+        <form [formGroup]="addonForm" (ngSubmit)="saveAddon()" class="form">
           <mat-form-field appearance="outline" class="full">
             <mat-label>ชื่อแพ็ก</mat-label>
-            <input matInput formControlName="name" placeholder="เช่น แพ็กโควตาเพิ่ม +6 เคส" />
+            <input matInput formControlName="title" placeholder="เช่น แพ็กโควตาเพิ่ม +3 เคส" />
           </mat-form-field>
           <div class="row">
             <mat-form-field appearance="outline">
-              <mat-label>จำนวน</mat-label>
-              <input matInput type="number" formControlName="quantity" />
+              <mat-label>โควตาเพิ่ม</mat-label>
+              <input matInput type="number" formControlName="extraQuota" />
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>ราคา/หน่วย</mat-label>
-              <input matInput appMoneyInput formControlName="unitPrice" inputmode="decimal" />
+              <mat-label>ราคา</mat-label>
+              <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
             </mat-form-field>
           </div>
-          <button mat-flat-button color="primary" type="submit">บันทึก Add-on</button>
+          <div class="form-actions">
+            @if (editingAddonId()) {
+              <button mat-button type="button" (click)="cancelEditAddon()">ยกเลิก</button>
+            }
+            <button mat-flat-button color="primary" type="submit" [disabled]="savingAddon()">
+              {{ editingAddonId() ? 'บันทึกการแก้ไข' : 'บันทึก Add-on' }}
+            </button>
+          </div>
         </form>
       </mat-card>
     </div>

@@ -14,6 +14,7 @@ import {
   TicketPriority,
   TicketResolution,
 } from '../models/ticket.model';
+import { TicketQuotaSummary } from '../models/ma.model';
 import { UserSummary } from '../models/user.model';
 import { UserService } from './user.service';
 
@@ -75,7 +76,13 @@ interface ApiResolution extends Omit<TicketResolution, 'hoursSpent'> {
 interface ResolutionCreatedDto {
   ticket: ApiTicket;
   resolution: ApiResolution;
-  quota?: unknown;
+  /** QuotaSummaryDto — โครงเดียวกับ MA quota ยกเว้น isOverQuota */
+  quota?: TicketQuotaSummary | null;
+}
+
+export interface ResolutionCreatedResult {
+  resolution: TicketResolution;
+  quota: TicketQuotaSummary | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -235,7 +242,7 @@ export class TicketService {
   addResolution(
     ticketId: number,
     input: ResolutionCreateInput
-  ): Observable<TicketResolution> {
+  ): Observable<ResolutionCreatedResult> {
     if (!input.detail.trim()) {
       return throwError(() => new Error('กรุณาระบุรายละเอียดการแก้ไข'));
     }
@@ -260,7 +267,10 @@ export class TicketService {
         map((body) => {
           const ticket = this.normalizeTicket(body.ticket);
           this.items.update((list) => upsertById(list, ticket));
-          return this.normalizeResolution(body.resolution);
+          return {
+            resolution: this.normalizeResolution(body.resolution),
+            quota: body.quota ?? null,
+          };
         }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );

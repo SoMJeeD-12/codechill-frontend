@@ -90,9 +90,7 @@ export class TicketDetailPageComponent implements OnInit {
       return;
     }
     this.usersApi
-      .loadForPicker(this.auth.currentUser(), {
-        tryList: this.auth.hasPermission('users', 'view'),
-      })
+      .loadForPicker(this.auth.currentUser())
       .subscribe();
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.projectsApi.listProjects().subscribe({ error: () => undefined });
@@ -176,8 +174,15 @@ export class TicketDetailPageComponent implements OnInit {
         resolvedAt: new Date().toISOString(),
       })
       .subscribe({
-        next: () => {
-          this.snack.open('บันทึกรอบการแก้ไขแล้ว', 'ปิด', { duration: 2500 });
+        next: ({ quota }) => {
+          let msg = 'บันทึกรอบการแก้ไขแล้ว';
+          if (quota) {
+            msg += ` · โควตาเหลือ ${quota.remaining}/${quota.quota}`;
+            if (quota.isOverQuota) {
+              msg += ' (เกินโควตา)';
+            }
+          }
+          this.snack.open(msg, 'ปิด', { duration: quota?.isOverQuota ? 5000 : 2500 });
           this.resolutionForm.patchValue({ rootCause: '', detail: '', hoursSpent: 1 });
           this.loadTicket();
         },

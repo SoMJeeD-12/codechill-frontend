@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
 import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import { PermissionGroup, Role } from '../models/permission.model';
+import { RoleSummary } from '../models/user.model';
 
 /** CreateRoleDto */
 export interface CreateRoleInput {
@@ -53,6 +54,17 @@ export class RoleService {
         tap((list) => this.rolesSignal.set(list)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /**
+   * GET /roles/assignable — ดรอปดาวน์มอบบทบาทให้ผู้ใช้ (สิทธิ์ user.update)
+   * คนละเส้นกับ GET /roles ของหน้าจัดการบทบาท (SUPER_ADMIN)
+   */
+  listAssignable(): Observable<RoleSummary[]> {
+    return this.http.get<RoleSummary[]>(`${this.base}/assignable`).pipe(
+      map((rows) => (Array.isArray(rows) ? rows : [])),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   getById(id: number): Role | undefined {

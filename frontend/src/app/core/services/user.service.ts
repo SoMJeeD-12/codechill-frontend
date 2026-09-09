@@ -69,22 +69,33 @@ export class UserService {
   }
 
   /**
-   * สำหรับดรอปดาวน์มอบหมายงาน — บัญชีที่ไม่มี user.view จะได้ 403 จาก GET /users
-   * จึงใส่ผู้ใช้ปัจจุบัน/สรุปจาก record อื่นไว้ก่อน แล้วค่อยดึงรายการเต็มถ้าสิทธิ์มี
+   * GET /users/assignable — ดรอปดาวน์มอบหมายงาน (ไม่ต้องมี user.view)
+   * คืนเฉพาะพนักงาน ACTIVE: { id, username, fullName, position }
+   */
+  listAssignable(): Observable<User[]> {
+    return this.http.get<UserSummary[] | User[]>(`${this.base}/assignable`).pipe(
+      map((rows) => (Array.isArray(rows) ? rows : []).map((u) => this.toUser(u))),
+      tap((list) => {
+        for (const user of list) {
+          this.upsertLocal(user);
+        }
+      }),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /**
+   * สำหรับดรอปดาวน์มอบหมายงาน — ใช้ /users/assignable (ไม่ใช้ GET /users)
+   * seed ใส่แคชก่อน แล้วดึงรายการ assignable ทับ
    */
   loadForPicker(
     seed?: User | UserSummary | null,
-    opts?: { tryList?: boolean }
+    _opts?: { tryList?: boolean }
   ): Observable<User[]> {
     if (seed) {
       this.upsertLocal(seed);
     }
-    if (opts?.tryList === false) {
-      return of(this.usersSignal());
-    }
-    return this.list({ limit: 100, status: 'ACTIVE' }).pipe(
-      catchError(() => of(this.usersSignal()))
-    );
+    return this.listAssignable().pipe(catchError(() => of(this.usersSignal())));
   }
 
   clearCache(): void {

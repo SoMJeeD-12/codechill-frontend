@@ -169,7 +169,7 @@ export class ProjectDetailPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
-    this.usersApi.list().subscribe();
+    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
     this.projectsApi.fetchProject(this.projectId).subscribe({
       next: (project) => {
         this.project.set(project);

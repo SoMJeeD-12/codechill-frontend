@@ -210,9 +210,7 @@ export class TicketFormDialogComponent {
       receivedByUserId: me?.id ?? null,
       customerId: this.customers()[0]?.id ?? 0,
     });
-    this.usersApi
-      .loadForPicker(me, { tryList: this.auth.hasPermission('users', 'view') })
-      .subscribe();
+    this.usersApi.loadForPicker(me).subscribe();
     if (!this.customers().length) {
       this.customersApi.listCustomers().subscribe();
     }

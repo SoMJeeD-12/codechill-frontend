@@ -1,40 +1,35 @@
 import { MaAddon, MaContract, MaPlan } from '../models/ma.model';
 
-/** mock แม่แบบแผน — ใช้จนกว่า Phase 8 จะปล่อย /api/ma-plans */
+/**
+ * ข้อมูลตัวอย่างออฟไลน์ — ไม่ใช้เมื่อต่อ API แล้ว
+ * คงไว้เฉพาะอ้างอิงโครงสร้างตอนพัฒนา
+ */
 export const MOCK_MA_PLANS: MaPlan[] = [
   {
     id: 1,
-    code: 'MA-BASIC',
+    code: 'MA_BASIC',
     name: 'แผนมาตรฐาน',
-    description: 'ดูแลระบบพื้นฐาน โควตาเคสซ่อมรายปี + SLA มาตรฐาน',
-    defaultAnnualFee: 48000,
-    defaultQuotaTotal: 12,
-    defaultSlaHours: 24,
+    description: 'ดูแลระบบพื้นฐาน โควตาเคสซ่อมรายเดือน + SLA มาตรฐาน',
+    bugQuotaPerMonth: 4,
+    responseTimeHour: 24,
+    onsiteQuotaPerMonth: 0,
     isActive: true,
+    sortOrder: 10,
+    items: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
   {
     id: 2,
-    code: 'MA-GOLD',
+    code: 'MA_GOLD',
     name: 'แผน Gold',
-    description: 'โควตาสูงขึ้น ตอบรับเร็วขึ้น เหมาะกับระบบสำคัญ',
-    defaultAnnualFee: 96000,
-    defaultQuotaTotal: 24,
-    defaultSlaHours: 8,
+    description: 'โควตาสูงขึ้น ตอบรับเร็วขึ้น',
+    bugQuotaPerMonth: 8,
+    responseTimeHour: 8,
+    onsiteQuotaPerMonth: 1,
     isActive: true,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 3,
-    code: 'MA-PLATINUM',
-    name: 'แผน Platinum',
-    description: 'ครอบคลุมสูงสุด พร้อมโควตาสำรองและ SLA เร่งด่วน',
-    defaultAnnualFee: 180000,
-    defaultQuotaTotal: 48,
-    defaultSlaHours: 4,
-    isActive: true,
+    sortOrder: 20,
+    items: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
@@ -42,96 +37,104 @@ export const MOCK_MA_PLANS: MaPlan[] = [
 
 export interface MaMockSeedContext {
   customerId: number;
-  projectId: number | null;
+  projectId: number;
   secondProjectId?: number | null;
 }
 
-/** สร้างสัญญา + add-on ตัวอย่างผูกกับลูกค้า/โครงการจริงจาก API */
+/** @deprecated mock seed — Phase 8 ใช้ API แล้ว */
 export function buildMockMaContracts(ctx: MaMockSeedContext): {
   contracts: MaContract[];
   addons: MaAddon[];
 } {
   const now = new Date().toISOString();
   const year = new Date().getFullYear();
-  const start = `${year}-01-01`;
-  const end = `${year}-12-31`;
+  const start = `${year}-01-15`;
+  const end = `${year}-12-14`;
 
   const contracts: MaContract[] = [
     {
       id: 1,
-      contractNo: `MA-${year}-001`,
       customerId: ctx.customerId,
+      customerName: null,
       projectId: ctx.projectId,
+      projectName: null,
       planId: 2,
-      planName: 'แผน Gold',
+      plan: {
+        id: 2,
+        code: 'MA_GOLD',
+        name: 'แผน Gold',
+        bugQuotaPerMonth: 8,
+        responseTimeHour: 8,
+      },
+      contractNo: `MA-${year}-001`,
+      price: '96000.00',
+      billingCycle: 'YEARLY',
       startDate: start,
       endDate: end,
       status: 'ACTIVE',
-      annualFee: 96000,
-      quotaTotal: 24,
-      quotaUsed: 5,
-      slaHours: 8,
-      note: 'สัญญาตัวอย่าง mock — รอ Phase 8 เชื่อม API',
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 2,
-      contractNo: `MA-${year}-002`,
-      customerId: ctx.customerId,
-      projectId: ctx.secondProjectId ?? null,
-      planId: 1,
-      planName: 'แผนมาตรฐาน',
-      startDate: start,
-      endDate: end,
-      status: 'ACTIVE',
-      /** แผนเดียวกันแต่ราคาต่างต่อโครงการ ตามเอกสารออกแบบ */
-      annualFee: 42000,
-      quotaTotal: 12,
-      quotaUsed: 10,
-      slaHours: 24,
-      note: 'ใกล้หมดโควตา — ใช้ทดสอบการแจ้งเตือน/รายงาน',
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 3,
-      contractNo: `MA-${year - 1}-014`,
-      customerId: ctx.customerId,
-      projectId: null,
-      planId: 1,
-      planName: 'แผนมาตรฐาน',
-      startDate: `${year - 1}-01-01`,
-      endDate: `${year - 1}-12-31`,
-      status: 'EXPIRED',
-      annualFee: 36000,
-      quotaTotal: 12,
-      quotaUsed: 12,
-      slaHours: 24,
-      note: null,
+      isCurrentlyActive: true,
+      daysUntilExpiry: 90,
+      signedDate: null,
+      signedFileUrl: null,
+      previousContractId: null,
+      note: 'ตัวอย่าง',
+      quota: {
+        contractId: 1,
+        periodYear: year,
+        periodMonth: 1,
+        periodStart: start,
+        periodEnd: `${year}-02-14`,
+        quota: 8,
+        used: 3,
+        remaining: 5,
+        isExhausted: false,
+      },
       createdAt: now,
       updatedAt: now,
     },
   ];
 
+  if (ctx.secondProjectId) {
+    contracts.push({
+      ...contracts[0],
+      id: 2,
+      projectId: ctx.secondProjectId,
+      planId: 1,
+      plan: {
+        id: 1,
+        code: 'MA_BASIC',
+        name: 'แผนมาตรฐาน',
+        bugQuotaPerMonth: 4,
+        responseTimeHour: 24,
+      },
+      contractNo: `MA-${year}-002`,
+      price: '42000.00',
+      quota: {
+        contractId: 2,
+        periodYear: year,
+        periodMonth: 1,
+        periodStart: start,
+        periodEnd: `${year}-02-14`,
+        quota: 4,
+        used: 3,
+        remaining: 1,
+        isExhausted: false,
+      },
+    });
+  }
+
   const addons: MaAddon[] = [
     {
       id: 1,
       contractId: 1,
-      name: 'แพ็กโควตาเพิ่ม +6 เคส',
-      quantity: 6,
-      usedQuantity: 1,
-      unitPrice: 9000,
-      purchasedAt: `${year}-03-15T00:00:00.000Z`,
-    },
-    {
-      id: 2,
-      contractId: 1,
-      name: 'On-site visit ครึ่งวัน',
-      quantity: 2,
-      usedQuantity: 0,
-      unitPrice: 4500,
-      purchasedAt: `${year}-06-01T00:00:00.000Z`,
+      addonType: 'EXTRA_QUOTA',
+      title: 'แพ็กโควตาเพิ่ม +3 เคส',
+      extraQuota: 3,
+      price: '4500.00',
+      effectiveYear: null,
+      effectiveMonth: null,
+      note: null,
+      createdAt: `${year}-03-15T00:00:00.000Z`,
     },
   ];
 

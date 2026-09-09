@@ -11,8 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Role } from '../../core/models/permission.model';
-import { AccountType, User } from '../../core/models/user.model';
+import { AccountType, RoleSummary, User } from '../../core/models/user.model';
 import { UserService } from '../../core/services/user.service';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
@@ -38,7 +37,7 @@ export class UserFormDialogComponent {
   private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<UserFormDialogComponent, boolean>);
-  readonly data = inject<{ user: User | null; roles: Role[] }>(MAT_DIALOG_DATA);
+  readonly data = inject<{ user: User | null; roles: RoleSummary[] }>(MAT_DIALOG_DATA);
 
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);

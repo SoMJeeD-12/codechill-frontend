@@ -117,9 +117,7 @@ export class FollowUpsPageComponent implements OnInit {
       },
       error: () => this.reload(),
     });
-    this.usersApi.loadForPicker(this.auth.currentUser(), {
-      tryList: this.auth.hasPermission('users', 'view'),
-    }).subscribe();
+    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
   }
 
   reload(): void {

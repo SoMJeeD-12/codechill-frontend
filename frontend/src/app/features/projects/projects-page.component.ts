@@ -219,7 +219,7 @@ export class ProjectFormDialogComponent {
   });
 
   constructor() {
-    this.usersApi.list().subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
     this.customersApi.listCustomers().subscribe({
       next: () => {
         if (!this.data.project) {

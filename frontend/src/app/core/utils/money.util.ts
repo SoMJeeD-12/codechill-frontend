@@ -15,6 +15,18 @@ export function formatMoneyDisplay(value: number | string | null | undefined): s
   return negative ? `-${formatted}` : formatted;
 }
 
+/** ส่งเงินเป็น string ทศนิยม 2 ตำแหน่ง (DECIMAL ของ backend) */
+export function toMoneyString(value: number | string | null | undefined, empty = '0.00'): string {
+  if (value === null || value === undefined || value === '') {
+    return empty;
+  }
+  const n = typeof value === 'number' ? value : parseMoneyValue(String(value));
+  if (n === null || Number.isNaN(n)) {
+    return empty;
+  }
+  return n.toFixed(2);
+}
+
 /** แปลงข้อความที่มีคอมม่าเป็นตัวเลข — ว่าง = null */
 export function parseMoneyValue(raw: string | null | undefined): number | null {
   if (raw == null) {

@@ -1,306 +1,281 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
-import { MOCK_MA_PLANS, buildMockMaContracts } from '../mock/ma.mock';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, map, throwError } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { ApiEnvelopeService } from '../http/api-envelope.service';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   MaAddon,
+  MaAddonType,
+  MaBillingCycle,
   MaContract,
   MaContractStatus,
   MaPlan,
-  MaQuotaSummary,
+  MaQuotaStatus,
 } from '../models/ma.model';
 
-/** CreateMaPlanDto (คาดการณ์) */
+/** CreateMaPlanDto — ห้ามส่ง price */
 export interface MaPlanInput {
   code: string;
   name: string;
   description?: string | null;
-  defaultAnnualFee: number;
-  defaultQuotaTotal: number;
-  defaultSlaHours: number;
+  bugQuotaPerMonth?: number;
+  responseTimeHour?: number | null;
+  onsiteQuotaPerMonth?: number | null;
   isActive?: boolean;
+  sortOrder?: number;
+  items?: Array<{ title: string; detail?: string | null }>;
 }
 
-/** CreateMaContractDto / UpdateMaContractDto (คาดการณ์) */
-export interface MaContractInput {
-  customerId: number;
-  projectId?: number | null;
-  planId?: number | null;
-  planName: string;
+/** UpdateMaPlanDto — ส่ง items = แทนที่ทั้งชุด */
+export interface MaPlanUpdateInput extends Partial<MaPlanInput> {}
+
+/** CreateMaContractDto — ไม่ส่ง customerId (backend ดึงจาก project) */
+export interface MaContractCreateInput {
+  projectId: number;
+  planId: number;
+  price: string;
   startDate: string;
   endDate: string;
-  status: MaContractStatus;
-  annualFee: number;
-  quotaTotal: number;
-  slaHours: number;
-  note?: string | null;
+  billingCycle?: MaBillingCycle;
+  status?: Exclude<MaContractStatus, 'RENEWED'>;
   contractNo?: string | null;
+  signedDate?: string | null;
+  signedFileUrl?: string | null;
+  note?: string | null;
 }
 
-/** CreateMaAddonDto (คาดการณ์) */
-export interface MaAddonInput {
-  name: string;
-  quantity: number;
-  unitPrice: number;
+/** UpdateMaContractDto — ไม่มี RENEWED / ไม่ย้าย project */
+export interface MaContractUpdateInput {
+  planId?: number;
+  price?: string;
+  billingCycle?: MaBillingCycle;
+  startDate?: string;
+  endDate?: string;
+  status?: Exclude<MaContractStatus, 'RENEWED'>;
+  contractNo?: string | null;
+  signedDate?: string | null;
+  signedFileUrl?: string | null;
+  note?: string | null;
 }
+
+export interface MaContractRenewInput {
+  startDate: string;
+  endDate: string;
+  price: string;
+  planId?: number;
+  billingCycle?: MaBillingCycle;
+  contractNo?: string | null;
+  note?: string | null;
+}
+
+export interface MaAddonInput {
+  title: string;
+  addonType?: MaAddonType;
+  extraQuota?: number;
+  price?: string;
+  /** ส่งคู่กัน หรือไม่ส่งทั้งคู่ */
+  effectiveYear?: number | null;
+  effectiveMonth?: number | null;
+  note?: string | null;
+}
+
+/** UpdateMaAddonDto — partial ของ Create */
+export type MaAddonUpdateInput = Partial<MaAddonInput>;
 
 export interface MaContractListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   customerId?: number;
   projectId?: number;
   status?: MaContractStatus;
-  search?: string;
-  page?: number;
-  limit?: number;
+  expiringInDays?: number;
 }
 
-/**
- * MA Phase 8 — ตอนนี้ใช้ mock ในหน่วยความจำ
- * เมื่อ backend พร้อม: เปลี่ยนเป็น HttpClient ตาม path ในคอมเมนต์ โดยหน้าจอแทบไม่ต้องแก้
- */
+export interface MaPlanListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  isActive?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MaService {
-  private readonly plansSignal = signal<MaPlan[]>(structuredClone(MOCK_MA_PLANS));
+  private readonly http = inject(HttpClient);
+  private readonly envelope = inject(ApiEnvelopeService);
+  private readonly plansBase = `${environment.apiBaseUrl}/ma-plans`;
+  private readonly contractsBase = `${environment.apiBaseUrl}/ma-contracts`;
+
+  private readonly plansSignal = signal<MaPlan[]>([]);
   private readonly contractsSignal = signal<MaContract[]>([]);
-  private readonly addonsSignal = signal<MaAddon[]>([]);
-  private nextPlanId = MOCK_MA_PLANS.length + 1;
-  private nextContractId = 1;
-  private nextAddonId = 1;
-  private demoSeeded = false;
 
   readonly plans = this.plansSignal.asReadonly();
   readonly contracts = this.contractsSignal.asReadonly();
-  readonly addons = this.addonsSignal.asReadonly();
   readonly activeCount = computed(
-    () => this.contractsSignal().filter((c) => c.status === 'ACTIVE').length
+    () => this.contractsSignal().filter((c) => c.isCurrentlyActive).length
   );
 
-  /* ——— Plans → GET/POST /api/ma-plans ——— */
+  /* ——— Plans ——— */
 
-  listPlans(activeOnly = true): Observable<MaPlan[]> {
-    const rows = this.plansSignal().filter((p) => (activeOnly ? p.isActive : true));
-    return of(structuredClone(rows)).pipe(delay(120));
+  listPlans(params: MaPlanListParams | boolean = { isActive: true }): Observable<MaPlan[]> {
+    const query: MaPlanListParams =
+      typeof params === 'boolean' ? { isActive: params ? true : undefined, limit: 100 } : params;
+    return this.http
+      .get<MaPlan[] | { items: MaPlan[] }>(this.plansBase, {
+        params: toHttpParams({ limit: 100, ...query }),
+      })
+      .pipe(
+        map(asList),
+        tap((list) => this.plansSignal.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getPlan(id: number): MaPlan | undefined {
     return this.plansSignal().find((p) => p.id === id);
   }
 
-  createPlan(input: MaPlanInput): Observable<MaPlan> {
-    if (!input.code.trim() || !input.name.trim()) {
-      return throwError(() => new Error('กรุณาระบุรหัสและชื่อแผน'));
-    }
-    const now = new Date().toISOString();
-    const row: MaPlan = {
-      id: this.nextPlanId++,
-      code: input.code.trim().toUpperCase(),
-      name: input.name.trim(),
-      description: input.description?.trim() || null,
-      defaultAnnualFee: Number(input.defaultAnnualFee) || 0,
-      defaultQuotaTotal: Math.max(0, Number(input.defaultQuotaTotal) || 0),
-      defaultSlaHours: Math.max(1, Number(input.defaultSlaHours) || 24),
-      isActive: input.isActive ?? true,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.plansSignal.update((list) => [row, ...list]);
-    return of(structuredClone(row)).pipe(delay(180));
+  getPlanById(id: number): Observable<MaPlan> {
+    return this.http.get<MaPlan>(`${this.plansBase}/${id}`).pipe(
+      tap((plan) => this.plansSignal.update((list) => upsertById(list, plan))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
-  /* ——— Contracts → /api/ma-contracts ——— */
+  createPlan(input: MaPlanInput): Observable<MaPlan> {
+    return this.http.post<MaPlan>(this.plansBase, pruneUndefined(input)).pipe(
+      tap((plan) => this.plansSignal.update((list) => upsertById(list, plan))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  updatePlan(id: number, input: MaPlanUpdateInput): Observable<MaPlan> {
+    return this.http.patch<MaPlan>(`${this.plansBase}/${id}`, pruneUndefined(input)).pipe(
+      tap((plan) => this.plansSignal.update((list) => upsertById(list, plan))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  deletePlan(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.plansBase}/${id}`).pipe(
+      tap(() => this.plansSignal.update((list) => list.filter((p) => p.id !== id))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /* ——— Contracts ——— */
 
   list(params: MaContractListParams = {}): Observable<MaContract[]> {
-    let rows = this.contractsSignal();
-    if (params.customerId != null) {
-      rows = rows.filter((c) => c.customerId === params.customerId);
-    }
-    if (params.projectId != null) {
-      rows = rows.filter((c) => c.projectId === params.projectId);
-    }
-    if (params.status) {
-      rows = rows.filter((c) => c.status === params.status);
-    }
-    if (params.search?.trim()) {
-      const q = params.search.trim().toLowerCase();
-      rows = rows.filter(
-        (c) =>
-          (c.contractNo ?? '').toLowerCase().includes(q) ||
-          c.planName.toLowerCase().includes(q) ||
-          (c.note ?? '').toLowerCase().includes(q)
+    return this.http
+      .get<MaContract[] | { items: MaContract[] }>(this.contractsBase, {
+        params: toHttpParams({ limit: 100, ...params }),
+      })
+      .pipe(
+        map(asList),
+        tap((list) => this.contractsSignal.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
-    }
-    return of(structuredClone(rows)).pipe(delay(180));
   }
 
   getById(id: number): MaContract | undefined {
     return this.contractsSignal().find((c) => c.id === id);
   }
 
-  /** GET /api/ma-contracts/:id — โครง Observable รอสลับเป็น HTTP */
   get(id: number): Observable<MaContract> {
-    const row = this.getById(id);
-    if (!row) {
-      return throwError(() => new Error('ไม่พบสัญญา MA'));
-    }
-    return of(structuredClone(row)).pipe(delay(120));
+    return this.http.get<MaContract>(`${this.contractsBase}/${id}`).pipe(
+      tap((row) => this.contractsSignal.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   getByCustomer(customerId: number): MaContract[] {
     return this.contractsSignal().filter((c) => c.customerId === customerId);
   }
 
-  getAddons(contractId: number): MaAddon[] {
-    return this.addonsSignal().filter((a) => a.contractId === contractId);
+  getQuota(contractId: number, onDate?: string): Observable<MaQuotaStatus> {
+    return this.http
+      .get<MaQuotaStatus>(`${this.contractsBase}/${contractId}/quota`, {
+        params: toHttpParams({ onDate }),
+      })
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
-  /** GET /api/ma-contracts/:id/addons */
   listAddons(contractId: number): Observable<MaAddon[]> {
-    return of(structuredClone(this.getAddons(contractId))).pipe(delay(100));
+    return this.http
+      .get<MaAddon[] | { items: MaAddon[] }>(`${this.contractsBase}/${contractId}/addons`)
+      .pipe(
+        map(asList),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   remainingQuota(contract: MaContract): number {
-    return Math.max(0, contract.quotaTotal - contract.quotaUsed);
-  }
-
-  quotaSummary(contract: MaContract): MaQuotaSummary {
-    return {
-      contractId: contract.id,
-      quotaTotal: contract.quotaTotal,
-      quotaUsed: contract.quotaUsed,
-      remaining: this.remainingQuota(contract),
-    };
-  }
-
-  /** สัญญา ACTIVE ของลูกค้าที่ยังมีโควตาเหลือ (เรียงโควตาเหลือน้อยก่อน) */
-  findActiveWithQuota(customerId: number): MaContract | undefined {
-    return this.contractsSignal()
-      .filter((c) => c.customerId === customerId && c.status === 'ACTIVE')
-      .filter((c) => this.remainingQuota(c) > 0)
-      .sort((a, b) => this.remainingQuota(a) - this.remainingQuota(b))[0];
-  }
-
-  create(input: MaContractInput): Observable<MaContract> {
-    if (!input.planName.trim() || !input.customerId || !input.startDate || !input.endDate) {
-      return throwError(() => new Error('กรุณากรอกข้อมูลสัญญาให้ครบ'));
+    if (contract.quota) {
+      return contract.quota.remaining;
     }
-    const now = new Date().toISOString();
-    const plan = input.planId != null ? this.getPlan(input.planId) : undefined;
-    const row: MaContract = {
-      id: this.nextContractId++,
-      contractNo:
-        input.contractNo?.trim() ||
-        `MA-${new Date().getFullYear()}-${String(this.nextContractId).padStart(3, '0')}`,
-      customerId: input.customerId,
-      projectId: input.projectId ?? null,
-      planId: input.planId ?? plan?.id ?? null,
-      planName: input.planName.trim() || plan?.name || 'ไม่ระบุแผน',
-      startDate: input.startDate,
-      endDate: input.endDate,
-      status: input.status,
-      annualFee: Number(input.annualFee) || 0,
-      quotaTotal: Math.max(0, Number(input.quotaTotal) || 0),
-      quotaUsed: 0,
-      slaHours: Math.max(1, Number(input.slaHours) || 24),
-      note: input.note?.trim() || null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.contractsSignal.update((list) => [row, ...list]);
-    return of(structuredClone(row)).pipe(delay(220));
+    return 0;
   }
 
-  update(id: number, input: MaContractInput): Observable<MaContract> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบสัญญา MA'));
-    }
-    const now = new Date().toISOString();
-    const updated: MaContract = {
-      ...current,
-      customerId: input.customerId,
-      projectId: input.projectId ?? null,
-      planId: input.planId ?? current.planId,
-      planName: input.planName.trim(),
-      startDate: input.startDate,
-      endDate: input.endDate,
-      status: input.status,
-      annualFee: Number(input.annualFee) || 0,
-      quotaTotal: Math.max(current.quotaUsed, Number(input.quotaTotal) || 0),
-      slaHours: Math.max(1, Number(input.slaHours) || 24),
-      note: input.note?.trim() || null,
-      contractNo: input.contractNo?.trim() || current.contractNo,
-      updatedAt: now,
-    };
-    this.contractsSignal.update((list) => list.map((c) => (c.id === id ? updated : c)));
-    return of(structuredClone(updated)).pipe(delay(200));
+  create(input: MaContractCreateInput): Observable<{ contract: MaContract; message: string | null }> {
+    this.envelope.takeMessage();
+    return this.http.post<MaContract>(this.contractsBase, pruneUndefined(input)).pipe(
+      map((contract) => {
+        this.contractsSignal.update((list) => upsertById(list, contract));
+        return { contract, message: this.envelope.takeMessage() };
+      }),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  update(id: number, input: MaContractUpdateInput): Observable<MaContract> {
+    return this.http
+      .patch<MaContract>(`${this.contractsBase}/${id}`, pruneUndefined(input))
+      .pipe(
+        tap((row) => this.contractsSignal.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  renew(id: number, input: MaContractRenewInput): Observable<MaContract> {
+    return this.http
+      .post<MaContract>(`${this.contractsBase}/${id}/renew`, pruneUndefined(input))
+      .pipe(
+        tap((row) => this.contractsSignal.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   addAddon(contractId: number, input: MaAddonInput): Observable<MaAddon> {
-    const contract = this.getById(contractId);
-    if (!contract) {
-      return throwError(() => new Error('ไม่พบสัญญา MA'));
-    }
-    if (!input.name.trim() || input.quantity < 1) {
-      return throwError(() => new Error('กรุณาระบุชื่อและจำนวน Add-on'));
-    }
-    const row: MaAddon = {
-      id: this.nextAddonId++,
-      contractId,
-      name: input.name.trim(),
-      quantity: Math.floor(input.quantity),
-      usedQuantity: 0,
-      unitPrice: Number(input.unitPrice) || 0,
-      purchasedAt: new Date().toISOString(),
-    };
-    this.addonsSignal.update((list) => [...list, row]);
-    return of(structuredClone(row)).pipe(delay(200));
+    return this.http
+      .post<MaAddon>(`${this.contractsBase}/${contractId}/addons`, pruneUndefined(input))
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
-  /**
-   * ใช้โควตา 1 เคสจากสัญญา ACTIVE ของลูกค้า
-   * รอ map กับ backend เมื่อเปิดใบแบบ MA_QUOTA
-   */
-  consumeQuota(customerId: number): Observable<MaContract> {
-    const contract = this.findActiveWithQuota(customerId);
-    if (!contract) {
-      return throwError(() => new Error('ไม่พบสัญญา MA ที่ยังมีโควตาเหลือของลูกค้ารายนี้'));
-    }
-    const updated: MaContract = {
-      ...contract,
-      quotaUsed: contract.quotaUsed + 1,
-      updatedAt: new Date().toISOString(),
-    };
-    this.contractsSignal.update((list) => list.map((c) => (c.id === contract.id ? updated : c)));
-    return of(structuredClone(updated)).pipe(delay(120));
+  /** PATCH /ma-contracts/:contractId/addons/:addonId */
+  updateAddon(
+    contractId: number,
+    addonId: number,
+    input: MaAddonUpdateInput
+  ): Observable<MaAddon> {
+    return this.http
+      .patch<MaAddon>(
+        `${this.contractsBase}/${contractId}/addons/${addonId}`,
+        pruneUndefined(input)
+      )
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
-  /** ใช้ Add-on 1 หน่วยจากสัญญา (ชิ้นแรกที่ยังเหลือ) */
-  consumeAddon(contractId: number): Observable<MaAddon> {
-    const addon = this.getAddons(contractId).find((a) => a.usedQuantity < a.quantity);
-    if (!addon) {
-      return throwError(() => new Error('ไม่มี Add-on ที่ใช้ได้ในสัญญานี้'));
-    }
-    const updated: MaAddon = { ...addon, usedQuantity: addon.usedQuantity + 1 };
-    this.addonsSignal.update((list) => list.map((a) => (a.id === addon.id ? updated : a)));
-    return of(structuredClone(updated)).pipe(delay(120));
-  }
-
-  /**
-   * เติมข้อมูลตัวอย่างครั้งเดียวเมื่อมีลูกค้าจาก API แล้ว
-   * ไม่ทับสัญญาที่ผู้ใช้สร้างเอง
-   */
-  ensureDemoSeed(customerId: number, projectIds: number[] = []): Observable<MaContract[]> {
-    if (this.demoSeeded || this.contractsSignal().length > 0) {
-      return this.list();
-    }
-    const { contracts, addons } = buildMockMaContracts({
-      customerId,
-      projectId: projectIds[0] ?? null,
-      secondProjectId: projectIds[1] ?? null,
-    });
-    this.contractsSignal.set(contracts);
-    this.addonsSignal.set(addons);
-    this.nextContractId = Math.max(...contracts.map((c) => c.id)) + 1;
-    this.nextAddonId = Math.max(...addons.map((a) => a.id), 0) + 1;
-    this.demoSeeded = true;
-    return of(structuredClone(contracts)).pipe(delay(160));
+  /** DELETE /ma-contracts/:contractId/addons/:addonId */
+  deleteAddon(contractId: number, addonId: number): Observable<void> {
+    return this.http
+      .delete<void>(`${this.contractsBase}/${contractId}/addons/${addonId}`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 }

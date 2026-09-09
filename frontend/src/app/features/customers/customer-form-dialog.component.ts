@@ -71,7 +71,7 @@ export class CustomerFormDialogComponent {
   });
 
   constructor() {
-    this.usersApi.list().subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
     const c = this.data.customer;
     if (c) {
       this.form.patchValue({

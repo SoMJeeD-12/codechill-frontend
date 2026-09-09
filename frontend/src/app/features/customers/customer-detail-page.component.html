@@ -198,7 +198,13 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>วันที่ติดต่อ</mat-label>
-                  <input matInput [matDatepicker]="logPicker" formControlName="occurredDate" />
+                  <input
+                    matInput
+                    [matDatepicker]="logPicker"
+                    formControlName="occurredDate"
+                    readonly
+                    (click)="logPicker.open()"
+                  />
                   <mat-datepicker-toggle matIconSuffix [for]="logPicker"></mat-datepicker-toggle>
                   <mat-datepicker #logPicker></mat-datepicker>
                 </mat-form-field>
@@ -282,10 +288,10 @@
               @for (m of contracts(); track m.id) {
                 <a class="item link-item" [routerLink]="['/app/ma', m.id]">
                   <div>
-                    <strong>{{ m.contractNo }} · {{ m.planName }}</strong>
+                    <strong>{{ m.contractNo }} · {{ m.plan?.name || ('แผน #' + m.planId) }}</strong>
                     <p>
                       {{ maStatusLabel(m.status) }} ·
-                      โควตาเหลือ {{ remainingQuota(m) }}/{{ m.quotaTotal }}
+                      โควตาเหลือ {{ remainingQuota(m) }}{{ m.quota ? '/' + m.quota.quota : '' }}
                     </p>
                   </div>
                   <mat-icon>chevron_right</mat-icon>

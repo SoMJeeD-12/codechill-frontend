@@ -59,8 +59,8 @@ export class ReportService {
     const contractList = this.ma.contracts();
     const openProjects = projectList.filter((p) => OPEN_PROJECT_STATUSES.includes(p.status));
     const openTickets = this.tickets.openQueue();
-    const activeMa = contractList.filter((c) => c.status === 'ACTIVE');
-    const maAnnual = activeMa.reduce((s, c) => s + c.annualFee, 0);
+    const activeMa = contractList.filter((c) => c.isCurrentlyActive);
+    const maAnnual = activeMa.reduce((s, c) => s + (Number(c.price) || 0), 0);
     const projectValue = projectList.reduce((s, c) => s + (c.contractValue ?? 0), 0);
     const nearWarranty = this.warranties.listNearExpiry().length;
     const overdueFollowUps = this.followUps.listOverdue().length;
