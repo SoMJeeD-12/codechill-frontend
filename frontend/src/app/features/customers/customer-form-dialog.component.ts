@@ -17,6 +17,8 @@ import {
 } from '../../core/models/customer.model';
 import { CustomerInput, CustomerService } from '../../core/services/customer.service';
 import { UserService } from '../../core/services/user.service';
+import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
+import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 
 @Component({
   selector: 'app-customer-form-dialog',
@@ -29,6 +31,7 @@ import { UserService } from '../../core/services/user.service';
     MatSelectModule,
     MatButtonModule,
     MatSnackBarModule,
+    PhoneInputDirective,
   ],
   templateUrl: './customer-form-dialog.component.html',
   styleUrl: './customer-form-dialog.component.scss',
@@ -56,7 +59,7 @@ export class CustomerFormDialogComponent {
     address: [''],
     province: [''],
     postalCode: [''],
-    phone: [''],
+    phone: ['', thaiPhoneValidator],
     email: ['', Validators.email],
     website: [''],
     lineOfficialId: [''],
@@ -79,7 +82,7 @@ export class CustomerFormDialogComponent {
         address: c.address ?? '',
         province: c.province ?? '',
         postalCode: c.postalCode ?? '',
-        phone: c.phone ?? '',
+        phone: sanitizePhoneDigits(c.phone),
         email: c.email ?? '',
         website: c.website ?? '',
         lineOfficialId: c.lineOfficialId ?? '',
@@ -106,7 +109,7 @@ export class CustomerFormDialogComponent {
       address: trimmed(raw.address),
       province: trimmed(raw.province),
       postalCode: trimmed(raw.postalCode),
-      phone: trimmed(raw.phone),
+      phone: trimmed(raw.phone) ? sanitizePhoneDigits(raw.phone) : undefined,
       email: trimmed(raw.email),
       website: trimmed(raw.website),
       lineOfficialId: trimmed(raw.lineOfficialId),

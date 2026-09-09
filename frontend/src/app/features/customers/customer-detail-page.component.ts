@@ -42,6 +42,8 @@ import { TicketService } from '../../core/services/ticket.service';
 import { WarrantyService } from '../../core/services/warranty.service';
 import { combineDateAndTime, nowTimeString, toTimeString } from '../../core/utils/date.util';
 import { navigateBack } from '../../core/utils/navigation.util';
+import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
+import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 
 @Component({
   selector: 'app-customer-detail-page',
@@ -60,6 +62,7 @@ import { navigateBack } from '../../core/utils/navigation.util';
     MatCheckboxModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    PhoneInputDirective,
   ],
   templateUrl: './customer-detail-page.component.html',
   styleUrl: './customer-detail-page.component.scss',
@@ -118,7 +121,7 @@ export class CustomerDetailPageComponent implements OnInit {
     name: ['', Validators.required],
     nickname: [''],
     position: [''],
-    phone: [''],
+    phone: ['', thaiPhoneValidator],
     email: [''],
     lineId: [''],
     isPrimary: [false],
@@ -224,7 +227,7 @@ export class CustomerDetailPageComponent implements OnInit {
       name: contact.name,
       nickname: contact.nickname ?? '',
       position: contact.position ?? '',
-      phone: contact.phone ?? '',
+      phone: sanitizePhoneDigits(contact.phone),
       email: contact.email ?? '',
       lineId: contact.lineId ?? '',
       isPrimary: contact.isPrimary,
@@ -264,7 +267,7 @@ export class CustomerDetailPageComponent implements OnInit {
           name: raw.name.trim(),
           nickname: raw.nickname.trim() || undefined,
           position: raw.position.trim() || undefined,
-          phone: raw.phone.trim() || undefined,
+          phone: raw.phone.trim() ? sanitizePhoneDigits(raw.phone) : undefined,
           email: raw.email.trim() || undefined,
           lineId: raw.lineId.trim() || undefined,
           isPrimary: raw.isPrimary,

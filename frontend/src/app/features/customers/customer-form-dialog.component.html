@@ -42,7 +42,18 @@
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>โทรศัพท์</mat-label>
-        <input matInput formControlName="phone" />
+        <input
+          matInput
+          appPhoneInput
+          formControlName="phone"
+          type="tel"
+          inputmode="numeric"
+          maxlength="10"
+          placeholder="เช่น 0921234567"
+        />
+        @if (form.controls.phone.hasError('thaiPhone')) {
+          <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก (เช่น 0921234567)</mat-error>
+        }
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>อีเมล</mat-label>

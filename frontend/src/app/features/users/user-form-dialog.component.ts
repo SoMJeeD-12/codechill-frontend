@@ -14,6 +14,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Role } from '../../core/models/permission.model';
 import { AccountType, User } from '../../core/models/user.model';
 import { UserService } from '../../core/services/user.service';
+import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
+import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 
 @Component({
   selector: 'app-user-form-dialog',
@@ -26,6 +28,7 @@ import { UserService } from '../../core/services/user.service';
     MatSelectModule,
     MatButtonModule,
     MatSnackBarModule,
+    PhoneInputDirective,
   ],
   templateUrl: './user-form-dialog.component.html',
   styleUrl: './user-form-dialog.component.scss',
@@ -49,7 +52,7 @@ export class UserFormDialogComponent {
     nickname: [''],
     employeeCode: [''],
     email: ['', Validators.email],
-    phone: [''],
+    phone: ['', thaiPhoneValidator],
     position: [''],
     accountType: ['USER' as AccountType, Validators.required],
     roleIds: [[] as number[]],
@@ -64,7 +67,7 @@ export class UserFormDialogComponent {
         nickname: user.nickname ?? '',
         employeeCode: user.employeeCode ?? '',
         email: user.email ?? '',
-        phone: user.phone ?? '',
+        phone: sanitizePhoneDigits(user.phone),
         position: user.position ?? '',
         accountType: user.accountType === 'SUPER_ADMIN' ? 'USER' : user.accountType,
         roleIds: (user.roles ?? []).map((r) => r.id),
@@ -98,7 +101,7 @@ export class UserFormDialogComponent {
       employeeCode: optional(raw.employeeCode),
       email: optional(raw.email),
       nickname: optional(raw.nickname),
-      phone: optional(raw.phone),
+      phone: optional(raw.phone) ? sanitizePhoneDigits(raw.phone) : undefined,
       position: optional(raw.position),
       accountType: raw.accountType,
     };
