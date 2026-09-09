@@ -28,13 +28,13 @@
         </p>
       </div>
       <div class="actions">
-        @if (t.status === 'RECEIVED' || t.status === 'REOPENED') {
+        @if (canAssign() && (t.status === 'RECEIVED' || t.status === 'REOPENED')) {
           <button mat-stroked-button type="button" (click)="startWork()">เริ่มดำเนินการ</button>
         }
-        @if (t.status === 'RESOLVED' || t.status === 'CLOSED') {
+        @if (canResolve() && (t.status === 'RESOLVED' || t.status === 'CLOSED')) {
           <button mat-stroked-button type="button" (click)="reopen()">ปัญหาเดิมกลับมา</button>
         }
-        @if (t.status !== 'CLOSED') {
+        @if (canResolve() && t.status !== 'CLOSED') {
           <button mat-flat-button color="primary" type="button" (click)="closeTicket()">ปิดงาน</button>
         }
       </div>
@@ -93,7 +93,7 @@
         }
       </div>
 
-      @if (t.status !== 'CLOSED') {
+      @if (canResolve() && t.status !== 'CLOSED') {
         <mat-card class="form-card">
           <h3>เพิ่มรอบการแก้ไข</h3>
           <p class="hint">ปัญหาเดิมกลับมาให้เพิ่มรอบในใบนี้ ไม่เปิดใบใหม่</p>
@@ -127,6 +127,9 @@
                   <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
                 }
               </mat-select>
+              @if (!canChangeResolver) {
+                <mat-hint>ล็อกเป็นผู้ใช้ที่ล็อกอิน — เปลี่ยนได้เฉพาะ Admin</mat-hint>
+              }
             </mat-form-field>
             <button mat-flat-button color="primary" type="submit">บันทึกรอบนี้</button>
           </form>

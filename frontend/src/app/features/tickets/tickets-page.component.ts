@@ -66,6 +66,7 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
 export class TicketsPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -76,6 +77,9 @@ export class TicketsPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
+  readonly canCreate = computed(() => this.auth.hasPermission('tickets', 'create'));
+  readonly canEdit = computed(() => this.auth.hasPermission('tickets', 'edit'));
+  readonly canDelete = computed(() => this.auth.hasPermission('tickets', 'delete'));
   readonly columns = [
     'title',
     'customer',
@@ -153,10 +157,18 @@ export class TicketsPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canCreate()) {
+      this.snack.open('ไม่มีสิทธิ์เปิดปัญหา', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.openForm(null);
   }
 
   openEdit(ticket: Ticket): void {
+    if (!this.canEdit()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขปัญหา', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.openForm(ticket);
   }
 
@@ -174,6 +186,10 @@ export class TicketsPageComponent implements OnInit {
   }
 
   remove(ticket: Ticket): void {
+    if (!this.canDelete()) {
+      this.snack.open('ไม่มีสิทธิ์ลบปัญหา', 'ปิด', { duration: 3000 });
+      return;
+    }
     if (!confirm(`ลบปัญหา「${ticket.title}」หรือไม่?`)) {
       return;
     }
@@ -227,6 +243,8 @@ export class TicketFormDialogComponent {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.data;
+  /** ผู้รับเรื่อง — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN */
+  readonly canChangeReceiver = this.auth.isAdminLevel();
 
   readonly form = this.fb.group({
     customerId: [this.data?.customerId ?? 0, Validators.min(1)],
@@ -244,7 +262,12 @@ export class TicketFormDialogComponent {
       this.data ? toTimeString(this.data.reportedAt) : nowTimeString(),
       Validators.required,
     ],
-    receivedByUserId: [this.data?.receivedByUserId ?? (null as number | null)],
+    receivedByUserId: [
+      {
+        value: this.data?.receivedByUserId ?? (null as number | null),
+        disabled: !this.auth.isAdminLevel(),
+      },
+    ],
     assignedUserId: [this.data?.assignedUserId ?? (null as number | null)],
   });
 
@@ -255,6 +278,9 @@ export class TicketFormDialogComponent {
         receivedByUserId: me?.id ?? null,
         customerId: this.customers()[0]?.id ?? 0,
       });
+    } else if (!this.canChangeReceiver && me) {
+      // USER แก้ใบได้แต่เปลี่ยนผู้รับเรื่องไม่ได้ — คงค่าเดิม
+      this.form.get('receivedByUserId')?.disable({ emitEvent: false });
     }
     this.usersApi.loadForPicker(me).subscribe();
     if (!this.customers().length) {

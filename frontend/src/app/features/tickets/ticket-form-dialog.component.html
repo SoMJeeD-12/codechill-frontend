@@ -80,6 +80,9 @@
             <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
           }
         </mat-select>
+        @if (!canChangeReceiver) {
+          <mat-hint>เปลี่ยนผู้รับเรื่องได้เฉพาะ Admin</mat-hint>
+        }
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>ผู้รับผิดชอบแก้</mat-label>

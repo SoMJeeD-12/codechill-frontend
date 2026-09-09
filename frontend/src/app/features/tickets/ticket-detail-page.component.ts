@@ -1,6 +1,6 @@
 import { Location } from '@angular/common';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -67,6 +67,14 @@ export class TicketDetailPageComponent implements OnInit {
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
   readonly results = Object.keys(RESOLUTION_RESULT_LABELS) as ResolutionResult[];
   readonly users = this.usersApi.users;
+  readonly canResolve = computed(() => this.auth.hasPermission('tickets', 'resolve'));
+  readonly canEdit = computed(() => this.auth.hasPermission('tickets', 'edit'));
+  /** มอบหมาย / เริ่มงาน — ใช้ resolve หรือ edit */
+  readonly canAssign = computed(
+    () => this.auth.hasPermission('tickets', 'resolve') || this.auth.hasPermission('tickets', 'edit')
+  );
+  /** ผู้แก้ไข — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN กันแอบใส่ชื่อคนอื่น */
+  readonly canChangeResolver = this.auth.isAdminLevel();
 
   private ticketId = 0;
 
@@ -75,7 +83,13 @@ export class TicketDetailPageComponent implements OnInit {
     detail: ['', Validators.required],
     hoursSpent: [1, Validators.min(0)],
     result: ['SUCCESS' as ResolutionResult],
-    resolvedByUserId: [0, Validators.min(1)],
+    resolvedByUserId: [
+      {
+        value: this.auth.currentUser()?.id ?? 0,
+        disabled: !this.auth.isAdminLevel(),
+      },
+      Validators.min(1),
+    ],
   });
 
   goBack(): void {
@@ -107,9 +121,13 @@ export class TicketDetailPageComponent implements OnInit {
         );
         const me = this.auth.currentUser();
         this.resolutionForm.patchValue({
-          resolvedByUserId: me?.id ?? ticket.assignedUserId ?? 0,
+          resolvedByUserId: this.canChangeResolver
+            ? (me?.id ?? ticket.assignedUserId ?? 0)
+            : (me?.id ?? 0),
         });
-        this.notFound.set(false);
+        if (!this.canChangeResolver) {
+          this.resolutionForm.get('resolvedByUserId')?.disable({ emitEvent: false });
+        }        this.notFound.set(false);
         this.loading.set(false);
       },
       error: () => {
@@ -159,18 +177,26 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   addResolution(): void {
+    if (!this.canResolve()) {
+      this.snack.open('ไม่มีสิทธิ์บันทึกรอบการแก้ไข', 'ปิด', { duration: 3000 });
+      return;
+    }
     if (this.resolutionForm.invalid) {
       this.resolutionForm.markAllAsTouched();
       return;
     }
     const raw = this.resolutionForm.getRawValue();
+    const me = this.auth.currentUser();
+    const resolvedByUserId = this.canChangeResolver
+      ? Number(raw.resolvedByUserId)
+      : (me?.id ?? Number(raw.resolvedByUserId));
     this.ticketsApi
       .addResolution(this.ticketId, {
         rootCause: raw.rootCause.trim() || null,
         detail: raw.detail,
         hoursSpent: Number(raw.hoursSpent) || 0,
         result: raw.result,
-        resolvedByUserId: Number(raw.resolvedByUserId),
+        resolvedByUserId,
         resolvedAt: new Date().toISOString(),
       })
       .subscribe({
@@ -191,6 +217,10 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   reopen(): void {
+    if (!this.canResolve()) {
+      this.snack.open('ไม่มีสิทธิ์เปิดปัญหาเดิมซ้ำ', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.ticketsApi.reopen(this.ticketId).subscribe({
       next: () => {
         this.snack.open('เปิดปัญหาเดิมซ้ำแล้ว (ใบเดิม)', 'ปิด', { duration: 3000 });
@@ -201,6 +231,10 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   closeTicket(): void {
+    if (!this.canResolve()) {
+      this.snack.open('ไม่มีสิทธิ์ปิดงาน', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.ticketsApi.close(this.ticketId).subscribe({
       next: () => {
         this.snack.open('ปิดงานแล้ว — จะหายจากหน้ารอรับแก้ไข', 'ปิด', { duration: 3000 });
@@ -212,6 +246,10 @@ export class TicketDetailPageComponent implements OnInit {
 
   /** ไม่มี endpoint เปลี่ยนสถานะตรง ๆ — ใช้มอบหมายผู้รับผิดชอบแทน */
   startWork(): void {
+    if (!this.canAssign()) {
+      this.snack.open('ไม่มีสิทธิ์เริ่มดำเนินการ', 'ปิด', { duration: 3000 });
+      return;
+    }
     const me = this.auth.currentUser();
     const current = this.ticket();
     const assignedUserId = current?.assignedUserId ?? me?.id ?? null;

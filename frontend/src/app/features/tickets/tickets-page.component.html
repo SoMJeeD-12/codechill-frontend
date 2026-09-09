@@ -19,7 +19,14 @@
             aria-label="ค้นหาปัญหา"
           />
         </label>
-        <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          class="ui-add-btn"
+          (click)="openCreate()"
+          [disabled]="!canCreate()"
+        >
           <mat-icon>add_alert</mat-icon>
           เปิดปัญหา
         </button>
@@ -82,25 +89,29 @@
             <a mat-icon-button [routerLink]="['/app/tickets', row.id]" matTooltip="เปิดรายละเอียด">
               <mat-icon>open_in_new</mat-icon>
             </a>
-            <button
-              mat-icon-button
-              type="button"
-              matTooltip="แก้ไข"
-              (click)="openEdit(row)"
-              aria-label="แก้ไขปัญหา"
-            >
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              type="button"
-              color="warn"
-              matTooltip="ลบ"
-              (click)="remove(row)"
-              aria-label="ลบปัญหา"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
+            @if (canEdit()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="แก้ไข"
+                (click)="openEdit(row)"
+                aria-label="แก้ไขปัญหา"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (canDelete()) {
+              <button
+                mat-icon-button
+                type="button"
+                color="warn"
+                matTooltip="ลบ"
+                (click)="remove(row)"
+                aria-label="ลบปัญหา"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
