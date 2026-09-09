@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
+  MAT_DIALOG_DATA,
   MatDialog,
   MatDialogModule,
   MatDialogRef,
@@ -15,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -28,9 +30,18 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
-import { TicketCreateInput, TicketService } from '../../core/services/ticket.service';
+import {
+  TicketCreateInput,
+  TicketService,
+  TicketUpdateInput,
+} from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
-import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
+import {
+  combineDateAndTime,
+  nowTimeString,
+  parseDateOnly,
+  toTimeString,
+} from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 
@@ -39,7 +50,7 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
   standalone: true,
   imports: [
     ThaiDatePipe,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -47,6 +58,7 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './tickets-page.component.html',
   styleUrl: './tickets-page.component.scss',
@@ -77,7 +89,9 @@ export class TicketsPageComponent implements OnInit {
   readonly filtered = computed(() => {
     let list = this.tickets();
     if (this.view() === 'open') {
-      list = list.filter((t) => t.isPending || ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status));
+      list = list.filter(
+        (t) => t.isPending || ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status)
+      );
     }
     const q = this.search().trim().toLowerCase();
     if (q) {
@@ -139,14 +153,36 @@ export class TicketsPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    this.openForm(null);
+  }
+
+  openEdit(ticket: Ticket): void {
+    this.openForm(ticket);
+  }
+
+  private openForm(ticket: Ticket | null): void {
     const ref = this.dialog.open(TicketFormDialogComponent, {
       width: '600px',
       maxWidth: '95vw',
+      data: ticket,
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
         this.reload();
       }
+    });
+  }
+
+  remove(ticket: Ticket): void {
+    if (!confirm(`ลบปัญหา「${ticket.title}」หรือไม่?`)) {
+      return;
+    }
+    this.ticketsApi.remove(ticket.id).subscribe({
+      next: () => {
+        this.snack.open('ลบปัญหาแล้ว', 'ปิด', { duration: 2500 });
+        this.reload();
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
     });
   }
 }
@@ -177,6 +213,7 @@ export class TicketFormDialogComponent {
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<TicketFormDialogComponent, boolean>);
+  readonly data = inject<Ticket | null>(MAT_DIALOG_DATA, { optional: true }) ?? null;
 
   readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
@@ -189,27 +226,36 @@ export class TicketFormDialogComponent {
   readonly priorities = Object.keys(TICKET_PRIORITY_LABELS) as TicketPriority[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isEdit = !!this.data;
 
   readonly form = this.fb.group({
-    customerId: [0, Validators.min(1)],
-    projectId: [null as number | null],
-    title: ['', Validators.required],
-    description: [''],
-    priority: ['NORMAL' as TicketPriority],
-    billingType: ['WARRANTY' as BillingType],
-    reportedChannel: ['PHONE' as ReportedChannel],
-    reportedDate: [new Date() as Date | null, Validators.required],
-    reportedTime: [nowTimeString(), Validators.required],
-    receivedByUserId: [0 as number | null],
-    assignedUserId: [null as number | null],
+    customerId: [this.data?.customerId ?? 0, Validators.min(1)],
+    projectId: [this.data?.projectId ?? (null as number | null)],
+    title: [this.data?.title ?? '', Validators.required],
+    description: [this.data?.description ?? ''],
+    priority: [(this.data?.priority ?? 'NORMAL') as TicketPriority],
+    billingType: [(this.data?.billingType ?? 'WARRANTY') as BillingType],
+    reportedChannel: [(this.data?.reportedChannel ?? 'PHONE') as ReportedChannel],
+    reportedDate: [
+      (this.data ? parseDateOnly(this.data.reportedAt) : new Date()) as Date | null,
+      Validators.required,
+    ],
+    reportedTime: [
+      this.data ? toTimeString(this.data.reportedAt) : nowTimeString(),
+      Validators.required,
+    ],
+    receivedByUserId: [this.data?.receivedByUserId ?? (null as number | null)],
+    assignedUserId: [this.data?.assignedUserId ?? (null as number | null)],
   });
 
   constructor() {
     const me = this.auth.currentUser();
-    this.form.patchValue({
-      receivedByUserId: me?.id ?? null,
-      customerId: this.customers()[0]?.id ?? 0,
-    });
+    if (!this.data) {
+      this.form.patchValue({
+        receivedByUserId: me?.id ?? null,
+        customerId: this.customers()[0]?.id ?? 0,
+      });
+    }
     this.usersApi.loadForPicker(me).subscribe();
     if (!this.customers().length) {
       this.customersApi.listCustomers().subscribe();
@@ -244,6 +290,22 @@ export class TicketFormDialogComponent {
     };
     this.saving.set(true);
     this.error.set(null);
+
+    if (this.data) {
+      const update: TicketUpdateInput = payload;
+      this.ticketsApi.update(this.data.id, update).subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.snack.open('แก้ไขปัญหาแล้ว', 'ปิด', { duration: 2800 });
+          this.ref.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+        },
+      });
+      return;
+    }
 
     this.ticketsApi.create(payload).subscribe({
       next: () => {

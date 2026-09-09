@@ -35,6 +35,9 @@ export interface TicketCreateInput {
   dueAt?: string | null;
 }
 
+/** UpdateTicketDto — partial ของ create (รอ backend PATCH /tickets/:id) */
+export type TicketUpdateInput = Partial<TicketCreateInput>;
+
 /** CreateResolutionDto */
 export interface ResolutionCreateInput {
   result: ResolutionResult;
@@ -184,6 +187,46 @@ export class TicketService {
         tap((row) => this.items.update((list) => upsertById(list, row))),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /** PATCH /tickets/:id — แก้ข้อมูลที่ใส่ผิดตอนเปิดใบ */
+  update(id: number, input: TicketUpdateInput): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(
+        `${this.base}/${id}`,
+        pruneUndefined({
+          customerId: input.customerId,
+          title: input.title?.trim(),
+          reportedChannel: input.reportedChannel,
+          reportedAt: input.reportedAt,
+          projectId: input.projectId === undefined ? undefined : input.projectId,
+          billingType: input.billingType,
+          description:
+            input.description === undefined
+              ? undefined
+              : input.description?.trim() || null,
+          priority: input.priority,
+          ticketNo:
+            input.ticketNo === undefined ? undefined : input.ticketNo?.trim() || null,
+          reportedByContactId: input.reportedByContactId,
+          receivedByUserId: input.receivedByUserId,
+          assignedUserId: input.assignedUserId,
+          dueAt: input.dueAt,
+        })
+      )
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** DELETE /tickets/:id */
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`).pipe(
+      tap(() => this.items.update((list) => list.filter((t) => t.id !== id))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   assign(

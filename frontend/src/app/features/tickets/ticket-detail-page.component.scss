@@ -50,8 +50,26 @@
   padding: 1rem 1.1rem;
   border-radius: 12px;
   margin-bottom: 1.25rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 
-  p { margin: 0; }
+  strong {
+    display: block;
+    font-size: 0.75rem;
+    color: #5b6762;
+    margin-bottom: 0.4rem;
+  }
+
+  p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.55;
+    color: #1c2b28;
+  }
+
   small { color: #5b6762; }
 }
 
@@ -68,8 +86,16 @@
   padding: 0.9rem 1rem;
   border-radius: 10px;
   margin-bottom: 0.65rem;
+  min-width: 0;
 
-  p { margin: 0.35rem 0 0; color: #3f4a46; font-size: 0.9rem; }
+  p {
+    margin: 0.35rem 0 0;
+    color: #3f4a46;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   small { color: #5b6762; }
 }
 

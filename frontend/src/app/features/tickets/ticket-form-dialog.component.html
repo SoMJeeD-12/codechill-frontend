@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>เปิดปัญหาใหม่</h2>
+<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขปัญหา' : 'เปิดปัญหาใหม่' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
     <mat-form-field appearance="outline" class="full">
@@ -55,7 +55,13 @@
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>วันที่รับแจ้ง</mat-label>
-        <input matInput [matDatepicker]="reportPicker" formControlName="reportedDate" />
+        <input
+          matInput
+          [matDatepicker]="reportPicker"
+          formControlName="reportedDate"
+          readonly
+          (click)="reportPicker.open()"
+        />
         <mat-datepicker-toggle matIconSuffix [for]="reportPicker"></mat-datepicker-toggle>
         <mat-datepicker #reportPicker></mat-datepicker>
       </mat-form-field>
@@ -92,5 +98,7 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
   <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">บันทึก</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+    {{ isEdit ? 'บันทึกการแก้ไข' : 'บันทึก' }}
+  </button>
 </mat-dialog-actions>
