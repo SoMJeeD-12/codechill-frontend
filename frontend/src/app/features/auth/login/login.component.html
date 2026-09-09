@@ -54,6 +54,20 @@
             }
           </button>
         </form>
+
+        @if (devAccounts.length > 0) {
+          <div class="dev-login">
+            <span class="dev-login__label">เข้าสู่ระบบด่วน (dev):</span>
+            <div class="dev-login__buttons">
+              @for (account of devAccounts; track account.key) {
+                <button type="button" class="dev-login__btn" (click)="loginAs(account)" [disabled]="loading()">
+                  {{ account.label }}
+                  <kbd>Ctrl+Shift+{{ account.key }}</kbd>
+                </button>
+              }
+            </div>
+          </div>
+        }
       </mat-card-content>
     </mat-card>
   </div>
