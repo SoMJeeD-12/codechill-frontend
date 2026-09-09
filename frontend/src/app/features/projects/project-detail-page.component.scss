@@ -134,16 +134,24 @@
 .full { width: 100%; }
 
 .list {
-  display: grid;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
   gap: 0.65rem;
   min-width: 0;
-  overflow: hidden;
 }
 
 .delivery-item {
+  display: block;
+  box-sizing: border-box;
   padding: 0.9rem 1rem;
   border-radius: 10px;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: fit-content;
+  min-width: min(100%, 22rem);
+  max-width: 100%;
   overflow: hidden;
 
   strong {
@@ -172,7 +180,7 @@
 .delivery-top {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
   align-items: flex-start;
   min-width: 0;
 }
