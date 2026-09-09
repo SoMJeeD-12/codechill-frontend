@@ -23,6 +23,7 @@ import {
   SurveyStatus,
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
+import { CustomerService } from '../../core/services/customer.service';
 
 @Component({
   selector: 'app-surveys-page',
@@ -43,6 +44,7 @@ import { SurveyService } from '../../core/services/survey.service';
 })
 export class SurveysPageComponent implements OnInit {
   private readonly api = inject(SurveyService);
+  private readonly customersApi = inject(CustomerService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -69,7 +71,20 @@ export class SurveysPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.reload();
+    this.customersApi.listCustomers().subscribe({
+      next: (customers) => {
+        const first = customers[0];
+        const second = customers[1];
+        if (first) {
+          this.api
+            .ensureDemoSeed(first.id, second?.id ?? null)
+            .subscribe((list) => this.surveys.set(list));
+        } else {
+          this.reload();
+        }
+      },
+      error: () => this.reload(),
+    });
   }
 
   reload(): void {

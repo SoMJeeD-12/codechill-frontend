@@ -1,52 +1,16 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
+import { buildMockDocuments } from '../mock/file.mock';
 import {
   DocumentCategory,
   DocumentVersion,
   ProjectDocument,
 } from '../models/document.model';
+import { buildFilePreview } from '../utils/file-preview.util';
+import { FileService } from './file.service';
 
-/** สร้างหน้า HTML ตัวอย่างให้เปิดดูได้เมื่อยังไม่มีไฟล์จริง */
-export function buildFilePreview(
-  fileName: string,
-  version: string,
-  note = ''
-): string {
-  const html = `<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(fileName)}</title>
-  <style>
-    body { font-family: Sarabun, Segoe UI, sans-serif; margin: 0; padding: 2rem; background: #f4f1ea; color: #1c2b28; }
-    .card { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 1.5rem 1.75rem; border: 1px solid #d8e5e1; box-shadow: 0 8px 24px rgba(28,43,40,.06); }
-    h1 { margin: 0 0 .35rem; font-size: 1.35rem; }
-    .meta { color: #0f766e; font-weight: 600; margin: 0 0 1rem; }
-    .note { color: #5b6762; line-height: 1.5; }
-    hr { border: 0; border-top: 1px solid #e4eeeb; margin: 1.25rem 0; }
-    .hint { font-size: .9rem; color: #5b6762; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>${escapeHtml(fileName)}</h1>
-    <p class="meta">เวอร์ชัน ${escapeHtml(version)} · ไฟล์ตัวอย่าง</p>
-    <p class="note">${escapeHtml(note || 'ไม่มีหมายเหตุ')}</p>
-    <hr />
-    <p class="hint">ในระบบจริง ไฟล์นี้จะเปิดหรือดาวน์โหลดจากที่เก็บเอกสาร</p>
-  </div>
-</body>
-</html>`;
-  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+export { buildFilePreview } from '../utils/file-preview.util';
 
 export interface DocumentCreateInput {
   projectId: number;
@@ -72,21 +36,61 @@ export interface DocumentVersionInput {
   mimeType?: string | null;
 }
 
+export interface DocumentListParams {
+  projectId?: number;
+  customerId?: number;
+  category?: DocumentCategory;
+  search?: string;
+}
+
+/**
+ * เอกสารโครงการ (M9) — mock จนกว่า Phase 9 /api/files พร้อม
+ * อัปโหลดจริงจะวิ่งผ่าน FileService → POST /api/files แล้วผูก fileId
+ */
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
+  private readonly filesApi = inject(FileService);
   private readonly docsSignal = signal<ProjectDocument[]>([]);
   private readonly versionsSignal = signal<DocumentVersion[]>([]);
   private nextDocId = 1;
   private nextVersionId = 1;
+  private demoSeeded = false;
 
   readonly documents = this.docsSignal.asReadonly();
 
-  list(): Observable<ProjectDocument[]> {
-    return of(structuredClone(this.docsSignal())).pipe(delay(180));
+  list(params: DocumentListParams = {}): Observable<ProjectDocument[]> {
+    let rows = this.docsSignal();
+    if (params.projectId != null) {
+      rows = rows.filter((d) => d.projectId === params.projectId);
+    }
+    if (params.customerId != null) {
+      rows = rows.filter((d) => d.customerId === params.customerId);
+    }
+    if (params.category) {
+      rows = rows.filter((d) => d.category === params.category);
+    }
+    if (params.search?.trim()) {
+      const q = params.search.trim().toLowerCase();
+      rows = rows.filter(
+        (d) =>
+          d.title.toLowerCase().includes(q) ||
+          d.currentVersion.toLowerCase().includes(q) ||
+          (d.note ?? '').toLowerCase().includes(q)
+      );
+    }
+    return of(structuredClone(rows)).pipe(delay(180));
   }
 
   getById(id: number): ProjectDocument | undefined {
     return this.docsSignal().find((d) => d.id === id);
+  }
+
+  get(id: number): Observable<ProjectDocument> {
+    const row = this.getById(id);
+    if (!row) {
+      return throwError(() => new Error('ไม่พบเอกสาร'));
+    }
+    return of(structuredClone(row)).pipe(delay(100));
   }
 
   getByProject(projectId: number): ProjectDocument[] {
@@ -103,6 +107,10 @@ export class DocumentService {
       .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
   }
 
+  listVersions(documentId: number): Observable<DocumentVersion[]> {
+    return of(structuredClone(this.getVersions(documentId))).pipe(delay(100));
+  }
+
   getLatestVersion(documentId: number): DocumentVersion | undefined {
     return this.getVersions(documentId)[0];
   }
@@ -114,30 +122,55 @@ export class DocumentService {
     const version = (input.version || 'v1.0').trim();
     const fileName = input.fileName.trim();
     const note = input.note.trim();
-    const doc: ProjectDocument = {
-      id: this.nextDocId++,
-      projectId: input.projectId,
-      customerId: input.customerId,
-      title: input.title.trim(),
-      category: input.category,
-      currentVersion: version,
-      updatedAt: new Date().toISOString(),
-    };
-    const ver: DocumentVersion = {
-      id: this.nextVersionId++,
-      documentId: doc.id,
-      version,
-      fileName,
-      sizeKb: input.sizeKb ?? Math.floor(80 + Math.random() * 400),
-      uploadedByUserId: input.uploadedByUserId,
-      uploadedAt: new Date().toISOString(),
-      note,
-      fileDataUrl: input.fileDataUrl || buildFilePreview(fileName, version, note),
-      mimeType: input.mimeType || (input.fileDataUrl ? null : 'text/html'),
-    };
-    this.docsSignal.update((list) => [doc, ...list]);
-    this.versionsSignal.update((list) => [...list, ver]);
-    return of(structuredClone(doc)).pipe(delay(220));
+    const sizeKb = input.sizeKb ?? Math.floor(80 + Math.random() * 400);
+    const dataUrl = input.fileDataUrl || buildFilePreview(fileName, version, note);
+
+    return this.filesApi
+      .upload({
+        originalName: fileName,
+        mimeType: input.mimeType || (input.fileDataUrl ? null : 'text/html'),
+        sizeBytes: sizeKb * 1024,
+        uploadedByUserId: input.uploadedByUserId,
+        dataUrl,
+        entityType: 'DOCUMENT_VERSION',
+      })
+      .pipe(
+        switchMap((file) => {
+          const now = new Date().toISOString();
+          const doc: ProjectDocument = {
+            id: this.nextDocId++,
+            projectId: input.projectId,
+            customerId: input.customerId,
+            title: input.title.trim(),
+            category: input.category,
+            currentVersion: version,
+            currentFileId: file.id,
+            note: note || null,
+            createdAt: now,
+            updatedAt: now,
+          };
+          const ver: DocumentVersion = {
+            id: this.nextVersionId++,
+            documentId: doc.id,
+            version,
+            fileId: file.id,
+            fileName,
+            sizeKb,
+            uploadedByUserId: input.uploadedByUserId,
+            uploadedAt: now,
+            note: note || null,
+            fileDataUrl: file.url,
+            mimeType: file.mimeType,
+          };
+          this.filesApi.upsertLocal({
+            ...file,
+            entityId: ver.id,
+          });
+          this.docsSignal.update((list) => [doc, ...list]);
+          this.versionsSignal.update((list) => [...list, ver]);
+          return of(structuredClone(doc)).pipe(delay(40));
+        })
+      );
   }
 
   addVersion(documentId: number, input: DocumentVersionInput): Observable<DocumentVersion> {
@@ -151,55 +184,120 @@ export class DocumentService {
     const version = input.version.trim();
     const fileName = input.fileName.trim();
     const note = input.note.trim();
-    const ver: DocumentVersion = {
-      id: this.nextVersionId++,
-      documentId,
-      version,
-      fileName,
-      sizeKb: input.sizeKb ?? Math.floor(80 + Math.random() * 400),
-      uploadedByUserId: input.uploadedByUserId,
-      uploadedAt: new Date().toISOString(),
-      note,
-      fileDataUrl: input.fileDataUrl || buildFilePreview(fileName, version, note),
-      mimeType: input.mimeType || (input.fileDataUrl ? null : 'text/html'),
-    };
-    this.versionsSignal.update((list) => [...list, ver]);
-    this.docsSignal.update((list) =>
-      list.map((d) =>
-        d.id === documentId
-          ? { ...d, currentVersion: ver.version, updatedAt: ver.uploadedAt }
-          : d
-      )
-    );
-    return of(structuredClone(ver)).pipe(delay(200));
+    const sizeKb = input.sizeKb ?? Math.floor(80 + Math.random() * 400);
+    const dataUrl = input.fileDataUrl || buildFilePreview(fileName, version, note);
+
+    return this.filesApi
+      .upload({
+        originalName: fileName,
+        mimeType: input.mimeType || (input.fileDataUrl ? null : 'text/html'),
+        sizeBytes: sizeKb * 1024,
+        uploadedByUserId: input.uploadedByUserId,
+        dataUrl,
+        entityType: 'DOCUMENT_VERSION',
+      })
+      .pipe(
+        switchMap((file) => {
+          const ver: DocumentVersion = {
+            id: this.nextVersionId++,
+            documentId,
+            version,
+            fileId: file.id,
+            fileName,
+            sizeKb,
+            uploadedByUserId: input.uploadedByUserId,
+            uploadedAt: new Date().toISOString(),
+            note: note || null,
+            fileDataUrl: file.url,
+            mimeType: file.mimeType,
+          };
+          this.filesApi.upsertLocal({ ...file, entityId: ver.id });
+          this.versionsSignal.update((list) => [...list, ver]);
+          this.docsSignal.update((list) =>
+            list.map((d) =>
+              d.id === documentId
+                ? {
+                    ...d,
+                    currentVersion: ver.version,
+                    currentFileId: file.id,
+                    updatedAt: ver.uploadedAt,
+                  }
+                : d
+            )
+          );
+          return of(structuredClone(ver)).pipe(delay(40));
+        })
+      );
   }
 
   deleteDocument(documentId: number): Observable<void> {
     if (!this.getById(documentId)) {
       return throwError(() => new Error('ไม่พบเอกสาร'));
     }
+    const fileIds = this.getVersions(documentId)
+      .map((v) => v.fileId)
+      .filter((id): id is number => id != null);
     this.docsSignal.update((list) => list.filter((d) => d.id !== documentId));
     this.versionsSignal.update((list) => list.filter((v) => v.documentId !== documentId));
+    for (const fileId of fileIds) {
+      this.filesApi.remove(fileId).subscribe({ error: () => undefined });
+    }
     return of(void 0).pipe(delay(150));
   }
 
   deleteVersion(documentId: number, versionId: number): Observable<DocumentVersion[]> {
-    const remaining = this.getVersions(documentId).filter((v) => v.id !== versionId);
-    if (remaining.length === this.getVersions(documentId).length) {
+    const before = this.getVersions(documentId);
+    const target = before.find((v) => v.id === versionId);
+    const remaining = before.filter((v) => v.id !== versionId);
+    if (!target) {
       return throwError(() => new Error('ไม่พบเวอร์ชัน'));
     }
     if (remaining.length === 0) {
       return throwError(() => new Error('ต้องเหลืออย่างน้อย 1 เวอร์ชัน — หรือลบทั้งเอกสารแทน'));
     }
     this.versionsSignal.update((list) => list.filter((v) => v.id !== versionId));
+    if (target.fileId != null) {
+      this.filesApi.remove(target.fileId).subscribe({ error: () => undefined });
+    }
     const latest = remaining[0];
     this.docsSignal.update((list) =>
       list.map((d) =>
         d.id === documentId
-          ? { ...d, currentVersion: latest.version, updatedAt: new Date().toISOString() }
+          ? {
+              ...d,
+              currentVersion: latest.version,
+              currentFileId: latest.fileId,
+              updatedAt: new Date().toISOString(),
+            }
           : d
       )
     );
     return of(structuredClone(remaining)).pipe(delay(150));
+  }
+
+  /**
+   * เติมเอกสารตัวอย่างครั้งเดียวเมื่อมีโครงการจาก API
+   * ไม่ทับเอกสารที่ผู้ใช้อัปโหลดเอง
+   */
+  ensureDemoSeed(
+    customerId: number,
+    projectId: number,
+    uploadedByUserId: number
+  ): Observable<ProjectDocument[]> {
+    if (this.demoSeeded || this.docsSignal().length > 0) {
+      return this.list();
+    }
+    const { files, documents, versions } = buildMockDocuments({
+      customerId,
+      projectId,
+      uploadedByUserId,
+    });
+    this.filesApi.replaceAll(files);
+    this.docsSignal.set(documents);
+    this.versionsSignal.set(versions);
+    this.nextDocId = Math.max(...documents.map((d) => d.id)) + 1;
+    this.nextVersionId = Math.max(...versions.map((v) => v.id)) + 1;
+    this.demoSeeded = true;
+    return of(structuredClone(documents)).pipe(delay(160));
   }
 }

@@ -2,6 +2,10 @@ export type FollowUpStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
 
 export type FollowUpChannel = 'PHONE' | 'LINE' | 'EMAIL' | 'ONSITE' | 'OTHER';
 
+/**
+ * แผนติดตามลูกค้า (M7)
+ * เส้นทางที่คาดไว้: /api/follow-ups
+ */
 export interface FollowUp {
   id: number;
   customerId: number;
@@ -10,9 +14,10 @@ export interface FollowUp {
   assigneeId: number | null;
   channel: FollowUpChannel;
   status: FollowUpStatus;
-  note: string;
+  note: string | null;
   completedAt: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {

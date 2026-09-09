@@ -45,27 +45,34 @@ export class DashboardComponent implements OnInit {
     const openProjects = this.projects
       .projects()
       .filter((p) => OPEN_PROJECT_STATUSES.includes(p.status)).length;
-    this.stats.set([
-      {
-        label: 'ลูกค้า',
-        value: String(this.customers.customers().length),
-        icon: 'business',
-      },
-      {
-        label: 'โครงการเปิดอยู่',
-        value: String(openProjects),
-        icon: 'folder_special',
-      },
-      {
-        label: 'ปัญหาค้าง',
-        value: String(this.tickets.openQueue().length),
-        icon: 'support_agent',
-      },
-      {
-        label: 'ติดตามเลยกำหนด',
-        value: String(this.followUps.listOverdue().length),
-        icon: 'event_available',
-      },
-    ]);
+    const setStats = (openTickets: number) => {
+      this.stats.set([
+        {
+          label: 'ลูกค้า',
+          value: String(this.customers.customers().length),
+          icon: 'business',
+        },
+        {
+          label: 'โครงการเปิดอยู่',
+          value: String(openProjects),
+          icon: 'folder_special',
+        },
+        {
+          label: 'ปัญหาค้าง',
+          value: String(openTickets),
+          icon: 'support_agent',
+        },
+        {
+          label: 'ติดตามเลยกำหนด',
+          value: String(this.followUps.listOverdue().length),
+          icon: 'event_available',
+        },
+      ]);
+    };
+    setStats(this.tickets.openQueue().length);
+    this.tickets.listPending().subscribe({
+      next: (rows) => setStats(rows.length),
+      error: () => setStats(0),
+    });
   }
 }

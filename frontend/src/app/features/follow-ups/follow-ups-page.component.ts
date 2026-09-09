@@ -102,7 +102,24 @@ export class FollowUpsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.reload();
+    this.customersApi.listCustomers().subscribe({
+      next: (customers) => {
+        const first = customers[0];
+        const second = customers[1];
+        const me = this.auth.currentUser();
+        if (first) {
+          this.api
+            .ensureDemoSeed(first.id, me?.id ?? null, second?.id ?? null)
+            .subscribe((list) => this.items.set(list));
+        } else {
+          this.reload();
+        }
+      },
+      error: () => this.reload(),
+    });
+    this.usersApi.loadForPicker(this.auth.currentUser(), {
+      tryList: this.auth.hasPermission('users', 'view'),
+    }).subscribe();
   }
 
   reload(): void {

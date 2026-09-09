@@ -6,6 +6,8 @@
       กลับหน้ารายการ
     </button>
   </mat-card>
+} @else if (loading()) {
+  <p class="empty">กำลังโหลด...</p>
 } @else {
   @if (ticket(); as t) {
   <section class="page">
@@ -15,13 +17,13 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">{{ t.ticketNo }} · {{ ticketStatusLabel(t.status) }}</p>
+        <p class="eyebrow">{{ t.ticketNo || ('#' + t.id) }} · {{ ticketStatusLabel(t.status) }}</p>
         <h1>{{ t.title }}</h1>
         <p class="subtitle">
           {{ customerName() }} · {{ projectName() }} ·
           {{ billingLabel(t.billingType) }}
-          @if (t.billingType === 'PER_CASE') {
-            ({{ t.chargeAmount | baht }})
+          @if (t.billingType === 'ONE_TIME' && t.extraCharge != null) {
+            ({{ t.extraCharge | baht }})
           }
         </p>
       </div>
@@ -49,7 +51,7 @@
       </mat-card>
       <mat-card>
         <strong>ผู้รับผิดชอบแก้</strong>
-        <span>{{ userName(t.assigneeId) }}</span>
+        <span>{{ userName(t.assignedUserId) }}</span>
       </mat-card>
       <mat-card>
         <strong>รอบที่แก้แล้ว</strong>
@@ -65,9 +67,6 @@
 
     <mat-card class="desc">
       <p>{{ t.description || 'ไม่มีรายละเอียด' }}</p>
-      @if (t.attachmentName) {
-        <small>หลักฐาน: {{ t.attachmentName }}</small>
-      }
     </mat-card>
 
     <div class="split">
@@ -77,10 +76,12 @@
           <mat-card class="round">
             <div class="round-head">
               <strong>รอบที่ {{ r.round }}</strong>
-              <span>{{ resultLabels[r.result] }} · {{ r.spentHour }} ชม.</span>
+              <span>{{ resultLabels[r.result] }} · {{ r.hoursSpent ?? 0 }} ชม.</span>
             </div>
-            <p><b>สาเหตุ:</b> {{ r.rootCause }}</p>
-            <p><b>วิธีแก้:</b> {{ r.actionTaken }}</p>
+            @if (r.rootCause) {
+              <p><b>สาเหตุ:</b> {{ r.rootCause }}</p>
+            }
+            <p><b>วิธีแก้:</b> {{ r.detail }}</p>
             <small>
               โดย {{ userName(r.resolvedByUserId) }} ·
               {{ r.resolvedAt | date: 'd MMM y HH:mm' }}
@@ -102,12 +103,12 @@
             </mat-form-field>
             <mat-form-field appearance="outline" class="full">
               <mat-label>วิธีแก้ไข</mat-label>
-              <textarea matInput rows="2" formControlName="actionTaken"></textarea>
+              <textarea matInput rows="2" formControlName="detail"></textarea>
             </mat-form-field>
             <div class="row">
               <mat-form-field appearance="outline">
                 <mat-label>เวลาที่ใช้ (ชม.)</mat-label>
-                <input matInput type="number" step="0.5" formControlName="spentHour" />
+                <input matInput type="number" step="0.5" formControlName="hoursSpent" />
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>ผลลัพธ์</mat-label>

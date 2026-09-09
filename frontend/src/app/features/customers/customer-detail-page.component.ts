@@ -188,9 +188,18 @@ export class CustomerDetailPageComponent implements OnInit {
         });
       },
     });
-    this.tickets.set(this.ticketsApi.getByCustomer(this.customerId));
-    this.contracts.set(this.maApi.getByCustomer(this.customerId));
-    this.followUps.set(this.followUpsApi.getByCustomer(this.customerId));
+    this.ticketsApi.list({ customerId: this.customerId }).subscribe({
+      next: (rows) => this.tickets.set(rows),
+      error: () => this.tickets.set([]),
+    });
+    this.maApi.list({ customerId: this.customerId }).subscribe({
+      next: (rows) => this.contracts.set(rows),
+      error: () => this.contracts.set(this.maApi.getByCustomer(this.customerId)),
+    });
+    this.followUpsApi.list({ customerId: this.customerId }).subscribe({
+      next: (rows) => this.followUps.set(rows),
+      error: () => this.followUps.set(this.followUpsApi.getByCustomer(this.customerId)),
+    });
   }
 
   remainingQuota(c: MaContract): number {

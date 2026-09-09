@@ -39,13 +39,25 @@
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>วันเริ่มงาน</mat-label>
-        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+        <input
+          matInput
+          [matDatepicker]="startPicker"
+          formControlName="startDate"
+          readonly
+          (click)="startPicker.open()"
+        />
         <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
         <mat-datepicker #startPicker></mat-datepicker>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>วันครบกำหนด</mat-label>
-        <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+        <input
+          matInput
+          [matDatepicker]="duePicker"
+          formControlName="dueDate"
+          readonly
+          (click)="duePicker.open()"
+        />
         <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
         <mat-datepicker #duePicker></mat-datepicker>
       </mat-form-field>

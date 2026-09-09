@@ -70,6 +70,10 @@ export class MainLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.auth.refreshSession();
+    const userId = this.auth.currentUser()?.id;
+    if (userId) {
+      this.notifications.ensureDemoSeed(userId).subscribe();
+    }
   }
   accountTypeLabel(type: string | undefined): string {
     switch (type) {

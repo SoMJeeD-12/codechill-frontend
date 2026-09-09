@@ -28,19 +28,13 @@
     </mat-form-field>
     <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>ประเภท</mat-label>
-        <input matInput formControlName="category" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
         <mat-label>ความเร่งด่วน</mat-label>
         <mat-select formControlName="priority">
           @for (p of priorities; track p) {
-            <mat-option [value]="p">{{ p }}</mat-option>
+            <mat-option [value]="p">{{ priorityLabels[p] }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
-    </div>
-    <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>คิดค่าใช้จ่าย</mat-label>
         <mat-select formControlName="billingType">
@@ -48,10 +42,6 @@
             <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
           }
         </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>จำนวนเงิน (ถ้าคิดครั้ง)</mat-label>
-        <input matInput appMoneyInput formControlName="chargeAmount" inputmode="decimal" />
       </mat-form-field>
     </div>
     <div class="row">
@@ -78,6 +68,7 @@
       <mat-form-field appearance="outline">
         <mat-label>ผู้รับเรื่อง</mat-label>
         <mat-select formControlName="receivedByUserId">
+          <mat-option [value]="null">—</mat-option>
           @for (u of users(); track u.id) {
             <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
           }
@@ -85,7 +76,7 @@
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>ผู้รับผิดชอบแก้</mat-label>
-        <mat-select formControlName="assigneeId">
+        <mat-select formControlName="assignedUserId">
           <mat-option [value]="null">—</mat-option>
           @for (u of users(); track u.id) {
             <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
@@ -93,10 +84,6 @@
         </mat-select>
       </mat-form-field>
     </div>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ไฟล์หลักฐาน</mat-label>
-      <input matInput formControlName="attachmentName" />
-    </mat-form-field>
   </form>
   @if (error()) {
     <p class="error">{{ error() }}</p>

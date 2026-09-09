@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
+import { buildMockSurveys } from '../mock/survey.mock';
 import {
   QuestionType,
   Survey,
@@ -33,30 +34,64 @@ export interface SurveySummary {
   ratingDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
 }
 
+export interface SurveyListParams {
+  status?: SurveyStatus;
+  search?: string;
+}
+
+/**
+ * Surveys M8 — mock จนกว่าจะมี /api/surveys
+ * ลูกค้าไม่มีบัญชี → พนักงานบันทึกคำตอบแทน (ตาม Q1 ในเอกสาร)
+ */
 @Injectable({ providedIn: 'root' })
 export class SurveyService {
   private readonly surveysSignal = signal<Survey[]>([]);
   private readonly responsesSignal = signal<SurveyResponse[]>([]);
   private nextSurveyId = 1;
   private nextResponseId = 1;
+  private demoSeeded = false;
 
   readonly surveys = this.surveysSignal.asReadonly();
   readonly activeCount = computed(
     () => this.surveysSignal().filter((s) => s.status === 'ACTIVE').length
   );
 
-  list(): Observable<Survey[]> {
-    return of(structuredClone(this.surveysSignal())).pipe(delay(180));
+  list(params: SurveyListParams = {}): Observable<Survey[]> {
+    let rows = this.surveysSignal();
+    if (params.status) {
+      rows = rows.filter((s) => s.status === params.status);
+    }
+    if (params.search?.trim()) {
+      const q = params.search.trim().toLowerCase();
+      rows = rows.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          s.description.toLowerCase().includes(q)
+      );
+    }
+    return of(structuredClone(rows)).pipe(delay(180));
   }
 
   getById(id: number): Survey | undefined {
     return this.surveysSignal().find((s) => s.id === id);
   }
 
+  get(id: number): Observable<Survey> {
+    const row = this.getById(id);
+    if (!row) {
+      return throwError(() => new Error('ไม่พบแบบประเมิน'));
+    }
+    return of(structuredClone(row)).pipe(delay(100));
+  }
+
   getResponses(surveyId: number): SurveyResponse[] {
     return this.responsesSignal()
       .filter((r) => r.surveyId === surveyId)
       .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  }
+
+  listResponses(surveyId: number): Observable<SurveyResponse[]> {
+    return of(structuredClone(this.getResponses(surveyId))).pipe(delay(100));
   }
 
   summarize(surveyId: number): SurveySummary {
@@ -171,5 +206,24 @@ export class SurveyService {
     };
     this.responsesSignal.update((list) => [row, ...list]);
     return of(structuredClone(row)).pipe(delay(220));
+  }
+
+  ensureDemoSeed(
+    customerId: number,
+    secondCustomerId?: number | null
+  ): Observable<Survey[]> {
+    if (this.demoSeeded || this.surveysSignal().length > 0) {
+      return this.list();
+    }
+    const { surveys, responses } = buildMockSurveys({
+      customerId,
+      secondCustomerId,
+    });
+    this.surveysSignal.set(surveys);
+    this.responsesSignal.set(responses);
+    this.nextSurveyId = Math.max(...surveys.map((s) => s.id)) + 1;
+    this.nextResponseId = Math.max(...responses.map((r) => r.id)) + 1;
+    this.demoSeeded = true;
+    return of(structuredClone(surveys)).pipe(delay(160));
   }
 }

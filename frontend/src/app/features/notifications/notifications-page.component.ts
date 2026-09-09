@@ -58,7 +58,11 @@ export class NotificationsPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.reload();
+    const user = this.auth.currentUser();
+    this.api.ensureDemoSeed(user?.id ?? 0).subscribe({
+      next: () => this.reload(),
+      error: () => this.reload(),
+    });
   }
 
   reload(): void {

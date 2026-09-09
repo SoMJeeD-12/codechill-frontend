@@ -14,6 +14,7 @@ import {
   User,
   mapAuthProfileToUser,
 } from '../models/user.model';
+import { UserService } from './user.service';
 
 const STORAGE_KEY = 'cpams_auth_session';
 
@@ -31,6 +32,7 @@ interface LoginResponse extends AuthTokens {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly users = inject(UserService);
   private readonly base = `${environment.apiBaseUrl}/auth`;
 
   private readonly sessionSignal = signal<AuthSession | null>(null);
@@ -60,7 +62,10 @@ export class AuthService {
   login(username: string, password: string): Observable<AuthSession> {
     return this.http.post<LoginResponse>(`${this.base}/login`, { username, password }).pipe(
       map((res) => this.toSession(res)),
-      tap((session) => this.setSession(session)),
+      tap((session) => {
+        this.users.clearCache();
+        this.setSession(session);
+      }),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err, 'เข้าสู่ระบบไม่สำเร็จ'))))
     );
   }
@@ -204,11 +209,14 @@ export class AuthService {
   private setSession(session: AuthSession): void {
     this.sessionSignal.set(session);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    // บัญชีที่ไม่มี user.view จะ list ผู้ใช้ไม่ได้ — อย่างน้อยต้องมีตัวเองในดรอปดาวน์
+    this.users.upsertLocal(session.user);
   }
 
   private clearSession(): void {
     this.sessionSignal.set(null);
     localStorage.removeItem(STORAGE_KEY);
+    this.users.clearCache();
   }
 
   private restoreFromStorage(): void {
@@ -228,6 +236,7 @@ export class AuthService {
         return;
       }
       this.sessionSignal.set(stored);
+      this.users.upsertLocal(stored.user);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
     }

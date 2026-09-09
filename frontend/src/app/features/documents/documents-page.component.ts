@@ -57,7 +57,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 
 function openDocumentFile(ver: DocumentVersion): void {
   const dataUrl =
-    ver.fileDataUrl || buildFilePreview(ver.fileName, ver.version, ver.note);
+    ver.fileDataUrl || buildFilePreview(ver.fileName, ver.version, ver.note ?? '');
   let url = dataUrl;
   try {
     if (dataUrl.startsWith('data:')) {
@@ -66,7 +66,7 @@ function openDocumentFile(ver: DocumentVersion): void {
       setTimeout(() => URL.revokeObjectURL(url), 120_000);
     }
   } catch {
-    url = buildFilePreview(ver.fileName, ver.version, ver.note);
+    url = buildFilePreview(ver.fileName, ver.version, ver.note ?? '');
     url = URL.createObjectURL(dataUrlToBlob(url));
     setTimeout(() => URL.revokeObjectURL(url), 120_000);
   }
@@ -123,6 +123,7 @@ export class DocumentsPageComponent implements OnInit {
   private readonly api = inject(DocumentService);
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -168,7 +169,21 @@ export class DocumentsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.reload();
+    this.customersApi.listCustomers().subscribe({ error: () => undefined });
+    this.projectsApi.listProjects().subscribe({
+      next: (projects) => {
+        const first = projects[0];
+        if (!first) {
+          this.reload();
+          return;
+        }
+        const userId = this.auth.currentUser()?.id ?? 1;
+        this.api
+          .ensureDemoSeed(first.customerId, first.id, userId)
+          .subscribe((list) => this.documents.set(list));
+      },
+      error: () => this.reload(),
+    });
   }
 
   reload(): void {

@@ -78,7 +78,7 @@ export class MaPageComponent implements OnInit {
       const project = c.projectId != null ? this.projectsApi.getProject(c.projectId) : null;
       const projectText = project ? `${project.code} ${project.name}`.toLowerCase() : '';
       return (
-        c.contractNo.toLowerCase().includes(q) ||
+        c.contractNo?.toLowerCase().includes(q) ||
         c.planName.toLowerCase().includes(q) ||
         this.customerName(c.customerId).toLowerCase().includes(q) ||
         projectText.includes(q) ||
@@ -90,9 +90,28 @@ export class MaPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.customersApi.listCustomers().subscribe();
-    this.projectsApi.listProjects().subscribe();
-    this.reload();
+    this.customersApi.listCustomers().subscribe({
+      next: (customers) => {
+        this.projectsApi.listProjects().subscribe({
+          next: (projects) => {
+            const first = customers[0];
+            if (first) {
+              const projectIds = projects
+                .filter((p) => p.customerId === first.id)
+                .map((p) => p.id);
+              this.api.ensureDemoSeed(first.id, projectIds).subscribe((list) => {
+                this.contracts.set(list);
+              });
+            } else {
+              this.reload();
+            }
+          },
+          error: () => this.reload(),
+        });
+      },
+      error: () => this.reload(),
+    });
+    this.api.listPlans().subscribe();
   }
 
   reload(): void {
@@ -155,6 +174,7 @@ export class MaFormDialogComponent {
 
   readonly customers = this.customersApi.customers;
   readonly projects = this.projectsApi.projects;
+  readonly plans = this.api.plans;
   readonly statusLabels = MA_STATUS_LABELS;
   readonly statuses = Object.keys(MA_STATUS_LABELS) as MaContractStatus[];
   readonly saving = signal(false);
@@ -163,6 +183,7 @@ export class MaFormDialogComponent {
   readonly form = this.fb.group({
     customerId: [this.data?.customerId ?? 0, Validators.min(1)],
     projectId: [this.data?.projectId ?? (null as number | null)],
+    planId: [this.data?.planId ?? (null as number | null)],
     planName: [this.data?.planName ?? '', Validators.required],
     startDate: [parseDateOnly(this.data?.startDate) as Date | null, Validators.required],
     endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
@@ -174,17 +195,38 @@ export class MaFormDialogComponent {
   });
 
   constructor() {
+    this.api.listPlans().subscribe();
     if (!this.data) {
       const first = this.customers()[0];
-      if (first) {
-        this.form.patchValue({ customerId: first.id });
-      }
+      const firstPlan = this.plans()[0];
+      this.form.patchValue({
+        customerId: first?.id ?? 0,
+        planId: firstPlan?.id ?? null,
+        planName: firstPlan?.name ?? '',
+        annualFee: firstPlan?.defaultAnnualFee ?? 0,
+        quotaTotal: firstPlan?.defaultQuotaTotal ?? 12,
+        slaHours: firstPlan?.defaultSlaHours ?? 24,
+      });
     }
   }
 
   filteredProjects() {
     const customerId = this.form.getRawValue().customerId;
     return this.projects().filter((p) => p.customerId === customerId);
+  }
+
+  onPlanChange(planId: number | null): void {
+    const plan = planId != null ? this.api.getPlan(planId) : undefined;
+    if (!plan) {
+      return;
+    }
+    this.form.patchValue({
+      planId: plan.id,
+      planName: plan.name,
+      annualFee: plan.defaultAnnualFee,
+      quotaTotal: plan.defaultQuotaTotal,
+      slaHours: plan.defaultSlaHours,
+    });
   }
 
   save(): void {
@@ -196,6 +238,7 @@ export class MaFormDialogComponent {
     const payload: MaContractInput = {
       customerId: Number(raw.customerId),
       projectId: raw.projectId,
+      planId: raw.planId,
       planName: raw.planName ?? '',
       startDate: toDateOnlyString(raw.startDate),
       endDate: toDateOnlyString(raw.endDate),

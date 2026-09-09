@@ -1,11 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
 import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
-import { AccountType, User, UserStatus } from '../models/user.model';
+import { AccountType, User, UserStatus, UserSummary } from '../models/user.model';
 
 /** CreateUserDto */
 export interface CreateUserInput {
@@ -68,8 +68,70 @@ export class UserService {
       );
   }
 
+  /**
+   * สำหรับดรอปดาวน์มอบหมายงาน — บัญชีที่ไม่มี user.view จะได้ 403 จาก GET /users
+   * จึงใส่ผู้ใช้ปัจจุบัน/สรุปจาก record อื่นไว้ก่อน แล้วค่อยดึงรายการเต็มถ้าสิทธิ์มี
+   */
+  loadForPicker(
+    seed?: User | UserSummary | null,
+    opts?: { tryList?: boolean }
+  ): Observable<User[]> {
+    if (seed) {
+      this.upsertLocal(seed);
+    }
+    if (opts?.tryList === false) {
+      return of(this.usersSignal());
+    }
+    return this.list({ limit: 100, status: 'ACTIVE' }).pipe(
+      catchError(() => of(this.usersSignal()))
+    );
+  }
+
+  clearCache(): void {
+    this.usersSignal.set([]);
+  }
+
+  /** ใส่ผู้ใช้ลงแคชโดยไม่ต้องมีสิทธิ์ list (เช่น จาก session หรือ summary ใน ticket) */
+  upsertLocal(user: User | UserSummary): void {
+    const normalized = this.toUser(user);
+    this.usersSignal.update((list) => upsertById(list, normalized));
+  }
+
   getById(id: number): User | undefined {
     return this.usersSignal().find((u) => u.id === id);
+  }
+
+  private toUser(user: User | UserSummary): User {
+    if ('accountType' in user && user.accountType) {
+      return user as User;
+    }
+    const summary = user as UserSummary;
+    const existing = this.getById(summary.id);
+    if (existing) {
+      return {
+        ...existing,
+        username: summary.username || existing.username,
+        fullName: summary.fullName || existing.fullName,
+      };
+    }
+    return {
+      id: summary.id,
+      employeeCode: null,
+      username: summary.username,
+      email: null,
+      fullName: summary.fullName,
+      nickname: null,
+      phone: null,
+      position: null,
+      avatarUrl: null,
+      lineUserId: null,
+      accountType: 'USER',
+      status: 'ACTIVE',
+      lastLoginAt: null,
+      roles: [],
+      createdAt: '',
+      updatedAt: '',
+    };
   }
 
   create(input: CreateUserInput): Observable<User> {

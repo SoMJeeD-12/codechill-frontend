@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">M6 · สัญญาบำรุงรักษา</p>
       <h1>สัญญา MA</h1>
-      <p class="subtitle">แผน MA โควตาเคสซ่อม และ Add-on</p>
+      <p class="subtitle">แม่แบบแผน · สัญญา · โควตา · Add-on (mock รอ Phase 8)</p>
     </div>
   </header>
 
@@ -39,7 +39,7 @@
         <ng-container matColumnDef="contractNo">
           <th mat-header-cell *matHeaderCellDef>เลขที่</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/ma', row.id]">{{ row.contractNo }}</a>
+            <a [routerLink]="['/app/ma', row.id]">{{ row.contractNo || ('#' + row.id) }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="plan">

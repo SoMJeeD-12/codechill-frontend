@@ -1,5 +1,10 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, throwError } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   BillingType,
   OPEN_TICKET_STATUSES,
@@ -8,177 +13,309 @@ import {
   Ticket,
   TicketPriority,
   TicketResolution,
-  TicketStatus,
 } from '../models/ticket.model';
+import { UserSummary } from '../models/user.model';
+import { UserService } from './user.service';
 
-export interface TicketInput {
+/** CreateTicketDto */
+export interface TicketCreateInput {
   customerId: number;
-  projectId: number | null;
   title: string;
-  description: string;
-  category: string;
-  priority: TicketPriority;
-  billingType: BillingType;
-  chargeAmount: number;
   reportedChannel: ReportedChannel;
   reportedAt: string;
-  receivedByUserId: number;
-  assigneeId: number | null;
-  attachmentName: string | null;
+  projectId?: number | null;
+  billingType?: BillingType;
+  description?: string | null;
+  priority?: TicketPriority;
+  ticketNo?: string | null;
+  reportedByContactId?: number | null;
+  receivedByUserId?: number | null;
+  assignedUserId?: number | null;
+  dueAt?: string | null;
 }
 
-export interface ResolutionInput {
-  rootCause: string;
-  actionTaken: string;
-  spentHour: number;
+/** CreateResolutionDto */
+export interface ResolutionCreateInput {
   result: ResolutionResult;
-  resolvedByUserId: number;
+  detail: string;
+  resolvedAt: string;
+  rootCause?: string | null;
+  resolvedByUserId?: number | null;
+  startedAt?: string | null;
+  hoursSpent?: number | null;
+  extraCharge?: number | null;
+}
+
+export interface TicketListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  status?: Ticket['status'];
+  customerId?: number;
+  projectId?: number;
+  priority?: TicketPriority;
+  assigneeId?: number;
+  billingType?: BillingType;
+}
+
+interface ApiTicket extends Omit<Ticket, 'extraCharge' | 'resolutions'> {
+  extraCharge?: string | number | null;
+  resolutions?: ApiResolution[] | null;
+  assignedUser?: UserSummary | null;
+  receivedByUser?: UserSummary | null;
+}
+
+interface ApiResolution extends Omit<TicketResolution, 'hoursSpent'> {
+  hoursSpent?: string | number | null;
+  resolvedBy?: UserSummary | null;
+}
+
+interface ResolutionCreatedDto {
+  ticket: ApiTicket;
+  resolution: ApiResolution;
+  quota?: unknown;
 }
 
 @Injectable({ providedIn: 'root' })
 export class TicketService {
-  private readonly ticketsSignal = signal<Ticket[]>([]);
-  private readonly resolutionsSignal = signal<TicketResolution[]>([]);
+  private readonly http = inject(HttpClient);
+  private readonly usersApi = inject(UserService);
+  private readonly base = `${environment.apiBaseUrl}/tickets`;
+  private readonly items = signal<Ticket[]>([]);
 
-  private nextTicketId = 1;
-  private nextResolutionId = 1;
-
-  readonly tickets = this.ticketsSignal.asReadonly();
+  readonly tickets = this.items.asReadonly();
   readonly openCount = computed(
-    () => this.ticketsSignal().filter((t) => OPEN_TICKET_STATUSES.includes(t.status) && t.status !== 'RESOLVED').length
+    () => this.items().filter((t) => OPEN_TICKET_STATUSES.includes(t.status)).length
   );
 
-  list(): Observable<Ticket[]> {
-    return of(structuredClone(this.ticketsSignal())).pipe(delay(200));
+  list(params: TicketListParams = {}): Observable<Ticket[]> {
+    return this.http
+      .get<ApiTicket[] | { items: ApiTicket[] }>(this.base, {
+        params: toHttpParams({ limit: 100, ...params }),
+      })
+      .pipe(
+        map((body) => asList(body).map((row) => this.normalizeTicket(row))),
+        tap((rows) => this.items.set(rows)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /tickets/pending — ใบค้างแก้ */
+  listPending(
+    params: Omit<TicketListParams, 'status' | 'projectId' | 'billingType'> = {}
+  ): Observable<Ticket[]> {
+    return this.http
+      .get<ApiTicket[] | { items: ApiTicket[] }>(`${this.base}/pending`, {
+        params: toHttpParams({ limit: 100, ...params }),
+      })
+      .pipe(
+        map((body) => asList(body).map((row) => this.normalizeTicket(row))),
+        tap((rows) => {
+          this.items.update((all) => {
+            const byId = new Map(all.map((t) => [t.id, t]));
+            for (const row of rows) {
+              byId.set(row.id, row);
+            }
+            return Array.from(byId.values());
+          });
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getById(id: number): Ticket | undefined {
-    return this.ticketsSignal().find((t) => t.id === id);
+    return this.items().find((t) => t.id === id);
+  }
+
+  get(id: number): Observable<Ticket> {
+    return this.http.get<ApiTicket>(`${this.base}/${id}`).pipe(
+      map((row) => this.normalizeTicket(row)),
+      tap((row) => this.items.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   getByCustomer(customerId: number): Ticket[] {
-    return this.ticketsSignal().filter((t) => t.customerId === customerId);
+    return this.items().filter((t) => t.customerId === customerId);
   }
 
   getByProject(projectId: number): Ticket[] {
-    return this.ticketsSignal().filter((t) => t.projectId === projectId);
+    return this.items().filter((t) => t.projectId === projectId);
   }
 
   openQueue(): Ticket[] {
-    return this.ticketsSignal().filter((t) =>
-      ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status)
-    );
+    return this.items().filter((t) => OPEN_TICKET_STATUSES.includes(t.status));
   }
 
-  create(input: TicketInput): Observable<Ticket> {
+  create(input: TicketCreateInput): Observable<Ticket> {
     if (!input.title.trim() || !input.customerId) {
       return throwError(() => new Error('กรุณาระบุหัวข้อและลูกค้า'));
     }
-    const ticket: Ticket = {
-      id: this.nextTicketId++,
-      ticketNo: `TK-${new Date().getFullYear()}-${String(this.nextTicketId).padStart(3, '0')}`,
-      customerId: input.customerId,
-      projectId: input.projectId,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      category: input.category.trim(),
-      priority: input.priority,
-      status: 'RECEIVED',
-      billingType: input.billingType,
-      chargeAmount: Number(input.chargeAmount) || 0,
-      reportedChannel: input.reportedChannel,
-      reportedAt: input.reportedAt || new Date().toISOString(),
-      receivedByUserId: input.receivedByUserId,
-      assigneeId: input.assigneeId,
-      resolutionCount: 0,
-      closedAt: null,
-      attachmentName: input.attachmentName,
-    };
-    this.ticketsSignal.update((list) => [ticket, ...list]);
-    return of(structuredClone(ticket)).pipe(delay(250));
+    return this.http
+      .post<ApiTicket>(
+        this.base,
+        pruneUndefined({
+          customerId: input.customerId,
+          title: input.title.trim(),
+          reportedChannel: input.reportedChannel,
+          reportedAt: input.reportedAt,
+          projectId: input.projectId ?? undefined,
+          billingType: input.billingType,
+          description: input.description?.trim() || undefined,
+          priority: input.priority,
+          ticketNo: input.ticketNo?.trim() || undefined,
+          reportedByContactId: input.reportedByContactId ?? undefined,
+          receivedByUserId: input.receivedByUserId ?? undefined,
+          assignedUserId: input.assignedUserId ?? undefined,
+          dueAt: input.dueAt ?? undefined,
+        })
+      )
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  updateStatus(id: number, status: TicketStatus): Observable<Ticket> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบปัญหา'));
-    }
-    const updated: Ticket = {
-      ...current,
-      status,
-      closedAt: status === 'CLOSED' ? new Date().toISOString() : current.closedAt,
-    };
-    if (status !== 'CLOSED') {
-      updated.closedAt = null;
-    }
-    this.ticketsSignal.update((list) => list.map((t) => (t.id === id ? updated : t)));
-    return of(structuredClone(updated)).pipe(delay(150));
+  assign(
+    id: number,
+    assignedUserId: number | null,
+    dueAt?: string | null
+  ): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(`${this.base}/${id}/assign`, pruneUndefined({
+        assignedUserId,
+        dueAt: dueAt ?? undefined,
+      }))
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  /** ปัญหาเดิมกลับมา — ย้อนสถานะเป็น REOPENED ไม่เปิดใบใหม่ */
-  reopen(id: number): Observable<Ticket> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบปัญหา'));
-    }
-    if (!['RESOLVED', 'CLOSED'].includes(current.status)) {
-      return throwError(() => new Error('เปิดซ้ำได้เฉพาะใบที่แก้แล้วหรือปิดแล้ว'));
-    }
-    const updated: Ticket = {
-      ...current,
-      status: 'REOPENED',
-      closedAt: null,
-    };
-    this.ticketsSignal.update((list) => list.map((t) => (t.id === id ? updated : t)));
-    return of(structuredClone(updated)).pipe(delay(200));
+  reopen(id: number, reason?: string | null): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(`${this.base}/${id}/reopen`, pruneUndefined({
+        reason: reason?.trim() || undefined,
+      }))
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  close(
+    id: number,
+    opts?: { note?: string | null; extraCharge?: number | null }
+  ): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(`${this.base}/${id}/close`, pruneUndefined({
+        note: opts?.note?.trim() || undefined,
+        extraCharge:
+          opts?.extraCharge != null && !Number.isNaN(opts.extraCharge)
+            ? opts.extraCharge.toFixed(2)
+            : undefined,
+      }))
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getResolutions(ticketId: number): TicketResolution[] {
-    return this.resolutionsSignal()
-      .filter((r) => r.ticketId === ticketId)
-      .sort((a, b) => a.round - b.round);
-  }
-
-  addResolution(ticketId: number, input: ResolutionInput): Observable<TicketResolution> {
     const ticket = this.getById(ticketId);
-    if (!ticket) {
-      return throwError(() => new Error('ไม่พบปัญหา'));
-    }
-    if (!input.rootCause.trim() || !input.actionTaken.trim()) {
-      return throwError(() => new Error('กรุณาระบุสาเหตุและวิธีแก้'));
-    }
-
-    const round = ticket.resolutionCount + 1;
-    const resolution: TicketResolution = {
-      id: this.nextResolutionId++,
-      ticketId,
-      round,
-      rootCause: input.rootCause.trim(),
-      actionTaken: input.actionTaken.trim(),
-      spentHour: Number(input.spentHour) || 0,
-      result: input.result,
-      resolvedByUserId: input.resolvedByUserId,
-      resolvedAt: new Date().toISOString(),
-    };
-
-    this.resolutionsSignal.update((list) => [...list, resolution]);
-
-    const nextStatus: TicketStatus =
-      input.result === 'SUCCESS' ? 'RESOLVED' : 'IN_PROGRESS';
-
-    this.ticketsSignal.update((list) =>
-      list.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              resolutionCount: round,
-              status: t.status === 'RECEIVED' || t.status === 'REOPENED' ? nextStatus : nextStatus,
-              assigneeId: t.assigneeId ?? input.resolvedByUserId,
-            }
-          : t
-      )
-    );
-
-    return of(structuredClone(resolution)).pipe(delay(250));
+    return [...(ticket?.resolutions ?? [])].sort((a, b) => a.round - b.round);
   }
+
+  addResolution(
+    ticketId: number,
+    input: ResolutionCreateInput
+  ): Observable<TicketResolution> {
+    if (!input.detail.trim()) {
+      return throwError(() => new Error('กรุณาระบุรายละเอียดการแก้ไข'));
+    }
+    return this.http
+      .post<ResolutionCreatedDto>(`${this.base}/${ticketId}/resolutions`, pruneUndefined({
+        result: input.result,
+        detail: input.detail.trim(),
+        resolvedAt: input.resolvedAt,
+        rootCause: input.rootCause?.trim() || undefined,
+        resolvedByUserId: input.resolvedByUserId ?? undefined,
+        startedAt: input.startedAt ?? undefined,
+        hoursSpent:
+          input.hoursSpent != null && !Number.isNaN(input.hoursSpent)
+            ? input.hoursSpent.toFixed(2)
+            : undefined,
+        extraCharge:
+          input.extraCharge != null && !Number.isNaN(input.extraCharge)
+            ? input.extraCharge.toFixed(2)
+            : undefined,
+      }))
+      .pipe(
+        map((body) => {
+          const ticket = this.normalizeTicket(body.ticket);
+          this.items.update((list) => upsertById(list, ticket));
+          return this.normalizeResolution(body.resolution);
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  private normalizeTicket(row: ApiTicket): Ticket {
+    this.syncUserSummaries(row);
+    const resolutions = (row.resolutions ?? []).map((r) => this.normalizeResolution(r));
+    return {
+      ...row,
+      ticketNo: row.ticketNo ?? null,
+      description: row.description ?? null,
+      projectId: row.projectId ?? null,
+      reportedByContactId: row.reportedByContactId ?? null,
+      receivedByUserId: row.receivedByUserId ?? null,
+      assignedUserId: row.assignedUserId ?? null,
+      warrantyId: row.warrantyId ?? null,
+      maContractId: row.maContractId ?? null,
+      firstResponseAt: row.firstResponseAt ?? null,
+      resolvedAt: row.resolvedAt ?? null,
+      closedAt: row.closedAt ?? null,
+      dueAt: row.dueAt ?? null,
+      extraCharge: toNullableNumber(row.extraCharge),
+      resolutionCount: row.resolutionCount ?? resolutions.length,
+      resolutions,
+    };
+  }
+
+  private normalizeResolution(row: ApiResolution): TicketResolution {
+    if (row.resolvedBy) {
+      this.usersApi.upsertLocal(row.resolvedBy);
+    }
+    return {
+      ...row,
+      rootCause: row.rootCause ?? null,
+      resolvedByUserId: row.resolvedByUserId ?? null,
+      startedAt: row.startedAt ?? null,
+      hoursSpent: toNullableNumber(row.hoursSpent),
+    };
+  }
+
+  private syncUserSummaries(row: ApiTicket): void {
+    if (row.assignedUser) {
+      this.usersApi.upsertLocal(row.assignedUser);
+    }
+    if (row.receivedByUser) {
+      this.usersApi.upsertLocal(row.receivedByUser);
+    }
+  }
+}
+
+function toNullableNumber(value: string | number | null | undefined): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
 }

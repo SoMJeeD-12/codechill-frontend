@@ -80,14 +80,14 @@ export class MaDetailPageComponent implements OnInit {
     if (!contractId) {
       return;
     }
-    const row = this.api.getById(contractId);
-    if (!row) {
-      this.notFound.set(true);
-      return;
-    }
-    this.notFound.set(false);
-    this.contract.set(row);
-    this.addons.set(this.api.getAddons(contractId));
+    this.api.get(contractId).subscribe({
+      next: (row) => {
+        this.notFound.set(false);
+        this.contract.set(row);
+        this.api.listAddons(contractId).subscribe((addons) => this.addons.set(addons));
+      },
+      error: () => this.notFound.set(true),
+    });
   }
 
   customerName(id: number): string {
@@ -146,7 +146,7 @@ export class MaDetailPageComponent implements OnInit {
         )
         .join('');
     const addonTotal = this.addons().reduce((sum, a) => sum + a.quantity * a.unitPrice, 0);
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งค่าบริการ ${c.contractNo}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งค่าบริการ ${c.contractNo || c.id}</title>
 <style>
 body{font-family:Sarabun,sans-serif;padding:32px;color:#1c2b28}
 h1{margin:0 0 4px;font-size:1.4rem} .muted{color:#5b6762}
@@ -155,8 +155,8 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 .total{margin-top:1rem;font-size:1.1rem;font-weight:700}
 @media print{button{display:none}}
 </style></head><body>
-<p class="muted">CPAMS · ใบแจ้งค่าบริการ</p>
-<h1>${c.contractNo} · ${c.planName}</h1>
+<p class="muted">CPAMS · ใบแจ้งค่าบริการ (mock)</p>
+<h1>${c.contractNo || '#' + c.id} · ${c.planName}</h1>
 <p>ลูกค้า: ${customer}<br>ระยะสัญญา: ${c.startDate} – ${c.endDate}<br>พิมพ์โดย: ${user}</p>
 <table>
 <thead><tr><th>รายการ</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>

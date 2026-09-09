@@ -1,7 +1,7 @@
 import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -30,7 +30,6 @@ import { navigateBack } from '../../core/utils/navigation.util';
   standalone: true,
   imports: [
     DatePipe,
-    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -86,18 +85,18 @@ export class SurveyDetailPageComponent implements OnInit {
     if (!surveyId) {
       return;
     }
-    const row = this.api.getById(surveyId);
-    if (!row) {
-      this.notFound.set(true);
-      return;
-    }
-    this.notFound.set(false);
-    this.survey.set(row);
-    this.responses.set(this.api.getResponses(surveyId));
-    this.summary.set(this.api.summarize(surveyId));
-    this.buildAnswerControls(row.questions);
-    const first = this.customers()[0];
-    this.responseForm.patchValue({ customerId: first?.id ?? 0 });
+    this.api.get(surveyId).subscribe({
+      next: (row) => {
+        this.notFound.set(false);
+        this.survey.set(row);
+        this.api.listResponses(surveyId).subscribe((rows) => this.responses.set(rows));
+        this.summary.set(this.api.summarize(surveyId));
+        this.buildAnswerControls(row.questions);
+        const first = this.customers()[0];
+        this.responseForm.patchValue({ customerId: first?.id ?? 0 });
+      },
+      error: () => this.notFound.set(true),
+    });
   }
 
   buildAnswerControls(questions: SurveyQuestion[]): void {

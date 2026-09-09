@@ -1,6 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import {
+  MOCK_NOTIFICATION_RULES,
+  buildMockNotifications,
+} from '../mock/notification.mock';
+import {
   AppNotification,
   NotificationChannel,
   NotificationRule,
@@ -17,12 +21,20 @@ export interface NotificationRuleInput {
   description: string;
 }
 
+/**
+ * Notifications M11 — mock ในแอป + กติกา
+ * LINE จริงยังไม่ต่อ (ใช้ LINE_MOCK)
+ * เส้นทางที่คาดไว้: /api/notifications , /api/notification-rules
+ */
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly audit = inject(AuditService);
-  private readonly rulesSignal = signal<NotificationRule[]>([]);
+  private readonly rulesSignal = signal<NotificationRule[]>(
+    structuredClone(MOCK_NOTIFICATION_RULES)
+  );
   private readonly itemsSignal = signal<AppNotification[]>([]);
   private nextItemId = 1;
+  private demoSeededForUser = new Set<number>();
 
   readonly rules = this.rulesSignal.asReadonly();
   readonly notifications = this.itemsSignal.asReadonly();
@@ -44,13 +56,16 @@ export class NotificationService {
     return of(structuredClone(list)).pipe(delay(180));
   }
 
-  /** Super Admin/Admin: ดูทั้งหมด */
   listAll(): Observable<AppNotification[]> {
     const list = [...this.itemsSignal()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return of(structuredClone(list)).pipe(delay(180));
   }
 
-  updateRule(id: number, input: NotificationRuleInput, actorName = 'ระบบ'): Observable<NotificationRule> {
+  updateRule(
+    id: number,
+    input: NotificationRuleInput,
+    actorName = 'ระบบ'
+  ): Observable<NotificationRule> {
     const current = this.rulesSignal().find((r) => r.id === id);
     if (!current) {
       return throwError(() => new Error('ไม่พบกติกาแจ้งเตือน'));
@@ -63,6 +78,7 @@ export class NotificationService {
       daysBefore: Math.max(0, Number(input.daysBefore) || 0),
       enabled: input.enabled,
       description: input.description.trim(),
+      updatedAt: new Date().toISOString(),
     };
     this.rulesSignal.update((list) => list.map((r) => (r.id === id ? updated : r)));
     this.audit.log({
@@ -110,20 +126,18 @@ export class NotificationService {
 
   markAllRead(userId: number): Observable<number> {
     let count = 0;
-    this.itemsSignal.update((list) => {
-      const next = list.map((n) => {
+    this.itemsSignal.update((list) =>
+      list.map((n) => {
         if (n.userId === userId && !n.readAt) {
           count += 1;
           return { ...n, readAt: new Date().toISOString() };
         }
         return n;
-      });
-      return next;
-    });
+      })
+    );
     return of(count).pipe(delay(150));
   }
 
-  /** สร้างแจ้งเตือนตัวอย่าง (เช่น กด “สร้างตัวอย่าง”) */
   pushSample(
     userId: number,
     title: string,
@@ -143,5 +157,23 @@ export class NotificationService {
     };
     this.itemsSignal.update((list) => [row, ...list]);
     return of(structuredClone(row)).pipe(delay(150));
+  }
+
+  /** เติม inbox ตัวอย่างต่อผู้ใช้ (ไม่ทับรายการที่มีอยู่) */
+  ensureDemoSeed(userId: number): Observable<AppNotification[]> {
+    if (!userId || this.demoSeededForUser.has(userId)) {
+      return this.listForUser(userId);
+    }
+    const hasForUser = this.itemsSignal().some((n) => n.userId === userId);
+    if (hasForUser) {
+      this.demoSeededForUser.add(userId);
+      return this.listForUser(userId);
+    }
+    const rows = buildMockNotifications(userId);
+    this.itemsSignal.update((list) => [...rows, ...list]);
+    const maxId = Math.max(0, ...this.itemsSignal().map((n) => n.id));
+    this.nextItemId = maxId + 1;
+    this.demoSeededForUser.add(userId);
+    return of(structuredClone(rows)).pipe(delay(120));
   }
 }

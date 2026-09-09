@@ -5,50 +5,62 @@ export type TicketStatus =
   | 'REOPENED'
   | 'CLOSED';
 
-export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+/** ตาม TicketResponseDto / CreateTicketDto */
+export type TicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
 export type BillingType =
   | 'WARRANTY'
-  | 'QUOTA'
+  | 'MA_QUOTA'
   | 'ADDON'
-  | 'PER_CASE'
+  | 'ONE_TIME'
   | 'FREE';
 
-export type ReportedChannel = 'LINE' | 'FACEBOOK' | 'PHONE' | 'EMAIL' | 'ONSITE' | 'OTHER';
+export type ReportedChannel = 'LINE' | 'FACEBOOK' | 'PHONE' | 'EMAIL' | 'OTHER';
 
 export type ResolutionResult = 'SUCCESS' | 'PARTIAL' | 'FAILED';
 
 export interface Ticket {
   id: number;
-  ticketNo: string;
+  ticketNo: string | null;
   customerId: number;
   projectId: number | null;
   title: string;
-  description: string;
-  category: string;
+  description: string | null;
   priority: TicketPriority;
   status: TicketStatus;
+  isPending: boolean;
   billingType: BillingType;
-  chargeAmount: number;
+  /** ค่าใช้จ่ายเพิ่ม (จาก API เป็น string ทศนิยม) */
+  extraCharge: number | null;
   reportedChannel: ReportedChannel;
   reportedAt: string;
-  receivedByUserId: number;
-  assigneeId: number | null;
+  reportedByContactId: number | null;
+  receivedByUserId: number | null;
+  assignedUserId: number | null;
+  warrantyId: number | null;
+  maContractId: number | null;
   resolutionCount: number;
+  firstResponseAt: string | null;
+  resolvedAt: string | null;
   closedAt: string | null;
-  attachmentName: string | null;
+  dueAt: string | null;
+  resolutions?: TicketResolution[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TicketResolution {
   id: number;
   ticketId: number;
   round: number;
-  rootCause: string;
-  actionTaken: string;
-  spentHour: number;
   result: ResolutionResult;
-  resolvedByUserId: number;
+  detail: string;
+  rootCause: string | null;
+  resolvedByUserId: number | null;
+  startedAt: string | null;
   resolvedAt: string;
+  hoursSpent: number | null;
+  createdAt?: string;
 }
 
 export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
@@ -59,11 +71,18 @@ export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   CLOSED: 'ปิดงาน',
 };
 
+export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
+  LOW: 'ต่ำ',
+  NORMAL: 'ปกติ',
+  HIGH: 'สูง',
+  URGENT: 'ด่วนมาก',
+};
+
 export const BILLING_TYPE_LABELS: Record<BillingType, string> = {
   WARRANTY: 'ในประกัน',
-  QUOTA: 'ใช้โควตา',
+  MA_QUOTA: 'ใช้โควตา MA',
   ADDON: 'ใช้ Add-on',
-  PER_CASE: 'คิดเป็นครั้ง',
+  ONE_TIME: 'คิดเป็นครั้ง',
   FREE: 'ไม่คิดเงิน',
 };
 
@@ -72,7 +91,6 @@ export const REPORTED_CHANNEL_LABELS: Record<ReportedChannel, string> = {
   FACEBOOK: 'Facebook',
   PHONE: 'โทรศัพท์',
   EMAIL: 'อีเมล',
-  ONSITE: 'พบหน้า',
   OTHER: 'อื่นๆ',
 };
 
@@ -87,5 +105,4 @@ export const OPEN_TICKET_STATUSES: TicketStatus[] = [
   'RECEIVED',
   'IN_PROGRESS',
   'REOPENED',
-  'RESOLVED',
 ];

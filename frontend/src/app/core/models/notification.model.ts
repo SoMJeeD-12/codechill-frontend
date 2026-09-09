@@ -5,8 +5,13 @@ export type NotificationTrigger =
   | 'TICKET_REOPENED'
   | 'MANUAL';
 
+/** IN_APP = ในระบบ · LINE_MOCK = จำลอง LINE จนกว่าจะต่อ Messaging API */
 export type NotificationChannel = 'IN_APP' | 'LINE_MOCK';
 
+/**
+ * กติกาแจ้งเตือน (M11)
+ * เส้นทางที่คาดไว้: /api/notification-rules
+ */
 export interface NotificationRule {
   id: number;
   code: string;
@@ -17,8 +22,14 @@ export interface NotificationRule {
   daysBefore: number;
   enabled: boolean;
   description: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
+/**
+ * รายการแจ้งเตือนในกล่องข้อความ
+ * เส้นทางที่คาดไว้: /api/notifications
+ */
 export interface AppNotification {
   id: number;
   userId: number;
@@ -40,5 +51,5 @@ export const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = 
 
 export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = {
   IN_APP: 'ในระบบ',
-  LINE_MOCK: 'LINE',
+  LINE_MOCK: 'LINE (mock)',
 };

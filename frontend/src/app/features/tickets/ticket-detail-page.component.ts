@@ -1,7 +1,7 @@
 import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,7 +20,6 @@ import {
   TicketStatus,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
-import { AuditService } from '../../core/services/audit.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
@@ -34,7 +33,6 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
   imports: [
     BahtPipe,
     DatePipe,
-    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -56,13 +54,13 @@ export class TicketDetailPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
-  private readonly audit = inject(AuditService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
 
   readonly ticket = signal<Ticket | null>(null);
   readonly resolutions = signal<TicketResolution[]>([]);
   readonly notFound = signal(false);
+  readonly loading = signal(true);
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
@@ -72,9 +70,9 @@ export class TicketDetailPageComponent implements OnInit {
   private ticketId = 0;
 
   readonly resolutionForm = this.fb.nonNullable.group({
-    rootCause: ['', Validators.required],
-    actionTaken: ['', Validators.required],
-    spentHour: [1, Validators.min(0)],
+    rootCause: [''],
+    detail: ['', Validators.required],
+    hoursSpent: [1, Validators.min(0)],
     result: ['SUCCESS' as ResolutionResult],
     resolvedByUserId: [0, Validators.min(1)],
   });
@@ -85,25 +83,41 @@ export class TicketDetailPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.ticketId = Number(this.route.snapshot.paramMap.get('id'));
-    const ticket = this.ticketsApi.getById(this.ticketId);
-    if (!ticket) {
+    if (!this.ticketId) {
       this.notFound.set(true);
+      this.loading.set(false);
       return;
     }
-    this.ticket.set(ticket);
-    const me = this.auth.currentUser();
-    this.resolutionForm.patchValue({
-      resolvedByUserId: me?.id ?? ticket.assigneeId ?? 0,
-    });
-    this.refresh();
+    this.usersApi
+      .loadForPicker(this.auth.currentUser(), {
+        tryList: this.auth.hasPermission('users', 'view'),
+      })
+      .subscribe();
+    this.customersApi.listCustomers().subscribe({ error: () => undefined });
+    this.projectsApi.listProjects().subscribe({ error: () => undefined });
+    this.loadTicket();
   }
 
-  refresh(): void {
-    const ticket = this.ticketsApi.getById(this.ticketId);
-    if (ticket) {
-      this.ticket.set(ticket);
-    }
-    this.resolutions.set(this.ticketsApi.getResolutions(this.ticketId));
+  loadTicket(): void {
+    this.loading.set(true);
+    this.ticketsApi.get(this.ticketId).subscribe({
+      next: (ticket) => {
+        this.ticket.set(ticket);
+        this.resolutions.set(
+          [...(ticket.resolutions ?? [])].sort((a, b) => a.round - b.round)
+        );
+        const me = this.auth.currentUser();
+        this.resolutionForm.patchValue({
+          resolvedByUserId: me?.id ?? ticket.assignedUserId ?? 0,
+        });
+        this.notFound.set(false);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.notFound.set(true);
+        this.loading.set(false);
+      },
+    });
   }
 
   customerName(): string {
@@ -153,17 +167,18 @@ export class TicketDetailPageComponent implements OnInit {
     const raw = this.resolutionForm.getRawValue();
     this.ticketsApi
       .addResolution(this.ticketId, {
-        rootCause: raw.rootCause,
-        actionTaken: raw.actionTaken,
-        spentHour: Number(raw.spentHour) || 0,
+        rootCause: raw.rootCause.trim() || null,
+        detail: raw.detail,
+        hoursSpent: Number(raw.hoursSpent) || 0,
         result: raw.result,
         resolvedByUserId: Number(raw.resolvedByUserId),
+        resolvedAt: new Date().toISOString(),
       })
       .subscribe({
         next: () => {
           this.snack.open('บันทึกรอบการแก้ไขแล้ว', 'ปิด', { duration: 2500 });
-          this.resolutionForm.patchValue({ rootCause: '', actionTaken: '', spentHour: 1 });
-          this.refresh();
+          this.resolutionForm.patchValue({ rootCause: '', detail: '', hoursSpent: 1 });
+          this.loadTicket();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
       });
@@ -171,37 +186,39 @@ export class TicketDetailPageComponent implements OnInit {
 
   reopen(): void {
     this.ticketsApi.reopen(this.ticketId).subscribe({
-      next: (ticket) => {
-        const actor = this.auth.currentUser();
-        this.audit.log({
-          actorUserId: actor?.id ?? null,
-          actorName: actor?.fullName ?? 'ระบบ',
-          action: 'STATUS_CHANGE',
-          entityType: 'ticket',
-          entityId: ticket.id,
-          summary: `ปัญหาเดิมกลับมา: ${ticket.ticketNo}`,
-        });
+      next: () => {
         this.snack.open('เปิดปัญหาเดิมซ้ำแล้ว (ใบเดิม)', 'ปิด', { duration: 3000 });
-        this.refresh();
+        this.loadTicket();
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
   }
 
   closeTicket(): void {
-    this.ticketsApi.updateStatus(this.ticketId, 'CLOSED').subscribe({
+    this.ticketsApi.close(this.ticketId).subscribe({
       next: () => {
         this.snack.open('ปิดงานแล้ว — จะหายจากหน้ารอรับแก้ไข', 'ปิด', { duration: 3000 });
-        this.refresh();
+        this.loadTicket();
       },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
   }
 
+  /** ไม่มี endpoint เปลี่ยนสถานะตรง ๆ — ใช้มอบหมายผู้รับผิดชอบแทน */
   startWork(): void {
-    this.ticketsApi.updateStatus(this.ticketId, 'IN_PROGRESS').subscribe({
+    const me = this.auth.currentUser();
+    const current = this.ticket();
+    const assignedUserId = current?.assignedUserId ?? me?.id ?? null;
+    if (!assignedUserId) {
+      this.snack.open('กรุณาเลือกผู้รับผิดชอบก่อนเริ่มงาน', 'ปิด', { duration: 3500 });
+      return;
+    }
+    this.ticketsApi.assign(this.ticketId, assignedUserId).subscribe({
       next: () => {
-        this.refresh();
+        this.snack.open('มอบหมายและเริ่มดำเนินการแล้ว', 'ปิด', { duration: 2500 });
+        this.loadTicket();
       },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
   }
 }

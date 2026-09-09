@@ -16,7 +16,7 @@
           กลับ
         </button>
         <p class="eyebrow">M6 · รายละเอียดสัญญา</p>
-        <h1>{{ c.contractNo }}</h1>
+        <h1>{{ c.contractNo || ('#' + c.id) }}</h1>
         <p class="subtitle">
           {{ c.planName }} · {{ statusLabel(c.status) }} · SLA {{ c.slaHours }} ชม.
         </p>
@@ -53,7 +53,7 @@
           ใช้แล้ว {{ c.quotaUsed }} / {{ c.quotaTotal }}
           <span>เหลือ {{ remaining() }} เคส</span>
         </p>
-        <p class="hint">เมื่อเปิดปัญหาแบบ “ใช้โควตา” ระบบจะหักจากสัญญา ACTIVE ของลูกค้าอัตโนมัติ</p>
+        <p class="hint">เมื่อเปิดปัญหาแบบ “ใช้โควตา MA” ระบบจะหักจากสัญญา ACTIVE ของลูกค้า (mock จนกว่า Phase 8 พร้อม)</p>
         @if (c.note) {
           <p class="note">{{ c.note }}</p>
         }

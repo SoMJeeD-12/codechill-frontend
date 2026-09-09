@@ -15,6 +15,11 @@
   width: 100%;
 }
 
+/* วันที่ readonly — พิมพ์ไม่ได้ เลือกจากปฏิทินอย่างเดียว */
+.row input[matInput][readonly] {
+  cursor: pointer;
+}
+
 .error {
   color: #991b1b;
 }

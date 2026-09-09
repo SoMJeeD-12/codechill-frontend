@@ -76,8 +76,8 @@ export class ReportService {
         ? Math.round((surveyAvgs.reduce((a, b) => a + b, 0) / surveyAvgs.length) * 10) / 10
         : null;
 
-    const billedTickets = ticketList.filter((t) => t.chargeAmount > 0);
-    const ticketRevenue = billedTickets.reduce((s, t) => s + t.chargeAmount, 0);
+    const billedTickets = ticketList.filter((t) => (t.extraCharge ?? 0) > 0);
+    const ticketRevenue = billedTickets.reduce((s, t) => s + (t.extraCharge ?? 0), 0);
 
     const alerts: string[] = [];
     if (nearWarranty > 0) {

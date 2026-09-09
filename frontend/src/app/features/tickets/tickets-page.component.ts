@@ -21,18 +21,17 @@ import {
   BillingType,
   REPORTED_CHANNEL_LABELS,
   ReportedChannel,
+  TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
   Ticket,
   TicketPriority,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
-import { TicketInput, TicketService } from '../../core/services/ticket.service';
+import { TicketCreateInput, TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
-import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-tickets-page',
@@ -55,6 +54,7 @@ export class TicketsPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
   private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
   readonly tickets = signal<Ticket[]>([]);
@@ -62,24 +62,33 @@ export class TicketsPageComponent implements OnInit {
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = TICKET_STATUS_LABELS;
-  readonly columns = ['ticketNo', 'title', 'customer', 'status', 'priority', 'billing', 'reportedAt', 'actions'];
+  readonly priorityLabels = TICKET_PRIORITY_LABELS;
+  readonly columns = [
+    'title',
+    'customer',
+    'status',
+    'priority',
+    'billing',
+    'reportedAt',
+    'actions',
+  ];
 
   readonly filtered = computed(() => {
     let list = this.tickets();
     if (this.view() === 'open') {
-      list = list.filter((t) => ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status));
+      list = list.filter((t) => t.isPending || ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(t.status));
     }
     const q = this.search().trim().toLowerCase();
     if (q) {
       list = list.filter((t) => {
         const customer = this.customerName(t.customerId).toLowerCase();
         return (
-          t.ticketNo.toLowerCase().includes(q) ||
+          (t.ticketNo ?? '').toLowerCase().includes(q) ||
           t.title.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
+          (t.description ?? '').toLowerCase().includes(q) ||
           customer.includes(q) ||
           this.statusLabels[t.status].toLowerCase().includes(q) ||
-          t.priority.toLowerCase().includes(q) ||
+          this.priorityLabels[t.priority].toLowerCase().includes(q) ||
           BILLING_TYPE_LABELS[t.billingType].toLowerCase().includes(q)
         );
       });
@@ -87,7 +96,7 @@ export class TicketsPageComponent implements OnInit {
     const priorityRank: Record<TicketPriority, number> = {
       URGENT: 0,
       HIGH: 1,
-      MEDIUM: 2,
+      NORMAL: 2,
       LOW: 3,
     };
     return [...list].sort((a, b) => {
@@ -101,11 +110,15 @@ export class TicketsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
+    this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.reload();
   }
 
   reload(): void {
-    this.ticketsApi.list().subscribe((list) => this.tickets.set(list));
+    this.ticketsApi.list().subscribe({
+      next: (list) => this.tickets.set(list),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
   }
 
   customerName(id: number): string {
@@ -114,6 +127,10 @@ export class TicketsPageComponent implements OnInit {
 
   statusLabel(status: Ticket['status']): string {
     return this.statusLabels[status];
+  }
+
+  priorityLabel(priority: TicketPriority): string {
+    return this.priorityLabels[priority];
   }
 
   billingLabel(type: BillingType): string {
@@ -133,8 +150,6 @@ export class TicketsPageComponent implements OnInit {
   }
 }
 
-import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
-
 @Component({
   selector: 'app-ticket-form-dialog',
   standalone: true,
@@ -147,7 +162,6 @@ import { MoneyInputDirective } from '../../shared/directives/money-input.directi
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
-    MoneyInputDirective,
   ],
   templateUrl: './ticket-form-dialog.component.html',
   styleUrl: './ticket-form-dialog.component.scss',
@@ -158,7 +172,6 @@ export class TicketFormDialogComponent {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
-  private readonly maApi = inject(MaService);
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<TicketFormDialogComponent, boolean>);
@@ -170,7 +183,8 @@ export class TicketFormDialogComponent {
   readonly channels = Object.keys(REPORTED_CHANNEL_LABELS) as ReportedChannel[];
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly billingTypes = Object.keys(BILLING_TYPE_LABELS) as BillingType[];
-  readonly priorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+  readonly priorityLabels = TICKET_PRIORITY_LABELS;
+  readonly priorities = Object.keys(TICKET_PRIORITY_LABELS) as TicketPriority[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -179,25 +193,30 @@ export class TicketFormDialogComponent {
     projectId: [null as number | null],
     title: ['', Validators.required],
     description: [''],
-    category: [''],
-    priority: ['MEDIUM' as TicketPriority],
+    priority: ['NORMAL' as TicketPriority],
     billingType: ['WARRANTY' as BillingType],
-    chargeAmount: [0],
     reportedChannel: ['PHONE' as ReportedChannel],
     reportedDate: [new Date() as Date | null, Validators.required],
     reportedTime: [nowTimeString(), Validators.required],
-    receivedByUserId: [0, Validators.min(1)],
-    assigneeId: [null as number | null],
-    attachmentName: [''],
+    receivedByUserId: [0 as number | null],
+    assignedUserId: [null as number | null],
   });
 
   constructor() {
     const me = this.auth.currentUser();
-    const firstCustomer = this.customers()[0];
     this.form.patchValue({
-      receivedByUserId: me?.id ?? 0,
-      customerId: firstCustomer?.id ?? 0,
+      receivedByUserId: me?.id ?? null,
+      customerId: this.customers()[0]?.id ?? 0,
     });
+    this.usersApi
+      .loadForPicker(me, { tryList: this.auth.hasPermission('users', 'view') })
+      .subscribe();
+    if (!this.customers().length) {
+      this.customersApi.listCustomers().subscribe();
+    }
+    if (!this.projects().length) {
+      this.projectsApi.listProjects().subscribe();
+    }
   }
 
   filteredProjects() {
@@ -211,39 +230,25 @@ export class TicketFormDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
-    const payload: TicketInput = {
+    const payload: TicketCreateInput = {
       customerId: Number(raw.customerId),
       projectId: raw.projectId,
       title: raw.title ?? '',
-      description: raw.description ?? '',
-      category: raw.category ?? '',
-      priority: (raw.priority as TicketPriority) ?? 'MEDIUM',
+      description: (raw.description ?? '').trim() || null,
+      priority: (raw.priority as TicketPriority) ?? 'NORMAL',
       billingType: (raw.billingType as BillingType) ?? 'WARRANTY',
-      chargeAmount: Number(raw.chargeAmount) || 0,
       reportedChannel: (raw.reportedChannel as ReportedChannel) ?? 'PHONE',
       reportedAt: combineDateAndTime(raw.reportedDate, raw.reportedTime),
-      receivedByUserId: Number(raw.receivedByUserId),
-      assigneeId: raw.assigneeId,
-      attachmentName: (raw.attachmentName ?? '').trim() || null,
+      receivedByUserId: raw.receivedByUserId ? Number(raw.receivedByUserId) : null,
+      assignedUserId: raw.assignedUserId ? Number(raw.assignedUserId) : null,
     };
     this.saving.set(true);
     this.error.set(null);
 
-    const create$ =
-      payload.billingType === 'QUOTA'
-        ? this.maApi.consumeQuota(payload.customerId).pipe(
-            switchMap(() => this.ticketsApi.create(payload))
-          )
-        : this.ticketsApi.create(payload);
-
-    create$.subscribe({
+    this.ticketsApi.create(payload).subscribe({
       next: () => {
         this.saving.set(false);
-        const msg =
-          payload.billingType === 'QUOTA'
-            ? 'เปิดปัญหาแล้ว และหักโควตา MA 1 เคส'
-            : 'เปิดปัญหาแล้ว';
-        this.snack.open(msg, 'ปิด', { duration: 2800 });
+        this.snack.open('เปิดปัญหาแล้ว', 'ปิด', { duration: 2800 });
         this.ref.close(true);
       },
       error: (err: Error) => {
