@@ -12,7 +12,7 @@
     <mat-slide-toggle formControlName="isActive">เปิดใช้งานบทบาทนี้</mat-slide-toggle>
   </form>
 
-  <p class="hint">เลือกสิทธิ์ที่บทบาทนี้ใช้ได้ · เลือกแล้ว {{ selectedCount() }} รายการ</p>
+  <p class="hint">เลือกสิทธิ์ที่บทบาทนี้ใช้ได้ · เลือกแล้ว {{ selectedCount() }} รายการ · กดหัวข้อเพื่อเปิดรายการ</p>
 
   @if (loading()) {
     <div class="perm-loading">
@@ -20,18 +20,24 @@
       <span>กำลังโหลดรายการสิทธิ์…</span>
     </div>
   } @else {
-    <div class="perm-groups">
+    <mat-accordion class="perm-groups" multi>
       @for (group of groups(); track group.module) {
-        <section class="perm-group">
-          <header>
-            <mat-checkbox
-              [checked]="isGroupChecked(group)"
-              [indeterminate]="isGroupPartial(group)"
-              (change)="toggleGroup(group, $event.checked)"
-            >
-              {{ moduleLabel(group.module) }}
-            </mat-checkbox>
-          </header>
+        <mat-expansion-panel class="perm-group">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-checkbox
+                [checked]="isGroupChecked(group)"
+                [indeterminate]="isGroupPartial(group)"
+                (click)="$event.stopPropagation()"
+                (change)="toggleGroup(group, $event.checked)"
+              >
+                {{ moduleLabel(group.module) }}
+              </mat-checkbox>
+            </mat-panel-title>
+            <mat-panel-description>
+              {{ groupSelectedCount(group) }}/{{ group.permissions.length }}
+            </mat-panel-description>
+          </mat-expansion-panel-header>
           <div class="perm-items">
             @for (permission of group.permissions; track permission.id) {
               <mat-checkbox
@@ -46,11 +52,11 @@
               </mat-checkbox>
             }
           </div>
-        </section>
+        </mat-expansion-panel>
       } @empty {
         <p class="empty">ไม่พบรายการสิทธิ์จากเซิร์ฟเวอร์</p>
       }
-    </div>
+    </mat-accordion>
   }
 
   @if (error()) {

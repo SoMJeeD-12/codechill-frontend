@@ -38,6 +38,17 @@ export class MainLayoutComponent implements OnInit {
   readonly user = this.auth.currentUser;
   sidenavOpened = true;
 
+  readonly roleSummary = computed(() => {
+    const me = this.user();
+    if (!me) {
+      return '';
+    }
+    if (me.roles.length) {
+      return me.roles.map((r) => r.name).join(', ');
+    }
+    return this.accountTypeLabel(me.accountType);
+  });
+
   readonly unreadCount = computed(() => {
     const id = this.user()?.id;
     return id ? this.notifications.unreadCountFor(id) : 0;

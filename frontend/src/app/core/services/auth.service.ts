@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, finalize, shareReplay, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { permissionCode, MENU_PERMISSION_MODULE } from '../auth/permission-codes';
+import { permissionCandidates, hasAnyModulePermission, actionAliases, moduleAliases } from '../auth/permission-codes';
 import { apiErrorMessage } from '../http/api-error';
 import { MENU_ITEMS } from '../nav/menu-items';
 import { MenuCode, PermissionAction } from '../models/permission.model';
@@ -127,30 +127,43 @@ export class AuthService {
     });
   }
 
-  /** ดึงโปรไฟล์ + permissions ล่าสุดจากเซิร์ฟเวอร์ */
+  /** ดึงโปรไฟล์ + permissions ล่าสุด — พยายามต่ออายุ token ด้วย (สิทธิ์ใน JWT อาจค้างหลังแก้บทบาท) */
   refreshSession(): void {
     if (!this.accessToken) {
       return;
     }
-    this.http.get<AuthProfile>(`${this.base}/me`).subscribe({
-      next: (profile) => {
-        const current = this.sessionSignal();
-        if (!current) {
-          return;
-        }
-        this.setSession({
-          ...current,
-          user: mapAuthProfileToUser(profile),
-          permissions: profile.permissions ?? [],
-        });
-      },
-      error: () => {
-        /* คง session เดิม — ถ้า 401 interceptor จะ refresh / logout */
-      },
-    });
+    const applyProfile = (profile: AuthProfile) => {
+      const current = this.sessionSignal();
+      if (!current) {
+        return;
+      }
+      this.setSession({
+        ...current,
+        user: mapAuthProfileToUser(profile),
+        permissions: profile.permissions ?? [],
+      });
+    };
+
+    const loadMe = () => {
+      this.http.get<AuthProfile>(`${this.base}/me`).subscribe({
+        next: applyProfile,
+        error: () => {
+          /* คง session เดิม — ถ้า 401 interceptor จะ refresh / logout */
+        },
+      });
+    };
+
+    if (this.refreshToken) {
+      this.refresh().subscribe({
+        next: () => loadMe(),
+        error: () => loadMe(),
+      });
+      return;
+    }
+    loadMe();
   }
 
-  /** เช็คสิทธิ์แบบ API เช่น customer.view */
+  /** เช็คสิทธิ์แบบ API เช่น customer.view — รองรับ edit/update ที่ API ใช้สลับกัน */
   hasPermission(menuCode: MenuCode, action: PermissionAction | string = 'view'): boolean {
     const session = this.sessionSignal();
     if (!session) {
@@ -159,16 +172,38 @@ export class AuthService {
     if (menuCode === 'roles' && action !== 'view' && session.user.accountType !== 'SUPER_ADMIN') {
       return false;
     }
-    const code = permissionCode(menuCode, action);
-    if (session.permissions.includes(code)) {
+    const perms = session.permissions;
+    if (permissionCandidates(menuCode, action).some((code) => perms.includes(code))) {
       return true;
     }
     // บางโมดูลใช้ action พิเศษ (เช่น role.manage) — ถือว่ามีสิทธิ์ดูเมนูได้ถ้ามี permission ของโมดูลนั้น
     if (action === 'view') {
-      const prefix = `${MENU_PERMISSION_MODULE[menuCode]}.`;
-      return session.permissions.some((p) => p.startsWith(prefix));
+      return hasAnyModulePermission(perms, menuCode);
     }
     return false;
+  }
+
+  /** เช็ครหัสสิทธิ์ตรงๆ เช่น task.update, delivery.create */
+  hasPermissionCode(code: string): boolean {
+    const perms = this.sessionSignal()?.permissions ?? [];
+    if (perms.includes(code)) {
+      return true;
+    }
+    const [module, action] = code.split('.');
+    if (!module || !action) {
+      return false;
+    }
+    return moduleAliases(module).some((m) =>
+      actionAliases(action).some((a) => perms.includes(`${m}.${a}`))
+    );
+  }
+
+  /** มีสิทธิ์ใดๆ ของโมดูลนี้หรือไม่ เช่น task / delivery */
+  hasModuleAccess(module: string): boolean {
+    const perms = this.sessionSignal()?.permissions ?? [];
+    return moduleAliases(module).some(
+      (m) => perms.includes(m) || perms.some((p) => p.startsWith(`${m}.`))
+    );
   }
 
   getVisibleMenuCodes(): MenuCode[] {

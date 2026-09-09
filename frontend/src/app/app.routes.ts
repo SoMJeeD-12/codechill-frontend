@@ -30,6 +30,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'profile',
+        loadComponent: () =>
+          import('./features/profile/profile-page.component').then((m) => m.ProfilePageComponent),
+      },
+      {
         path: 'dashboard',
         canActivate: [permissionGuard('dashboard')],
         loadComponent: () =>

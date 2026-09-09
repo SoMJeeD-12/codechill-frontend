@@ -24,30 +24,32 @@
 }
 
 .perm-groups {
-  display: grid;
-  gap: 0.75rem;
+  display: block;
   max-height: 46vh;
   overflow-y: auto;
   padding-right: 0.25rem;
 }
 
 .perm-group {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem 0.75rem;
-
-  header {
+  mat-panel-title {
     font-weight: 600;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-    padding-bottom: 0.35rem;
-    margin-bottom: 0.35rem;
+  }
+
+  mat-panel-description {
+    flex-grow: 0;
+    justify-content: flex-end;
+    margin-right: 0.5rem;
+    color: #7b8783;
+    font-size: 0.8rem;
+    white-space: nowrap;
   }
 }
 
 .perm-items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.15rem 0.75rem;
+  grid-template-columns: 1fr;
+  gap: 0.2rem;
+  padding: 0.25rem 0 0.5rem;
   font-size: 0.85rem;
 }
 

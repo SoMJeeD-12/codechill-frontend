@@ -7,6 +7,7 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -47,6 +48,7 @@ const MODULE_LABELS: Record<string, string> = {
     MatInputModule,
     MatButtonModule,
     MatCheckboxModule,
+    MatExpansionModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
@@ -126,6 +128,10 @@ export class RoleEditorDialogComponent {
   isGroupPartial(group: PermissionGroup): boolean {
     const some = group.permissions.some((p) => this.isChecked(p.id));
     return some && !this.isGroupChecked(group);
+  }
+
+  groupSelectedCount(group: PermissionGroup): number {
+    return group.permissions.filter((p) => this.isChecked(p.id)).length;
   }
 
   toggleGroup(group: PermissionGroup, checked: boolean): void {

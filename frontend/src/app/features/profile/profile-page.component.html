@@ -1,0 +1,140 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">บัญชีของฉัน</p>
+      <h1>โปรไฟล์</h1>
+      <p class="subtitle">ข้อมูลบัญชี บทบาท และสิทธิ์ที่ใช้งานได้ · กดรีเฟรชหลังถูกแก้บทบาท</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="refresh()">
+      <mat-icon>refresh</mat-icon>
+      รีเฟรช
+    </button>
+  </header>
+
+  @if (user(); as me) {
+    <article class="hero data-card">
+      <div class="hero__body">
+        <div class="hero__left">
+          <div class="avatar" aria-hidden="true">
+            <mat-icon>account_circle</mat-icon>
+          </div>
+          <div class="hero__text">
+            <h2>{{ me.fullName }}</h2>
+            <p class="hero__user">{{ me.username }}</p>
+            <div class="hero__tags">
+              <span class="badge" [class.badge--admin]="me.accountType !== 'USER'">
+                {{ accountTypeLabel(me.accountType) }}
+              </span>
+              <span class="badge badge--soft">{{ statusLabels[me.status] || me.status }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero__stats">
+          <div class="stat">
+            <strong>{{ me.roles.length }}</strong>
+            <span>บทบาท</span>
+          </div>
+          <div class="stat">
+            <strong>{{ moduleCount() }}</strong>
+            <span>โมดูล</span>
+          </div>
+          <div class="stat">
+            <strong>{{ permissionCount() }}</strong>
+            <span>สิทธิ์</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <div class="profile-grid">
+      <article class="data-card profile-card">
+        <div class="card-head">
+          <mat-icon>badge</mat-icon>
+          <h3>ข้อมูลบัญชี</h3>
+        </div>
+        <dl class="info-list">
+          <div>
+            <dt>อีเมล</dt>
+            <dd>{{ me.email || '—' }}</dd>
+          </div>
+          <div>
+            <dt>ตำแหน่ง</dt>
+            <dd>{{ me.position || '—' }}</dd>
+          </div>
+          <div>
+            <dt>ชื่อเล่น</dt>
+            <dd>{{ me.nickname || '—' }}</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="data-card profile-card">
+        <div class="card-head">
+          <mat-icon>shield</mat-icon>
+          <h3>บทบาทที่ได้รับ</h3>
+        </div>
+
+        @if (isSystemAccount(me.accountType)) {
+          <p class="note">
+            บัญชี {{ accountTypeLabel(me.accountType) }} เป็นระดับระบบ
+            สิทธิ์หลักมาจากประเภทบัญชี
+          </p>
+        }
+
+        @if (me.roles.length) {
+          <ul class="role-list">
+            @for (role of me.roles; track role.id) {
+              <li>
+                <strong>{{ role.name }}</strong>
+                @if (role.description) {
+                  <span>{{ role.description }}</span>
+                }
+              </li>
+            }
+          </ul>
+        } @else if (!isSystemAccount(me.accountType)) {
+          <p class="empty">ยังไม่ถูกผูกบทบาท — ติดต่อผู้ดูแลระบบ</p>
+        } @else {
+          <p class="empty">ไม่มีบทบาทเพิ่มเติมที่ผูกกับบัญชีนี้</p>
+        }
+      </article>
+
+      <article class="data-card profile-card profile-card--wide">
+        <div class="card-head card-head--spread">
+          <div class="card-head__title">
+            <mat-icon>lock_open</mat-icon>
+            <h3>สิทธิ์ที่มีอยู่</h3>
+          </div>
+          <span class="muted">{{ permissionCount() }} รายการ · กดหัวข้อเพื่อดู</span>
+        </div>
+
+        @if (permissionGroups().length) {
+          <mat-accordion class="perm-accordion" multi>
+            @for (group of permissionGroups(); track group.module) {
+              <mat-expansion-panel class="perm-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>{{ group.label }}</mat-panel-title>
+                  <mat-panel-description>
+                    {{ group.actions.join(' · ') }}
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+                <div class="perm-actions">
+                  @for (action of group.actions; track action) {
+                    <span class="chip">{{ action }}</span>
+                  }
+                </div>
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        } @else {
+          <p class="empty">ยังไม่มีสิทธิ์ในระบบ</p>
+        }
+      </article>
+    </div>
+  } @else {
+    <div class="perm-loading">
+      <mat-spinner diameter="28"></mat-spinner>
+      <span>กำลังโหลดโปรไฟล์…</span>
+    </div>
+  }
+</section>
