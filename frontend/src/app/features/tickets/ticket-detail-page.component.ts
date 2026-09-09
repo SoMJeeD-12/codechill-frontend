@@ -69,10 +69,8 @@ export class TicketDetailPageComponent implements OnInit {
   readonly users = this.usersApi.users;
   readonly canResolve = computed(() => this.auth.hasPermission('tickets', 'resolve'));
   readonly canEdit = computed(() => this.auth.hasPermission('tickets', 'edit'));
-  /** มอบหมาย / เริ่มงาน — ใช้ resolve หรือ edit */
-  readonly canAssign = computed(
-    () => this.auth.hasPermission('tickets', 'resolve') || this.auth.hasPermission('tickets', 'edit')
-  );
+  /** มอบหมาย / เริ่มงาน — ตามสิทธิ์ ticket.assign */
+  readonly canAssign = computed(() => this.auth.hasPermissionCode('ticket.assign'));
   /** ผู้แก้ไข — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN กันแอบใส่ชื่อคนอื่น */
   readonly canChangeResolver = this.auth.isAdminLevel();
 

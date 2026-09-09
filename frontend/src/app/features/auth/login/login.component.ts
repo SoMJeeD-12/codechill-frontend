@@ -6,8 +6,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { environment, DevAccount } from '../../../../environments/environment';
+import { environment, type DevAccount } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -18,6 +19,7 @@ import { AuthService } from '../../../core/services/auth.service';
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatCheckboxModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -33,6 +35,7 @@ export class LoginComponent {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly devAccounts = environment.devAccounts;
+  readonly rememberMe = signal(true);
   hidePassword = true;
 
   readonly form = this.fb.nonNullable.group({
@@ -70,7 +73,7 @@ export class LoginComponent {
     this.error.set(null);
 
     const { username, password } = this.form.getRawValue();
-    this.auth.login(username, password).subscribe({
+    this.auth.login(username, password, this.rememberMe()).subscribe({
       next: () => {
         this.loading.set(false);
         void this.router.navigateByUrl(this.auth.defaultAppPath());

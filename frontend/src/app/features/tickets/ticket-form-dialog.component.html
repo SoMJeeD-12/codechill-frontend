@@ -92,6 +92,9 @@
             <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
           }
         </mat-select>
+        @if (!canAssign) {
+          <mat-hint>ต้องมีสิทธิ์มอบหมายใบแจ้งปัญหา (ticket.assign)</mat-hint>
+        }
       </mat-form-field>
     </div>
   </form>

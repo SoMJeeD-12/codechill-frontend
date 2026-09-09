@@ -70,10 +70,6 @@
         <mat-icon>expand_more</mat-icon>
       </button>
       <mat-menu #userMenu="matMenu">
-        <button mat-menu-item disabled>
-          <mat-icon>badge</mat-icon>
-          <span>{{ user()?.username }}</span>
-        </button>
         <a mat-menu-item routerLink="/app/profile">
           <mat-icon>person</mat-icon>
           <span>โปรไฟล์ของฉัน</span>

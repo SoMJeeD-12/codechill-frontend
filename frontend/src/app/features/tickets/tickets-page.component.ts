@@ -245,6 +245,8 @@ export class TicketFormDialogComponent {
   readonly isEdit = !!this.data;
   /** ผู้รับเรื่อง — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN */
   readonly canChangeReceiver = this.auth.isAdminLevel();
+  /** ผู้รับผิดชอบ — ตามสิทธิ์ ticket.assign ในบทบาท */
+  readonly canAssign = this.auth.hasPermissionCode('ticket.assign');
 
   readonly form = this.fb.group({
     customerId: [this.data?.customerId ?? 0, Validators.min(1)],
@@ -268,7 +270,12 @@ export class TicketFormDialogComponent {
         disabled: !this.auth.isAdminLevel(),
       },
     ],
-    assignedUserId: [this.data?.assignedUserId ?? (null as number | null)],
+    assignedUserId: [
+      {
+        value: this.data?.assignedUserId ?? (null as number | null),
+        disabled: !this.auth.hasPermissionCode('ticket.assign'),
+      },
+    ],
   });
 
   constructor() {
@@ -278,9 +285,13 @@ export class TicketFormDialogComponent {
         receivedByUserId: me?.id ?? null,
         customerId: this.customers()[0]?.id ?? 0,
       });
-    } else if (!this.canChangeReceiver && me) {
-      // USER แก้ใบได้แต่เปลี่ยนผู้รับเรื่องไม่ได้ — คงค่าเดิม
-      this.form.get('receivedByUserId')?.disable({ emitEvent: false });
+    } else {
+      if (!this.canChangeReceiver) {
+        this.form.get('receivedByUserId')?.disable({ emitEvent: false });
+      }
+      if (!this.canAssign) {
+        this.form.get('assignedUserId')?.disable({ emitEvent: false });
+      }
     }
     this.usersApi.loadForPicker(me).subscribe();
     if (!this.customers().length) {

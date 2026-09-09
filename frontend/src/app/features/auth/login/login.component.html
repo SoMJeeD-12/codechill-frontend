@@ -46,6 +46,13 @@
             <div class="error-banner" role="alert">{{ error() }}</div>
           }
 
+          <mat-checkbox
+            [checked]="rememberMe()"
+            (change)="rememberMe.set($event.checked)"
+          >
+            จดจำฉันไว้ (ค้างหลังปิดแท็บ)
+          </mat-checkbox>
+
           <button mat-flat-button color="primary" class="submit" type="submit" [disabled]="loading()">
             @if (loading()) {
               <mat-spinner diameter="20"></mat-spinner>

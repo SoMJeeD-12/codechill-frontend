@@ -16,10 +16,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(withToken(req)).pipe(
     catchError((err: HttpErrorResponse) => {
       // 401 จากเส้น auth เอง = ต่ออายุไม่ได้จริง อย่าวนซ้ำ
-      if (err.status !== 401 || req.url.includes('/auth/')) {
+      if (err.status !== 401 || req.url.includes('/auth/') || req.headers.get('x-auth-retried') === '1') {
         return throwError(() => err);
       }
-      return auth.refresh().pipe(switchMap(() => next(withToken(req))));
+      const retriedReq = req.clone({ setHeaders: { 'x-auth-retried': '1' } });
+      return auth.refresh().pipe(switchMap(() => next(withToken(retriedReq))));
     })
   );
 };
