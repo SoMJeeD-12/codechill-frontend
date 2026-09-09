@@ -11,57 +11,48 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full">
-      <mat-label>โครงการ (ถ้ามี)</mat-label>
+      <mat-label>โครงการ</mat-label>
       <mat-select formControlName="projectId">
-        <mat-option [value]="null">— ไม่ระบุ —</mat-option>
         @for (p of filteredProjects(); track p.id) {
-          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+          <mat-option [value]="p.id">{{ p.code || '—' }} · {{ p.name }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อรายการประกัน</mat-label>
-      <input matInput formControlName="title" />
+      <mat-label>การส่งมอบ</mat-label>
+      <mat-select formControlName="deliveryId">
+        @for (d of deliveries(); track d.id) {
+          <mat-option [value]="d.id">
+            {{ d.title }}{{ d.version ? ' · ' + d.version : '' }}
+          </mat-option>
+        }
+      </mat-select>
+      @if (!isEdit && !deliveries().length && form.controls.projectId.value) {
+        <mat-hint>ยังไม่มีการส่งมอบในโครงการนี้ — สร้างที่หน้ารายละเอียดโครงการก่อน</mat-hint>
+      }
     </mat-form-field>
 
     <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>ครอบคลุม</mat-label>
-        <mat-select formControlName="coverage">
-          @for (c of coverages; track c) {
-            <mat-option [value]="c">{{ coverageLabels[c] }}</mat-option>
-          }
-        </mat-select>
+        <mat-label>ระยะประกัน (เดือน)</mat-label>
+        <input matInput type="number" min="1" max="120" formControlName="durationMonth" />
       </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>สถานะ</mat-label>
-        <mat-select formControlName="status">
-          @for (s of statuses; track s) {
-            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>วันเริ่ม</mat-label>
-        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
-        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
-        <mat-datepicker #startPicker></mat-datepicker>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>วันสิ้นสุด</mat-label>
-        <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
-        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
-        <mat-datepicker #endPicker></mat-datepicker>
-      </mat-form-field>
+      @if (isEdit) {
+        <mat-form-field appearance="outline">
+          <mat-label>สถานะ</mat-label>
+          <mat-select formControlName="status">
+            @for (s of statuses; track s) {
+              <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
     </div>
 
     <mat-form-field appearance="outline" class="full">
-      <mat-label>หมายเหตุ</mat-label>
-      <textarea matInput rows="2" formControlName="note"></textarea>
+      <mat-label>ขอบเขต / หมายเหตุ</mat-label>
+      <textarea matInput rows="2" formControlName="scopeNote"></textarea>
     </mat-form-field>
 
     @if (error()) {

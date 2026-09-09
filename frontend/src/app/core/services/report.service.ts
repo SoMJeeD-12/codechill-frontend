@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, delay, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { OPEN_PROJECT_STATUSES } from '../models/project.model';
+import { WARRANTY_NEAR_EXPIRY_DAYS } from '../models/warranty.model';
+import { formatMoneyDisplay } from '../utils/money.util';
 import { CustomerService } from './customer.service';
 import { FollowUpService } from './follow-up.service';
 import { MaService } from './ma.service';
@@ -8,7 +11,6 @@ import { ProjectService } from './project.service';
 import { SurveyService } from './survey.service';
 import { TicketService } from './ticket.service';
 import { WarrantyService } from './warranty.service';
-import { formatMoneyDisplay } from '../utils/money.util';
 
 export interface ReportKpi {
   label: string;
@@ -43,6 +45,14 @@ export class ReportService {
   private readonly surveys = inject(SurveyService);
 
   getExecutiveReport(): Observable<ExecutiveReport> {
+    return this.warranties.listExpiring({ days: WARRANTY_NEAR_EXPIRY_DAYS, limit: 100 }).pipe(
+      map(() => this.buildReport()),
+      // ถ้าโหลดประกันไม่ได้ ยังสร้างรายงานจากข้อมูลอื่นได้
+      catchError(() => of(this.buildReport()))
+    );
+  }
+
+  private buildReport(): ExecutiveReport {
     const customerList = this.customers.customers();
     const projectList = this.projects.projects();
     const ticketList = this.tickets.tickets();
@@ -167,7 +177,7 @@ export class ReportService {
       alerts,
     };
 
-    return of(report).pipe(delay(220));
+    return report;
   }
 
   private thb(n: number): string {

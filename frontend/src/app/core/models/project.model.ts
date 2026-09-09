@@ -72,17 +72,20 @@ export interface TaskItem {
   isOverdue: boolean;
 }
 
-/** ยังไม่มี API — เก็บใน memory เท่านั้น */
+/** DeliveryResponseDto */
 export interface Delivery {
   id: number;
   projectId: number;
-  version: string;
+  deliveryNo: string | null;
+  title: string;
+  version: string | null;
+  description: string | null;
   deliveredAt: string;
-  deliveredByUserId: number;
-  receivedByContactId: number | null;
-  acceptance: DeliveryAcceptance;
-  note: string;
-  attachmentName: string | null;
+  acceptanceStatus: DeliveryAcceptance;
+  acceptedAt: string | null;
+  acceptedByContactId: number | null;
+  deliveredByUserId: number | null;
+  note: string | null;
 }
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {

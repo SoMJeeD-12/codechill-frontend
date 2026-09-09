@@ -262,9 +262,8 @@
               @for (w of warranties(); track w.id) {
                 <a class="item link-item" routerLink="/app/warranties">
                   <div>
-                    <strong>{{ w.title }}</strong>
+                    <strong>{{ w.delivery?.title || w.project?.name || 'ประกัน' }} · {{ w.durationMonth }} เดือน</strong>
                     <p>
-                      {{ warrantyCoverageLabel(w.coverage) }} ·
                       {{ warrantyStatusLabel(w.status) }} ·
                       ถึง {{ w.endDate }}
                     </p>

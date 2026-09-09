@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, of, throwError } from 'rxjs';
+import { Observable, catchError, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
@@ -72,13 +72,14 @@ export interface TaskListParams {
 }
 
 export interface DeliveryInput {
-  version: string;
+  title: string;
   deliveredAt: string;
-  deliveredByUserId: number;
-  receivedByContactId: number | null;
-  acceptance: DeliveryAcceptance;
-  note: string;
-  attachmentName: string | null;
+  version?: string | null;
+  deliveryNo?: string | null;
+  description?: string | null;
+  deliveredByUserId?: number | null;
+  acceptedByContactId?: number | null;
+  note?: string | null;
 }
 
 /** รูปดิบจาก API — contractValue/estimatedHours เป็น decimal string, subTasks ซ้อนกัน */
@@ -106,7 +107,6 @@ export class ProjectService {
   private readonly projectsSignal = signal<Project[]>([]);
   private readonly tasksSignal = signal<TaskItem[]>([]);
   private readonly deliveriesSignal = signal<Delivery[]>([]);
-  private nextDeliveryId = 1;
 
   readonly projects = this.projectsSignal.asReadonly();
   readonly projectCount = computed(() => this.projectsSignal().length);
@@ -264,7 +264,7 @@ export class ProjectService {
       );
   }
 
-  /* ——— Deliveries: in-memory จนกว่า API พร้อม ——— */
+  /* ——— Deliveries ——— */
 
   getDeliveries(projectId: number): Delivery[] {
     return this.deliveriesSignal()
@@ -272,33 +272,57 @@ export class ProjectService {
       .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt));
   }
 
-  createDelivery(projectId: number, input: DeliveryInput): Observable<Delivery> {
-    if (!input.version.trim()) {
-      return throwError(() => new Error('กรุณาระบุเวอร์ชัน'));
-    }
-    const delivery: Delivery = {
-      id: this.nextDeliveryId++,
-      projectId,
-      version: input.version.trim(),
-      deliveredAt: input.deliveredAt || new Date().toISOString(),
-      deliveredByUserId: input.deliveredByUserId,
-      receivedByContactId: input.receivedByContactId,
-      acceptance: input.acceptance,
-      note: input.note.trim(),
-      attachmentName: input.attachmentName,
-    };
-    this.deliveriesSignal.update((list) => [delivery, ...list]);
-    return of(structuredClone(delivery));
+  listDeliveries(projectId: number): Observable<Delivery[]> {
+    return this.http
+      .get<Delivery[] | { items: Delivery[] }>(`${this.base}/${projectId}/deliveries`)
+      .pipe(
+        map(asList),
+        tap((rows) => {
+          this.deliveriesSignal.update((all) => [
+            ...all.filter((d) => d.projectId !== projectId),
+            ...rows,
+          ]);
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  updateDeliveryAcceptance(id: number, acceptance: DeliveryAcceptance): Observable<Delivery> {
-    const current = this.deliveriesSignal().find((d) => d.id === id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบการส่งมอบ'));
+  createDelivery(projectId: number, input: DeliveryInput): Observable<Delivery> {
+    if (!input.title.trim()) {
+      return throwError(() => new Error('กรุณาระบุหัวข้อการส่งมอบ'));
     }
-    const updated = { ...current, acceptance };
-    this.deliveriesSignal.update((list) => list.map((d) => (d.id === id ? updated : d)));
-    return of(structuredClone(updated));
+    return this.http
+      .post<Delivery>(`${this.base}/${projectId}/deliveries`, pruneUndefined({
+        title: input.title.trim(),
+        deliveredAt: input.deliveredAt,
+        version: input.version?.trim() || undefined,
+        deliveryNo: input.deliveryNo?.trim() || undefined,
+        description: input.description?.trim() || undefined,
+        deliveredByUserId: input.deliveredByUserId ?? undefined,
+        acceptedByContactId: input.acceptedByContactId ?? undefined,
+        note: input.note?.trim() || undefined,
+      }))
+      .pipe(
+        tap((row) => this.deliveriesSignal.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  updateDeliveryAcceptance(
+    id: number,
+    acceptanceStatus: DeliveryAcceptance,
+    opts?: { acceptedByContactId?: number | null; note?: string | null }
+  ): Observable<Delivery> {
+    return this.http
+      .patch<Delivery>(`${environment.apiBaseUrl}/deliveries/${id}/acceptance`, pruneUndefined({
+        acceptanceStatus,
+        acceptedByContactId: opts?.acceptedByContactId ?? undefined,
+        note: opts?.note?.trim() || undefined,
+      }))
+      .pipe(
+        tap((row) => this.deliveriesSignal.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   private projectIdOf(taskId: number, row: ApiTask): number {

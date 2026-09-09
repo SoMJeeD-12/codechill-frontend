@@ -3,9 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -18,18 +16,20 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { Delivery } from '../../core/models/project.model';
 import {
-  WARRANTY_COVERAGE_LABELS,
   WARRANTY_NEAR_EXPIRY_DAYS,
   WARRANTY_STATUS_LABELS,
   Warranty,
-  WarrantyCoverage,
   WarrantyStatus,
 } from '../../core/models/warranty.model';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
-import { WarrantyInput, WarrantyService } from '../../core/services/warranty.service';
-import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import {
+  WarrantyCreateInput,
+  WarrantyService,
+  WarrantyUpdateInput,
+} from '../../core/services/warranty.service';
 
 @Component({
   selector: 'app-warranties-page',
@@ -42,7 +42,6 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
     MatButtonModule,
     MatIconModule,
     MatTableModule,
-    MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
   ],
@@ -57,46 +56,37 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly warranties = signal<Warranty[]>([]);
-  readonly view = signal<'near' | 'active' | 'all'>('near');
+  readonly view = signal<'near' | 'active' | 'all'>('all');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
-  readonly coverageLabels = WARRANTY_COVERAGE_LABELS;
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
-  readonly columns = [
-    'title',
-    'customer',
-    'coverage',
-    'period',
-    'daysLeft',
-    'status',
-    'actions',
-  ];
+  readonly columns = ['title', 'customer', 'period', 'daysLeft', 'status', 'actions'];
+  private readonly snack = inject(MatSnackBar);
 
   readonly filtered = computed(() => {
     const list = this.warranties();
     const view = this.view();
     let rows = list;
     if (view === 'near') {
-      const nearIds = new Set(this.api.listNearExpiry().map((w) => w.id));
-      rows = list.filter((w) => nearIds.has(w.id));
+      rows = list.filter((w) => this.isNear(w));
     } else if (view === 'active') {
-      rows = list.filter((w) => w.status === 'ACTIVE');
+      rows = list.filter((w) => w.status === 'ACTIVE' || w.isCurrentlyActive);
     }
     const q = this.search().trim().toLowerCase();
     if (!q) {
       return rows;
     }
     return rows.filter((w) => {
-      const project = w.projectId != null ? this.projectsApi.getProject(w.projectId) : null;
-      const projectText = project ? `${project.code} ${project.name}`.toLowerCase() : '';
+      const projectName = (w.project?.name ?? '').toLowerCase();
+      const customerName = (w.project?.customerName ?? this.customerName(w)).toLowerCase();
+      const deliveryTitle = (w.delivery?.title ?? '').toLowerCase();
       return (
-        w.title.toLowerCase().includes(q) ||
-        this.customerName(w.customerId).toLowerCase().includes(q) ||
-        projectText.includes(q) ||
-        this.coverageLabel(w.coverage).toLowerCase().includes(q) ||
+        projectName.includes(q) ||
+        customerName.includes(q) ||
+        deliveryTitle.includes(q) ||
         this.statusLabel(w.status).toLowerCase().includes(q) ||
-        (w.note ?? '').toLowerCase().includes(q)
+        (w.scopeNote ?? '').toLowerCase().includes(q)
       );
     });
   });
@@ -109,11 +99,32 @@ export class WarrantiesPageComponent implements OnInit {
   }
 
   reload(): void {
-    this.api.list().subscribe((list) => this.warranties.set(list));
+    this.api.list().subscribe({
+      next: (list) => {
+        this.warranties.set(list);
+        // เติมรายการใกล้หมดอายุเข้า cache (ไม่ทับรายการทั้งหมด)
+        this.api.listExpiring({ days: this.nearDays }).subscribe({
+          next: () => this.warranties.set(this.api.warranties()),
+          error: () => undefined,
+        });
+      },
+      error: (err: Error) => {
+        this.warranties.set([]);
+        this.snack.open(err.message || 'โหลดประกันไม่สำเร็จ', 'ปิด', { duration: 3500 });
+      },
+    });
   }
 
-  customerName(id: number): string {
-    return this.customersApi.getCustomer(id)?.name ?? `#${id}`;
+  customerName(w: Warranty): string {
+    if (w.project?.customerName) {
+      return w.project.customerName;
+    }
+    const id = w.project?.customerId;
+    return id ? this.customersApi.getCustomer(id)?.name ?? `#${id}` : '—';
+  }
+
+  customerId(w: Warranty): number | null {
+    return w.project?.customerId ?? null;
   }
 
   daysLeft(w: Warranty): string {
@@ -132,22 +143,16 @@ export class WarrantiesPageComponent implements OnInit {
 
   isNear(w: Warranty): boolean {
     const days = this.api.daysUntilExpiry(w);
-    return days !== null && days >= 0 && days <= this.nearDays && w.status === 'ACTIVE';
-  }
-
-  coverageLabel(coverage: Warranty['coverage']): string {
-    return this.coverageLabels[coverage];
+    return (
+      days !== null &&
+      days >= 0 &&
+      days <= this.nearDays &&
+      (w.status === 'ACTIVE' || w.isCurrentlyActive)
+    );
   }
 
   statusLabel(status: Warranty['status']): string {
     return this.statusLabels[status];
-  }
-
-  projectCode(id: number | null): string {
-    if (!id) {
-      return '—';
-    }
-    return this.projectsApi.getProject(id)?.code ?? `#${id}`;
   }
 
   openCreate(row?: Warranty): void {
@@ -158,6 +163,7 @@ export class WarrantiesPageComponent implements OnInit {
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
+        this.view.set('all');
         this.reload();
       }
     });
@@ -175,7 +181,6 @@ export class WarrantiesPageComponent implements OnInit {
     MatSelectModule,
     MatButtonModule,
     MatSnackBarModule,
-    MatDatepickerModule,
   ],
   templateUrl: './warranty-form-dialog.component.html',
   styleUrl: './warranty-form-dialog.component.scss',
@@ -191,22 +196,20 @@ export class WarrantyFormDialogComponent {
 
   readonly customers = this.customersApi.customers;
   readonly projects = this.projectsApi.projects;
-  readonly coverageLabels = WARRANTY_COVERAGE_LABELS;
-  readonly coverages = Object.keys(WARRANTY_COVERAGE_LABELS) as WarrantyCoverage[];
+  readonly deliveries = signal<Delivery[]>([]);
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly statuses = Object.keys(WARRANTY_STATUS_LABELS) as WarrantyStatus[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isEdit = !!this.data;
 
   readonly form = this.fb.group({
-    customerId: [this.data?.customerId ?? 0, Validators.min(1)],
-    projectId: [this.data?.projectId ?? (null as number | null)],
-    title: [this.data?.title ?? '', Validators.required],
-    coverage: [(this.data?.coverage ?? 'SOFTWARE') as WarrantyCoverage],
-    startDate: [parseDateOnly(this.data?.startDate) as Date | null, Validators.required],
-    endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
+    customerId: [this.data?.project?.customerId ?? 0, Validators.min(1)],
+    projectId: [this.data?.projectId ?? (null as number | null), Validators.required],
+    deliveryId: [this.data?.deliveryId ?? (null as number | null), Validators.required],
+    durationMonth: [this.data?.durationMonth ?? 12, [Validators.required, Validators.min(1), Validators.max(120)]],
     status: [(this.data?.status ?? 'ACTIVE') as WarrantyStatus],
-    note: [this.data?.note ?? ''],
+    scopeNote: [this.data?.scopeNote ?? ''],
   });
 
   constructor() {
@@ -215,6 +218,27 @@ export class WarrantyFormDialogComponent {
       if (first) {
         this.form.patchValue({ customerId: first.id });
       }
+    } else {
+      this.form.controls.customerId.disable();
+      this.form.controls.projectId.disable();
+      this.form.controls.deliveryId.disable();
+    }
+
+    this.form.controls.customerId.valueChanges.subscribe(() => {
+      this.form.patchValue({ projectId: null, deliveryId: null });
+      this.deliveries.set([]);
+    });
+    this.form.controls.projectId.valueChanges.subscribe((projectId) => {
+      this.form.patchValue({ deliveryId: null });
+      this.deliveries.set([]);
+      if (projectId) {
+        this.loadDeliveries(projectId);
+      }
+    });
+
+    const projectId = this.form.getRawValue().projectId;
+    if (projectId) {
+      this.loadDeliveries(projectId);
     }
   }
 
@@ -223,40 +247,55 @@ export class WarrantyFormDialogComponent {
     return this.projects().filter((p) => p.customerId === customerId);
   }
 
+  private loadDeliveries(projectId: number): void {
+    this.projectsApi.listDeliveries(projectId).subscribe({
+      next: (rows) => this.deliveries.set(rows),
+      error: (err: Error) => this.error.set(err.message),
+    });
+  }
+
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
     const raw = this.form.getRawValue();
-    const payload: WarrantyInput = {
-      customerId: Number(raw.customerId),
-      projectId: raw.projectId,
-      deliveryId: this.data?.deliveryId ?? null,
-      title: raw.title ?? '',
-      coverage: (raw.coverage as WarrantyCoverage) ?? 'SOFTWARE',
-      startDate: toDateOnlyString(raw.startDate),
-      endDate: toDateOnlyString(raw.endDate),
-      status: (raw.status as WarrantyStatus) ?? 'ACTIVE',
-      note: raw.note ?? '',
-    };
     this.saving.set(true);
     this.error.set(null);
-    const req = this.data
-      ? this.api.update(this.data.id, payload)
-      : this.api.create(payload);
-    req.subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.snack.open(this.data ? 'บันทึกประกันแล้ว' : 'สร้างประกันแล้ว', 'ปิด', {
-          duration: 2500,
-        });
-        this.ref.close(true);
-      },
-      error: (err: Error) => {
-        this.saving.set(false);
-        this.error.set(err.message);
-      },
+
+    if (this.data) {
+      const payload: WarrantyUpdateInput = {
+        durationMonth: Number(raw.durationMonth),
+        status: (raw.status as WarrantyStatus) ?? 'ACTIVE',
+        scopeNote: (raw.scopeNote ?? '').trim() || null,
+      };
+      this.api.update(this.data.id, payload).subscribe({
+        next: () => this.onSaved(true),
+        error: (err: Error) => this.onError(err),
+      });
+      return;
+    }
+
+    const payload: WarrantyCreateInput = {
+      durationMonth: Number(raw.durationMonth),
+      scopeNote: (raw.scopeNote ?? '').trim() || null,
+    };
+    this.api.createForDelivery(Number(raw.deliveryId), payload).subscribe({
+      next: () => this.onSaved(false),
+      error: (err: Error) => this.onError(err),
     });
+  }
+
+  private onSaved(isEdit: boolean): void {
+    this.saving.set(false);
+    this.snack.open(isEdit ? 'บันทึกประกันแล้ว' : 'สร้างประกันแล้ว', 'ปิด', {
+      duration: 2500,
+    });
+    this.ref.close(true);
+  }
+
+  private onError(err: Error): void {
+    this.saving.set(false);
+    this.error.set(err.message);
   }
 }

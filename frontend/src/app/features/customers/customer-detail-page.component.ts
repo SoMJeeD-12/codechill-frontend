@@ -29,7 +29,6 @@ import {
 } from '../../core/models/follow-up.model';
 import { TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
 import {
-  WARRANTY_COVERAGE_LABELS,
   WARRANTY_STATUS_LABELS,
   Warranty,
 } from '../../core/models/warranty.model';
@@ -95,7 +94,6 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;
   readonly ticketStatusLabels = TICKET_STATUS_LABELS;
   readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
-  readonly warrantyCoverageLabels = WARRANTY_COVERAGE_LABELS;
   readonly maStatusLabels = MA_STATUS_LABELS;
   readonly followUpStatusLabels = FOLLOW_UP_STATUS_LABELS;
   readonly followUpChannelLabels = FOLLOW_UP_CHANNEL_LABELS;
@@ -182,10 +180,15 @@ export class CustomerDetailPageComponent implements OnInit {
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
     this.projectsApi.listProjects().subscribe({
-      next: () => this.projects.set(this.projectsApi.getProjectsByCustomer(this.customerId)),
+      next: () => {
+        this.projects.set(this.projectsApi.getProjectsByCustomer(this.customerId));
+        this.warrantiesApi.listExpiring({ customerId: this.customerId, days: 365, limit: 100 }).subscribe({
+          next: (rows) => this.warranties.set(rows),
+          error: () => this.warranties.set([]),
+        });
+      },
     });
     this.tickets.set(this.ticketsApi.getByCustomer(this.customerId));
-    this.warranties.set(this.warrantiesApi.getByCustomer(this.customerId));
     this.contracts.set(this.maApi.getByCustomer(this.customerId));
     this.followUps.set(this.followUpsApi.getByCustomer(this.customerId));
   }
@@ -207,10 +210,6 @@ export class CustomerDetailPageComponent implements OnInit {
 
   followUpChannelLabel(channel: FollowUp['channel']): string {
     return this.followUpChannelLabels[channel];
-  }
-
-  warrantyCoverageLabel(coverage: Warranty['coverage']): string {
-    return this.warrantyCoverageLabels[coverage];
   }
 
   warrantyStatusLabel(status: Warranty['status']): string {

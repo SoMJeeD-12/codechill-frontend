@@ -192,11 +192,16 @@
             @for (d of deliveries(); track d.id) {
               <mat-card class="delivery-item">
                 <div class="delivery-top">
-                  <strong>{{ d.version }}</strong>
+                  <strong>
+                    {{ d.title }}
+                    @if (d.version) {
+                      · {{ d.version }}
+                    }
+                  </strong>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="accept">
                     <mat-label>สถานะยอมรับ</mat-label>
                     <mat-select
-                      [value]="d.acceptance"
+                      [value]="d.acceptanceStatus"
                       (selectionChange)="setAcceptance(d, $event.value)"
                     >
                       @for (a of acceptances; track a) {
@@ -208,13 +213,13 @@
                 <p>
                   ส่งเมื่อ {{ d.deliveredAt | date: 'd MMM y HH:mm' }} ·
                   โดย {{ userName(d.deliveredByUserId) }} ·
-                  ผู้รับ {{ contactName(d.receivedByContactId) }}
+                  ผู้รับ {{ contactName(d.acceptedByContactId) }}
                 </p>
+                @if (d.deliveryNo) {
+                  <small>เลขที่ {{ d.deliveryNo }}</small>
+                }
                 @if (d.note) {
                   <p class="note">{{ d.note }}</p>
-                }
-                @if (d.attachmentName) {
-                  <small class="attach">แนบ: {{ d.attachmentName }}</small>
                 }
               </mat-card>
             } @empty {
@@ -225,25 +230,40 @@
           <mat-card class="side-form">
             <h3>บันทึกการส่งมอบ</h3>
             <form [formGroup]="deliveryForm" (ngSubmit)="addDelivery()" class="form">
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>หัวข้อการส่งมอบ</mat-label>
+                <input matInput formControlName="title" placeholder="เช่น ส่งมอบรอบที่ 1" />
+              </mat-form-field>
               <div class="row">
                 <mat-form-field appearance="outline">
                   <mat-label>เวอร์ชัน</mat-label>
                   <input matInput formControlName="version" placeholder="เช่น v1.0" />
                 </mat-form-field>
                 <mat-form-field appearance="outline">
+                  <mat-label>เลขที่ส่งมอบ</mat-label>
+                  <input matInput formControlName="deliveryNo" placeholder="เช่น DN-2026-001" />
+                </mat-form-field>
+              </div>
+              <div class="row">
+                <mat-form-field appearance="outline">
                   <mat-label>วันที่ส่ง</mat-label>
                   <input matInput [matDatepicker]="deliveryPicker" formControlName="deliveredDate" />
                   <mat-datepicker-toggle matIconSuffix [for]="deliveryPicker"></mat-datepicker-toggle>
                   <mat-datepicker #deliveryPicker></mat-datepicker>
                 </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>เวลาที่ส่ง</mat-label>
+                  <input matInput type="time" formControlName="deliveredTime" />
+                </mat-form-field>
               </div>
               <mat-form-field appearance="outline" class="full">
-                <mat-label>เวลาที่ส่ง</mat-label>
-                <input matInput type="time" formControlName="deliveredTime" />
+                <mat-label>รายละเอียด</mat-label>
+                <textarea matInput rows="2" formControlName="description"></textarea>
               </mat-form-field>
               <mat-form-field appearance="outline" class="full">
                 <mat-label>ผู้ส่งมอบ</mat-label>
                 <mat-select formControlName="deliveredByUserId">
+                  <mat-option [value]="null">—</mat-option>
                   @for (u of users(); track u.id) {
                     <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
                   }
@@ -251,7 +271,7 @@
               </mat-form-field>
               <mat-form-field appearance="outline" class="full">
                 <mat-label>ผู้รับมอบ (ฝั่งลูกค้า)</mat-label>
-                <mat-select formControlName="receivedByContactId">
+                <mat-select formControlName="acceptedByContactId">
                   <mat-option [value]="null">—</mat-option>
                   @for (c of contacts(); track c.id) {
                     <mat-option [value]="c.id">{{ c.name }}</mat-option>
@@ -259,20 +279,8 @@
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" class="full">
-                <mat-label>สถานะยอมรับ</mat-label>
-                <mat-select formControlName="acceptance">
-                  @for (a of acceptances; track a) {
-                    <mat-option [value]="a">{{ acceptanceLabels[a] }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
                 <mat-label>หมายเหตุ</mat-label>
                 <textarea matInput rows="2" formControlName="note"></textarea>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ไฟล์หลักฐาน</mat-label>
-                <input matInput formControlName="attachmentName" />
               </mat-form-field>
               <button mat-flat-button color="primary" type="submit">บันทึกส่งมอบ</button>
             </form>

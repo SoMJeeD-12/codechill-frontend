@@ -1,37 +1,116 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   WARRANTY_NEAR_EXPIRY_DAYS,
   Warranty,
-  WarrantyCoverage,
   WarrantyStatus,
 } from '../models/warranty.model';
-import { parseDateOnly, toDateOnlyString } from '../utils/date.util';
+import { ProjectService } from './project.service';
 
-export interface WarrantyInput {
-  customerId: number;
-  projectId: number | null;
-  deliveryId: number | null;
-  title: string;
-  coverage: WarrantyCoverage;
-  startDate: string;
-  endDate: string;
-  status: WarrantyStatus;
-  note: string;
+/** CreateWarrantyDto */
+export interface WarrantyCreateInput {
+  durationMonth: number;
+  scopeNote?: string | null;
+}
+
+/** UpdateWarrantyDto */
+export interface WarrantyUpdateInput {
+  durationMonth?: number;
+  status?: WarrantyStatus;
+  scopeNote?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class WarrantyService {
+  private readonly http = inject(HttpClient);
+  private readonly projectsApi = inject(ProjectService);
+  private readonly base = `${environment.apiBaseUrl}/warranties`;
   private readonly items = signal<Warranty[]>([]);
-  private nextId = 1;
 
   readonly warranties = this.items.asReadonly();
   readonly nearExpiryCount = computed(
     () => this.listNearExpiry(WARRANTY_NEAR_EXPIRY_DAYS).length
   );
 
+  /** โหลดประกันทุกโครงการ (รวมกัน) */
   list(): Observable<Warranty[]> {
-    return of(structuredClone(this.items())).pipe(delay(180));
+    return this.projectsApi.listProjects({ limit: 100 }).pipe(
+      switchMap((projects) => {
+        if (!projects.length) {
+          this.items.set([]);
+          return of([]);
+        }
+        return forkJoin(
+          projects.map((p) =>
+            this.listByProject(p.id, false).pipe(catchError(() => of([] as Warranty[])))
+          )
+        ).pipe(
+          map((groups) => {
+            const merged = dedupeById(groups.flat());
+            this.items.set(merged);
+            return merged;
+          })
+        );
+      }),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  listByProject(projectId: number, syncCache = true): Observable<Warranty[]> {
+    return this.http
+      .get<Warranty[] | { items: Warranty[] }>(
+        `${environment.apiBaseUrl}/projects/${projectId}/warranties`
+      )
+      .pipe(
+        map((body) => asList(body)),
+        tap((rows) => {
+          if (!syncCache) {
+            return;
+          }
+          this.items.update((all) => [
+            ...all.filter((w) => w.projectId !== projectId),
+            ...rows,
+          ]);
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  listExpiring(params?: {
+    days?: number;
+    customerId?: number;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Observable<Warranty[]> {
+    return this.http
+      .get<Warranty[] | { items: Warranty[] }>(`${this.base}/expiring`, {
+        params: toHttpParams({
+          days: params?.days ?? WARRANTY_NEAR_EXPIRY_DAYS,
+          customerId: params?.customerId,
+          search: params?.search,
+          page: params?.page,
+          limit: params?.limit ?? 100,
+        }),
+      })
+      .pipe(
+        map((body) => asList(body)),
+        tap((rows) => {
+          this.items.update((all) => {
+            let next = [...all];
+            for (const row of rows) {
+              next = upsertById(next, row);
+            }
+            return next;
+          });
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getById(id: number): Warranty | undefined {
@@ -39,80 +118,65 @@ export class WarrantyService {
   }
 
   getByCustomer(customerId: number): Warranty[] {
-    return this.items().filter((w) => w.customerId === customerId);
+    return this.items().filter(
+      (w) => w.project?.customerId === customerId || this.customerIdOf(w) === customerId
+    );
   }
 
-  /** ACTIVE ที่ endDate อยู่ในช่วง N วันข้างหน้า (รวมวันนี้) */
+  /** จาก cache — ใช้หลัง list/listExpiring แล้ว */
   listNearExpiry(withinDays = WARRANTY_NEAR_EXPIRY_DAYS): Warranty[] {
-    const today = parseDateOnly(toDateOnlyString(new Date()))!;
-    const limit = new Date(today);
-    limit.setDate(limit.getDate() + withinDays);
-
     return this.items().filter((w) => {
-      if (w.status !== 'ACTIVE') {
+      if (w.status !== 'ACTIVE' && !w.isCurrentlyActive) {
         return false;
       }
-      const end = parseDateOnly(w.endDate);
-      if (!end) {
-        return false;
-      }
-      return end >= today && end <= limit;
+      const days = this.daysUntilExpiry(w);
+      return days !== null && days >= 0 && days <= withinDays;
     });
   }
 
   daysUntilExpiry(w: Warranty): number | null {
-    const today = parseDateOnly(toDateOnlyString(new Date()));
-    const end = parseDateOnly(w.endDate);
-    if (!today || !end) {
-      return null;
+    if (typeof w.daysRemaining === 'number' && Number.isFinite(w.daysRemaining)) {
+      return w.daysRemaining;
     }
-    return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return null;
   }
 
-  create(input: WarrantyInput): Observable<Warranty> {
-    if (!input.title.trim() || !input.customerId || !input.startDate || !input.endDate) {
-      return throwError(() => new Error('กรุณากรอกข้อมูลประกันให้ครบ'));
+  createForDelivery(deliveryId: number, input: WarrantyCreateInput): Observable<Warranty> {
+    if (!input.durationMonth || input.durationMonth < 1) {
+      return throwError(() => new Error('กรุณาระบุระยะประกันเป็นเดือน'));
     }
-    if (input.endDate < input.startDate) {
-      return throwError(() => new Error('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม'));
-    }
-    const row: Warranty = {
-      id: this.nextId++,
-      customerId: input.customerId,
-      projectId: input.projectId,
-      deliveryId: input.deliveryId,
-      title: input.title.trim(),
-      coverage: input.coverage,
-      startDate: input.startDate,
-      endDate: input.endDate,
-      status: input.status,
-      note: input.note.trim(),
-    };
-    this.items.update((list) => [row, ...list]);
-    return of(structuredClone(row)).pipe(delay(220));
+    return this.http
+      .post<Warranty>(
+        `${environment.apiBaseUrl}/deliveries/${deliveryId}/warranties`,
+        pruneUndefined({
+          durationMonth: input.durationMonth,
+          scopeNote: input.scopeNote?.trim() || undefined,
+        })
+      )
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  update(id: number, input: WarrantyInput): Observable<Warranty> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบรายการประกัน'));
-    }
-    if (!input.title.trim() || !input.customerId || !input.startDate || !input.endDate) {
-      return throwError(() => new Error('กรุณากรอกข้อมูลประกันให้ครบ'));
-    }
-    const updated: Warranty = {
-      ...current,
-      customerId: input.customerId,
-      projectId: input.projectId,
-      deliveryId: input.deliveryId,
-      title: input.title.trim(),
-      coverage: input.coverage,
-      startDate: input.startDate,
-      endDate: input.endDate,
-      status: input.status,
-      note: input.note.trim(),
-    };
-    this.items.update((list) => list.map((w) => (w.id === id ? updated : w)));
-    return of(structuredClone(updated)).pipe(delay(200));
+  update(id: number, input: WarrantyUpdateInput): Observable<Warranty> {
+    return this.http
+      .put<Warranty>(`${this.base}/${id}`, pruneUndefined(input))
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
+
+  private customerIdOf(w: Warranty): number | null {
+    return w.project?.customerId ?? null;
+  }
+}
+
+function dedupeById(rows: Warranty[]): Warranty[] {
+  const map = new Map<number, Warranty>();
+  for (const row of rows) {
+    map.set(row.id, row);
+  }
+  return Array.from(map.values());
 }

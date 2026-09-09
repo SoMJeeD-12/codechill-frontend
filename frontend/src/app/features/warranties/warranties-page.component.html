@@ -15,7 +15,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="รายการ / ลูกค้า / โครงการ / ความครอบคลุม"
+            placeholder="ลูกค้า / โครงการ / การส่งมอบ"
             aria-label="ค้นหาการรับประกัน"
           />
         </label>
@@ -25,14 +25,14 @@
         </button>
       </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองประกัน">
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'near'" (click)="view.set('near')">
-          ใกล้หมดอายุ
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
+          ทั้งหมด
         </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'active'" (click)="view.set('active')">
           ใช้งานอยู่
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
-          ทั้งหมด
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'near'" (click)="view.set('near')">
+          ใกล้หมดอายุ
         </button>
       </div>
     </div>
@@ -42,19 +42,19 @@
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>รายการ</th>
           <td mat-cell *matCellDef="let row">
-            <strong>{{ row.title }}</strong>
-            <div class="muted">โครงการ {{ projectCode(row.projectId) }}</div>
+            <strong>{{ row.delivery?.title || 'ประกัน' }} · {{ row.durationMonth }} เดือน</strong>
+            <div class="muted">{{ row.project?.name || '—' }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="customer">
           <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/customers', row.customerId]">{{ customerName(row.customerId) }}</a>
+            @if (customerId(row); as cid) {
+              <a [routerLink]="['/app/customers', cid]">{{ customerName(row) }}</a>
+            } @else {
+              {{ customerName(row) }}
+            }
           </td>
-        </ng-container>
-        <ng-container matColumnDef="coverage">
-          <th mat-header-cell *matHeaderCellDef>ครอบคลุม</th>
-          <td mat-cell *matCellDef="let row">{{ coverageLabel(row.coverage) }}</td>
         </ng-container>
         <ng-container matColumnDef="period">
           <th mat-header-cell *matHeaderCellDef>ระยะเวลา</th>
@@ -87,7 +87,13 @@
       </table>
       @if (filtered().length === 0) {
         <p class="data-empty">
-          {{ search().trim() ? 'ไม่พบรายการตามคำค้นหา' : 'ไม่มีรายการในมุมมองนี้' }}
+          @if (search().trim()) {
+            ไม่พบรายการตามคำค้นหา
+          } @else if (view() === 'near') {
+            ไม่มีประกันใกล้หมดอายุใน {{ nearDays }} วัน — ลองแท็บ “ใช้งานอยู่” หรือ “ทั้งหมด”
+          } @else {
+            ไม่มีรายการในมุมมองนี้
+          }
         </p>
       }
     </div>

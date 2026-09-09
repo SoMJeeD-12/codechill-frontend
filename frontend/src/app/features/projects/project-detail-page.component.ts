@@ -149,14 +149,15 @@ export class ProjectDetailPageComponent implements OnInit {
   private projectId = 0;
 
   readonly deliveryForm = this.fb.group({
-    version: ['', Validators.required],
+    title: ['', Validators.required],
+    version: [''],
+    deliveryNo: [''],
+    description: [''],
     deliveredDate: [new Date() as Date | null, Validators.required],
     deliveredTime: [nowTimeString(), Validators.required],
-    deliveredByUserId: [0, Validators.min(1)],
-    receivedByContactId: [null as number | null],
-    acceptance: ['PENDING' as DeliveryAcceptance],
+    deliveredByUserId: [null as number | null],
+    acceptedByContactId: [null as number | null],
     note: [''],
-    attachmentName: [''],
   });
 
   goBack(): void {
@@ -230,7 +231,10 @@ export class ProjectDetailPageComponent implements OnInit {
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
-    this.deliveries.set(this.projectsApi.getDeliveries(this.projectId));
+    this.projectsApi.listDeliveries(this.projectId).subscribe({
+      next: (rows) => this.deliveries.set(rows),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
   }
 
   setStatusFilter(filter: TaskStatus | 'ALL'): void {
@@ -319,21 +323,24 @@ export class ProjectDetailPageComponent implements OnInit {
     const raw = this.deliveryForm.getRawValue();
     this.projectsApi
       .createDelivery(this.projectId, {
-        version: raw.version ?? '',
+        title: (raw.title ?? '').trim(),
+        version: (raw.version ?? '').trim() || null,
+        deliveryNo: (raw.deliveryNo ?? '').trim() || null,
+        description: (raw.description ?? '').trim() || null,
         deliveredAt: combineDateAndTime(raw.deliveredDate, raw.deliveredTime),
-        deliveredByUserId: Number(raw.deliveredByUserId),
-        receivedByContactId: raw.receivedByContactId,
-        acceptance: (raw.acceptance as DeliveryAcceptance) ?? 'PENDING',
-        note: raw.note ?? '',
-        attachmentName: (raw.attachmentName ?? '').trim() || null,
+        deliveredByUserId: raw.deliveredByUserId,
+        acceptedByContactId: raw.acceptedByContactId,
+        note: (raw.note ?? '').trim() || null,
       })
       .subscribe({
         next: () => {
           this.snack.open('บันทึกการส่งมอบแล้ว', 'ปิด', { duration: 2500 });
           this.deliveryForm.patchValue({
+            title: '',
             version: '',
+            deliveryNo: '',
+            description: '',
             note: '',
-            attachmentName: '',
             deliveredDate: new Date(),
             deliveredTime: nowTimeString(),
           });
@@ -343,12 +350,17 @@ export class ProjectDetailPageComponent implements OnInit {
       });
   }
 
-  setAcceptance(delivery: Delivery, acceptance: DeliveryAcceptance): void {
-    this.projectsApi.updateDeliveryAcceptance(delivery.id, acceptance).subscribe({
-      next: () => {
-        this.snack.open('อัปเดตสถานะการยอมรับแล้ว', 'ปิด', { duration: 2500 });
-        this.refresh();
-      },
-    });
+  setAcceptance(delivery: Delivery, acceptanceStatus: DeliveryAcceptance): void {
+    this.projectsApi
+      .updateDeliveryAcceptance(delivery.id, acceptanceStatus, {
+        acceptedByContactId: delivery.acceptedByContactId,
+      })
+      .subscribe({
+        next: () => {
+          this.snack.open('อัปเดตสถานะการยอมรับแล้ว', 'ปิด', { duration: 2500 });
+          this.refresh();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
   }
 }
