@@ -13,11 +13,24 @@
 }
 
 .back {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   margin-bottom: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #0f766e;
   text-decoration: none;
+  font: inherit;
   font-size: 0.9rem;
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
 }
 
 .eyebrow {
@@ -74,11 +87,29 @@
   border-radius: 10px;
   background: #fff;
 
+  &.editing {
+    border-color: rgba(15, 118, 110, 0.45);
+    background: #f0fdfa;
+  }
+
   p,
   small {
     margin: 0.25rem 0 0;
     color: #5b6762;
   }
+}
+
+.item-actions {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .primary-tag {

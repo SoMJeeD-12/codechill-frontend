@@ -133,6 +133,8 @@ export class TicketsPageComponent implements OnInit {
   }
 }
 
+import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+
 @Component({
   selector: 'app-ticket-form-dialog',
   standalone: true,
@@ -145,6 +147,7 @@ export class TicketsPageComponent implements OnInit {
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    MoneyInputDirective,
   ],
   templateUrl: './ticket-form-dialog.component.html',
   styleUrl: './ticket-form-dialog.component.scss',

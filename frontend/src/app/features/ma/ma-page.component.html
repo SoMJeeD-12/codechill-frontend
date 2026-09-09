@@ -66,7 +66,7 @@
         </ng-container>
         <ng-container matColumnDef="fee">
           <th mat-header-cell *matHeaderCellDef>ค่าบริการ/ปี</th>
-          <td mat-cell *matCellDef="let row">{{ row.annualFee | currency: 'THB':'symbol':'1.0-0' }}</td>
+          <td mat-cell *matCellDef="let row">{{ row.annualFee | baht }}</td>
         </ng-container>
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>สถานะ</th>

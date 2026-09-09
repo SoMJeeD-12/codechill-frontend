@@ -1,7 +1,7 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -33,13 +33,15 @@ import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { combineDateAndTime, nowTimeString, toDateOnlyString } from '../../core/utils/date.util';
+import { navigateBack } from '../../core/utils/navigation.util';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 
 @Component({
   selector: 'app-project-detail-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
+    BahtPipe,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -61,6 +63,8 @@ import { TaskEditDialogComponent } from './task-edit-dialog.component';
 })
 export class ProjectDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
   private readonly usersApi = inject(UserService);
@@ -153,6 +157,10 @@ export class ProjectDetailPageComponent implements OnInit {
     note: [''],
     attachmentName: [''],
   });
+
+  goBack(): void {
+    navigateBack(this.location, this.router, '/app/projects');
+  }
 
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));

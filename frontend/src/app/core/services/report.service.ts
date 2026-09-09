@@ -8,6 +8,7 @@ import { ProjectService } from './project.service';
 import { SurveyService } from './survey.service';
 import { TicketService } from './ticket.service';
 import { WarrantyService } from './warranty.service';
+import { formatMoneyDisplay } from '../utils/money.util';
 
 export interface ReportKpi {
   label: string;
@@ -170,10 +171,7 @@ export class ReportService {
   }
 
   private thb(n: number): string {
-    return new Intl.NumberFormat('th-TH', {
-      style: 'currency',
-      currency: 'THB',
-      maximumFractionDigits: 0,
-    }).format(n);
+    const formatted = formatMoneyDisplay(n);
+    return formatted ? `฿${formatted}` : '฿0';
   }
 }

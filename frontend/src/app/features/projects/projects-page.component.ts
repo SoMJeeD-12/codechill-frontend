@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -31,12 +31,13 @@ import { CustomerService } from '../../core/services/customer.service';
 import { ProjectInput, ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 
 @Component({
   selector: 'app-projects-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
+    BahtPipe,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -164,6 +165,8 @@ export class ProjectsPageComponent implements OnInit {
   }
 }
 
+import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+
 @Component({
   selector: 'app-project-form-dialog',
   standalone: true,
@@ -176,6 +179,7 @@ export class ProjectsPageComponent implements OnInit {
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    MoneyInputDirective,
   ],
   templateUrl: './project-form-dialog.component.html',
   styleUrl: './project-form-dialog.component.scss',

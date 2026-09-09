@@ -1,7 +1,7 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -40,7 +40,8 @@ import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { WarrantyService } from '../../core/services/warranty.service';
-import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
+import { combineDateAndTime, nowTimeString, toTimeString } from '../../core/utils/date.util';
+import { navigateBack } from '../../core/utils/navigation.util';
 
 @Component({
   selector: 'app-customer-detail-page',
@@ -65,6 +66,8 @@ import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
 })
 export class CustomerDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly api = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly ticketsApi = inject(TicketService);
@@ -94,6 +97,18 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly followUpStatusLabels = FOLLOW_UP_STATUS_LABELS;
   readonly followUpChannelLabels = FOLLOW_UP_CHANNEL_LABELS;
   readonly notFound = signal(false);
+  readonly editingContactId = signal<number | null>(null);
+  readonly editingLogId = signal<number | null>(null);
+  readonly selectedTab = signal(0);
+
+  private static readonly TAB_KEYS = [
+    'contacts',
+    'logs',
+    'projects',
+    'contracts',
+    'tickets',
+    'follow-ups',
+  ] as const;
 
   statusLabel(status: Customer['status']): string {
     return this.statusLabels[status];
@@ -121,9 +136,29 @@ export class CustomerDetailPageComponent implements OnInit {
 
   private customerId = 0;
 
+  goBack(): void {
+    navigateBack(this.location, this.router, '/app/customers');
+  }
+
+  onTabChange(index: number): void {
+    this.selectedTab.set(index);
+    const tab = CustomerDetailPageComponent.TAB_KEYS[index];
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tab || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.customerId = id;
+    const tabKey = this.route.snapshot.queryParamMap.get('tab');
+    const tabIndex = CustomerDetailPageComponent.TAB_KEYS.findIndex((key) => key === tabKey);
+    if (tabIndex >= 0) {
+      this.selectedTab.set(tabIndex);
+    }
     this.api.fetchCustomer(id).subscribe({
       next: (customer) => {
         this.customer.set(customer);
@@ -183,36 +218,67 @@ export class CustomerDetailPageComponent implements OnInit {
     return this.maStatusLabels[status];
   }
 
+  startEditContact(contact: Contact): void {
+    this.editingContactId.set(contact.id);
+    this.contactForm.reset({
+      name: contact.name,
+      nickname: contact.nickname ?? '',
+      position: contact.position ?? '',
+      phone: contact.phone ?? '',
+      email: contact.email ?? '',
+      lineId: contact.lineId ?? '',
+      isPrimary: contact.isPrimary,
+      note: contact.note ?? '',
+    });
+  }
+
+  cancelEditContact(): void {
+    this.editingContactId.set(null);
+    this.resetContactForm();
+  }
+
+  private resetContactForm(): void {
+    this.contactForm.reset({
+      name: '',
+      nickname: '',
+      position: '',
+      phone: '',
+      email: '',
+      lineId: '',
+      isPrimary: false,
+      note: '',
+    });
+  }
+
   saveContact(): void {
     if (this.contactForm.invalid) {
       this.contactForm.markAllAsTouched();
       return;
     }
     const raw = this.contactForm.getRawValue();
+    const contactId = this.editingContactId() ?? undefined;
     this.api
-      .saveContact(this.customerId, {
-        name: raw.name.trim(),
-        nickname: raw.nickname.trim() || undefined,
-        position: raw.position.trim() || undefined,
-        phone: raw.phone.trim() || undefined,
-        email: raw.email.trim() || undefined,
-        lineId: raw.lineId.trim() || undefined,
-        isPrimary: raw.isPrimary,
-        note: raw.note.trim() || undefined,
-      })
+      .saveContact(
+        this.customerId,
+        {
+          name: raw.name.trim(),
+          nickname: raw.nickname.trim() || undefined,
+          position: raw.position.trim() || undefined,
+          phone: raw.phone.trim() || undefined,
+          email: raw.email.trim() || undefined,
+          lineId: raw.lineId.trim() || undefined,
+          isPrimary: raw.isPrimary,
+          note: raw.note.trim() || undefined,
+        },
+        contactId
+      )
       .subscribe({
         next: () => {
-          this.snack.open('บันทึกผู้ติดต่อแล้ว', 'ปิด', { duration: 2500 });
-          this.contactForm.reset({
-            name: '',
-            nickname: '',
-            position: '',
-            phone: '',
-            email: '',
-            lineId: '',
-            isPrimary: false,
-            note: '',
+          this.snack.open(contactId ? 'อัปเดตผู้ติดต่อแล้ว' : 'บันทึกผู้ติดต่อแล้ว', 'ปิด', {
+            duration: 2500,
           });
+          this.editingContactId.set(null);
+          this.resetContactForm();
           this.refreshChildren();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
@@ -225,9 +291,41 @@ export class CustomerDetailPageComponent implements OnInit {
     }
     this.api.removeContact(contact.id).subscribe({
       next: () => {
+        if (this.editingContactId() === contact.id) {
+          this.cancelEditContact();
+        }
         this.snack.open('ลบผู้ติดต่อแล้ว', 'ปิด', { duration: 2500 });
         this.refreshChildren();
       },
+    });
+  }
+
+  startEditLog(log: CommunicationLog): void {
+    this.editingLogId.set(log.id);
+    const occurred = new Date(log.occurredAt);
+    this.logForm.reset({
+      channel: log.channel,
+      contactId: log.contactId,
+      subject: log.subject ?? '',
+      content: log.content ?? '',
+      occurredDate: Number.isNaN(occurred.getTime()) ? new Date() : occurred,
+      occurredTime: toTimeString(log.occurredAt),
+    });
+  }
+
+  cancelEditLog(): void {
+    this.editingLogId.set(null);
+    this.resetLogForm();
+  }
+
+  private resetLogForm(): void {
+    this.logForm.reset({
+      channel: 'LINE',
+      contactId: null,
+      subject: '',
+      content: '',
+      occurredDate: new Date(),
+      occurredTime: nowTimeString(),
     });
   }
 
@@ -237,28 +335,46 @@ export class CustomerDetailPageComponent implements OnInit {
       return;
     }
     const raw = this.logForm.getRawValue();
-    this.api
-      .addLog(this.customerId, {
-        channel: raw.channel,
-        occurredAt: combineDateAndTime(raw.occurredDate, raw.occurredTime),
-        contactId: raw.contactId ?? undefined,
-        subject: raw.subject.trim() || undefined,
-        content: raw.content.trim() || undefined,
-        handledByUserId: this.auth.currentUser()?.id,
-      })
-      .subscribe({
-        next: () => {
-          this.snack.open('บันทึกประวัติการติดต่อแล้ว', 'ปิด', { duration: 2500 });
-          this.logForm.patchValue({
-            subject: '',
-            content: '',
-            contactId: null,
-            occurredDate: new Date(),
-            occurredTime: nowTimeString(),
-          });
-          this.refreshChildren();
-        },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-      });
+    const payload = {
+      channel: raw.channel,
+      occurredAt: combineDateAndTime(raw.occurredDate, raw.occurredTime),
+      contactId: raw.contactId ?? undefined,
+      subject: raw.subject.trim() || undefined,
+      content: raw.content.trim() || undefined,
+      handledByUserId: this.auth.currentUser()?.id,
+    };
+    const logId = this.editingLogId();
+    const req$ = logId
+      ? this.api.updateLog(logId, payload)
+      : this.api.addLog(this.customerId, payload);
+
+    req$.subscribe({
+      next: () => {
+        this.snack.open(logId ? 'อัปเดตประวัติการติดต่อแล้ว' : 'บันทึกประวัติการติดต่อแล้ว', 'ปิด', {
+          duration: 2500,
+        });
+        this.editingLogId.set(null);
+        this.resetLogForm();
+        this.refreshChildren();
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+  }
+
+  removeLog(log: CommunicationLog): void {
+    const label = log.subject?.trim() || this.channelLabels[log.channel];
+    if (!confirm(`ลบประวัติการติดต่อ ${label}?`)) {
+      return;
+    }
+    this.api.removeLog(log.id).subscribe({
+      next: () => {
+        if (this.editingLogId() === log.id) {
+          this.cancelEditLog();
+        }
+        this.snack.open('ลบประวัติการติดต่อแล้ว', 'ปิด', { duration: 2500 });
+        this.refreshChildren();
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
   }
 }

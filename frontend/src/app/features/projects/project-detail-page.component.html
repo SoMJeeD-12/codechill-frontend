@@ -1,19 +1,25 @@
 @if (notFound()) {
   <mat-card class="missing">
     <h1>ไม่พบโครงการ</h1>
-    <a mat-button routerLink="/app/projects">กลับหน้ารายการ</a>
+    <a mat-button type="button" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      กลับหน้ารายการ
+    </a>
   </mat-card>
 } @else {
   @if (project(); as p) {
   <section class="page">
     <header class="page-header">
       <div>
-        <a routerLink="/app/projects" class="back">← รายการโครงการ</a>
+        <button type="button" class="back" (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+          กลับ
+        </button>
         <p class="eyebrow">{{ p.code || '—' }} · {{ projectStatusLabel(p.status) }}</p>
         <h1>{{ p.name }}</h1>
         <p class="subtitle">
           {{ customerName() }} · กำหนดส่ง {{ p.targetEndDate || '—' }} ·
-          มูลค่า {{ p.contractValue != null ? (p.contractValue | currency: 'THB':'symbol':'1.0-0') : '—' }} ·
+          มูลค่า {{ p.contractValue | baht }} ·
           ความคืบหน้า {{ progress() }}%
         </p>
       </div>

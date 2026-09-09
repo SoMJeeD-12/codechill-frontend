@@ -1,7 +1,7 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -23,6 +23,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { SurveyService, SurveySummary } from '../../core/services/survey.service';
+import { navigateBack } from '../../core/utils/navigation.util';
 
 @Component({
   selector: 'app-survey-detail-page',
@@ -46,6 +47,8 @@ import { SurveyService, SurveySummary } from '../../core/services/survey.service
 })
 export class SurveyDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly api = inject(SurveyService);
   private readonly customersApi = inject(CustomerService);
   private readonly auth = inject(AuthService);
@@ -68,6 +71,10 @@ export class SurveyDetailPageComponent implements OnInit {
 
   /** answer controls keyed by question id */
   answerControls: Record<number, FormControl<string | number | null>> = {};
+
+  goBack(): void {
+    navigateBack(this.location, this.router, '/app/surveys');
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));

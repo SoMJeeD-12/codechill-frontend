@@ -1,7 +1,7 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,12 +25,14 @@ import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
+import { navigateBack } from '../../core/utils/navigation.util';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 
 @Component({
   selector: 'app-ticket-detail-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
+    BahtPipe,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -47,6 +49,8 @@ import { UserService } from '../../core/services/user.service';
 })
 export class TicketDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
@@ -74,6 +78,10 @@ export class TicketDetailPageComponent implements OnInit {
     result: ['SUCCESS' as ResolutionResult],
     resolvedByUserId: [0, Validators.min(1)],
   });
+
+  goBack(): void {
+    navigateBack(this.location, this.router, '/app/tickets');
+  }
 
   ngOnInit(): void {
     this.ticketId = Number(this.route.snapshot.paramMap.get('id'));

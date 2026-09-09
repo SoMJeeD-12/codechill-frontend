@@ -1,14 +1,20 @@
 @if (notFound()) {
   <mat-card class="missing">
     <h1>ไม่พบลูกค้า</h1>
-    <a mat-button routerLink="/app/customers">กลับหน้ารายชื่อ</a>
+    <a mat-button type="button" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      กลับหน้ารายชื่อ
+    </a>
   </mat-card>
 } @else {
   @if (customer(); as c) {
   <section class="page">
     <header class="page-header">
       <div>
-        <a routerLink="/app/customers" class="back">← รายชื่อลูกค้า</a>
+        <button type="button" class="back" (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+          กลับ
+        </button>
         <p class="eyebrow">M1 · Customer 360</p>
         <h1>{{ c.name }}</h1>
         <p class="subtitle">
@@ -42,12 +48,16 @@
       </mat-card>
     </div>
 
-    <mat-tab-group animationDuration="150ms">
+    <mat-tab-group
+      animationDuration="150ms"
+      [selectedIndex]="selectedTab()"
+      (selectedIndexChange)="onTabChange($event)"
+    >
       <mat-tab label="ผู้ติดต่อ">
         <div class="tab-body">
           <div class="list">
             @for (contact of contacts(); track contact.id) {
-              <div class="item">
+              <div class="item" [class.editing]="editingContactId() === contact.id">
                 <div>
                   <strong>
                     {{ contact.name }}
@@ -60,9 +70,14 @@
                   </strong>
                   <p>{{ contact.position || 'ไม่ระบุตำแหน่ง' }} · {{ contact.phone || '—' }} · {{ contact.email || '—' }}</p>
                 </div>
-                <button mat-icon-button type="button" color="warn" (click)="removeContact(contact)">
-                  <mat-icon>delete</mat-icon>
-                </button>
+                <div class="item-actions">
+                  <button mat-icon-button type="button" (click)="startEditContact(contact)" aria-label="แก้ไขผู้ติดต่อ">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" color="warn" (click)="removeContact(contact)" aria-label="ลบผู้ติดต่อ">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
               </div>
             } @empty {
               <p class="empty">ยังไม่มีผู้ติดต่อ</p>
@@ -70,7 +85,7 @@
           </div>
 
           <mat-card class="form-card">
-            <h3>เพิ่มผู้ติดต่อ</h3>
+            <h3>{{ editingContactId() ? 'แก้ไขผู้ติดต่อ' : 'เพิ่มผู้ติดต่อ' }}</h3>
             <form [formGroup]="contactForm" (ngSubmit)="saveContact()" class="form">
               <div class="row">
                 <mat-form-field appearance="outline">
@@ -107,7 +122,14 @@
                 <textarea matInput rows="2" formControlName="note"></textarea>
               </mat-form-field>
               <mat-checkbox formControlName="isPrimary">ตั้งเป็นผู้ติดต่อหลัก</mat-checkbox>
-              <button mat-flat-button color="primary" type="submit">บันทึกผู้ติดต่อ</button>
+              <div class="form-actions">
+                @if (editingContactId()) {
+                  <button mat-stroked-button type="button" (click)="cancelEditContact()">ยกเลิก</button>
+                }
+                <button mat-flat-button color="primary" type="submit">
+                  {{ editingContactId() ? 'บันทึกการแก้ไข' : 'บันทึกผู้ติดต่อ' }}
+                </button>
+              </div>
             </form>
           </mat-card>
         </div>
@@ -117,7 +139,7 @@
         <div class="tab-body">
           <div class="list">
             @for (log of logs(); track log.id) {
-              <div class="item log">
+              <div class="item log" [class.editing]="editingLogId() === log.id">
                 <div>
                   <strong>
                     {{ channelLabels[log.channel] }} · {{ log.occurredAt | date: 'd MMM y HH:mm' }}
@@ -133,6 +155,14 @@
                     }
                   </small>
                 </div>
+                <div class="item-actions">
+                  <button mat-icon-button type="button" (click)="startEditLog(log)" aria-label="แก้ไขประวัติการติดต่อ">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" color="warn" (click)="removeLog(log)" aria-label="ลบประวัติการติดต่อ">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
               </div>
             } @empty {
               <p class="empty">ยังไม่มีประวัติการติดต่อ</p>
@@ -140,7 +170,7 @@
           </div>
 
           <mat-card class="form-card">
-            <h3>บันทึกการติดต่อ</h3>
+            <h3>{{ editingLogId() ? 'แก้ไขประวัติการติดต่อ' : 'บันทึกการติดต่อ' }}</h3>
             <form [formGroup]="logForm" (ngSubmit)="saveLog()" class="form">
               <div class="row">
                 <mat-form-field appearance="outline">
@@ -181,7 +211,14 @@
                 <mat-label>สรุปการคุย</mat-label>
                 <textarea matInput rows="3" formControlName="content"></textarea>
               </mat-form-field>
-              <button mat-flat-button color="primary" type="submit">บันทึกประวัติ</button>
+              <div class="form-actions">
+                @if (editingLogId()) {
+                  <button mat-stroked-button type="button" (click)="cancelEditLog()">ยกเลิก</button>
+                }
+                <button mat-flat-button color="primary" type="submit">
+                  {{ editingLogId() ? 'บันทึกการแก้ไข' : 'บันทึกประวัติ' }}
+                </button>
+              </div>
             </form>
           </mat-card>
         </div>

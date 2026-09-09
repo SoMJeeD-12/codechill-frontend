@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -23,12 +23,13 @@ import { CustomerService } from '../../core/services/customer.service';
 import { MaContractInput, MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 
 @Component({
   selector: 'app-ma-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
+    BahtPipe,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -124,6 +125,8 @@ export class MaPageComponent implements OnInit {
   }
 }
 
+import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+
 @Component({
   selector: 'app-ma-form-dialog',
   standalone: true,
@@ -136,6 +139,7 @@ export class MaPageComponent implements OnInit {
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    MoneyInputDirective,
   ],
   templateUrl: './ma-form-dialog.component.html',
   styleUrl: './ma-form-dialog.component.scss',

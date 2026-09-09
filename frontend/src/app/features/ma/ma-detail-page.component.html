@@ -1,14 +1,20 @@
 @if (notFound()) {
   <mat-card class="missing">
     <h1>ไม่พบสัญญา MA</h1>
-    <a mat-button routerLink="/app/ma">กลับรายการสัญญา</a>
+    <a mat-button type="button" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      กลับรายการสัญญา
+    </a>
   </mat-card>
 } @else {
   @if (contract(); as c) {
   <section class="page">
     <header class="page-header">
       <div>
-        <a routerLink="/app/ma" class="back">← รายการสัญญา MA</a>
+        <button type="button" class="back" (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+          กลับ
+        </button>
         <p class="eyebrow">M6 · รายละเอียดสัญญา</p>
         <h1>{{ c.contractNo }}</h1>
         <p class="subtitle">
@@ -36,7 +42,7 @@
       </mat-card>
       <mat-card>
         <strong>ค่าบริการ/ปี</strong>
-        <span>{{ c.annualFee | currency: 'THB':'symbol':'1.0-0' }}</span>
+        <span>{{ c.annualFee | baht }}</span>
       </mat-card>
     </div>
 
@@ -72,7 +78,7 @@
           </ng-container>
           <ng-container matColumnDef="price">
             <th mat-header-cell *matHeaderCellDef>ราคา/หน่วย</th>
-            <td mat-cell *matCellDef="let row">{{ row.unitPrice | currency: 'THB':'symbol':'1.0-0' }}</td>
+            <td mat-cell *matCellDef="let row">{{ row.unitPrice | baht }}</td>
           </ng-container>
           <ng-container matColumnDef="purchasedAt">
             <th mat-header-cell *matHeaderCellDef>ซื้อเมื่อ</th>
@@ -100,7 +106,7 @@
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>ราคา/หน่วย</mat-label>
-              <input matInput type="number" formControlName="unitPrice" />
+              <input matInput appMoneyInput formControlName="unitPrice" inputmode="decimal" />
             </mat-form-field>
           </div>
           <button mat-flat-button color="primary" type="submit">บันทึก Add-on</button>

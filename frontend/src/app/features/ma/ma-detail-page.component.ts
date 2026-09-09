@@ -1,7 +1,7 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,12 +14,16 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
+import { navigateBack } from '../../core/utils/navigation.util';
+import { formatMoneyDisplay } from '../../core/utils/money.util';
+import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 
 @Component({
   selector: 'app-ma-detail-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
+    BahtPipe,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -30,12 +34,15 @@ import { ProjectService } from '../../core/services/project.service';
     MatFormFieldModule,
     MatInputModule,
     MatSnackBarModule,
+    MoneyInputDirective,
   ],
   templateUrl: './ma-detail-page.component.html',
   styleUrl: './ma-detail-page.component.scss',
 })
 export class MaDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly api = inject(MaService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
@@ -58,6 +65,10 @@ export class MaDetailPageComponent implements OnInit {
     quantity: [1, [Validators.required, Validators.min(1)]],
     unitPrice: [0, Validators.min(0)],
   });
+
+  goBack(): void {
+    navigateBack(this.location, this.router, '/app/ma');
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -129,11 +140,11 @@ export class MaDetailPageComponent implements OnInit {
     const addonLines = this.addons()
       .map(
         (a) =>
-          `<tr><td>${a.name}</td><td>${a.quantity}</td><td>${a.unitPrice.toLocaleString('th-TH')}</td><td>${(
+          `<tr><td>${a.name}</td><td>${a.quantity}</td><td>${formatMoneyDisplay(a.unitPrice)}</td><td>${formatMoneyDisplay(
             a.quantity * a.unitPrice
-          ).toLocaleString('th-TH')}</td></tr>`
-      )
-      .join('');
+          )}</td></tr>`
+        )
+        .join('');
     const addonTotal = this.addons().reduce((sum, a) => sum + a.quantity * a.unitPrice, 0);
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งค่าบริการ ${c.contractNo}</title>
 <style>
@@ -150,10 +161,10 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <table>
 <thead><tr><th>รายการ</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
 <tbody>
-<tr><td>ค่าบริการ MA ประจำปี</td><td>1</td><td>${c.annualFee.toLocaleString('th-TH')}</td><td>${c.annualFee.toLocaleString('th-TH')}</td></tr>
+<tr><td>ค่าบริการ MA ประจำปี</td><td>1</td><td>${formatMoneyDisplay(c.annualFee)}</td><td>${formatMoneyDisplay(c.annualFee)}</td></tr>
 ${addonLines}
 </tbody></table>
-<p class="total">รวมทั้งสิ้น ${(c.annualFee + addonTotal).toLocaleString('th-TH')} บาท</p>
+<p class="total">รวมทั้งสิ้น ${formatMoneyDisplay(c.annualFee + addonTotal)} บาท</p>
 <p class="muted">เอกสารจำลองสำหรับพรีวิว — ไม่ใช่ใบกำกับภาษีจริง</p>
 <button onclick="window.print()">พิมพ์</button>
 </body></html>`;
