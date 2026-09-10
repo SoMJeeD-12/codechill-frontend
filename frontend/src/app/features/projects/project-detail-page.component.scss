@@ -161,86 +161,66 @@
   font-weight: 700;
 }
 
-.delivery-wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 1rem;
+.delivery-panel {
   padding: 1rem 0 1.5rem;
   min-width: 0;
 }
 
-.side-form {
-  padding: 1rem;
-  border-radius: 12px;
-  align-self: start;
-
-  h3 { margin: 0 0 0.75rem; font-size: 1rem; }
-}
-
-.form { display: grid; gap: 0.35rem; }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
-.full { width: 100%; }
-
-.list {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-.delivery-item {
-  display: block;
-  box-sizing: border-box;
-  padding: 0.9rem 1rem;
-  border-radius: 10px;
-  flex: 0 0 auto;
-  width: fit-content;
-  min-width: min(100%, 22rem);
-  max-width: 100%;
-  overflow: hidden;
-
-  strong {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  p {
-    margin: 0.35rem 0 0;
-    color: #5b6762;
-    font-size: 0.9rem;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  small {
-    display: block;
-    margin-top: 0.35rem;
-    color: #5b6762;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-}
-
-.delivery-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.accept {
-  width: 160px;
-  flex-shrink: 0;
+.tab-heading {
   margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1c2b28;
+  flex: 0 0 auto;
+}
+
+.tab-toolbar {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.75rem;
+
+  .ui-search {
+    flex: 1 1 220px;
+    max-width: 420px;
+  }
+
+  .ui-add-btn {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+}
+
+.muted {
+  color: #5b6762;
+  font-size: 0.8rem;
+  font-weight: 400;
+  margin-top: 0.1rem;
+}
+
+.data-table .row-actions {
+  white-space: nowrap;
+  width: 1%;
+  text-align: right;
+}
+
+.accept-badge {
+  &[data-acceptance='PENDING'] {
+    background: #fff7ed;
+    color: #c2410c;
+    border-color: #fed7aa;
+  }
+
+  &[data-acceptance='ACCEPTED'] {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
+  }
+
+  &[data-acceptance='REJECTED'] {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+  }
 }
 
 .missing { max-width: 480px; padding: 1.5rem; text-align: center; }
-
-@media (max-width: 1100px) {
-  .delivery-wrap { grid-template-columns: 1fr; }
-}

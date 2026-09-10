@@ -9,13 +9,14 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
   margin-bottom: 1.5rem;
   min-width: 0;
 
-  > div {
+  > div:first-child {
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 1 1 16rem;
   }
 
   h1 {
@@ -30,6 +31,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-left: auto;
+
+  a,
+  button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 }
 
 .eyebrow {
@@ -534,11 +544,19 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   .page-header {
     flex-direction: column;
+    align-items: stretch;
   }
 
+  .header-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
   .stat-grid,
   .stat-grid--exec {
     grid-template-columns: 1fr;
