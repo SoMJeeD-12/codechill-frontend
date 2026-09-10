@@ -72,7 +72,9 @@
         <mat-label>ความสำคัญ</mat-label>
         <mat-select formControlName="priority">
           @for (pr of priorities; track pr) {
-            <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
+            <mat-option [value]="pr">
+              <span class="priority-badge" [attr.data-priority]="pr">{{ priorityLabels[pr] }}</span>
+            </mat-option>
           }
         </mat-select>
       </mat-form-field>

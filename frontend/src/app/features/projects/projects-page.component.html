@@ -64,7 +64,11 @@
         </ng-container>
         <ng-container matColumnDef="priority">
           <th mat-header-cell *matHeaderCellDef>ความสำคัญ</th>
-          <td mat-cell *matCellDef="let row">{{ priorityLabel(row.priority) }}</td>
+          <td mat-cell *matCellDef="let row">
+            <span class="priority-badge" [attr.data-priority]="row.priority">
+              {{ priorityLabel(row.priority) }}
+            </span>
+          </td>
         </ng-container>
         <ng-container matColumnDef="targetEndDate">
           <th mat-header-cell *matHeaderCellDef>กำหนดส่ง</th>

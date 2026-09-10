@@ -35,7 +35,7 @@ import {
   followUpDisplayStatus,
 } from '../../core/models/follow-up.model';
 import { CustomerLifetimeValue, formatCompleteness } from '../../core/models/report.model';
-import { TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
+import { TICKET_PRIORITY_LABELS, TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
 import {
   WARRANTY_STATUS_LABELS,
   Warranty,
@@ -105,6 +105,7 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly channelLabels = CHANNEL_LABELS;
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;
   readonly ticketStatusLabels = TICKET_STATUS_LABELS;
+  readonly ticketPriorityLabels = TICKET_PRIORITY_LABELS;
   readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
   readonly maStatusLabels = MA_STATUS_LABELS;
   readonly notFound = signal(false);
@@ -234,7 +235,7 @@ export class CustomerDetailPageComponent implements OnInit {
       return list;
     }
     return list.filter((t) =>
-      [t.ticketNo, t.title, this.ticketStatusLabels[t.status], t.priority]
+      [t.ticketNo, t.title, this.ticketStatusLabels[t.status], this.ticketPriorityLabels[t.priority]]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -278,6 +279,10 @@ export class CustomerDetailPageComponent implements OnInit {
 
   ticketStatusLabel(status: Ticket['status']): string {
     return this.ticketStatusLabels[status];
+  }
+
+  ticketPriorityLabel(priority: Ticket['priority']): string {
+    return this.ticketPriorityLabels[priority];
   }
 
   goBack(): void {

@@ -110,28 +110,6 @@
   }
 }
 
-.priority-badge {
-  &[data-priority='URGENT'] {
-    background: #fef2f2;
-    color: #b91c1c;
-  }
-
-  &[data-priority='HIGH'] {
-    background: #fff7ed;
-    color: #c2410c;
-  }
-
-  &[data-priority='NORMAL'] {
-    background: #eff6ff;
-    color: #1d4ed8;
-  }
-
-  &[data-priority='LOW'] {
-    background: #f1f5f4;
-    color: #5b6762;
-  }
-}
-
 .assignee-badge {
   max-width: 11.5rem;
   background: #eef6f4;

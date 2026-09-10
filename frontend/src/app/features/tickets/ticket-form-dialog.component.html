@@ -34,7 +34,9 @@
         <mat-label>ความเร่งด่วน</mat-label>
         <mat-select formControlName="priority">
           @for (p of priorities; track p) {
-            <mat-option [value]="p">{{ priorityLabels[p] }}</mat-option>
+            <mat-option [value]="p">
+              <span class="priority-badge" [attr.data-priority]="p">{{ priorityLabels[p] }}</span>
+            </mat-option>
           }
         </mat-select>
       </mat-form-field>

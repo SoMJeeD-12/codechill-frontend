@@ -73,7 +73,7 @@ export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
 
 export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
   LOW: 'ต่ำ',
-  NORMAL: 'ปกติ',
+  NORMAL: 'ปานกลาง',
   HIGH: 'สูง',
   URGENT: 'ด่วนมาก',
 };

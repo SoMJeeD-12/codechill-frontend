@@ -229,6 +229,66 @@
   text-align: right;
 }
 
+/* ความสำคัญ — สีเดียวกันทั้งระบบ */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  max-width: 100%;
+  padding: 0.28rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  vertical-align: middle;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin-right: -0.1rem;
+    opacity: 0.75;
+  }
+
+  /* ต่ำ = เขียว */
+  &[data-priority='LOW'] {
+    background: #ecfdf5;
+    color: #15803d;
+  }
+
+  /* ปานกลาง = เหลือง */
+  &[data-priority='NORMAL'] {
+    background: #fef9c3;
+    color: #a16207;
+  }
+
+  /* สูง = ส้ม */
+  &[data-priority='HIGH'] {
+    background: #ffedd5;
+    color: #c2410c;
+  }
+
+  /* ด่วนมาก = แดง */
+  &[data-priority='URGENT'] {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  &.is-editable {
+    cursor: pointer;
+    padding-right: 0.45rem;
+    transition: filter 0.12s ease, box-shadow 0.12s ease;
+
+    &:hover {
+      filter: brightness(0.97);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+    }
+  }
+}
+
 @media (max-width: 640px) {
   .ui-add-btn {
     width: 100%;
