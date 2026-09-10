@@ -72,18 +72,40 @@
           <th mat-header-cell *matHeaderCellDef>สถานะ</th>
           <td mat-cell *matCellDef="let row">
             @if (row.accountType === 'SUPER_ADMIN') {
-              <span class="status" data-status="ACTIVE">{{ statusLabel(row.status) }}</span>
+              <span class="status-badge" [attr.data-status]="row.status">
+                {{ statusLabel(row.status) }}
+              </span>
             } @else {
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="status-select">
-                <mat-select
-                  [value]="row.status"
-                  (selectionChange)="setStatus(row, $event.value)"
-                >
-                  <mat-option value="ACTIVE">ปฏิบัติงาน</mat-option>
-                  <mat-option value="SUSPENDED">พักงาน</mat-option>
-                  <mat-option value="RESIGNED">สิ้นสุดการปฏิบัติงาน</mat-option>
-                </mat-select>
-              </mat-form-field>
+              <button
+                type="button"
+                class="status-badge is-editable"
+                [attr.data-status]="row.status"
+                [matMenuTriggerFor]="statusMenu"
+                matTooltip="เปลี่ยนสถานะ"
+              >
+                {{ statusLabel(row.status) }}
+                <mat-icon>expand_more</mat-icon>
+              </button>
+              <mat-menu #statusMenu="matMenu">
+                <button mat-menu-item type="button" (click)="setStatus(row, 'ACTIVE')">
+                  @if (row.status === 'ACTIVE') {
+                    <mat-icon>check</mat-icon>
+                  }
+                  <span>ปฏิบัติงาน</span>
+                </button>
+                <button mat-menu-item type="button" (click)="setStatus(row, 'SUSPENDED')">
+                  @if (row.status === 'SUSPENDED') {
+                    <mat-icon>check</mat-icon>
+                  }
+                  <span>พักงาน</span>
+                </button>
+                <button mat-menu-item type="button" (click)="setStatus(row, 'RESIGNED')">
+                  @if (row.status === 'RESIGNED') {
+                    <mat-icon>check</mat-icon>
+                  }
+                  <span>สิ้นสุดการปฏิบัติงาน</span>
+                </button>
+              </mat-menu>
             }
           </td>
         </ng-container>

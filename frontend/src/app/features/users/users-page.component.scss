@@ -63,9 +63,52 @@
   }
 }
 
-.status-select {
-  width: 170px;
-  margin: 0.35rem 0;
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  max-width: 100%;
+  padding: 0.28rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin-right: -0.15rem;
+  }
+
+  &[data-status='ACTIVE'] {
+    background: #ecfdf5;
+    color: #0f766e;
+  }
+
+  &[data-status='SUSPENDED'] {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+
+  &[data-status='RESIGNED'] {
+    background: #f1f5f4;
+    color: #5b6762;
+  }
+
+  &.is-editable {
+    cursor: pointer;
+    transition: filter 0.12s ease, box-shadow 0.12s ease;
+
+    &:hover {
+      filter: brightness(0.97);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+    }
+  }
 }
 
 .actions {

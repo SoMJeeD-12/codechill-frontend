@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import {
   DOCUMENT_CATEGORY_LABELS,
   DocumentCategory,
@@ -104,14 +105,16 @@ function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: str
   standalone: true,
   imports: [
     ThaiDatePipe,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
+    MatInputModule,
     MatTableModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatAutocompleteModule,
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
@@ -132,9 +135,26 @@ export class DocumentsPageComponent implements OnInit {
   readonly projectFilter = signal<number | 'ALL'>('ALL');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
+  /** ข้อความในช่องกรองโครงการ (พิมพ์ค้นหาได้) */
+  readonly projectFilterControl = this.fb.control<string | number | 'ALL'>('ALL');
+  readonly projectSearch = signal('');
   readonly categoryLabels = DOCUMENT_CATEGORY_LABELS;
   readonly projects = this.projectsApi.projects;
   readonly columns = ['title', 'project', 'category', 'file', 'version', 'updatedAt', 'actions'];
+
+  readonly filteredProjects = computed(() => {
+    const q = this.projectSearch().trim().toLowerCase();
+    const list = this.projects();
+    if (!q) {
+      return list;
+    }
+    return list.filter(
+      (p) =>
+        (p.code ?? '').toLowerCase().includes(q) ||
+        (p.name ?? '').toLowerCase().includes(q) ||
+        String(p.id).includes(q)
+    );
+  });
 
   readonly filtered = computed(() => {
     const filter = this.projectFilter();
@@ -169,6 +189,18 @@ export class DocumentsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
+    this.projectFilterControl.valueChanges.subscribe((v) => {
+      if (typeof v === 'number' || v === 'ALL') {
+        this.projectSearch.set('');
+        return;
+      }
+      const text = String(v ?? '').trim();
+      if (!text || text === 'ทั้งหมด') {
+        this.projectSearch.set('');
+        return;
+      }
+      this.projectSearch.set(text);
+    });
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.projectsApi.listProjects().subscribe({
       next: (projects) => {
@@ -184,6 +216,53 @@ export class DocumentsPageComponent implements OnInit {
       },
       error: () => this.reload(),
     });
+  }
+
+  readonly displayProjectFilter = (value: unknown): string => {
+    if (value === 'ALL' || value == null || value === '') {
+      return value === 'ALL' ? 'ทั้งหมด' : '';
+    }
+    if (typeof value === 'number') {
+      const p = this.projectsApi.getProject(value);
+      return p ? `${p.code ?? ''} · ${p.name}` : `#${value}`;
+    }
+    return String(value);
+  };
+
+  onProjectFilterFocus(): void {
+    this.projectFilterControl.setValue('');
+    this.projectSearch.set('');
+  }
+
+  /** Material ใส่ class ผ่าน [class] — บังคับซ้ำตอนเปิดแผงเพื่อซ่อนสกอลล์บาร์ */
+  onProjectFilterPanelOpened(): void {
+    requestAnimationFrame(() => {
+      document
+        .querySelectorAll('.cdk-overlay-container .mat-mdc-autocomplete-panel')
+        .forEach((node) => {
+          const el = node as HTMLElement;
+          el.classList.add('project-filter-auto-panel');
+          el.style.setProperty('scrollbar-width', 'none');
+          el.style.setProperty('-ms-overflow-style', 'none');
+        });
+    });
+  }
+
+  onProjectFilterBlur(): void {
+    queueMicrotask(() => {
+      this.projectFilterControl.setValue(this.projectFilter() as never, { emitEvent: false });
+      this.projectSearch.set('');
+    });
+  }
+
+  onProjectFilterSelected(event: MatAutocompleteSelectedEvent): void {
+    const value = event.option.value as number | 'ALL';
+    this.projectFilter.set(value);
+    this.projectSearch.set('');
+  }
+
+  projectFilterLabel(): string {
+    return this.displayProjectFilter(this.projectFilter()) || 'ทั้งหมด';
   }
 
   reload(): void {

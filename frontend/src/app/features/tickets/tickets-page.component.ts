@@ -215,7 +215,13 @@ export class TicketFormDialogComponent {
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<TicketFormDialogComponent, boolean>);
-  readonly data = inject<Ticket | null>(MAT_DIALOG_DATA, { optional: true }) ?? null;
+  readonly data = inject<Ticket | { customerId: number } | null>(MAT_DIALOG_DATA, {
+    optional: true,
+  }) ?? null;
+  private readonly ticket: Ticket | null =
+    this.data && typeof this.data === 'object' && 'ticketNo' in this.data
+      ? (this.data as Ticket)
+      : null;
 
   readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
@@ -228,7 +234,7 @@ export class TicketFormDialogComponent {
   readonly priorities = Object.keys(TICKET_PRIORITY_LABELS) as TicketPriority[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data;
+  readonly isEdit = !!this.ticket;
   /** ผู้รับเรื่อง — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN */
   readonly canChangeReceiver = this.auth.isAdminLevel();
   /** ผู้รับผิดชอบ — ตามสิทธิ์ ticket.assign ในบทบาท */
@@ -236,32 +242,35 @@ export class TicketFormDialogComponent {
 
   readonly form = this.fb.group({
     customerId: [
-      { value: this.data?.customerId ?? 0, disabled: !!this.data },
+      {
+        value: this.ticket?.customerId ?? (this.data && 'customerId' in this.data ? this.data.customerId : 0),
+        disabled: !!this.ticket,
+      },
       Validators.min(1),
     ],
-    projectId: [this.data?.projectId ?? (null as number | null)],
-    title: [this.data?.title ?? '', Validators.required],
-    description: [this.data?.description ?? ''],
-    priority: [(this.data?.priority ?? 'NORMAL') as TicketPriority],
-    billingType: [(this.data?.billingType ?? 'WARRANTY') as BillingType],
-    reportedChannel: [(this.data?.reportedChannel ?? 'PHONE') as ReportedChannel],
+    projectId: [this.ticket?.projectId ?? (null as number | null)],
+    title: [this.ticket?.title ?? '', Validators.required],
+    description: [this.ticket?.description ?? ''],
+    priority: [(this.ticket?.priority ?? 'NORMAL') as TicketPriority],
+    billingType: [(this.ticket?.billingType ?? 'WARRANTY') as BillingType],
+    reportedChannel: [(this.ticket?.reportedChannel ?? 'PHONE') as ReportedChannel],
     reportedDate: [
-      (this.data ? parseDateOnly(this.data.reportedAt) : new Date()) as Date | null,
+      (this.ticket ? parseDateOnly(this.ticket.reportedAt) : new Date()) as Date | null,
       Validators.required,
     ],
     reportedTime: [
-      this.data ? toTimeString(this.data.reportedAt) : nowTimeString(),
+      this.ticket ? toTimeString(this.ticket.reportedAt) : nowTimeString(),
       Validators.required,
     ],
     receivedByUserId: [
       {
-        value: this.data?.receivedByUserId ?? (null as number | null),
+        value: this.ticket?.receivedByUserId ?? (null as number | null),
         disabled: !this.auth.isAdminLevel(),
       },
     ],
     assignedUserId: [
       {
-        value: this.data?.assignedUserId ?? (null as number | null),
+        value: this.ticket?.assignedUserId ?? (null as number | null),
         disabled: !this.auth.hasPermissionCode('ticket.assign'),
       },
     ],
@@ -269,11 +278,16 @@ export class TicketFormDialogComponent {
 
   constructor() {
     const me = this.auth.currentUser();
-    if (!this.data) {
+    if (!this.isEdit) {
+      const preset =
+        this.data && 'customerId' in this.data ? this.data.customerId : null;
       this.form.patchValue({
         receivedByUserId: me?.id ?? null,
-        customerId: this.customers()[0]?.id ?? 0,
+        customerId: preset ?? this.customers()[0]?.id ?? 0,
       });
+      if (preset) {
+        this.form.controls.customerId.disable({ emitEvent: false });
+      }
     } else {
       if (!this.canChangeReceiver) {
         this.form.get('receivedByUserId')?.disable({ emitEvent: false });
@@ -317,7 +331,7 @@ export class TicketFormDialogComponent {
     this.saving.set(true);
     this.error.set(null);
 
-    if (this.data) {
+    if (this.isEdit && this.ticket) {
       const update: TicketUpdateInput = {
         title: payload.title,
         description: payload.description,
@@ -329,7 +343,7 @@ export class TicketFormDialogComponent {
         receivedByUserId: payload.receivedByUserId,
         assignedUserId: payload.assignedUserId,
       };
-      this.ticketsApi.update(this.data.id, update).subscribe({
+      this.ticketsApi.update(this.ticket.id, update).subscribe({
         next: () => {
           this.saving.set(false);
           this.snack.open('แก้ไขปัญหาแล้ว', 'ปิด', { duration: 2800 });

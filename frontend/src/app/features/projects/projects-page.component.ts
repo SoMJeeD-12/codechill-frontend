@@ -191,7 +191,7 @@ export class ProjectFormDialogComponent {
   private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<ProjectFormDialogComponent, boolean>);
-  readonly data = inject<{ project: Project | null }>(MAT_DIALOG_DATA);
+  readonly data = inject<{ project: Project | null; customerId?: number }>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
@@ -223,9 +223,12 @@ export class ProjectFormDialogComponent {
     this.customersApi.listCustomers().subscribe({
       next: () => {
         if (!this.data.project) {
-          const first = this.customers()[0];
-          if (first && !this.form.value.customerId) {
-            this.form.patchValue({ customerId: first.id });
+          const preferred = this.data.customerId ?? this.customers()[0]?.id;
+          if (preferred && !this.form.value.customerId) {
+            this.form.patchValue({ customerId: preferred });
+          }
+          if (this.data.customerId) {
+            this.form.controls.customerId.disable({ emitEvent: false });
           }
         }
       },

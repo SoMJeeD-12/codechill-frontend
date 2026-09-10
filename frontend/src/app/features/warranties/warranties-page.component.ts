@@ -192,7 +192,7 @@ export class WarrantyFormDialogComponent {
   private readonly projectsApi = inject(ProjectService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<WarrantyFormDialogComponent, boolean>);
-  readonly data = inject<Warranty | null>(MAT_DIALOG_DATA);
+  readonly data = inject<Warranty | { customerId: number } | null>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
   readonly projects = this.projectsApi.projects;
@@ -201,22 +201,46 @@ export class WarrantyFormDialogComponent {
   readonly statuses = Object.keys(WARRANTY_STATUS_LABELS) as WarrantyStatus[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data;
+  readonly isEdit = !!(this.data && 'id' in this.data && this.data.id);
 
   readonly form = this.fb.group({
-    customerId: [this.data?.project?.customerId ?? 0, Validators.min(1)],
-    projectId: [this.data?.projectId ?? (null as number | null), Validators.required],
-    deliveryId: [this.data?.deliveryId ?? (null as number | null), Validators.required],
-    durationMonth: [this.data?.durationMonth ?? 12, [Validators.required, Validators.min(1), Validators.max(120)]],
-    status: [(this.data?.status ?? 'ACTIVE') as WarrantyStatus],
-    scopeNote: [this.data?.scopeNote ?? ''],
+    customerId: [
+      this.data && 'project' in this.data
+        ? (this.data.project?.customerId ?? 0)
+        : this.data && 'customerId' in this.data
+          ? this.data.customerId
+          : 0,
+      Validators.min(1),
+    ],
+    projectId: [
+      this.data && 'projectId' in this.data ? this.data.projectId : (null as number | null),
+      Validators.required,
+    ],
+    deliveryId: [
+      this.data && 'deliveryId' in this.data ? this.data.deliveryId : (null as number | null),
+      Validators.required,
+    ],
+    durationMonth: [
+      this.data && 'durationMonth' in this.data ? this.data.durationMonth : 12,
+      [Validators.required, Validators.min(1), Validators.max(120)],
+    ],
+    status: [
+      (this.data && 'status' in this.data ? this.data.status : 'ACTIVE') as WarrantyStatus,
+    ],
+    scopeNote: [this.data && 'scopeNote' in this.data ? (this.data.scopeNote ?? '') : ''],
   });
 
   constructor() {
-    if (!this.data) {
-      const first = this.customers()[0];
-      if (first) {
-        this.form.patchValue({ customerId: first.id });
+    if (!this.isEdit) {
+      const preset =
+        this.data && 'customerId' in this.data && !('id' in this.data)
+          ? this.data.customerId
+          : this.customers()[0]?.id;
+      if (preset) {
+        this.form.patchValue({ customerId: preset });
+      }
+      if (this.data && 'customerId' in this.data && !('id' in this.data)) {
+        this.form.controls.customerId.disable({ emitEvent: false });
       }
     } else {
       this.form.controls.customerId.disable();
@@ -263,7 +287,7 @@ export class WarrantyFormDialogComponent {
     this.saving.set(true);
     this.error.set(null);
 
-    if (this.data) {
+    if (this.isEdit && this.data && 'id' in this.data) {
       const payload: WarrantyUpdateInput = {
         durationMonth: Number(raw.durationMonth),
         status: (raw.status as WarrantyStatus) ?? 'ACTIVE',

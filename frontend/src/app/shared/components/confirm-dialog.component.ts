@@ -13,6 +13,8 @@ export interface ConfirmDialogData {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** ซ่อนปุ่มยกเลิก — ใช้โหมดดูรายละเอียด */
+  hideCancel?: boolean;
 }
 
 @Component({
@@ -25,16 +27,18 @@ export interface ConfirmDialogData {
       <p class="message">{{ data.message }}</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" mat-dialog-close>
-        {{ data.cancelLabel || 'ยกเลิก' }}
-      </button>
+      @if (!data.hideCancel) {
+        <button mat-button type="button" mat-dialog-close>
+          {{ data.cancelLabel || 'ยกเลิก' }}
+        </button>
+      }
       <button
         mat-flat-button
         type="button"
-        class="confirm-danger"
+        [class.confirm-danger]="!data.hideCancel"
         [mat-dialog-close]="true"
       >
-        {{ data.confirmLabel || 'ลบ' }}
+        {{ data.confirmLabel || (data.hideCancel ? 'ปิด' : 'ลบ') }}
       </button>
     </mat-dialog-actions>
   `,

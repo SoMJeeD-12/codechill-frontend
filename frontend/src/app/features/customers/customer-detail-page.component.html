@@ -58,285 +58,419 @@
       (selectedIndexChange)="onTabChange($event)"
     >
       <mat-tab label="ผู้ติดต่อ">
-        <div class="tab-body">
-          <div class="list">
-            @for (contact of contacts(); track contact.id) {
-              <div class="item" [class.editing]="editingContactId() === contact.id">
-                <div>
-                  <strong>
-                    {{ contact.name }}
-                    @if (contact.nickname) {
-                      <span class="muted">({{ contact.nickname }})</span>
-                    }
-                    @if (contact.isPrimary) {
-                      <span class="primary-tag">หลัก</span>
-                    }
-                  </strong>
-                  <p>{{ contact.position || 'ไม่ระบุตำแหน่ง' }} · {{ contact.phone || '—' }} · {{ contact.email || '—' }}</p>
-                </div>
-                <div class="item-actions">
-                  <button mat-icon-button type="button" (click)="startEditContact(contact)" aria-label="แก้ไขผู้ติดต่อ">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button type="button" color="warn" (click)="removeContact(contact)" aria-label="ลบผู้ติดต่อ">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-              </div>
-            } @empty {
-              <p class="empty">ยังไม่มีผู้ติดต่อ</p>
-            }
-          </div>
-
-          <mat-card class="form-card">
-            <h3>{{ editingContactId() ? 'แก้ไขผู้ติดต่อ' : 'เพิ่มผู้ติดต่อ' }}</h3>
-            <form [formGroup]="contactForm" (ngSubmit)="saveContact()" class="form">
-              <div class="row">
-                <mat-form-field appearance="outline">
-                  <mat-label>ชื่อ-นามสกุล</mat-label>
-                  <input matInput formControlName="name" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>ชื่อเล่น</mat-label>
-                  <input matInput formControlName="nickname" />
-                </mat-form-field>
-              </div>
-              <div class="row">
-                <mat-form-field appearance="outline">
-                  <mat-label>ตำแหน่ง</mat-label>
-                  <input matInput formControlName="position" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>โทรศัพท์</mat-label>
+        <div class="tab-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">ผู้ติดต่อ</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
                   <input
-                    matInput
-                    appPhoneInput
-                    formControlName="phone"
-                    type="tel"
-                    inputmode="numeric"
-                    maxlength="10"
-                    placeholder="เช่น 0921234567"
+                    type="search"
+                    [formControl]="contactSearchControl"
+                    placeholder="ค้นหาชื่อ / เบอร์ / อีเมล / LINE"
+                    aria-label="ค้นหาผู้ติดต่อ"
                   />
-                  @if (contactForm.controls.phone.hasError('thaiPhone')) {
-                    <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก (เช่น 0921234567)</mat-error>
-                  }
-                </mat-form-field>
-              </div>
-              <div class="row">
-                <mat-form-field appearance="outline">
-                  <mat-label>อีเมล</mat-label>
-                  <input matInput formControlName="email" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>LINE ID</mat-label>
-                  <input matInput formControlName="lineId" />
-                </mat-form-field>
-              </div>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>หมายเหตุ</mat-label>
-                <textarea matInput rows="2" formControlName="note"></textarea>
-              </mat-form-field>
-              <mat-checkbox formControlName="isPrimary">ตั้งเป็นผู้ติดต่อหลัก</mat-checkbox>
-              <div class="form-actions">
-                @if (editingContactId()) {
-                  <button mat-stroked-button type="button" (click)="cancelEditContact()">ยกเลิก</button>
-                }
-                <button mat-flat-button color="primary" type="submit">
-                  {{ editingContactId() ? 'บันทึกการแก้ไข' : 'บันทึกผู้ติดต่อ' }}
+                </label>
+                <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openContactForm()">
+                  <mat-icon>person_add</mat-icon>
+                  เพิ่มผู้ติดต่อ
                 </button>
               </div>
-            </form>
-          </mat-card>
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredContacts()" class="data-table">
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef>ชื่อ-นามสกุล</th>
+                  <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+                </ng-container>
+                <ng-container matColumnDef="nickname">
+                  <th mat-header-cell *matHeaderCellDef>ชื่อเล่น</th>
+                  <td mat-cell *matCellDef="let row">{{ row.nickname || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="position">
+                  <th mat-header-cell *matHeaderCellDef>ตำแหน่ง</th>
+                  <td mat-cell *matCellDef="let row">{{ row.position || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="phone">
+                  <th mat-header-cell *matHeaderCellDef>โทรศัพท์</th>
+                  <td mat-cell *matCellDef="let row">{{ row.phone || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="email">
+                  <th mat-header-cell *matHeaderCellDef>อีเมล</th>
+                  <td mat-cell *matCellDef="let row">{{ row.email || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="lineId">
+                  <th mat-header-cell *matHeaderCellDef>LINE ID</th>
+                  <td mat-cell *matCellDef="let row">{{ row.lineId || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="isPrimary">
+                  <th mat-header-cell *matHeaderCellDef>หลัก</th>
+                  <td mat-cell *matCellDef="let row">
+                    @if (row.isPrimary) {
+                      <span class="primary-tag">หลัก</span>
+                    } @else {
+                      —
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openContactDetail(row)">รายละเอียด</button>
+                    <button mat-icon-button type="button" (click)="openContactForm(row)" aria-label="แก้ไข">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" (click)="removeContact(row)" aria-label="ลบ">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="contactColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: contactColumns"></tr>
+              </table>
+              @if (filteredContacts().length === 0) {
+                <p class="data-empty">
+                  {{ contactSearch().trim() ? 'ไม่พบผู้ติดต่อตามคำค้นหา' : 'ยังไม่มีผู้ติดต่อ' }}
+                </p>
+              }
+            </div>
+          </div>
         </div>
       </mat-tab>
 
       <mat-tab label="ประวัติการติดต่อ">
-        <div class="tab-body">
-          <div class="list">
-            @for (log of logs(); track log.id) {
-              <div class="item log" [class.editing]="editingLogId() === log.id">
-                <div>
-                  <strong>
-                    {{ channelLabels[log.channel] }} · {{ log.occurredAt | thaiDate }}
-                    @if (log.subject) {
-                      · {{ log.subject }}
-                    }
-                  </strong>
-                  <p>{{ log.content || '—' }}</p>
-                  <small>
-                    โดย {{ log.handledBy?.fullName || 'ไม่ระบุ' }}
-                    @if (log.contactName) {
-                      · ผู้ติดต่อ: {{ log.contactName }}
-                    }
-                  </small>
-                </div>
-                <div class="item-actions">
-                  <button mat-icon-button type="button" (click)="startEditLog(log)" aria-label="แก้ไขประวัติการติดต่อ">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button type="button" color="warn" (click)="removeLog(log)" aria-label="ลบประวัติการติดต่อ">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-              </div>
-            } @empty {
-              <p class="empty">ยังไม่มีประวัติการติดต่อ</p>
-            }
-          </div>
-
-          <mat-card class="form-card">
-            <h3>{{ editingLogId() ? 'แก้ไขประวัติการติดต่อ' : 'บันทึกการติดต่อ' }}</h3>
-            <form [formGroup]="logForm" (ngSubmit)="saveLog()" class="form">
-              <div class="row">
-                <mat-form-field appearance="outline">
-                  <mat-label>ช่องทาง</mat-label>
-                  <mat-select formControlName="channel">
-                    @for (ch of channels; track ch) {
-                      <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>วันที่ติดต่อ</mat-label>
+        <div class="tab-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">ประวัติการติดต่อ</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
                   <input
-                    matInput
-                    [matDatepicker]="logPicker"
-                    formControlName="occurredDate"
-                    readonly
-                    (click)="logPicker.open()"
+                    type="search"
+                    [formControl]="logSearchControl"
+                    placeholder="ค้นหาหัวข้อ / ช่องทาง / เนื้อหา"
+                    aria-label="ค้นหาประวัติการติดต่อ"
                   />
-                  <mat-datepicker-toggle matIconSuffix [for]="logPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #logPicker></mat-datepicker>
-                </mat-form-field>
-              </div>
-              <div class="row">
-                <mat-form-field appearance="outline">
-                  <mat-label>เวลาที่ติดต่อ</mat-label>
-                  <input matInput appThaiTimeInput formControlName="occurredTime" />
-                  <span matTextSuffix>น.</span>
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>ผู้ติดต่อ</mat-label>
-                  <mat-select formControlName="contactId">
-                    <mat-option [value]="null">—</mat-option>
-                    @for (contact of contacts(); track contact.id) {
-                      <mat-option [value]="contact.id">{{ contact.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>หัวข้อ</mat-label>
-                <input matInput formControlName="subject" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>สรุปการคุย</mat-label>
-                <textarea matInput rows="3" formControlName="content"></textarea>
-              </mat-form-field>
-              <div class="form-actions">
-                @if (editingLogId()) {
-                  <button mat-stroked-button type="button" (click)="cancelEditLog()">ยกเลิก</button>
-                }
-                <button mat-flat-button color="primary" type="submit">
-                  {{ editingLogId() ? 'บันทึกการแก้ไข' : 'บันทึกประวัติ' }}
+                </label>
+                <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openLogForm()">
+                  <mat-icon>add</mat-icon>
+                  บันทึกการติดต่อ
                 </button>
               </div>
-            </form>
-          </mat-card>
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredLogs()" class="data-table">
+                <ng-container matColumnDef="occurredAt">
+                  <th mat-header-cell *matHeaderCellDef>วันเวลา</th>
+                  <td mat-cell *matCellDef="let row">{{ row.occurredAt | thaiDate }}</td>
+                </ng-container>
+                <ng-container matColumnDef="channel">
+                  <th mat-header-cell *matHeaderCellDef>ช่องทาง</th>
+                  <td mat-cell *matCellDef="let row">{{ channelLabel(row.channel) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="subject">
+                  <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.subject || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="contact">
+                  <th mat-header-cell *matHeaderCellDef>ผู้ติดต่อ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.contactName || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="handler">
+                  <th mat-header-cell *matHeaderCellDef>โดย</th>
+                  <td mat-cell *matCellDef="let row">{{ row.handledBy?.fullName || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openLogDetail(row)">รายละเอียด</button>
+                    <button mat-icon-button type="button" (click)="openLogForm(row)" aria-label="แก้ไข">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" (click)="removeLog(row)" aria-label="ลบ">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="logColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: logColumns"></tr>
+              </table>
+              @if (filteredLogs().length === 0) {
+                <p class="data-empty">
+                  {{ logSearch().trim() ? 'ไม่พบประวัติตามคำค้นหา' : 'ยังไม่มีประวัติการติดต่อ' }}
+                </p>
+              }
+            </div>
+          </div>
         </div>
       </mat-tab>
 
       <mat-tab label="โครงการ">
-        <div class="list tab-pad">
-          @for (p of projects(); track p.id) {
-            <a class="item link-item" [routerLink]="['/app/projects', p.id]">
-              <div>
-                <strong>{{ p.code || '—' }} · {{ p.name }}</strong>
-                <p>{{ projectStatusLabels[p.status] }} · กำหนดส่ง {{ p.targetEndDate || '—' }}</p>
+        <div class="tab-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">โครงการ</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="projectSearchControl"
+                    placeholder="ค้นหารหัส / ชื่อโครงการ / สถานะ"
+                    aria-label="ค้นหาโครงการ"
+                  />
+                </label>
               </div>
-              <mat-icon>chevron_right</mat-icon>
-            </a>
-          } @empty {
-            <p class="empty">ยังไม่มีโครงการของลูกค้ารายนี้</p>
-          }
-        </div>
-      </mat-tab>
-      <mat-tab label="ประกัน / สัญญา">
-        <div class="tab-pad two-lists">
-          <div>
-            <h3 class="subhead">การรับประกัน</h3>
-            <div class="list">
-              @for (w of warranties(); track w.id) {
-                <a class="item link-item" routerLink="/app/warranties">
-                  <div>
-                    <strong>{{ w.delivery?.title || w.project?.name || 'ประกัน' }} · {{ w.durationMonth }} เดือน</strong>
-                    <p>
-                      {{ warrantyStatusLabel(w.status) }} ·
-                      ถึง {{ w.endDate }}
-                    </p>
-                  </div>
-                  <mat-icon>chevron_right</mat-icon>
-                </a>
-              } @empty {
-                <p class="empty">ยังไม่มีประกันของลูกค้ารายนี้</p>
-              }
             </div>
-          </div>
-          <div>
-            <h3 class="subhead">สัญญา MA</h3>
-            <div class="list">
-              @for (m of contracts(); track m.id) {
-                <a class="item link-item" [routerLink]="['/app/ma', m.id]">
-                  <div>
-                    <strong>{{ m.contractNo }} · {{ m.plan?.name || ('แผน #' + m.planId) }}</strong>
-                    <p>
-                      {{ maStatusLabel(m.status) }} ·
-                      โควตาเหลือ {{ remainingQuota(m) }}{{ m.quota ? '/' + m.quota.quota : '' }}
-                    </p>
-                  </div>
-                  <mat-icon>chevron_right</mat-icon>
-                </a>
-              } @empty {
-                <p class="empty">ยังไม่มีสัญญา MA</p>
-              }
-            </div>
-          </div>
-        </div>
-      </mat-tab>
-      <mat-tab label="ปัญหา">
-        <div class="list tab-pad">
-          @for (t of tickets(); track t.id) {
-            <a class="item link-item" [routerLink]="['/app/tickets', t.id]">
-              <div>
-                <strong>{{ t.ticketNo }} · {{ t.title }}</strong>
-                <p>{{ ticketStatusLabels[t.status] }} · {{ t.priority }}</p>
-              </div>
-              <mat-icon>chevron_right</mat-icon>
-            </a>
-          } @empty {
-            <p class="empty">ยังไม่มีปัญหาของลูกค้ารายนี้</p>
-          }
-        </div>
-      </mat-tab>
-      <mat-tab label="การติดตาม">
-        <div class="list tab-pad">
-          @for (f of followUps(); track f.id) {
-            <a class="item link-item" routerLink="/app/follow-ups">
-              <div>
-                <strong>{{ f.title }}</strong>
-                <p>
-                  {{ followUpStatusLabel(f) }} ·
-                  ครบกำหนด {{ f.dueDate }}
-                  @if (isFollowUpOverdue(f)) {
-                    <span class="overdue-tag">เลยกำหนด</span>
-                  }
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredProjects()" class="data-table">
+                <ng-container matColumnDef="code">
+                  <th mat-header-cell *matHeaderCellDef>รหัส</th>
+                  <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef>ชื่อโครงการ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                  <td mat-cell *matCellDef="let row">{{ projectStatusLabel(row.status) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="targetEndDate">
+                  <th mat-header-cell *matHeaderCellDef>กำหนดส่ง</th>
+                  <td mat-cell *matCellDef="let row">{{ row.targetEndDate || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openProjectDetail(row)">รายละเอียด</button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="projectColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: projectColumns"></tr>
+              </table>
+              @if (filteredProjects().length === 0) {
+                <p class="data-empty">
+                  {{ projectSearch().trim() ? 'ไม่พบโครงการตามคำค้นหา' : 'ยังไม่มีโครงการของลูกค้ารายนี้' }}
                 </p>
+              }
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="ประกัน / สัญญา">
+        <div class="tab-panel stacked">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">การรับประกัน</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="warrantySearchControl"
+                    placeholder="ค้นหารายการ / สถานะ / วันสิ้นสุด"
+                    aria-label="ค้นหาประกัน"
+                  />
+                </label>
               </div>
-              <mat-icon>chevron_right</mat-icon>
-            </a>
-          } @empty {
-            <p class="empty">ยังไม่มีแผนติดตามของลูกค้ารายนี้</p>
-          }
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredWarranties()" class="data-table">
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef>รายการ</th>
+                  <td mat-cell *matCellDef="let row">
+                    {{ row.delivery?.title || row.project?.name || 'ประกัน' }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="duration">
+                  <th mat-header-cell *matHeaderCellDef>ระยะเวลา</th>
+                  <td mat-cell *matCellDef="let row">{{ row.durationMonth }} เดือน</td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                  <td mat-cell *matCellDef="let row">{{ warrantyStatusLabel(row.status) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="endDate">
+                  <th mat-header-cell *matHeaderCellDef>สิ้นสุด</th>
+                  <td mat-cell *matCellDef="let row">{{ row.endDate || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openWarrantyDetail(row)">รายละเอียด</button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="warrantyColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: warrantyColumns"></tr>
+              </table>
+              @if (filteredWarranties().length === 0) {
+                <p class="data-empty">
+                  {{ warrantySearch().trim() ? 'ไม่พบประกันตามคำค้นหา' : 'ยังไม่มีประกันของลูกค้ารายนี้' }}
+                </p>
+              }
+            </div>
+          </div>
+
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">สัญญา MA</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="maSearchControl"
+                    placeholder="ค้นหาเลขสัญญา / แผน / สถานะ"
+                    aria-label="ค้นหาสัญญา MA"
+                  />
+                </label>
+              </div>
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredContracts()" class="data-table">
+                <ng-container matColumnDef="contractNo">
+                  <th mat-header-cell *matHeaderCellDef>เลขที่สัญญา</th>
+                  <td mat-cell *matCellDef="let row">{{ row.contractNo || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="plan">
+                  <th mat-header-cell *matHeaderCellDef>แผน</th>
+                  <td mat-cell *matCellDef="let row">{{ row.plan?.name || ('แผน #' + row.planId) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                  <td mat-cell *matCellDef="let row">{{ maStatusLabel(row.status) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="quota">
+                  <th mat-header-cell *matHeaderCellDef>โควตาเหลือ</th>
+                  <td mat-cell *matCellDef="let row">
+                    {{ remainingQuota(row) }}{{ row.quota ? '/' + row.quota.quota : '' }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openMaDetail(row)">รายละเอียด</button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="maColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: maColumns"></tr>
+              </table>
+              @if (filteredContracts().length === 0) {
+                <p class="data-empty">
+                  {{ maSearch().trim() ? 'ไม่พบสัญญาตามคำค้นหา' : 'ยังไม่มีสัญญา MA' }}
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="ปัญหา">
+        <div class="tab-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">ปัญหา</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="ticketSearchControl"
+                    placeholder="ค้นหาหัวข้อ / สถานะ / ความสำคัญ"
+                    aria-label="ค้นหาปัญหา"
+                  />
+                </label>
+              </div>
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredTickets()" class="data-table">
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.title }}</td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                  <td mat-cell *matCellDef="let row">{{ ticketStatusLabel(row.status) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="priority">
+                  <th mat-header-cell *matHeaderCellDef>ความสำคัญ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.priority }}</td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openTicketDetail(row)">รายละเอียด</button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: ticketColumns"></tr>
+              </table>
+              @if (filteredTickets().length === 0) {
+                <p class="data-empty">
+                  {{ ticketSearch().trim() ? 'ไม่พบปัญหาตามคำค้นหา' : 'ยังไม่มีปัญหาของลูกค้ารายนี้' }}
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="การติดตาม">
+        <div class="tab-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">การติดตาม</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="followUpSearchControl"
+                    placeholder="ค้นหาหัวข้อ / สถานะ / วันครบกำหนด"
+                    aria-label="ค้นหางานติดตาม"
+                  />
+                </label>
+              </div>
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="filteredFollowUps()" class="data-table">
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.title }}</td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                  <td mat-cell *matCellDef="let row">
+                    {{ followUpStatusLabel(row) }}
+                    @if (isFollowUpOverdue(row)) {
+                      <span class="overdue-tag">เลยกำหนด</span>
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="dueDate">
+                  <th mat-header-cell *matHeaderCellDef>ครบกำหนด</th>
+                  <td mat-cell *matCellDef="let row">{{ row.dueDate || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row" class="actions">
+                    <button mat-button type="button" color="primary" (click)="openFollowUpDetail(row)">รายละเอียด</button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="followUpColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: followUpColumns"></tr>
+              </table>
+              @if (filteredFollowUps().length === 0) {
+                <p class="data-empty">
+                  {{ followUpSearch().trim() ? 'ไม่พบงานติดตามตามคำค้นหา' : 'ยังไม่มีแผนติดตามของลูกค้ารายนี้' }}
+                </p>
+              }
+            </div>
+          </div>
         </div>
       </mat-tab>
     </mat-tab-group>

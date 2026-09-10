@@ -64,3 +64,21 @@ button.back.mat-mdc-outlined-button {
     color: var(--app-accent);
   }
 }
+
+/* กรองโครงการ — ซ่อนสกอลล์บาร์ของแผง autocomplete */
+.mat-mdc-autocomplete-panel.project-filter-auto-panel {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.mat-mdc-autocomplete-panel.project-filter-auto-panel::-webkit-scrollbar,
+.mat-mdc-autocomplete-panel.project-filter-auto-panel::-webkit-scrollbar-thumb,
+.mat-mdc-autocomplete-panel.project-filter-auto-panel::-webkit-scrollbar-track,
+.mat-mdc-autocomplete-panel.project-filter-auto-panel::-webkit-scrollbar-button {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}

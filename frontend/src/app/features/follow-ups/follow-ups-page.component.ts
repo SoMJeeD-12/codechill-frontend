@@ -36,6 +36,7 @@ import {
 } from '../../core/services/follow-up.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 
 @Component({
@@ -231,15 +232,21 @@ export class FollowUpsPageComponent implements OnInit {
     if (!this.canDelete()) {
       return;
     }
-    if (!confirm(`ลบงานติดตาม "${row.title}" ?`)) {
-      return;
-    }
-    this.api.remove(row.id).subscribe({
-      next: () => {
-        this.snack.open('ลบแล้ว', 'ปิด', { duration: 2500 });
-        this.reload();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    openConfirmDialog(this.dialog, {
+      title: 'ลบงานติดตาม',
+      message: `ต้องการลบงานติดตาม「${row.title}」หรือไม่?`,
+      confirmLabel: 'ลบงานติดตาม',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.remove(row.id).subscribe({
+        next: () => {
+          this.snack.open('ลบแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
     });
   }
 }
@@ -276,7 +283,7 @@ export class FollowUpFormDialogComponent {
   readonly statusLabels = FOLLOW_UP_STATUS_LABELS;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data;
+  readonly isEdit = !!this.data?.id;
 
   readonly form = this.fb.group({
     customerId: [
@@ -305,14 +312,18 @@ export class FollowUpFormDialogComponent {
   }
 
   constructor() {
-    if (!this.data) {
+    if (!this.isEdit) {
+      const preset = this.data?.customerId;
       const first = this.customers()[0];
       const me = this.auth.currentUser();
       this.form.patchValue({
-        customerId: first?.id ?? 0,
+        customerId: preset ?? first?.id ?? 0,
         assignedUserId: me?.id ?? null,
         dueDate: new Date(),
       });
+      if (preset) {
+        this.form.controls.customerId.disable({ emitEvent: false });
+      }
     }
   }
 
@@ -325,7 +336,7 @@ export class FollowUpFormDialogComponent {
     this.saving.set(true);
     this.error.set(null);
 
-    if (this.data) {
+    if (this.isEdit && this.data) {
       const payload: FollowUpUpdateInput = {
         title: raw.title ?? '',
         dueDate: toDateOnlyString(raw.dueDate),

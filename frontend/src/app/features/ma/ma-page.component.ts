@@ -205,7 +205,7 @@ export class MaFormDialogComponent {
   readonly billingCycles = Object.keys(MA_BILLING_CYCLE_LABELS) as MaBillingCycle[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data;
+  readonly isEdit = !!this.data?.id;
 
   readonly form = this.fb.group({
     customerId: [
@@ -241,9 +241,13 @@ export class MaFormDialogComponent {
     if (!this.customers().length) {
       this.customersApi.listCustomers().subscribe();
     }
-    if (!this.data) {
+    if (!this.isEdit) {
+      const preset = this.data?.customerId;
       const first = this.customers()[0];
-      this.form.patchValue({ customerId: first?.id ?? 0 });
+      this.form.patchValue({ customerId: preset ?? first?.id ?? 0 });
+      if (preset) {
+        this.form.controls.customerId.disable({ emitEvent: false });
+      }
       const firstPlan = this.plans()[0];
       if (firstPlan) {
         this.form.patchValue({ planId: firstPlan.id });
@@ -279,7 +283,7 @@ export class MaFormDialogComponent {
     this.saving.set(true);
     this.error.set(null);
 
-    if (this.data) {
+    if (this.isEdit && this.data && 'id' in this.data) {
       const payload: MaContractUpdateInput = {
         planId: Number(raw.planId),
         price: toMoneyString(raw.price),

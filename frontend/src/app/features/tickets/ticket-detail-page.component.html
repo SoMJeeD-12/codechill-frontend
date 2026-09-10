@@ -26,6 +26,7 @@
             ({{ t.extraCharge | baht }})
           }
         </p>
+        <p class="description">{{ t.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
       </div>
       <div class="actions">
         @if (canAssign() && (t.status === 'RECEIVED' || t.status === 'REOPENED')) {
@@ -65,76 +66,80 @@
       }
     </div>
 
-    <mat-card class="desc">
-      <strong>รายละเอียด</strong>
-      <p>{{ t.description || 'ไม่มีรายละเอียด' }}</p>
-    </mat-card>
-
-    <div class="split">
-      <div>
-        <h2>ประวัติการแก้ไข (ใบเดิม)</h2>
-        @for (r of resolutions(); track r.id) {
-          <mat-card class="round">
-            <div class="round-head">
-              <strong>รอบที่ {{ r.round }}</strong>
-              <span>{{ resultLabels[r.result] }} · {{ r.hoursSpent ?? 0 }} ชม.</span>
-            </div>
-            @if (r.rootCause) {
-              <p><b>สาเหตุ:</b> {{ r.rootCause }}</p>
-            }
-            <p><b>วิธีแก้:</b> {{ r.detail }}</p>
-            <small>
-              โดย {{ userName(r.resolvedByUserId) }} ·
-              {{ r.resolvedAt | thaiDate }}
-            </small>
-          </mat-card>
-        } @empty {
-          <p class="empty">ยังไม่มีการบันทึกรอบแก้ไข</p>
+    <div class="data-card">
+      <div class="data-card__head">
+        <div class="data-card__row tab-toolbar">
+          <h3 class="tab-heading">ประวัติการแก้ไข</h3>
+          <label class="ui-search">
+            <mat-icon>search</mat-icon>
+            <input
+              type="search"
+              [formControl]="resolutionSearchControl"
+              placeholder="ค้นหาสาเหตุ / วิธีแก้ / ผลลัพธ์ / ผู้แก้"
+              aria-label="ค้นหาประวัติการแก้ไข"
+            />
+          </label>
+          @if (canResolve() && t.status !== 'CLOSED') {
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              class="ui-add-btn"
+              (click)="openAddResolution()"
+            >
+              <mat-icon>add</mat-icon>
+              เพิ่มรอบการแก้ไข
+            </button>
+          }
+        </div>
+      </div>
+      <div class="data-card__body">
+        <table mat-table [dataSource]="filteredResolutions()" class="data-table">
+          <ng-container matColumnDef="rootCause">
+            <th mat-header-cell *matHeaderCellDef>สาเหตุ</th>
+            <td mat-cell *matCellDef="let row">{{ shortText(row.rootCause) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="detail">
+            <th mat-header-cell *matHeaderCellDef>วิธีแก้ไข</th>
+            <td mat-cell *matCellDef="let row">{{ shortText(row.detail) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="result">
+            <th mat-header-cell *matHeaderCellDef>ผลลัพธ์</th>
+            <td mat-cell *matCellDef="let row">{{ resultLabel(row.result) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="hoursSpent">
+            <th mat-header-cell *matHeaderCellDef>เวลา (ชม.)</th>
+            <td mat-cell *matCellDef="let row">{{ row.hoursSpent ?? 0 }}</td>
+          </ng-container>
+          <ng-container matColumnDef="resolver">
+            <th mat-header-cell *matHeaderCellDef>ผู้แก้ไข</th>
+            <td mat-cell *matCellDef="let row">{{ userName(row.resolvedByUserId) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="resolvedAt">
+            <th mat-header-cell *matHeaderCellDef>วันเวลา</th>
+            <td mat-cell *matCellDef="let row">{{ row.resolvedAt | thaiDate }}</td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="row-actions">
+              <button mat-button type="button" color="primary" (click)="openResolutionDetail(row)">
+                รายละเอียด
+              </button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="resolutionColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: resolutionColumns"></tr>
+        </table>
+        @if (filteredResolutions().length === 0) {
+          <p class="data-empty">
+            {{
+              resolutionSearch().trim()
+                ? 'ไม่พบรอบแก้ไขตามคำค้นหา'
+                : 'ยังไม่มีการบันทึกรอบแก้ไข'
+            }}
+          </p>
         }
       </div>
-
-      @if (canResolve() && t.status !== 'CLOSED') {
-        <mat-card class="form-card">
-          <h3>เพิ่มรอบการแก้ไข</h3>
-          <p class="hint">ปัญหาเดิมกลับมาให้เพิ่มรอบในใบนี้ ไม่เปิดใบใหม่</p>
-          <form [formGroup]="resolutionForm" (ngSubmit)="addResolution()" class="form">
-            <mat-form-field appearance="outline" class="full">
-              <mat-label>สาเหตุ</mat-label>
-              <textarea matInput rows="2" formControlName="rootCause"></textarea>
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="full">
-              <mat-label>วิธีแก้ไข</mat-label>
-              <textarea matInput rows="2" formControlName="detail"></textarea>
-            </mat-form-field>
-            <div class="row">
-              <mat-form-field appearance="outline">
-                <mat-label>เวลาที่ใช้ (ชม.)</mat-label>
-                <input matInput type="number" step="0.5" formControlName="hoursSpent" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>ผลลัพธ์</mat-label>
-                <mat-select formControlName="result">
-                  @for (r of results; track r) {
-                    <mat-option [value]="r">{{ resultLabels[r] }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            </div>
-            <mat-form-field appearance="outline" class="full">
-              <mat-label>ผู้แก้ไข</mat-label>
-              <mat-select formControlName="resolvedByUserId">
-                @for (u of users(); track u.id) {
-                  <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
-                }
-              </mat-select>
-              @if (!canChangeResolver) {
-                <mat-hint>ล็อกเป็นผู้ใช้ที่ล็อกอิน — เปลี่ยนได้เฉพาะ Admin</mat-hint>
-              }
-            </mat-form-field>
-            <button mat-flat-button color="primary" type="submit">บันทึกรอบนี้</button>
-          </form>
-        </mat-card>
-      }
     </div>
   </section>
   }

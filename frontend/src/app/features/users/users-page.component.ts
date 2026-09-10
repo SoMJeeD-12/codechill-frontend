@@ -4,9 +4,8 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -28,7 +27,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
   standalone: true,
   imports: [
     ThaiDatePipe,
-        ReactiveFormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -36,8 +35,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
     MatSnackBarModule,
     MatDialogModule,
     MatTooltipModule,
-    MatSelectModule,
-    MatFormFieldModule,
+    MatMenuModule,
   ],
   templateUrl: './users-page.component.html',
   styleUrl: './users-page.component.scss',

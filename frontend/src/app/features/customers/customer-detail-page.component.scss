@@ -28,7 +28,7 @@
 
 .meta-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
 
@@ -45,54 +45,50 @@
   }
 }
 
-.tab-body {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 1rem;
+.tab-panel {
   padding: 1rem 0 1.5rem;
 }
 
-.list {
+.tab-panel.stacked {
   display: grid;
-  gap: 0.65rem;
+  gap: 1.25rem;
 }
 
-.item {
-  display: flex;
-  justify-content: space-between;
+.tab-heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1c2b28;
+}
+
+.tab-toolbar {
+  width: 100%;
+  justify-content: flex-start;
   gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid rgba(28, 43, 40, 0.1);
-  border-radius: 10px;
-  background: #fff;
 
-  &.editing {
-    border-color: rgba(15, 118, 110, 0.45);
-    background: #f0fdfa;
+  .tab-heading {
+    flex: 0 0 auto;
   }
 
-  p,
-  small {
-    margin: 0.25rem 0 0;
-    color: #5b6762;
+  .ui-search {
+    flex: 1 1 220px;
+    max-width: 420px;
+  }
+
+  .ui-add-btn {
+    margin-left: auto;
+    flex: 0 0 auto;
   }
 }
 
-.item-actions {
-  display: flex;
-  align-items: flex-start;
-  flex-shrink: 0;
-}
-
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
+.data-table .actions {
+  white-space: nowrap;
+  width: 1%;
+  text-align: right;
 }
 
 .primary-tag {
-  margin-left: 0.35rem;
+  display: inline-block;
   font-size: 0.7rem;
   background: #ecfdf5;
   color: #0f766e;
@@ -109,63 +105,6 @@
   border-radius: 999px;
 }
 
-.form-card {
-  padding: 1rem;
-  border-radius: 12px;
-  align-self: start;
-
-  h3 {
-    margin: 0 0 0.75rem;
-    font-size: 1rem;
-  }
-}
-
-.form {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-}
-
-.full {
-  width: 100%;
-}
-
-.empty,
-.placeholder-tab {
-  color: #5b6762;
-  padding: 1rem 0;
-}
-
-.tab-pad {
-  padding: 1rem 0 1.5rem;
-}
-
-.two-lists {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-}
-
-.subhead {
-  margin: 0 0 0.65rem;
-  font-size: 0.95rem;
-}
-
-.link-item {
-  text-decoration: none;
-  color: inherit;
-  align-items: center;
-
-  mat-icon {
-    color: #0f766e;
-  }
-}
-
 .missing {
   max-width: 480px;
   padding: 1.5rem;
@@ -175,13 +114,5 @@
 @media (max-width: 900px) {
   .meta-grid {
     grid-template-columns: 1fr 1fr;
-  }
-
-  .tab-body {
-    grid-template-columns: 1fr;
-  }
-
-  .two-lists {
-    grid-template-columns: 1fr;
   }
 }

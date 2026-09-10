@@ -21,12 +21,29 @@
         </label>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
           <mat-label>กรองโครงการ</mat-label>
-          <mat-select [value]="projectFilter()" (selectionChange)="projectFilter.set($event.value)">
-            <mat-option value="ALL">ทั้งหมด</mat-option>
-            @for (p of projects(); track p.id) {
+          <input
+            matInput
+            [formControl]="projectFilterControl"
+            [matAutocomplete]="projectFilterAuto"
+            (focus)="onProjectFilterFocus()"
+            (blur)="onProjectFilterBlur()"
+            placeholder="ค้นหาโค้ด / ชื่อโครงการ"
+            aria-label="กรองโครงการ"
+          />
+          <mat-autocomplete
+            #projectFilterAuto="matAutocomplete"
+            [displayWith]="displayProjectFilter"
+            (opened)="onProjectFilterPanelOpened()"
+            (optionSelected)="onProjectFilterSelected($event)"
+          >
+            <mat-option [value]="'ALL'">ทั้งหมด</mat-option>
+            @for (p of filteredProjects(); track p.id) {
               <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
             }
-          </mat-select>
+            @if (filteredProjects().length === 0) {
+              <mat-option disabled>ไม่พบโครงการ</mat-option>
+            }
+          </mat-autocomplete>
         </mat-form-field>
         <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
           <mat-icon>upload_file</mat-icon>
