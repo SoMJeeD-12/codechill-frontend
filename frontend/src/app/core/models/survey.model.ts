@@ -1,41 +1,99 @@
 export type SurveyStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED';
 
-export type QuestionType = 'RATING' | 'TEXT' | 'CHOICE';
+export type QuestionType = 'RATING' | 'CHOICE' | 'MULTI_CHOICE' | 'TEXT';
 
+export type AssignmentStatus = 'PENDING' | 'SENT' | 'ANSWERED' | 'EXPIRED';
+
+/** SurveyQuestionResponseDto */
 export interface SurveyQuestion {
   id: number;
-  text: string;
-  type: QuestionType;
-  required: boolean;
-  /** ตัวเลือกสำหรับ CHOICE */
-  options: string[];
+  questionText: string;
+  questionType: QuestionType;
+  isRequired: boolean;
+  options: string[] | null;
+  minValue: number | null;
+  maxValue: number | null;
+  sortOrder: number;
 }
 
+/** SurveyResponseDto */
 export interface Survey {
   id: number;
   title: string;
-  description: string;
+  description: string | null;
   status: SurveyStatus;
+  /** ใช้ตัดสินว่าส่ง/บันทึกคำตอบได้ตอนนี้ — อย่าอ่าน status อย่างเดียว */
+  isCurrentlyUsable: boolean;
+  validFrom: string | null;
+  validTo: string | null;
   questions: SurveyQuestion[];
+  assignmentCount: number;
+  responseCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface SurveyAnswer {
-  questionId: number;
-  /** คะแนน 1–5 สำหรับ RATING, ข้อความสำหรับ TEXT/CHOICE */
-  value: string | number;
-}
-
-export interface SurveyResponse {
+/** AssignmentResponseDto */
+export interface SurveyAssignment {
   id: number;
   surveyId: number;
   customerId: number;
-  answers: SurveyAnswer[];
+  customerName: string | null;
+  contactId: number | null;
+  contactName: string | null;
+  projectId: number | null;
+  projectName: string | null;
+  status: AssignmentStatus;
+  sentAt: string | null;
+  answeredAt: string | null;
+  filledByUserId: number | null;
+  filledByName: string | null;
+  responseId: number | null;
+  createdAt: string;
+}
+
+/** SurveyAnswerDto — ตอนส่งคำตอบ */
+export interface SurveyAnswerInput {
+  questionId: number;
+  answerText?: string | null;
+  answerNumber?: number | null;
+  answerChoices?: string[] | null;
+}
+
+/** ResponseDetailDto */
+export interface SurveyResponseDetail {
+  id: number;
+  assignmentId: number;
+  surveyId: number;
+  customerId: number;
+  customerName: string | null;
   submittedAt: string;
-  submittedByName: string;
-  /** ค่าเฉลี่ยคะแนน RATING ในใบนี้ (ถ้ามี) */
-  ratingAverage: number | null;
+  /** null → แสดง "—" ห้ามแสดง 0 */
+  overallScore: number | null;
+  comment: string | null;
+  answers: unknown[];
+  createdAt: string;
+}
+
+export interface QuestionSummary {
+  questionId: number;
+  questionText: string;
+  questionType: QuestionType;
+  answeredCount: number;
+  averageScore?: number | null;
+  choiceCounts?: Record<string, number>;
+  textAnswers?: string[];
+}
+
+/** SurveySummaryDto */
+export interface SurveySummary {
+  surveyId: number;
+  title: string;
+  assignmentCount: number;
+  responseCount: number;
+  responseRate: number;
+  averageScore: number | null;
+  questions: QuestionSummary[];
 }
 
 export const SURVEY_STATUS_LABELS: Record<SurveyStatus, string> = {
@@ -45,7 +103,15 @@ export const SURVEY_STATUS_LABELS: Record<SurveyStatus, string> = {
 };
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  RATING: 'คะแนน 1–5',
+  RATING: 'ให้คะแนน',
+  CHOICE: 'เลือกข้อเดียว',
+  MULTI_CHOICE: 'เลือกได้หลายข้อ',
   TEXT: 'ข้อความอิสระ',
-  CHOICE: 'เลือกข้อ',
+};
+
+export const ASSIGNMENT_STATUS_LABELS: Record<AssignmentStatus, string> = {
+  PENDING: 'รอดำเนินการ',
+  SENT: 'ส่งแล้ว',
+  ANSWERED: 'ได้คำตอบแล้ว',
+  EXPIRED: 'หมดอายุ',
 };

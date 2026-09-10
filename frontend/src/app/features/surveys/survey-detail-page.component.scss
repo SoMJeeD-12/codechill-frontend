@@ -19,7 +19,7 @@
 
 .meta-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr;
+  grid-template-columns: repeat(3, 1fr) 1.6fr;
   gap: 0.75rem;
   margin-bottom: 1rem;
 
@@ -41,6 +41,26 @@
   }
 }
 
+.warn-text { color: #b45309; font-weight: 600; }
+
+.left-stack,
+.right-stack {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.muted {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: #5b6762;
+}
+
+.multi-choices {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .bars {
   display: grid;
   gap: 0.35rem;
@@ -52,6 +72,17 @@
   gap: 0.4rem;
   align-items: center;
   font-size: 0.8rem;
+
+  &.wide {
+    grid-template-columns: minmax(4rem, 7rem) 1fr 2.5rem;
+  }
+}
+
+.q-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #5b6762;
 }
 
 .track {

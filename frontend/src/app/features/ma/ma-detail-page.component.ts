@@ -1,9 +1,10 @@
 import { Location } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -21,13 +22,22 @@ import {
 } from '../../core/models/ma.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { MaService } from '../../core/services/ma.service';
+import { MaContractPrintPayload, MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
+import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { formatMoneyDisplay, parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+
+/** ค่า placeholder สำหรับหน้าพิมพ์ร่างสัญญา (แก้ที่ FE) */
+const COMPANY_PRINT = {
+  name: 'ชื่อบริษัทเรา',
+  address: 'ที่อยู่',
+  taxId: 'เลขผู้เสียภาษี',
+} as const;
 
 @Component({
   selector: 'app-ma-detail-page',
@@ -45,6 +55,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
     MatInputModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatDialogModule,
     MoneyInputDirective,
   ],
   templateUrl: './ma-detail-page.component.html',
@@ -60,15 +71,22 @@ export class MaDetailPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   readonly contract = signal<MaContract | null>(null);
   readonly quota = signal<MaQuotaStatus | null>(null);
   readonly addons = signal<MaAddon[]>([]);
   readonly notFound = signal(false);
   readonly savingAddon = signal(false);
+  readonly renewing = signal(false);
   readonly statusLabels = MA_STATUS_LABELS;
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
   readonly addonColumns = ['title', 'extraQuota', 'price', 'effective', 'createdAt'];
+
+  readonly canRenew = computed(
+    () =>
+      this.auth.hasPermissionCode('ma.renew') || this.auth.hasPermissionCode('ma.update')
+  );
 
   statusLabel(status: MaContract['status']): string {
     return this.statusLabels[status];
@@ -168,6 +186,56 @@ export class MaDetailPageComponent implements OnInit {
     });
   }
 
+  printDraftContract(): void {
+    const c = this.contract();
+    if (!c) {
+      return;
+    }
+    this.api.getPrintPayload(c.id).subscribe({
+      next: (payload) => this.openPrintWindow(this.buildDraftHtml(payload), 'ร่างสัญญา'),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+    });
+  }
+
+  renewContract(): void {
+    const c = this.contract();
+    if (!c || !this.canRenew()) {
+      return;
+    }
+    const startDate = this.addOneYear(c.startDate);
+    const endDate = this.addOneYear(c.endDate);
+    const price = toMoneyString(c.price);
+    openConfirmDialog(this.dialog, {
+      title: 'ต่ออายุสัญญา MA',
+      message: [
+        `สร้างสัญญาใหม่จาก ${c.contractNo || '#' + c.id}`,
+        `ระยะใหม่: ${startDate} – ${endDate}`,
+        `ราคา: ${formatMoneyDisplay(price)} บาท`,
+      ].join('\n'),
+      confirmLabel: 'ต่ออายุ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.renewing.set(true);
+      this.api.renew(c.id, { startDate, endDate, price }).subscribe({
+        next: (created) => {
+          this.renewing.set(false);
+          this.snack.open(
+            `ต่ออายุแล้ว · สัญญาใหม่ ${created.contractNo || '#' + created.id}`,
+            'ปิด',
+            { duration: 3500 }
+          );
+          void this.router.navigate(['/app/ma', created.id]);
+        },
+        error: (err: Error) => {
+          this.renewing.set(false);
+          this.snack.open(err.message, 'ปิด', { duration: 4000 });
+        },
+      });
+    });
+  }
+
   printInvoice(): void {
     const c = this.contract();
     if (!c) {
@@ -207,12 +275,128 @@ ${addonLines}
 <p class="muted">เอกสารจำลองสำหรับพรีวิว — ไม่ใช่ใบกำกับภาษีจริง</p>
 <button onclick="window.print()">พิมพ์</button>
 </body></html>`;
+    this.openPrintWindow(html, 'ใบแจ้งค่าบริการ');
+  }
+
+  private addOneYear(dateStr: string): string {
+    const d = parseDateOnly(dateStr) ?? new Date(dateStr);
+    d.setFullYear(d.getFullYear() + 1);
+    return toDateOnlyString(d);
+  }
+
+  private openPrintWindow(html: string, label: string): void {
     const win = window.open('', '_blank', 'width=800,height=900');
     if (!win) {
-      this.snack.open('เบราว์เซอร์บล็อกหน้าต่างพิมพ์', 'ปิด', { duration: 3000 });
+      this.snack.open(`เบราว์เซอร์บล็อกหน้าต่าง${label}`, 'ปิด', { duration: 3000 });
       return;
     }
     win.document.write(html);
     win.document.close();
   }
+
+  private buildDraftHtml(payload: MaContractPrintPayload): string {
+    const { contract, customer, primaryContact, project, plan, addons } = payload;
+    const watermark = contract.status === 'CANCELLED' ? 'CANCELLED' : 'DRAFT';
+    const customerAddr = [customer.address, customer.province, customer.postalCode]
+      .filter(Boolean)
+      .join(' ');
+    const planItems = (plan.items ?? [])
+      .map(
+        (item, i) =>
+          `<tr><td>${i + 1}</td><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.detail || '—')}</td></tr>`
+      )
+      .join('');
+    const addonRows = (addons ?? [])
+      .map(
+        (a) =>
+          `<tr><td>${escapeHtml(a.title)}</td><td>${a.extraQuota}</td><td>${formatMoneyDisplay(a.price)}</td></tr>`
+      )
+      .join('');
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ร่างสัญญา ${contract.contractNo || contract.id}</title>
+<style>
+body{font-family:Sarabun,sans-serif;padding:36px;color:#1c2b28;position:relative}
+.watermark{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
+.watermark span{font-size:7rem;font-weight:800;color:rgba(180,83,9,0.12);transform:rotate(-28deg);letter-spacing:0.08em}
+.content{position:relative;z-index:1}
+h1{margin:0 0 4px;font-size:1.45rem}
+.muted{color:#5b6762;font-size:0.9rem}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.25rem 0}
+.box{border:1px solid #d4d4d4;border-radius:8px;padding:0.85rem 1rem}
+.box h3{margin:0 0 0.5rem;font-size:0.95rem}
+table{width:100%;border-collapse:collapse;margin-top:0.75rem}
+th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:3rem}
+.sign-line{margin-top:3rem;border-top:1px solid #333;padding-top:0.4rem}
+@media print{button{display:none}}
+</style></head><body>
+<div class="watermark"><span>${watermark}</span></div>
+<div class="content">
+<p class="muted">CPAMS · ร่างสัญญาบำรุงรักษา (MA)</p>
+<h1>${escapeHtml(contract.contractNo || '#' + contract.id)} · ${escapeHtml(plan.name)}</h1>
+<p class="muted">สถานะ: ${escapeHtml(contract.status)} · ระยะ ${escapeHtml(contract.startDate)} – ${escapeHtml(contract.endDate)} · สร้างเอกสาร ${escapeHtml(payload.generatedAt)}</p>
+
+<div class="party">
+  <div class="box">
+    <h3>ผู้ให้บริการ</h3>
+    <p><strong>${escapeHtml(COMPANY_PRINT.name)}</strong><br>
+    ${escapeHtml(COMPANY_PRINT.address)}<br>
+    เลขผู้เสียภาษี: ${escapeHtml(COMPANY_PRINT.taxId)}</p>
+  </div>
+  <div class="box">
+    <h3>ลูกค้า</h3>
+    <p><strong>${escapeHtml(customer.name)}</strong>
+    ${customer.code ? `<br>รหัส: ${escapeHtml(customer.code)}` : ''}<br>
+    ${customerAddr ? escapeHtml(customerAddr) + '<br>' : ''}
+    เลขผู้เสียภาษี: ${escapeHtml(customer.taxId || '—')}<br>
+    โทร: ${escapeHtml(customer.phone || '—')}
+    ${primaryContact ? `<br>ผู้ติดต่อ: ${escapeHtml(primaryContact.name)}${primaryContact.position ? ' (' + escapeHtml(primaryContact.position) + ')' : ''}` : ''}
+    </p>
+  </div>
+</div>
+
+<p>โครงการ: ${escapeHtml(project.code ? `${project.code} · ${project.name}` : project.name)}<br>
+แผน: ${escapeHtml(plan.code)} · ${escapeHtml(plan.name)} · โควตา ${plan.bugQuotaPerMonth} เคส/เดือน<br>
+ค่าบริการ: ${formatMoneyDisplay(contract.price)} บาท (${escapeHtml(this.billingLabels[contract.billingCycle])})</p>
+
+<h3>รายการในแผน</h3>
+<table>
+<thead><tr><th>#</th><th>รายการ</th><th>รายละเอียด</th></tr></thead>
+<tbody>
+${planItems || '<tr><td colspan="3">—</td></tr>'}
+</tbody></table>
+
+<h3>Add-on (แยกจากแผน)</h3>
+<table>
+<thead><tr><th>รายการ</th><th>โควตาเพิ่ม</th><th>ราคา</th></tr></thead>
+<tbody>
+${addonRows || '<tr><td colspan="3">ไม่มี Add-on</td></tr>'}
+</tbody></table>
+
+${contract.note ? `<p class="muted">หมายเหตุ: ${escapeHtml(contract.note)}</p>` : ''}
+
+<div class="sign">
+  <div>
+    <div class="sign-line">ลงชื่อ ผู้ให้บริการ</div>
+    <p class="muted">วันที่ ............................</p>
+  </div>
+  <div>
+    <div class="sign-line">ลงชื่อ ลูกค้า</div>
+    <p class="muted">วันที่ ............................</p>
+  </div>
+</div>
+
+<p class="muted">เอกสารร่างสำหรับพรีวิว — ไม่ใช่สัญญาที่ลงนามแล้ว</p>
+<button onclick="window.print()">พิมพ์</button>
+</div>
+</body></html>`;
+  }
+}
+
+function escapeHtml(value: string | number | null | undefined): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

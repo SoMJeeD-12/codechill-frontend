@@ -27,12 +27,14 @@ import {
   Contact,
   Customer,
 } from '../../core/models/customer.model';
+import { CustomerOverview } from '../../core/models/customer-overview.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
 import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
 import {
   FollowUp,
   followUpDisplayStatus,
 } from '../../core/models/follow-up.model';
+import { CustomerLifetimeValue, formatCompleteness } from '../../core/models/report.model';
 import { TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
 import {
   WARRANTY_STATUS_LABELS,
@@ -55,6 +57,7 @@ import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 
 @Component({
@@ -62,6 +65,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
   standalone: true,
   imports: [
     ThaiDatePipe,
+    BahtPipe,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -89,6 +93,7 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly customer = signal<Customer | null>(null);
+  readonly overview = signal<CustomerOverview | null>(null);
   readonly contacts = signal<Contact[]>([]);
   readonly logs = signal<CommunicationLog[]>([]);
   readonly projects = signal<Project[]>([]);
@@ -315,6 +320,34 @@ export class CustomerDetailPageComponent implements OnInit {
       },
       error: () => this.notFound.set(true),
     });
+    this.api.getOverview(id).subscribe({
+      next: (overview) => this.overview.set(overview),
+      error: () => this.overview.set(null),
+    });
+  }
+
+  lifetimeValue(): CustomerLifetimeValue | null {
+    return this.overview()?.lifetimeValue ?? null;
+  }
+
+  hasExcludedLifetime(lv: CustomerLifetimeValue): boolean {
+    return (Number(lv.excludedCancelledValue) || 0) > 0 || (lv.excludedCancelledCount ?? 0) > 0;
+  }
+
+  oneTimeCompletenessLabel(lv: CustomerLifetimeValue): string {
+    return formatCompleteness(lv.oneTimeCompleteness);
+  }
+
+  lastContactedAt(c: Customer): string | null {
+    return this.overview()?.lastContactedAt ?? c.lastContactedAt ?? null;
+  }
+
+  idleDays(c: Customer): number | null {
+    const fromOverview = this.overview()?.idleDays;
+    if (fromOverview != null) {
+      return fromOverview;
+    }
+    return c.daysSinceLastContact ?? null;
   }
 
   refreshChildren(): void {

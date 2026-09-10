@@ -423,9 +423,9 @@ export class TicketResolutionFormDialogComponent {
       })
       .subscribe({
         next: ({ quota }) => {
-          let msg = 'บันทึกรอบการแก้ไขแล้ว';
+          let msg = 'บันทึกรอบแล้ว';
           if (quota) {
-            msg += ` · โควตาเหลือ ${quota.remaining}/${quota.quota}`;
+            msg += ` · โควตา ${quota.periodStart}–${quota.periodEnd}: เหลือ ${quota.remaining}/${quota.quota}`;
             if (quota.isOverQuota) {
               msg += ' (เกินโควตา)';
             }

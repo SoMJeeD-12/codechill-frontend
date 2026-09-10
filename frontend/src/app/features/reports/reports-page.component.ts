@@ -4,12 +4,14 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { DataCompleteness, formatCompleteness } from '../../core/models/report.model';
 import { ExecutiveReport, ReportService } from '../../core/services/report.service';
+import { BahtPipe } from '../../shared/pipes/baht.pipe';
 
 @Component({
   selector: 'app-reports-page',
   standalone: true,
-  imports: [ThaiDatePipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [ThaiDatePipe, BahtPipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule],
   templateUrl: './reports-page.component.html',
   styleUrl: './reports-page.component.scss',
 })
@@ -34,5 +36,21 @@ export class ReportsPageComponent implements OnInit {
   barWidth(value: number, rows: { value: number }[]): number {
     const max = Math.max(...rows.map((r) => r.value), 1);
     return Math.round((value / max) * 100);
+  }
+
+  hasExcluded(r: ExecutiveReport): boolean {
+    return (Number(r.excludedCancelledValue) || 0) > 0 || (r.excludedCancelledCount ?? 0) > 0;
+  }
+
+  completeness(label: string | null | undefined): string {
+    return label?.trim() || '';
+  }
+
+  formatCompletenessLabel(c: DataCompleteness | null | undefined): string {
+    return formatCompleteness(c);
+  }
+
+  serviceCostCompleteness(r: ExecutiveReport): string {
+    return formatCompleteness(r.serviceCost?.completeness);
   }
 }

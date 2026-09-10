@@ -1,229 +1,195 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
-import { buildMockSurveys } from '../mock/survey.mock';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, throwError } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   QuestionType,
   Survey,
-  SurveyAnswer,
-  SurveyQuestion,
-  SurveyResponse,
+  SurveyAnswerInput,
+  SurveyAssignment,
+  SurveyResponseDetail,
   SurveyStatus,
+  SurveySummary,
 } from '../models/survey.model';
 
-export interface SurveyInput {
+export interface SurveyQuestionInput {
+  questionText: string;
+  questionType: QuestionType;
+  isRequired?: boolean;
+  options?: string[];
+  minValue?: number | null;
+  maxValue?: number | null;
+}
+
+export interface SurveyCreateInput {
   title: string;
-  description: string;
-  status: SurveyStatus;
-  questions: Array<{
-    text: string;
-    type: QuestionType;
-    required: boolean;
-    options: string[];
-  }>;
+  description?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  questions?: SurveyQuestionInput[];
 }
 
-export interface SurveyResponseInput {
-  customerId: number;
-  answers: SurveyAnswer[];
-  submittedByName: string;
-}
-
-export interface SurveySummary {
-  responseCount: number;
-  averageRating: number | null;
-  ratingDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
+export interface SurveyUpdateInput {
+  title?: string;
+  description?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  questions?: SurveyQuestionInput[];
 }
 
 export interface SurveyListParams {
-  status?: SurveyStatus;
+  page?: number;
+  limit?: number;
   search?: string;
+  status?: SurveyStatus;
 }
 
-/**
- * Surveys M8 — mock จนกว่าจะมี /api/surveys
- * ลูกค้าไม่มีบัญชี → พนักงานบันทึกคำตอบแทน (ตาม Q1 ในเอกสาร)
- */
+export interface CreateAssignmentInput {
+  customerId: number;
+  contactId?: number | null;
+  projectId?: number | null;
+  sentAt?: string;
+}
+
+export interface SubmitAssignmentResponseInput {
+  answers: SurveyAnswerInput[];
+  comment?: string | null;
+  submittedAt?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SurveyService {
-  private readonly surveysSignal = signal<Survey[]>([]);
-  private readonly responsesSignal = signal<SurveyResponse[]>([]);
-  private nextSurveyId = 1;
-  private nextResponseId = 1;
-  private demoSeeded = false;
+  private readonly http = inject(HttpClient);
+  private readonly base = `${environment.apiBaseUrl}/surveys`;
+  private readonly assignmentsBase = `${environment.apiBaseUrl}/survey-assignments`;
+  private readonly items = signal<Survey[]>([]);
 
-  readonly surveys = this.surveysSignal.asReadonly();
+  readonly surveys = this.items.asReadonly();
   readonly activeCount = computed(
-    () => this.surveysSignal().filter((s) => s.status === 'ACTIVE').length
+    () => this.items().filter((s) => s.isCurrentlyUsable).length
   );
 
   list(params: SurveyListParams = {}): Observable<Survey[]> {
-    let rows = this.surveysSignal();
-    if (params.status) {
-      rows = rows.filter((s) => s.status === params.status);
-    }
-    if (params.search?.trim()) {
-      const q = params.search.trim().toLowerCase();
-      rows = rows.filter(
-        (s) =>
-          s.title.toLowerCase().includes(q) ||
-          s.description.toLowerCase().includes(q)
+    return this.http
+      .get<Survey[] | { items: Survey[] }>(this.base, {
+        params: toHttpParams({ limit: 100, ...params }),
+      })
+      .pipe(
+        map(asList),
+        tap((rows) => this.items.set(rows)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
-    }
-    return of(structuredClone(rows)).pipe(delay(180));
   }
 
   getById(id: number): Survey | undefined {
-    return this.surveysSignal().find((s) => s.id === id);
+    return this.items().find((s) => s.id === id);
   }
 
   get(id: number): Observable<Survey> {
-    const row = this.getById(id);
-    if (!row) {
-      return throwError(() => new Error('ไม่พบแบบประเมิน'));
-    }
-    return of(structuredClone(row)).pipe(delay(100));
+    return this.http.get<Survey>(`${this.base}/${id}`).pipe(
+      tap((row) => this.items.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
-  getResponses(surveyId: number): SurveyResponse[] {
-    return this.responsesSignal()
-      .filter((r) => r.surveyId === surveyId)
-      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
-  }
-
-  listResponses(surveyId: number): Observable<SurveyResponse[]> {
-    return of(structuredClone(this.getResponses(surveyId))).pipe(delay(100));
-  }
-
-  summarize(surveyId: number): SurveySummary {
-    const responses = this.getResponses(surveyId);
-    const distribution: SurveySummary['ratingDistribution'] = {
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-    };
-    const averages = responses
-      .map((r) => r.ratingAverage)
-      .filter((v): v is number => v != null);
-    for (const r of responses) {
-      for (const a of r.answers) {
-        if (typeof a.value === 'number' && a.value >= 1 && a.value <= 5) {
-          distribution[a.value as 1 | 2 | 3 | 4 | 5] += 1;
-        }
-      }
-    }
-    const averageRating =
-      averages.length > 0
-        ? Math.round((averages.reduce((s, n) => s + n, 0) / averages.length) * 10) / 10
-        : null;
-    return {
-      responseCount: responses.length,
-      averageRating,
-      ratingDistribution: distribution,
-    };
-  }
-
-  create(input: SurveyInput): Observable<Survey> {
+  create(input: SurveyCreateInput): Observable<Survey> {
     if (!input.title.trim()) {
       return throwError(() => new Error('กรุณาระบุชื่อแบบประเมิน'));
     }
-    if (!input.questions.length) {
-      return throwError(() => new Error('ต้องมีอย่างน้อย 1 คำถาม'));
-    }
-    const questions: SurveyQuestion[] = input.questions.map((q, i) => ({
-      id: i + 1,
-      text: q.text.trim(),
-      type: q.type,
-      required: q.required,
-      options: q.type === 'CHOICE' ? q.options.filter((o) => o.trim()) : [],
-    }));
-    if (questions.some((q) => !q.text)) {
-      return throwError(() => new Error('คำถามต้องไม่ว่าง'));
-    }
-    const now = new Date().toISOString();
-    const row: Survey = {
-      id: this.nextSurveyId++,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      status: input.status,
-      questions,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.surveysSignal.update((list) => [row, ...list]);
-    return of(structuredClone(row)).pipe(delay(220));
+    return this.http
+      .post<Survey>(
+        this.base,
+        pruneUndefined({
+          title: input.title.trim(),
+          description: input.description?.trim() || null,
+          validFrom: input.validFrom || null,
+          validTo: input.validTo || null,
+          questions: input.questions,
+        })
+      )
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  update(id: number, input: SurveyUpdateInput): Observable<Survey> {
+    return this.http
+      .patch<Survey>(`${this.base}/${id}`, pruneUndefined(input))
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   updateStatus(id: number, status: SurveyStatus): Observable<Survey> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบแบบประเมิน'));
-    }
-    const updated: Survey = { ...current, status, updatedAt: new Date().toISOString() };
-    this.surveysSignal.update((list) => list.map((s) => (s.id === id ? updated : s)));
-    return of(structuredClone(updated)).pipe(delay(150));
+    return this.http
+      .patch<Survey>(`${this.base}/${id}/status`, { status })
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  submitResponse(surveyId: number, input: SurveyResponseInput): Observable<SurveyResponse> {
-    const survey = this.getById(surveyId);
-    if (!survey) {
-      return throwError(() => new Error('ไม่พบแบบประเมิน'));
-    }
-    if (survey.status !== 'ACTIVE') {
-      return throwError(() => new Error('แบบประเมินนี้ยังไม่เปิดรับคำตอบ'));
-    }
-    if (!input.customerId) {
-      return throwError(() => new Error('กรุณาเลือกลูกค้า'));
-    }
-    for (const q of survey.questions) {
-      if (!q.required) {
-        continue;
-      }
-      const ans = input.answers.find((a) => a.questionId === q.id);
-      if (ans == null || ans.value === '' || ans.value == null) {
-        return throwError(() => new Error(`กรุณาตอบ: ${q.text}`));
-      }
-    }
-    const ratingValues = input.answers
-      .filter((a) => typeof a.value === 'number')
-      .map((a) => Number(a.value));
-    const ratingAverage =
-      ratingValues.length > 0
-        ? Math.round(
-            (ratingValues.reduce((s, n) => s + n, 0) / ratingValues.length) * 10
-          ) / 10
-        : null;
-
-    const row: SurveyResponse = {
-      id: this.nextResponseId++,
-      surveyId,
-      customerId: input.customerId,
-      answers: input.answers,
-      submittedAt: new Date().toISOString(),
-      submittedByName: input.submittedByName || 'ไม่ระบุ',
-      ratingAverage,
-    };
-    this.responsesSignal.update((list) => [row, ...list]);
-    return of(structuredClone(row)).pipe(delay(220));
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`).pipe(
+      tap(() => this.items.update((list) => list.filter((s) => s.id !== id))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
-  ensureDemoSeed(
-    customerId: number,
-    secondCustomerId?: number | null
-  ): Observable<Survey[]> {
-    if (this.demoSeeded || this.surveysSignal().length > 0) {
-      return this.list();
-    }
-    const { surveys, responses } = buildMockSurveys({
-      customerId,
-      secondCustomerId,
-    });
-    this.surveysSignal.set(surveys);
-    this.responsesSignal.set(responses);
-    this.nextSurveyId = Math.max(...surveys.map((s) => s.id)) + 1;
-    this.nextResponseId = Math.max(...responses.map((r) => r.id)) + 1;
-    this.demoSeeded = true;
-    return of(structuredClone(surveys)).pipe(delay(160));
+  getSummary(id: number): Observable<SurveySummary> {
+    return this.http
+      .get<SurveySummary>(`${this.base}/${id}/summary`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  listAssignments(surveyId: number): Observable<SurveyAssignment[]> {
+    return this.http
+      .get<SurveyAssignment[] | { items: SurveyAssignment[] }>(
+        `${this.base}/${surveyId}/assignments`
+      )
+      .pipe(
+        map(asList),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  createAssignment(
+    surveyId: number,
+    input: CreateAssignmentInput
+  ): Observable<SurveyAssignment> {
+    return this.http
+      .post<SurveyAssignment>(
+        `${this.base}/${surveyId}/assignments`,
+        pruneUndefined(input)
+      )
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  listResponses(surveyId: number): Observable<SurveyResponseDetail[]> {
+    return this.http
+      .get<SurveyResponseDetail[] | { items: SurveyResponseDetail[] }>(
+        `${this.base}/${surveyId}/responses`
+      )
+      .pipe(
+        map(asList),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  submitAssignmentResponse(
+    assignmentId: number,
+    input: SubmitAssignmentResponseInput
+  ): Observable<SurveyResponseDetail> {
+    return this.http
+      .post<SurveyResponseDetail>(
+        `${this.assignmentsBase}/${assignmentId}/response`,
+        pruneUndefined(input)
+      )
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 }

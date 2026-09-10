@@ -103,32 +103,56 @@
                 <ng-container matColumnDef="priority">
                   <th mat-header-cell *matHeaderCellDef>ความสำคัญ</th>
                   <td mat-cell *matCellDef="let row">
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-select">
-                      <mat-select
-                        [value]="row.priority"
-                        (selectionChange)="changePriority(row, $event.value)"
-                      >
-                        @for (pr of priorities; track pr) {
-                          <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
+                    <button
+                      type="button"
+                      class="cell-badge priority-badge is-editable"
+                      [attr.data-priority]="row.priority"
+                      [matMenuTriggerFor]="priorityMenu"
+                      matTooltip="เปลี่ยนความสำคัญ"
+                    >
+                      {{ priorityLabel(row.priority) }}
+                      <mat-icon>expand_more</mat-icon>
+                    </button>
+                    <mat-menu #priorityMenu="matMenu">
+                      @for (pr of priorities; track pr) {
+                        <button mat-menu-item type="button" (click)="changePriority(row, pr)">
+                          @if (row.priority === pr) {
+                            <mat-icon>check</mat-icon>
+                          }
+                          <span>{{ priorityLabels[pr] }}</span>
+                        </button>
+                      }
+                    </mat-menu>
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="assignee">
                   <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
                   <td mat-cell *matCellDef="let row">
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-select wide">
-                      <mat-select
-                        [value]="row.assignedUserId"
-                        (selectionChange)="changeAssignee(row, $event.value)"
-                      >
-                        <mat-option [value]="null">—</mat-option>
-                        @for (u of users(); track u.id) {
-                          <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                    <button
+                      type="button"
+                      class="cell-badge assignee-badge is-editable"
+                      [matMenuTriggerFor]="assigneeMenu"
+                      matTooltip="เปลี่ยนผู้รับผิดชอบ"
+                    >
+                      <span class="assignee-name">{{ userName(row.assignedUserId) }}</span>
+                      <mat-icon>expand_more</mat-icon>
+                    </button>
+                    <mat-menu #assigneeMenu="matMenu" class="assignee-menu">
+                      <button mat-menu-item type="button" (click)="changeAssignee(row, null)">
+                        @if (row.assignedUserId == null) {
+                          <mat-icon>check</mat-icon>
                         }
-                      </mat-select>
-                    </mat-form-field>
+                        <span>—</span>
+                      </button>
+                      @for (u of users(); track u.id) {
+                        <button mat-menu-item type="button" (click)="changeAssignee(row, u.id)">
+                          @if (row.assignedUserId === u.id) {
+                            <mat-icon>check</mat-icon>
+                          }
+                          <span>{{ u.fullName }}</span>
+                        </button>
+                      }
+                    </mat-menu>
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="dueDate">
@@ -138,16 +162,26 @@
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>สถานะ</th>
                   <td mat-cell *matCellDef="let row">
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-select wide">
-                      <mat-select
-                        [value]="row.status"
-                        (selectionChange)="changeStatus(row, $event.value)"
-                      >
-                        @for (s of taskStatuses; track s) {
-                          <mat-option [value]="s">{{ taskStatusLabels[s] }}</mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
+                    <button
+                      type="button"
+                      class="cell-badge status-badge is-editable"
+                      [attr.data-status]="row.status"
+                      [matMenuTriggerFor]="statusMenu"
+                      matTooltip="เปลี่ยนสถานะ"
+                    >
+                      {{ taskStatusLabel(row.status) }}
+                      <mat-icon>expand_more</mat-icon>
+                    </button>
+                    <mat-menu #statusMenu="matMenu">
+                      @for (s of taskStatuses; track s) {
+                        <button mat-menu-item type="button" (click)="changeStatus(row, s)">
+                          @if (row.status === s) {
+                            <mat-icon>check</mat-icon>
+                          }
+                          <span>{{ taskStatusLabels[s] }}</span>
+                        </button>
+                      }
+                    </mat-menu>
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="actions">

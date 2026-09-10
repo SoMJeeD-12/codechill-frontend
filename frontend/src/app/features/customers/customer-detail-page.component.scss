@@ -45,6 +45,39 @@
   }
 }
 
+.lifetime-card {
+  grid-column: span 2;
+
+  span {
+    display: block;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .muted {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: #5b6762;
+    line-height: 1.4;
+  }
+
+  .overlap-warn {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-top: 0.35rem;
+    color: #b45309;
+    font-size: 0.75rem;
+
+    mat-icon {
+      font-size: 0.95rem;
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+  }
+}
+
 .tab-panel {
   padding: 1rem 0 1.5rem;
 }

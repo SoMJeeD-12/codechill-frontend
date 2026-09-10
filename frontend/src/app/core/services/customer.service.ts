@@ -12,6 +12,7 @@ import {
   Customer,
   CustomerStatus,
 } from '../models/customer.model';
+import { CustomerOverview } from '../models/customer-overview.model';
 
 /** CreateCustomerDto / UpdateCustomerDto */
 export interface CustomerInput {
@@ -116,6 +117,13 @@ export class CustomerService {
       tap((row) => this.customersSignal.update((list) => upsertById(list, row))),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
+  }
+
+  /** GET /customers/:id/overview — ข้อมูล 360 + lifetimeValue */
+  getOverview(id: number): Observable<CustomerOverview> {
+    return this.http
+      .get<CustomerOverview>(`${this.customersBase}/${id}/overview`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
   createCustomer(input: CustomerInput): Observable<Customer> {

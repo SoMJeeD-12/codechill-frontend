@@ -23,14 +23,13 @@ import {
   SurveyStatus,
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
-import { CustomerService } from '../../core/services/customer.service';
 
 @Component({
   selector: 'app-surveys-page',
   standalone: true,
   imports: [
     ThaiDatePipe,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -44,7 +43,6 @@ import { CustomerService } from '../../core/services/customer.service';
 })
 export class SurveysPageComponent implements OnInit {
   private readonly api = inject(SurveyService);
-  private readonly customersApi = inject(CustomerService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -64,44 +62,25 @@ export class SurveysPageComponent implements OnInit {
     return list.filter(
       (s) =>
         s.title.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q) ||
+        (s.description ?? '').toLowerCase().includes(q) ||
         this.statusLabels[s.status].toLowerCase().includes(q)
     );
   });
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.customersApi.listCustomers().subscribe({
-      next: (customers) => {
-        const first = customers[0];
-        const second = customers[1];
-        if (first) {
-          this.api
-            .ensureDemoSeed(first.id, second?.id ?? null)
-            .subscribe((list) => this.surveys.set(list));
-        } else {
-          this.reload();
-        }
-      },
-      error: () => this.reload(),
-    });
+    this.reload();
   }
 
   reload(): void {
-    this.api.list().subscribe((list) => this.surveys.set(list));
+    this.api.list().subscribe({
+      next: (list) => this.surveys.set(list),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
   }
 
   statusLabel(status: SurveyStatus): string {
     return this.statusLabels[status];
-  }
-
-  responseCount(id: number): number {
-    return this.api.summarize(id).responseCount;
-  }
-
-  avg(id: number): string {
-    const v = this.api.summarize(id).averageRating;
-    return v == null ? '—' : String(v);
   }
 
   openCreate(): void {
@@ -151,15 +130,12 @@ export class SurveyFormDialogComponent {
 
   readonly typeLabels = QUESTION_TYPE_LABELS;
   readonly types = Object.keys(QUESTION_TYPE_LABELS) as QuestionType[];
-  readonly statusLabels = SURVEY_STATUS_LABELS;
-  readonly statuses = Object.keys(SURVEY_STATUS_LABELS) as SurveyStatus[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
   readonly form = this.fb.group({
     title: ['', Validators.required],
     description: [''],
-    status: ['DRAFT' as SurveyStatus],
     questions: this.fb.array([this.newQuestion('ความพึงพอใจโดยรวม', 'RATING')]),
   });
 
@@ -169,11 +145,15 @@ export class SurveyFormDialogComponent {
 
   newQuestion(text = '', type: QuestionType = 'RATING') {
     return this.fb.group({
-      text: [text, Validators.required],
-      type: [type as QuestionType],
-      required: [true],
+      questionText: [text, Validators.required],
+      questionType: [type as QuestionType],
+      isRequired: [true],
       optionsText: [''],
     });
+  }
+
+  needsOptions(type: QuestionType | null | undefined): boolean {
+    return type === 'CHOICE' || type === 'MULTI_CHOICE';
   }
 
   addQuestion(): void {
@@ -193,27 +173,39 @@ export class SurveyFormDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
+    const questions = (raw.questions ?? []).map((q) => {
+      const questionType = (q?.questionType as QuestionType) ?? 'TEXT';
+      const options = String(q?.optionsText ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return {
+        questionText: q?.questionText ?? '',
+        questionType,
+        isRequired: !!q?.isRequired,
+        options: this.needsOptions(questionType) ? options : undefined,
+      };
+    });
+
+    for (const q of questions) {
+      if (this.needsOptions(q.questionType) && (!q.options || q.options.length === 0)) {
+        this.error.set('คำถามแบบเลือกต้องมีตัวเลือกอย่างน้อย 1 รายการ');
+        return;
+      }
+    }
+
     this.saving.set(true);
     this.error.set(null);
     this.api
       .create({
         title: raw.title ?? '',
         description: raw.description ?? '',
-        status: (raw.status as SurveyStatus) ?? 'DRAFT',
-        questions: (raw.questions ?? []).map((q) => ({
-          text: q?.text ?? '',
-          type: (q?.type as QuestionType) ?? 'TEXT',
-          required: !!q?.required,
-          options: String(q?.optionsText ?? '')
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean),
-        })),
+        questions,
       })
       .subscribe({
         next: () => {
           this.saving.set(false);
-          this.snack.open('สร้างแบบประเมินแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('สร้างแบบประเมินแล้ว (แบบร่าง)', 'ปิด', { duration: 2500 });
           this.ref.close(true);
         },
         error: (err: Error) => {

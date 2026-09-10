@@ -1,101 +1,78 @@
-import { Survey, SurveyResponse } from '../models/survey.model';
+import { Survey, SurveyResponseDetail } from '../models/survey.model';
 
 export interface SurveyMockSeedContext {
   customerId: number;
   secondCustomerId?: number | null;
 }
 
+/** Legacy mock seed — kept for reference; SurveyService no longer uses this. */
 export function buildMockSurveys(ctx: SurveyMockSeedContext): {
   surveys: Survey[];
-  responses: SurveyResponse[];
+  responses: SurveyResponseDetail[];
 } {
   const now = new Date().toISOString();
   const surveys: Survey[] = [
     {
       id: 1,
       title: 'ความพึงพอใจหลังส่งมอบ',
-      description: 'ประเมินประสบการณ์หลังรับมอบระบบ (mock — Q1 ลูกค้าไม่มีบัญชี บันทึกโดยพนักงาน)',
+      description: 'ประเมินประสบการณ์หลังรับมอบระบบ',
       status: 'ACTIVE',
+      isCurrentlyUsable: true,
+      validFrom: null,
+      validTo: null,
       questions: [
         {
           id: 1,
-          text: 'โดยรวมพึงพอใจแค่ไหน',
-          type: 'RATING',
-          required: true,
-          options: [],
+          questionText: 'โดยรวมพึงพอใจแค่ไหน',
+          questionType: 'RATING',
+          isRequired: true,
+          options: null,
+          minValue: 1,
+          maxValue: 5,
+          sortOrder: 1,
         },
         {
           id: 2,
-          text: 'ทีมซัพพอร์ตอบได้รวดเร็วหรือไม่',
-          type: 'RATING',
-          required: true,
-          options: [],
-        },
-        {
-          id: 3,
-          text: 'ช่องทางที่สะดวกติดต่อ',
-          type: 'CHOICE',
-          required: true,
+          questionText: 'ช่องทางที่สะดวกติดต่อ',
+          questionType: 'CHOICE',
+          isRequired: true,
           options: ['LINE', 'โทรศัพท์', 'อีเมล', 'เข้าพบ'],
-        },
-        {
-          id: 4,
-          text: 'ข้อเสนอแนะเพิ่มเติม',
-          type: 'TEXT',
-          required: false,
-          options: [],
+          minValue: null,
+          maxValue: null,
+          sortOrder: 2,
         },
       ],
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 2,
-      title: 'แบบร่าง — หลังปิดงาน MA',
-      description: 'ยังไม่เปิดรับคำตอบ',
-      status: 'DRAFT',
-      questions: [
-        {
-          id: 1,
-          text: 'คะแนนบริการ MA',
-          type: 'RATING',
-          required: true,
-          options: [],
-        },
-      ],
+      assignmentCount: 2,
+      responseCount: 2,
       createdAt: now,
       updatedAt: now,
     },
   ];
 
-  const responses: SurveyResponse[] = [
+  const responses: SurveyResponseDetail[] = [
     {
       id: 1,
+      assignmentId: 1,
       surveyId: 1,
       customerId: ctx.customerId,
-      answers: [
-        { questionId: 1, value: 5 },
-        { questionId: 2, value: 4 },
-        { questionId: 3, value: 'LINE' },
-        { questionId: 4, value: 'ทีมงานดูแลดีมาก' },
-      ],
+      customerName: null,
+      answers: [],
       submittedAt: now,
-      submittedByName: 'พนักงาน (mock)',
-      ratingAverage: 4.5,
+      overallScore: 4.5,
+      comment: null,
+      createdAt: now,
     },
     {
       id: 2,
+      assignmentId: 2,
       surveyId: 1,
       customerId: ctx.secondCustomerId ?? ctx.customerId,
-      answers: [
-        { questionId: 1, value: 3 },
-        { questionId: 2, value: 4 },
-        { questionId: 3, value: 'โทรศัพท์' },
-        { questionId: 4, value: '' },
-      ],
+      customerName: null,
+      answers: [],
       submittedAt: now,
-      submittedByName: 'พนักงาน (mock)',
-      ratingAverage: 3.5,
+      overallScore: 3.5,
+      comment: null,
+      createdAt: now,
     },
   ];
 

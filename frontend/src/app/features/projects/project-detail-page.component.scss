@@ -75,39 +75,95 @@
   white-space: nowrap;
 }
 
-.cell-select {
-  width: 118px;
-  margin: 0;
+.cell-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  max-width: 100%;
+  padding: 0.28rem 0.55rem 0.28rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  vertical-align: middle;
+  background: #f1f5f4;
+  color: #3f4a46;
 
-  &.wide {
-    width: 158px;
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin-right: -0.1rem;
+    opacity: 0.75;
   }
 
-  ::ng-deep {
-    .mat-mdc-form-field-flex {
-      height: 36px;
-      align-items: center;
-    }
+  &.is-editable {
+    cursor: pointer;
+    transition: filter 0.12s ease, box-shadow 0.12s ease;
 
-    .mat-mdc-text-field-wrapper {
-      background: #fff;
+    &:hover {
+      filter: brightness(0.97);
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
     }
+  }
+}
 
-    .mdc-notched-outline__leading,
-    .mdc-notched-outline__notch,
-    .mdc-notched-outline__trailing {
-      border-color: #d5e3df !important;
-    }
+.priority-badge {
+  &[data-priority='URGENT'] {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
 
-    .mat-mdc-form-field-infix {
-      min-height: 36px;
-      padding-top: 6px;
-      padding-bottom: 6px;
-    }
+  &[data-priority='HIGH'] {
+    background: #fff7ed;
+    color: #c2410c;
+  }
 
-    .mat-mdc-select-value-text {
-      font-size: 0.84rem;
-    }
+  &[data-priority='NORMAL'] {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  &[data-priority='LOW'] {
+    background: #f1f5f4;
+    color: #5b6762;
+  }
+}
+
+.assignee-badge {
+  max-width: 11.5rem;
+  background: #eef6f4;
+  color: #0f766e;
+
+  .assignee-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.status-badge {
+  &[data-status='TODO'] {
+    background: #f1f5f4;
+    color: #5b6762;
+  }
+
+  &[data-status='DOING'] {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  &[data-status='WAITING'],
+  &[data-status='REVIEW'] {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+
+  &[data-status='DONE'] {
+    background: #ecfdf5;
+    color: #0f766e;
   }
 }
 

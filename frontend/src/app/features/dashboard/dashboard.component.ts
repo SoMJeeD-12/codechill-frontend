@@ -23,6 +23,7 @@ import { CustomerService } from '../../core/services/customer.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
+import { Survey } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { WarrantyService } from '../../core/services/warranty.service';
@@ -144,15 +145,9 @@ export class DashboardComponent implements OnInit {
           const follow$ = this.followUps
             .list({ limit: 100 })
             .pipe(catchError(() => of([] as FollowUp[])));
-          const first = data.customers[0];
-          const second = data.customers[1];
-          const survey$ = first
-            ? this.surveys
-                .ensureDemoSeed(first.id, second?.id ?? null)
-                .pipe(catchError(() => of([])))
-            : of([]);
+          const survey$ = this.surveys.list().pipe(catchError(() => of([] as Survey[])));
           return forkJoin({ followUpList: follow$, surveys: survey$ }).pipe(
-            map(({ followUpList }) => ({ ...data, followUpList }))
+            map(({ followUpList, surveys }) => ({ ...data, followUpList, surveys }))
           );
         }),
         finalize(() => this.loading.set(false))
@@ -169,6 +164,7 @@ export class DashboardComponent implements OnInit {
     maExpiring: MaContract[];
     maAll: MaContract[];
     followUpList: FollowUp[];
+    surveys: Survey[];
   }): void {
     const openProjects = data.projects.filter((p) =>
       OPEN_PROJECT_STATUSES.includes(p.status)
@@ -189,21 +185,13 @@ export class DashboardComponent implements OnInit {
     const maAnnual = activeMa.reduce((s, c) => s + (Number(c.price) || 0), 0);
     this.maAnnualLabel.set(thb(maAnnual));
 
-    const surveyAvgs = this.surveys
-      .surveys()
-      .filter((s) => s.status !== 'DRAFT')
-      .map((s) => this.surveys.summarize(s.id).averageRating)
-      .filter((v): v is number => v != null);
-    const satAvg =
-      surveyAvgs.length > 0
-        ? Math.round((surveyAvgs.reduce((a, b) => a + b, 0) / surveyAvgs.length) * 10) / 10
-        : null;
-    this.csatAvg.set(satAvg != null ? String(satAvg) : '—');
+    const totalResponses = data.surveys.reduce((sum, s) => sum + (s.responseCount || 0), 0);
+    this.csatAvg.set(totalResponses > 0 ? String(totalResponses) : '—');
 
     if (this.isExecutive()) {
       this.stats.set([
         {
-          label: 'รายได้ MA ต่อปี',
+          label: 'มูลค่าสัญญา MA ต่อปี',
           value: thb(maAnnual),
           icon: 'payments',
           hint: `${activeMa.length} สัญญาที่ใช้งาน`,
@@ -228,11 +216,11 @@ export class DashboardComponent implements OnInit {
         },
         {
           label: 'ความพึงพอใจ',
-          value: satAvg != null ? String(satAvg) : '—',
+          value: totalResponses > 0 ? String(totalResponses) : '—',
           icon: 'sentiment_satisfied',
-          hint: 'เฉลี่ยจากแบบประเมิน',
+          hint: 'จำนวนคำตอบจากแบบประเมิน',
           route: '/app/surveys',
-          tone: satAvg != null && satAvg < 3.5 ? 'warn' : 'neutral',
+          tone: 'neutral',
         },
         {
           label: 'ประกันใกล้หมด',
@@ -291,7 +279,7 @@ export class DashboardComponent implements OnInit {
     this.openCloseTrend.set(buildOpenCloseTrend(openCount));
     this.billingSlices.set(buildBillingSlices(data.allTickets));
     this.maMonthBars.set(buildMaMonthBars(data.maAll));
-    this.csatBars.set(buildCsatBars(this.surveys));
+    this.csatBars.set(buildCsatBars(data.surveys));
 
     const risks: RiskAlert[] = [];
     if (maExpiring30.length > 0) {
@@ -431,30 +419,26 @@ function buildMaMonthBars(contracts: MaContract[]): ChartBar[] {
   }));
 }
 
-function buildCsatBars(surveys: SurveyService): ChartBar[] {
-  const dist: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const s of surveys.surveys()) {
-    const summary = surveys.summarize(s.id);
-    for (const star of [1, 2, 3, 4, 5] as const) {
-      dist[star] += summary.ratingDistribution[star] ?? 0;
-    }
+function buildCsatBars(surveys: Survey[]): ChartBar[] {
+  const rows = [...surveys]
+    .filter((s) => s.status !== 'DRAFT')
+    .sort((a, b) => (b.responseCount || 0) - (a.responseCount || 0))
+    .slice(0, 5);
+  if (rows.length === 0 || rows.every((s) => !s.responseCount)) {
+    return [
+      { label: 'ยังไม่มีข้อมูล', value: 0, percent: 0 },
+    ];
   }
-  const values = [dist[1], dist[2], dist[3], dist[4], dist[5]];
-  if (values.every((v) => v === 0)) {
-    const mock = [1, 2, 4, 8, 6];
-    const max = Math.max(...mock, 1);
-    return [1, 2, 3, 4, 5].map((star, i) => ({
-      label: `${star}★`,
-      value: mock[i],
-      percent: Math.round((mock[i] / max) * 100),
-    }));
-  }
-  const max = Math.max(...values, 1);
-  return [1, 2, 3, 4, 5].map((star, i) => ({
-    label: `${star}★`,
-    value: values[i],
-    percent: Math.round((values[i] / max) * 100),
-  }));
+  const max = Math.max(...rows.map((s) => s.responseCount || 0), 1);
+  return rows.map((s) => {
+    const label = s.title.length > 14 ? `${s.title.slice(0, 14)}…` : s.title;
+    const value = s.responseCount || 0;
+    return {
+      label,
+      value,
+      percent: Math.round((value / max) * 100),
+    };
+  });
 }
 
 function conicGradient(slices: ChartSlice[]): string {

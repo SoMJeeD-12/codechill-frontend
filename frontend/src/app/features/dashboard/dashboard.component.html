@@ -142,13 +142,12 @@
           <div class="panel-head">
             <div>
               <h2>คะแนนความพึงพอใจ</h2>
-              <p class="chart-hint">การกระจายคะแนนจากแบบประเมิน · เฉลี่ย {{ csatAvg() }}</p>
+              <p class="chart-hint">จำนวนคำตอบต่อแบบประเมิน · รวม {{ csatAvg() }}</p>
             </div>
-            <span class="badge-mock">Mock</span>
           </div>
           <div class="csat-score">
             <strong>{{ csatAvg() }}</strong>
-            <span>/ 5.0</span>
+            <span>คำตอบ</span>
           </div>
           <ul class="h-bars csat">
             @for (bar of csatBars(); track bar.label) {

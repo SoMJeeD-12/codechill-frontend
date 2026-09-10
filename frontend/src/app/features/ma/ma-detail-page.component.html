@@ -24,10 +24,28 @@
           }
         </p>
       </div>
-      <button mat-stroked-button type="button" (click)="printInvoice()">
-        <mat-icon>print</mat-icon>
-        พิมพ์ใบแจ้งค่าบริการ
-      </button>
+      <div class="header-actions">
+        <button mat-stroked-button type="button" (click)="printDraftContract()">
+          <mat-icon>description</mat-icon>
+          พิมพ์ร่างสัญญา
+        </button>
+        <button mat-stroked-button type="button" (click)="printInvoice()">
+          <mat-icon>print</mat-icon>
+          พิมพ์ใบแจ้งค่าบริการ
+        </button>
+        @if (canRenew()) {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="renewContract()"
+            [disabled]="renewing()"
+          >
+            <mat-icon>autorenew</mat-icon>
+            ต่ออายุสัญญา
+          </button>
+        }
+      </div>
     </header>
 
     <div class="meta-grid">

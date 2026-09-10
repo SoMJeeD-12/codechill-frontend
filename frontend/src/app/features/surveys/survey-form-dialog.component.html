@@ -9,14 +9,7 @@
       <mat-label>คำอธิบาย</mat-label>
       <textarea matInput rows="2" formControlName="description"></textarea>
     </mat-form-field>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>สถานะเริ่มต้น</mat-label>
-      <mat-select formControlName="status">
-        @for (s of statuses; track s) {
-          <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+    <p class="hint">สร้างแล้วจะเป็นแบบร่าง — กด「เปิดรับ」จากรายการเมื่อพร้อม</p>
 
     <div class="q-head">
       <h3>คำถาม</h3>
@@ -31,21 +24,23 @@
         <div class="q-item" [formGroupName]="i">
           <mat-form-field appearance="outline" class="full">
             <mat-label>ข้อความคำถาม</mat-label>
-            <input matInput formControlName="text" />
+            <input matInput formControlName="questionText" />
           </mat-form-field>
           <div class="row">
             <mat-form-field appearance="outline">
               <mat-label>ประเภท</mat-label>
-              <mat-select formControlName="type">
+              <mat-select formControlName="questionType">
                 @for (t of types; track t) {
                   <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>ตัวเลือก CHOICE (คั่นด้วย ,)</mat-label>
-              <input matInput formControlName="optionsText" placeholder="ดี, พอใช้, ปรับปรุง" />
-            </mat-form-field>
+            @if (needsOptions(ctrl.get('questionType')?.value)) {
+              <mat-form-field appearance="outline">
+                <mat-label>ตัวเลือก (คั่นด้วย ,)</mat-label>
+                <input matInput formControlName="optionsText" placeholder="ดี, พอใช้, ปรับปรุง" />
+              </mat-form-field>
+            }
           </div>
           <button mat-button type="button" color="warn" (click)="removeQuestion(i)" [disabled]="questions.length <= 1">
             ลบคำถาม

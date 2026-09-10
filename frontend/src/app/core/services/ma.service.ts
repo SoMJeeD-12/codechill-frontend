@@ -270,4 +270,57 @@ export class MaService {
   deleteAddon(_contractId: number, _addonId: number): Observable<void> {
     return throwError(() => new Error('ระบบไม่รองรับการลบ Add-on'));
   }
+
+  /** GET /ma-contracts/:id/print — ข้อมูลร่างสัญญาให้ FE จัดหน้าพิมพ์ */
+  getPrintPayload(contractId: number): Observable<MaContractPrintPayload> {
+    return this.http
+      .get<MaContractPrintPayload>(`${this.contractsBase}/${contractId}/print`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+}
+
+/** ข้อมูลจาก GET .../print */
+export interface MaContractPrintPayload {
+  generatedAt: string;
+  contract: {
+    id: number;
+    contractNo: string | null;
+    status: MaContractStatus;
+    price: string;
+    billingCycle: MaBillingCycle;
+    startDate: string;
+    endDate: string;
+    signedDate: string | null;
+    note: string | null;
+    previousContract?: { id: number; contractNo: string | null } | null;
+  };
+  customer: {
+    id: number;
+    code: string | null;
+    name: string;
+    taxId: string | null;
+    address: string | null;
+    province: string | null;
+    postalCode: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+  primaryContact: {
+    id: number;
+    name: string;
+    position?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+  project: { id: number; code?: string | null; name: string };
+  plan: {
+    code: string;
+    name: string;
+    description: string | null;
+    bugQuotaPerMonth: number;
+    responseTimeHour: number | null;
+    onsiteQuotaPerMonth: number | null;
+    items: Array<{ title: string; detail: string | null; sortOrder?: number }>;
+  };
+  addons: MaAddon[];
 }

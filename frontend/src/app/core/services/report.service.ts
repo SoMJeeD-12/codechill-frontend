@@ -1,6 +1,18 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { toHttpParams } from '../http/api.util';
+import {
+  ContractOverlapReport,
+  ContractValueByCustomerReport,
+  ContractValueByTypeReport,
+  ServiceCostReport,
+  UpcomingContractValueReport,
+  formatCompleteness,
+} from '../models/report.model';
 import { OPEN_PROJECT_STATUSES } from '../models/project.model';
 import { WARRANTY_NEAR_EXPIRY_DAYS } from '../models/warranty.model';
 import { formatMoneyDisplay } from '../utils/money.util';
@@ -11,6 +23,12 @@ import { ProjectService } from './project.service';
 import { SurveyService } from './survey.service';
 import { TicketService } from './ticket.service';
 import { WarrantyService } from './warranty.service';
+
+export interface ReportDateRange {
+  dateFrom?: string;
+  dateTo?: string;
+  [key: string]: string | number | boolean | null | undefined;
+}
 
 export interface ReportKpi {
   label: string;
@@ -23,12 +41,28 @@ export interface ReportRow {
   label: string;
   value: number;
   display: string;
+  note?: string;
 }
 
 export interface ExecutiveReport {
   generatedAt: string;
+  disclaimer: string;
   kpis: ReportKpi[];
-  revenue: ReportRow[];
+  contractValue: ReportRow[];
+  ranking: Array<{
+    customerId: number;
+    label: string;
+    display: string;
+    value: number;
+    overlappingContractCount: number;
+  }>;
+  grandTotalContractValue: string;
+  excludedCancelledValue: string;
+  excludedCancelledCount: number;
+  oneTimeCompletenessLabel: string;
+  upcoming: UpcomingContractValueReport | null;
+  serviceCost: ServiceCostReport | null;
+  overlaps: ContractOverlapReport | null;
   operations: ReportRow[];
   satisfaction: ReportRow[];
   alerts: string[];
@@ -36,6 +70,8 @@ export interface ExecutiveReport {
 
 @Injectable({ providedIn: 'root' })
 export class ReportService {
+  private readonly http = inject(HttpClient);
+  private readonly base = `${environment.apiBaseUrl}/reports`;
   private readonly customers = inject(CustomerService);
   private readonly projects = inject(ProjectService);
   private readonly tickets = inject(TicketService);
@@ -44,43 +80,81 @@ export class ReportService {
   private readonly followUps = inject(FollowUpService);
   private readonly surveys = inject(SurveyService);
 
-  getExecutiveReport(): Observable<ExecutiveReport> {
+  byCustomer(
+    params: ReportDateRange & { limit?: number } = { limit: 10 }
+  ): Observable<ContractValueByCustomerReport> {
+    return this.http
+      .get<ContractValueByCustomerReport>(`${this.base}/contract-value/by-customer`, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(catchError((err) => throwApi(err)));
+  }
+
+  byType(params: ReportDateRange = {}): Observable<ContractValueByTypeReport> {
+    return this.http
+      .get<ContractValueByTypeReport>(`${this.base}/contract-value/by-type`, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(catchError((err) => throwApi(err)));
+  }
+
+  upcoming(): Observable<UpcomingContractValueReport> {
+    return this.http
+      .get<UpcomingContractValueReport>(`${this.base}/contract-value/upcoming`)
+      .pipe(catchError((err) => throwApi(err)));
+  }
+
+  serviceCost(
+    params: ReportDateRange & { customerId?: number } = {}
+  ): Observable<ServiceCostReport> {
+    return this.http
+      .get<ServiceCostReport>(`${this.base}/service-cost`, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(catchError((err) => throwApi(err)));
+  }
+
+  overlaps(customerId?: number): Observable<ContractOverlapReport> {
+    return this.http
+      .get<ContractOverlapReport>(`${this.base}/ma-contract-overlaps`, {
+        params: toHttpParams({ customerId }),
+      })
+      .pipe(catchError((err) => throwApi(err)));
+  }
+
+  getExecutiveReport(range: ReportDateRange = {}): Observable<ExecutiveReport> {
     return forkJoin({
+      byType: this.byType(range).pipe(catchError(() => of(null))),
+      byCustomer: this.byCustomer({ ...range, limit: 10 }).pipe(catchError(() => of(null))),
+      upcoming: this.upcoming().pipe(catchError(() => of(null))),
+      serviceCost: this.serviceCost(range).pipe(catchError(() => of(null))),
+      overlaps: this.overlaps().pipe(catchError(() => of(null))),
       warranties: this.warranties
         .listExpiring({ days: WARRANTY_NEAR_EXPIRY_DAYS, limit: 100 })
         .pipe(catchError(() => of([]))),
-      followUps: this.followUps
-        .list({ overdue: true, limit: 100 })
-        .pipe(catchError(() => of([]))),
-    }).pipe(map(() => this.buildReport()));
+      followUps: this.followUps.list({ overdue: true, limit: 100 }).pipe(catchError(() => of([]))),
+      surveys: this.surveys.list().pipe(catchError(() => of([]))),
+    }).pipe(map((data) => this.buildReport(data)));
   }
 
-  private buildReport(): ExecutiveReport {
+  private buildReport(data: {
+    byType: ContractValueByTypeReport | null;
+    byCustomer: ContractValueByCustomerReport | null;
+    upcoming: UpcomingContractValueReport | null;
+    serviceCost: ServiceCostReport | null;
+    overlaps: ContractOverlapReport | null;
+    warranties: unknown[];
+    followUps: unknown[];
+    surveys: Array<{ title: string; id: number; responseCount: number }>;
+  }): ExecutiveReport {
     const customerList = this.customers.customers();
     const projectList = this.projects.projects();
-    const ticketList = this.tickets.tickets();
-    const contractList = this.ma.contracts();
     const openProjects = projectList.filter((p) => OPEN_PROJECT_STATUSES.includes(p.status));
     const openTickets = this.tickets.openQueue();
-    const activeMa = contractList.filter((c) => c.isCurrentlyActive);
-    const maAnnual = activeMa.reduce((s, c) => s + (Number(c.price) || 0), 0);
-    const projectValue = projectList.reduce((s, c) => s + (c.contractValue ?? 0), 0);
-    const nearWarranty = this.warranties.listNearExpiry().length;
-    const overdueFollowUps = this.followUps.listOverdue().length;
-    const lowQuota = activeMa.filter((c) => this.ma.remainingQuota(c) <= 2).length;
-
-    const surveyAvgs = this.surveys
-      .surveys()
-      .filter((s) => s.status !== 'DRAFT')
-      .map((s) => this.surveys.summarize(s.id).averageRating)
-      .filter((v): v is number => v != null);
-    const satAvg =
-      surveyAvgs.length > 0
-        ? Math.round((surveyAvgs.reduce((a, b) => a + b, 0) / surveyAvgs.length) * 10) / 10
-        : null;
-
-    const billedTickets = ticketList.filter((t) => (t.extraCharge ?? 0) > 0);
-    const ticketRevenue = billedTickets.reduce((s, t) => s + (t.extraCharge ?? 0), 0);
+    const nearWarranty = data.warranties.length;
+    const overdueFollowUps = data.followUps.length;
+    const byType = data.byType;
+    const byCustomer = data.byCustomer;
 
     const alerts: string[] = [];
     if (nearWarranty > 0) {
@@ -89,8 +163,10 @@ export class ReportService {
     if (overdueFollowUps > 0) {
       alerts.push(`ติดตามลูกค้าเลยกำหนด ${overdueFollowUps} รายการ`);
     }
-    if (lowQuota > 0) {
-      alerts.push(`สัญญา MA โควตาต่ำ ${lowQuota} สัญญา`);
+    if ((data.upcoming?.overlappingContractCount ?? 0) > 0) {
+      alerts.push(
+        `มีสัญญา MA ช่วงเวลาซ้อนกัน ${data.upcoming!.overlappingContractCount} รายการ — ยอดอาจนับซ้ำ`
+      );
     }
     if (openTickets.length > 0) {
       alerts.push(`ปัญหาค้างในคิว ${openTickets.length} ใบ`);
@@ -99,8 +175,41 @@ export class ReportService {
       alerts.push('ไม่มีจุดเตือนเร่งด่วนในขณะนี้');
     }
 
-    const report: ExecutiveReport = {
+    const contractValue: ReportRow[] = byType
+      ? [
+          {
+            label: 'มูลค่าตามสัญญาจากโครงการ',
+            value: Number(byType.projectContractValue) || 0,
+            display: this.thb(byType.projectContractValue),
+            note: `${byType.projectCount} โครงการ`,
+          },
+          {
+            label: 'มูลค่าตามสัญญา MA',
+            value: Number(byType.maContractValue) || 0,
+            display: this.thb(byType.maContractValue),
+            note: `${byType.maContractCount} สัญญา`,
+          },
+          {
+            label: 'มูลค่าของเสริม MA',
+            value: Number(byType.maAddonValue) || 0,
+            display: this.thb(byType.maAddonValue),
+            note: `${byType.maAddonCount} รายการ`,
+          },
+          {
+            label: 'ค่าบริการรายครั้ง (ที่กรอกไว้)',
+            value: Number(byType.oneTimeChargeValue) || 0,
+            display: this.thb(byType.oneTimeChargeValue),
+            note: formatCompleteness(byType.oneTimeCompleteness),
+          },
+        ]
+      : [];
+
+    return {
       generatedAt: new Date().toISOString(),
+      disclaimer:
+        byType?.disclaimer ||
+        byCustomer?.disclaimer ||
+        'ตัวเลขทั้งหมดเป็นมูลค่าตามสัญญา ไม่ใช่ยอดที่เรียกเก็บหรือรับชำระจริง',
       kpis: [
         {
           label: 'ลูกค้าทั้งหมด',
@@ -121,34 +230,36 @@ export class ReportService {
           icon: 'support_agent',
         },
         {
-          label: 'ความพึงพอใจเฉลี่ย',
-          value: satAvg != null ? String(satAvg) : '—',
-          hint: 'จากแบบประเมินที่มีคำตอบ',
-          icon: 'sentiment_satisfied',
+          label: 'มูลค่าตามสัญญารวม',
+          value: byType ? this.thb(byType.totalContractValue) : '—',
+          hint: 'จากรายงาน API',
+          icon: 'payments',
         },
       ],
-      revenue: [
-        {
-          label: 'มูลค่าโครงการรวม',
-          value: projectValue,
-          display: this.thb(projectValue),
-        },
-        {
-          label: 'รายได้ MA ต่อปี (สัญญา ACTIVE)',
-          value: maAnnual,
-          display: this.thb(maAnnual),
-        },
-        {
-          label: 'รายได้จากใบปัญหาคิดเงิน',
-          value: ticketRevenue,
-          display: this.thb(ticketRevenue),
-        },
-      ],
+      contractValue,
+      ranking: (byCustomer?.items ?? []).map((row) => ({
+        customerId: row.customerId,
+        label: row.customerName,
+        display: this.thb(row.totalContractValue),
+        value: Number(row.totalContractValue) || 0,
+        overlappingContractCount: row.overlappingContractCount,
+      })),
+      grandTotalContractValue: byCustomer?.grandTotalContractValue ?? byType?.totalContractValue ?? '0',
+      excludedCancelledValue:
+        byCustomer?.excludedCancelledValue ?? byType?.excludedCancelledValue ?? '0',
+      excludedCancelledCount:
+        byCustomer?.excludedCancelledCount ?? byType?.excludedCancelledCount ?? 0,
+      oneTimeCompletenessLabel: formatCompleteness(
+        byCustomer?.oneTimeCompleteness ?? byType?.oneTimeCompleteness
+      ),
+      upcoming: data.upcoming,
+      serviceCost: data.serviceCost,
+      overlaps: data.overlaps,
       operations: [
         {
-          label: 'สัญญา MA ที่ใช้งาน',
-          value: activeMa.length,
-          display: `${activeMa.length} สัญญา`,
+          label: 'สัญญา MA ที่คุ้มครองอยู่',
+          value: data.upcoming?.contractCount ?? 0,
+          display: `${data.upcoming?.contractCount ?? 0} สัญญา`,
         },
         {
           label: 'ประกันใกล้หมดอายุ (30 วัน)',
@@ -161,30 +272,28 @@ export class ReportService {
           display: `${overdueFollowUps} รายการ`,
         },
         {
-          label: 'ใบปัญหาทั้งหมด',
-          value: ticketList.length,
-          display: `${ticketList.length} ใบ`,
+          label: 'ชั่วโมงบริการรวม',
+          value: Number(data.serviceCost?.totalHours) || 0,
+          display: data.serviceCost
+            ? `${data.serviceCost.totalHours} ชม. (${formatCompleteness(data.serviceCost.completeness)})`
+            : '—',
         },
       ],
-      satisfaction: this.surveys.surveys().map((s) => {
-        const sum = this.surveys.summarize(s.id);
-        return {
-          label: s.title,
-          value: sum.averageRating ?? 0,
-          display:
-            sum.responseCount === 0
-              ? 'ยังไม่มีคำตอบ'
-              : `เฉลี่ย ${sum.averageRating ?? '—'} · ${sum.responseCount} คำตอบ`,
-        };
-      }),
+      satisfaction: data.surveys.map((s) => ({
+        label: s.title,
+        value: s.responseCount,
+        display: `${s.responseCount} คำตอบ`,
+      })),
       alerts,
     };
-
-    return report;
   }
 
-  private thb(n: number): string {
+  private thb(n: string | number): string {
     const formatted = formatMoneyDisplay(n);
     return formatted ? `฿${formatted}` : '฿0';
   }
+}
+
+function throwApi(err: unknown): Observable<never> {
+  return throwError(() => new Error(apiErrorMessage(err)));
 }

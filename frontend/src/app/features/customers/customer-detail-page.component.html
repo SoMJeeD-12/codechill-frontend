@@ -44,12 +44,42 @@
       <mat-card>
         <strong>ติดต่อล่าสุด</strong>
         <span>
-          {{ c.lastContactedAt ? (c.lastContactedAt | thaiDate: 'date') : '—' }}
-          @if (c.daysSinceLastContact != null) {
-            ({{ c.daysSinceLastContact }} วัน)
+          @if (lastContactedAt(c); as contacted) {
+            {{ contacted | thaiDate: 'date' }}
+          } @else {
+            —
+          }
+          @if (idleDays(c) != null) {
+            ({{ idleDays(c) }} วัน)
           }
         </span>
       </mat-card>
+      @if (lifetimeValue(); as lv) {
+        <mat-card class="lifetime-card">
+          <strong>มูลค่าตามสัญญาตลอดอายุ</strong>
+          <span>{{ lv.totalContractValue | baht }}</span>
+          @if (lv.disclaimer) {
+            <small class="muted">{{ lv.disclaimer }}</small>
+          }
+          @if (hasExcludedLifetime(lv)) {
+            <small class="muted">
+              ไม่นับสัญญาที่ยกเลิก {{ lv.excludedCancelledValue | baht }}
+              @if (lv.excludedCancelledCount > 0) {
+                ({{ lv.excludedCancelledCount }} รายการ)
+              }
+            </small>
+          }
+          @if (lv.overlappingContractCount > 0) {
+            <small class="overlap-warn">
+              <mat-icon>warning</mat-icon>
+              สัญญาซ้อน {{ lv.overlappingContractCount }} — ยอดอาจนับซ้ำ
+            </small>
+          }
+          @if (oneTimeCompletenessLabel(lv); as oneTimeLabel) {
+            <small class="muted">{{ oneTimeLabel }}</small>
+          }
+        </mat-card>
+      }
     </div>
 
     <mat-tab-group
