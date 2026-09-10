@@ -32,6 +32,8 @@ import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-projects-page',
@@ -51,6 +53,7 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './projects-page.component.html',
   styleUrl: './projects-page.component.scss',
@@ -114,6 +117,8 @@ export class ProjectsPageComponent implements OnInit {
       return aEnd - bEnd;
     });
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.customersApi.listCustomers().subscribe();

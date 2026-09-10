@@ -25,6 +25,10 @@
           @if (t.billingType === 'ONE_TIME' && t.extraCharge != null) {
             ({{ t.extraCharge | baht }})
           }
+          · รอบที่ {{ t.resolutionCount || 0 }}
+          @if (t.status === 'REOPENED') {
+            · <span class="reopen-tag">กลับมาเป็นซ้ำ</span>
+          }
         </p>
         @if (t.billingType === 'MA_QUOTA') {
           @if (t.maContractId) {
@@ -42,17 +46,63 @@
         <p class="description">{{ t.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
       </div>
       <div class="actions">
-        @if (canAssign() && (t.status === 'RECEIVED' || t.status === 'REOPENED')) {
-          <button mat-stroked-button type="button" (click)="startWork()">เริ่มดำเนินการ</button>
+        @if (canAssign() && t.status === 'RECEIVED') {
+          <button mat-stroked-button type="button" (click)="assignWork()">มอบหมาย</button>
         }
-        @if (canResolve() && (t.status === 'RESOLVED' || t.status === 'CLOSED')) {
-          <button mat-stroked-button type="button" (click)="reopen()">ปัญหาเดิมกลับมา</button>
+        @if (canAssign() && t.status === 'REOPENED') {
+          <button mat-flat-button color="primary" type="button" (click)="pickupReopened()">
+            รับงานรอบใหม่
+          </button>
+        }
+        @if (canAssign() && t.status === 'IN_PROGRESS') {
+          <button mat-stroked-button type="button" (click)="changeAssignee()">
+            เปลี่ยนผู้รับผิดชอบ
+          </button>
+        }
+        @if (canResolve() && t.status !== 'CLOSED' && t.status !== 'RESOLVED') {
+          <button mat-stroked-button type="button" (click)="openAddResolution()">
+            บันทึกการแก้ไข
+          </button>
+        }
+        @if (canResolve() && t.status === 'RESOLVED') {
+          <button mat-stroked-button type="button" (click)="openProblemReturned()">
+            ปัญหาเดิมกลับมา
+          </button>
         }
         @if (canResolve() && t.status !== 'CLOSED') {
           <button mat-flat-button color="primary" type="button" (click)="closeTicket()">ปิดงาน</button>
         }
       </div>
     </header>
+    @if (t.status === 'CLOSED') {
+      <p class="closed-hint">
+        ใบนี้ปิดงานแล้ว — ถ้าอาการเดิมกลับมา ให้เปิดใบใหม่แล้วอ้างถึงใบนี้
+        (ระบบไม่อนุญาตเปิดรอบในใบที่ปิดแล้ว)
+      </p>
+    }
+
+    <nav class="status-stepper" aria-label="สถานะใบปัญหา">
+      @for (step of statusSteps; track step.key; let i = $index) {
+        <div
+          class="step"
+          [class.is-active]="stepIndex() === i"
+          [class.is-done]="stepIndex() > i"
+          [class.is-reopened]="t.status === 'REOPENED' && step.key === 'IN_PROGRESS'"
+        >
+          <span class="step-dot">{{ i + 1 }}</span>
+          <span class="step-label">{{ step.label }}</span>
+        </div>
+        @if (i < statusSteps.length - 1) {
+          <div class="step-line" [class.is-done]="stepIndex() > i"></div>
+        }
+      }
+    </nav>
+    <p class="stepper-meta">
+      รอบที่ {{ t.resolutionCount || 0 }}
+      @if (t.status === 'REOPENED') {
+        · 「กลับมาเป็นซ้ำ」— กดรับงานรอบใหม่เพื่อเริ่มดำเนินการ
+      }
+    </p>
 
     <div class="meta-grid">
       <mat-card>
@@ -101,13 +151,17 @@
               (click)="openAddResolution()"
             >
               <mat-icon>add</mat-icon>
-              เพิ่มรอบการแก้ไข
+              บันทึกการแก้ไข
             </button>
           }
         </div>
       </div>
       <div class="data-card__body">
-        <table mat-table [dataSource]="filteredResolutions()" class="data-table">
+        <table mat-table [dataSource]="resolutionsPager.paged()" class="data-table">
+          <ng-container matColumnDef="round">
+            <th mat-header-cell *matHeaderCellDef>รอบ</th>
+            <td mat-cell *matCellDef="let row">{{ row.round }}</td>
+          </ng-container>
           <ng-container matColumnDef="rootCause">
             <th mat-header-cell *matHeaderCellDef>สาเหตุ</th>
             <td mat-cell *matCellDef="let row">{{ shortText(row.rootCause) }}</td>
@@ -143,6 +197,13 @@
           <tr mat-header-row *matHeaderRowDef="resolutionColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: resolutionColumns"></tr>
         </table>
+        <app-table-paginator
+          [length]="resolutionsPager.length()"
+          [pageIndex]="resolutionsPager.pageIndex()"
+          [pageSize]="resolutionsPager.pageSize()"
+          [pageSizeOptions]="resolutionsPager.pageSizeOptions"
+          (page)="resolutionsPager.onPage($event)"
+        />
         @if (filteredResolutions().length === 0) {
           <p class="data-empty">
             {{

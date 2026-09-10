@@ -23,8 +23,11 @@ import {
 } from '../../core/models/project.model';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
+import { TaskKanbanBoardComponent } from './task-kanban-board.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
-type BoardView = 'summary' | 'overdue' | 'dueSoon' | 'list';
+type BoardView = 'summary' | 'overdue' | 'dueSoon' | 'list' | 'board';
 
 @Component({
   selector: 'app-tasks-overview-page',
@@ -38,6 +41,8 @@ type BoardView = 'summary' | 'overdue' | 'dueSoon' | 'list';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    TaskKanbanBoardComponent,
+    TablePaginatorComponent,
   ],
   templateUrl: './tasks-overview-page.component.html',
   styleUrl: './tasks-overview-page.component.scss',
@@ -90,6 +95,22 @@ export class TasksOverviewPageComponent implements OnInit {
       percent: Math.round(((s.byStatus[st] ?? 0) / max) * 100),
     }));
   });
+
+  readonly assigneeRows = computed(() => this.summary()?.byAssignee ?? []);
+
+  readonly displayRows = computed(() => {
+    const v = this.view();
+    if (v === 'overdue') {
+      return this.overdue();
+    }
+    if (v === 'dueSoon') {
+      return this.dueSoon();
+    }
+    return this.tasks();
+  });
+
+  readonly assigneePager = createClientPager(this.assigneeRows);
+  readonly rowsPager = createClientPager(this.displayRows);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
@@ -207,14 +228,4 @@ export class TasksOverviewPageComponent implements OnInit {
     return this.projectStatusLabels[status as ProjectStatus] ?? status;
   }
 
-  displayRows(): TaskItem[] {
-    const v = this.view();
-    if (v === 'overdue') {
-      return this.overdue();
-    }
-    if (v === 'dueSoon') {
-      return this.dueSoon();
-    }
-    return this.tasks();
-  }
 }

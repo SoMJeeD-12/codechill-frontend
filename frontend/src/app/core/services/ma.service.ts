@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -166,7 +166,13 @@ export class MaService {
   deletePlan(id: number): Observable<void> {
     return this.http.delete<void>(`${this.plansBase}/${id}`).pipe(
       tap(() => this.plansSignal.update((list) => list.filter((p) => p.id !== id))),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      catchError((err) => {
+        const error = new Error(apiErrorMessage(err)) as Error & { status?: number };
+        if (err instanceof HttpErrorResponse) {
+          error.status = err.status;
+        }
+        return throwError(() => error);
+      })
     );
   }
 

@@ -1,0 +1,117 @@
+<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขแผน MA' : 'สร้างแผน MA' }}</h2>
+<mat-dialog-content>
+  @if (loading()) {
+    <div class="dialog-loading">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span>กำลังโหลดแผน…</span>
+    </div>
+  } @else {
+    <form [formGroup]="form" class="form" id="ma-plan-form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ชื่อแผน *</mat-label>
+        <input matInput formControlName="name" maxlength="150" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>คำอธิบาย</mat-label>
+        <textarea matInput rows="2" formControlName="description"></textarea>
+      </mat-form-field>
+
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>โควตาเคส/เดือน</mat-label>
+          <input matInput type="number" formControlName="bugQuotaPerMonth" min="0" max="999" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>SLA ตอบรับ (ชม.)</mat-label>
+          <input matInput type="number" formControlName="responseTimeHour" min="1" max="720" />
+        </mat-form-field>
+      </div>
+
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>โควตา Onsite/เดือน</mat-label>
+          <input matInput type="number" formControlName="onsiteQuotaPerMonth" min="0" max="999" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>ลำดับแสดง</mat-label>
+          <input matInput type="number" formControlName="sortOrder" min="0" />
+        </mat-form-field>
+      </div>
+
+      <mat-slide-toggle formControlName="isActive">เปิดใช้งานแผนนี้</mat-slide-toggle>
+
+      <div class="items-block" formArrayName="items">
+        <div class="items-head">
+          <h3>รายการบริการย่อย</h3>
+          <button mat-stroked-button type="button" (click)="addItem()">
+            <mat-icon>add</mat-icon>
+            เพิ่มรายการ
+          </button>
+        </div>
+        <div
+          class="items-list"
+          cdkDropList
+          (cdkDropListDropped)="drop($event)"
+        >
+          @for (item of items.controls; track $index; let i = $index) {
+            <div class="item-row" [formGroupName]="i" cdkDrag>
+              <button
+                mat-icon-button
+                type="button"
+                class="drag-handle"
+                cdkDragHandle
+                matTooltip="ลากเพื่อจัดลำดับ"
+                tabindex="-1"
+              >
+                <mat-icon>drag_indicator</mat-icon>
+              </button>
+              <div class="item-fields">
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>หัวข้อ *</mat-label>
+                  <input
+                    matInput
+                    formControlName="title"
+                    maxlength="255"
+                    (input)="onItemFieldChange()"
+                  />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>รายละเอียด</mat-label>
+                  <input matInput formControlName="detail" (input)="onItemFieldChange()" />
+                </mat-form-field>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                color="warn"
+                (click)="removeItem(i)"
+                matTooltip="ลบรายการ"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          } @empty {
+            <p class="items-empty">ยังไม่มีรายการบริการย่อย</p>
+          }
+        </div>
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+    </form>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="submit"
+    form="ma-plan-form"
+    [disabled]="saving() || loading()"
+  >
+    บันทึก
+  </button>
+</mat-dialog-actions>

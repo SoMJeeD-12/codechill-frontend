@@ -16,8 +16,17 @@
           กลับ
         </button>
         <p class="eyebrow">M6 · รายละเอียดสัญญา</p>
-        <h1>สัญญา MA #{{ c.id }}</h1>
+        <h1>
+          @if (c.contractNo?.trim()) {
+            {{ c.contractNo }}
+          } @else {
+            สัญญา MA #{{ c.id }}
+          }
+        </h1>
         <p class="subtitle">
+          @if (c.contractNo?.trim()) {
+            #{{ c.id }} ·
+          }
           {{ planName(c) }} · {{ statusLabel(c.status) }} · {{ slaLabel(c) }}
           @if (!c.isCurrentlyActive && c.status === 'ACTIVE') {
             · หมดอายุแล้ว ({{ c.daysUntilExpiry }} วัน)
@@ -113,7 +122,7 @@
     <div class="two-col">
       <mat-card>
         <h2>Add-on</h2>
-        <table mat-table [dataSource]="addons()" class="full-table">
+        <table mat-table [dataSource]="addonsPager.paged()" class="full-table">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>รายการ</th>
             <td mat-cell *matCellDef="let row">{{ row.title }}</td>
@@ -143,6 +152,13 @@
           <tr mat-header-row *matHeaderRowDef="addonColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: addonColumns"></tr>
         </table>
+        <app-table-paginator
+          [length]="addonsPager.length()"
+          [pageIndex]="addonsPager.pageIndex()"
+          [pageSize]="addonsPager.pageSize()"
+          [pageSizeOptions]="addonsPager.pageSizeOptions"
+          (page)="addonsPager.onPage($event)"
+        />
         @if (addons().length === 0) {
           <p class="empty">ยังไม่มี Add-on</p>
         }

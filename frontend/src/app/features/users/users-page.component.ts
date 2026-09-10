@@ -20,6 +20,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { UserFormDialogComponent } from './user-form-dialog.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-users-page',
@@ -34,6 +36,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
     MatDialogModule,
     MatTooltipModule,
     MatMenuModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './users-page.component.html',
   styleUrl: './users-page.component.scss',
@@ -88,6 +91,8 @@ export class UsersPageComponent implements OnInit {
       );
     });
   });
+
+  readonly pager = createClientPager(this.filteredUsers);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));

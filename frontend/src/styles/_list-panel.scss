@@ -67,6 +67,12 @@
   overflow-x: auto;
 }
 
+.data-card__body app-table-paginator,
+.table-wrap app-table-paginator {
+  display: block;
+  border-top: 1px solid #e4eeea;
+}
+
 .ui-search {
   display: flex;
   align-items: center;

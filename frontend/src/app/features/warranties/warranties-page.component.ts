@@ -30,6 +30,8 @@ import {
   WarrantyService,
   WarrantyUpdateInput,
 } from '../../core/services/warranty.service';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-warranties-page',
@@ -44,6 +46,7 @@ import {
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './warranties-page.component.html',
   styleUrl: './warranties-page.component.scss',
@@ -90,6 +93,8 @@ export class WarrantiesPageComponent implements OnInit {
       );
     });
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));

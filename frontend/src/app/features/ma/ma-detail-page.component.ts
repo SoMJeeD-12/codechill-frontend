@@ -31,6 +31,8 @@ import { openConfirmDialog } from '../../shared/components/confirm-dialog.compon
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 /** ค่า placeholder สำหรับหน้าพิมพ์ร่างสัญญา (แก้ที่ FE) */
 const COMPANY_PRINT = {
@@ -57,6 +59,7 @@ const COMPANY_PRINT = {
     MatTooltipModule,
     MatDialogModule,
     MoneyInputDirective,
+    TablePaginatorComponent,
   ],
   templateUrl: './ma-detail-page.component.html',
   styleUrl: './ma-detail-page.component.scss',
@@ -76,6 +79,7 @@ export class MaDetailPageComponent implements OnInit {
   readonly contract = signal<MaContract | null>(null);
   readonly quota = signal<MaQuotaStatus | null>(null);
   readonly addons = signal<MaAddon[]>([]);
+  readonly addonsPager = createClientPager(this.addons);
   readonly notFound = signal(false);
   readonly savingAddon = signal(false);
   readonly renewing = signal(false);

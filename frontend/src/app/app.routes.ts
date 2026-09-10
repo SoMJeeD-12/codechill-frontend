@@ -105,6 +105,12 @@ export const routes: Routes = [
           import('./features/ma/ma-page.component').then((m) => m.MaPageComponent),
       },
       {
+        path: 'ma/plans',
+        canActivate: [permissionGuard('ma')],
+        loadComponent: () =>
+          import('./features/ma/ma-plans-page.component').then((m) => m.MaPlansPageComponent),
+      },
+      {
         path: 'ma/:id',
         canActivate: [permissionGuard('ma')],
         loadComponent: () =>

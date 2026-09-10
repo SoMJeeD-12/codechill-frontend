@@ -38,6 +38,8 @@ import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-follow-ups-page',
@@ -52,6 +54,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './follow-ups-page.component.html',
   styleUrl: './follow-ups-page.component.scss',
@@ -110,6 +113,8 @@ export class FollowUpsPageComponent implements OnInit {
       );
     });
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));

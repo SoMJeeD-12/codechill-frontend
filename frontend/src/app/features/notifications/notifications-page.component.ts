@@ -19,6 +19,8 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { UserService } from '../../core/services/user.service';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-notifications-page',
@@ -34,6 +36,7 @@ import { UserService } from '../../core/services/user.service';
     MatButtonToggleModule,
     MatSlideToggleModule,
     MatSnackBarModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './notifications-page.component.html',
   styleUrl: './notifications-page.component.scss',
@@ -56,6 +59,9 @@ export class NotificationsPageComponent implements OnInit {
     const list = this.allItems();
     return this.inboxView() === 'unread' ? list.filter((n) => !n.readAt) : list;
   });
+
+  readonly inboxPager = createClientPager(this.inboxItems);
+  readonly rulesPager = createClientPager(this.rules);
 
   ngOnInit(): void {
     const user = this.auth.currentUser();

@@ -40,15 +40,18 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>คิดค่าใช้จ่าย</mat-label>
         <mat-select formControlName="billingType">
-          @for (b of billingTypes; track b) {
+          @for (b of availableBillingTypes(); track b) {
             <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
     </div>
+    @if (billingHint(); as hint) {
+      <p class="billing-hint">{{ hint }}</p>
+    }
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>ช่องทางแจ้ง</mat-label>

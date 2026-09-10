@@ -47,7 +47,7 @@
     </div>
 
     <div class="data-card__body">
-      <table mat-table [dataSource]="filtered()" class="data-table">
+      <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อลูกค้า</th>
           <td mat-cell *matCellDef="let row">
@@ -80,6 +80,13 @@
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+      <app-table-paginator
+        [length]="pager.length()"
+        [pageIndex]="pager.pageIndex()"
+        [pageSize]="pager.pageSize()"
+        [pageSizeOptions]="pager.pageSizeOptions"
+        (page)="pager.onPage($event)"
+      />
       @if (filtered().length === 0) {
         <p class="data-empty">ไม่พบลูกค้าตามเงื่อนไข</p>
       }

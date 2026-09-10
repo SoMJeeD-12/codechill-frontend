@@ -35,6 +35,8 @@ import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { SurveyService } from '../../core/services/survey.service';
 import { navigateBack } from '../../core/utils/navigation.util';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-survey-detail-page',
@@ -52,6 +54,7 @@ import { navigateBack } from '../../core/utils/navigation.util';
     MatCheckboxModule,
     MatTableModule,
     MatSnackBarModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './survey-detail-page.component.html',
   styleUrl: './survey-detail-page.component.scss',
@@ -83,6 +86,11 @@ export class SurveyDetailPageComponent implements OnInit {
   readonly assignmentColumns = ['customer', 'status', 'sentAt', 'answeredAt'];
   readonly savingAssignment = signal(false);
   readonly savingResponse = signal(false);
+
+  readonly breakdownByCustomer = computed(() => this.breakdown()?.byCustomer ?? []);
+  readonly breakdownByCustomerPager = createClientPager(this.breakdownByCustomer);
+  readonly assignmentsPager = createClientPager(this.assignments);
+  readonly responsesPager = createClientPager(this.responses);
 
   readonly assignmentForm = this.fb.group({
     customerId: [0, Validators.min(1)],

@@ -18,6 +18,8 @@ import {
 } from '../../core/models/customer.model';
 import { CustomerService } from '../../core/services/customer.service';
 import { CustomerFormDialogComponent } from './customer-form-dialog.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-customers-page',
@@ -35,6 +37,7 @@ import { CustomerFormDialogComponent } from './customer-form-dialog.component';
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './customers-page.component.html',
   styleUrl: './customers-page.component.scss',
@@ -67,6 +70,8 @@ export class CustomersPageComponent implements OnInit {
       return matchStatus && matchQ;
     });
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.reload();

@@ -33,6 +33,8 @@ import {
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 const MAX_LOCAL_FILE_BYTES = 1_500_000;
 
@@ -118,6 +120,7 @@ function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: str
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './documents-page.component.html',
   styleUrl: './documents-page.component.scss',
@@ -186,6 +189,8 @@ export class DocumentsPageComponent implements OnInit {
       );
     });
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));

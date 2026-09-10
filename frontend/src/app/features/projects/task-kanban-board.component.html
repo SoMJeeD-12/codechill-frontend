@@ -1,0 +1,135 @@
+<div class="kanban">
+  <div class="kanban-filters data-card">
+    <div class="data-card__head">
+      <div class="data-card__row filters-row">
+        @if (showProjectFilter) {
+          <mat-form-field appearance="outline" class="ui-filter wide">
+            <mat-label>โครงการ</mat-label>
+            <mat-select
+              [value]="projectFilter()"
+              (selectionChange)="projectFilter.set($event.value); applyFilters()"
+            >
+              <mat-option value="ALL">ทั้งหมด</mat-option>
+              @for (p of projects(); track p.id) {
+                <mat-option [value]="p.id">{{ p.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+
+        <mat-form-field appearance="outline" class="ui-filter wide">
+          <mat-label>ผู้รับผิดชอบ</mat-label>
+          <mat-select
+            [value]="assigneeFilter()"
+            (selectionChange)="assigneeFilter.set($event.value); applyFilters()"
+          >
+            <mat-option value="ALL">ทั้งหมด</mat-option>
+            <mat-option value="UNASSIGNED">ยังไม่มอบหมาย</mat-option>
+            @for (u of users(); track u.id) {
+              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="ui-filter">
+          <mat-label>ความสำคัญ</mat-label>
+          <mat-select
+            [value]="priorityFilter()"
+            (selectionChange)="priorityFilter.set($event.value); applyFilters()"
+          >
+            <mat-option value="ALL">ทั้งหมด</mat-option>
+            @for (pr of priorities; track pr) {
+              <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-stroked-button type="button" (click)="reload()">รีเฟรช</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kanban-board" cdkDropListGroup>
+    @for (status of statuses; track status) {
+      <section class="kanban-col" [attr.data-status]="status">
+        <header class="kanban-col__head">
+          <div class="kanban-col__title">
+            <h3>{{ statusLabels[status] }}</h3>
+            <span class="kanban-col__count">{{ columnCount(status) }}</span>
+          </div>
+          @if (columnOverdue(status) > 0) {
+            <span class="kanban-col__overdue">เกิน {{ columnOverdue(status) }}</span>
+          }
+        </header>
+
+        <div
+          class="kanban-col__list"
+          cdkDropList
+          [id]="'kanban-' + status"
+          [cdkDropListData]="columnTasks()[status]"
+          [cdkDropListDisabled]="!canDrag()"
+          (cdkDropListDropped)="onDrop($event, status)"
+        >
+          @if (columnLoading()[status] && columnTasks()[status].length === 0) {
+            <p class="kanban-empty">กำลังโหลด…</p>
+          } @else if (columnTasks()[status].length === 0) {
+            <p class="kanban-empty">ไม่มีงาน</p>
+          }
+
+          @for (task of columnTasks()[status]; track trackTask($index, task)) {
+            <article
+              class="kanban-card"
+              cdkDrag
+              [cdkDragDisabled]="!canDrag()"
+              [class.is-closed]="showProjectFilter && isClosedProject(task)"
+            >
+              <ng-template cdkDragPlaceholder>
+                <div class="kanban-card__drag"></div>
+              </ng-template>
+              <h4 class="kanban-card__title">{{ task.title }}</h4>
+
+              @if (showProjectFilter) {
+                <div class="kanban-card__project">
+                  <a [routerLink]="['/app/projects', task.projectId]">{{ projectLabel(task) }}</a>
+                  @if (isClosedProject(task) && task.project) {
+                    <span class="project-status-badge" [attr.data-status]="task.project.status">
+                      {{ projectStatusLabel(task.project.status) }}
+                    </span>
+                  }
+                </div>
+              }
+
+              <div class="kanban-card__meta">
+                <span class="assignee">{{ assigneeName(task) }}</span>
+                <span class="due" [class.is-overdue]="task.isOverdue">
+                  {{ task.dueDate || '—' }}
+                </span>
+              </div>
+
+              <div class="kanban-card__badges">
+                <span class="priority-badge" [attr.data-priority]="task.priority">
+                  {{ priorityLabel(task.priority) }}
+                </span>
+                @if (task.isOverdue) {
+                  <span class="overdue-badge">เกินกำหนด</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+
+        @if (status === 'DONE' && doneHasMore()) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="load-more"
+            [disabled]="columnLoading()['DONE']"
+            (click)="loadMoreDone()"
+          >
+            ดูเพิ่ม
+          </button>
+        }
+      </section>
+    }
+  </div>
+</div>

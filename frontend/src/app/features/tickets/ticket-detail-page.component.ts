@@ -35,6 +35,10 @@ import { navigateBack } from '../../core/utils/navigation.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
+import { EMPTY, of } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-ticket-detail-page',
@@ -50,6 +54,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
     MatSnackBarModule,
     MatTableModule,
     MatDialogModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -81,7 +86,32 @@ export class TicketDetailPageComponent implements OnInit {
   readonly canAssign = computed(() => this.auth.hasPermissionCode('ticket.assign'));
   readonly canChangeResolver = this.auth.isAdminLevel();
 
+  readonly statusSteps = [
+    { key: 'RECEIVED', label: 'รับเรื่อง' },
+    { key: 'IN_PROGRESS', label: 'กำลังดำเนินการ' },
+    { key: 'RESOLVED', label: 'แก้ไขแล้ว' },
+    { key: 'CLOSED', label: 'ปิดงาน' },
+  ] as const;
+
+  readonly stepIndex = computed(() => {
+    const status = this.ticket()?.status;
+    switch (status) {
+      case 'RECEIVED':
+        return 0;
+      case 'IN_PROGRESS':
+      case 'REOPENED':
+        return 1;
+      case 'RESOLVED':
+        return 2;
+      case 'CLOSED':
+        return 3;
+      default:
+        return 0;
+    }
+  });
+
   readonly resolutionColumns = [
+    'round',
     'rootCause',
     'detail',
     'result',
@@ -110,6 +140,8 @@ export class TicketDetailPageComponent implements OnInit {
         .some((v) => String(v).toLowerCase().includes(q))
     );
   });
+
+  readonly resolutionsPager = createClientPager(this.filteredResolutions);
 
   private ticketId = 0;
 
@@ -238,16 +270,41 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   reopen(): void {
+    this.openProblemReturned();
+  }
+
+  /** RESOLVED → เปิดรอบใหม่ + มอบหมายในกล่องเดียว (CLOSED เปิดไม่ได้ — ตาม backend) */
+  openProblemReturned(): void {
     if (!this.canResolve()) {
       this.snack.open('ไม่มีสิทธิ์เปิดปัญหาเดิมซ้ำ', 'ปิด', { duration: 3000 });
       return;
     }
-    this.ticketsApi.reopen(this.ticketId).subscribe({
-      next: () => {
-        this.snack.open('เปิดปัญหาเดิมซ้ำแล้ว (ใบเดิม)', 'ปิด', { duration: 3000 });
+    const ticket = this.ticket();
+    if (!ticket || ticket.status !== 'RESOLVED') {
+      this.snack.open(
+        'ใบที่ปิดงานแล้วเปิดรอบในใบเดิมไม่ได้ — ให้เปิดใบใหม่แล้วอ้างถึงใบนี้',
+        'ปิด',
+        { duration: 4500 }
+      );
+      return;
+    }
+    const last = [...this.resolutions()].sort((a, b) => b.round - a.round)[0] ?? null;
+    const ref = this.dialog.open(TicketProblemReturnedDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      data: {
+        ticketId: this.ticketId,
+        ticket,
+        lastResolution: last,
+        users: this.users(),
+        canAssign: this.canAssign(),
+        defaultAssigneeId: ticket.assignedUserId,
+      } satisfies TicketProblemReturnedDialogData,
+    });
+    ref.afterClosed().subscribe((ok) => {
+      if (ok) {
         this.loadTicket();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      }
     });
   }
 
@@ -265,24 +322,54 @@ export class TicketDetailPageComponent implements OnInit {
     });
   }
 
-  startWork(): void {
+  /** RECEIVED → มอบหมายแล้วเลื่อนเป็น IN_PROGRESS */
+  assignWork(): void {
+    this.pickAssigneeAndAssign('มอบหมายและเริ่มดำเนินการแล้ว');
+  }
+
+  /** REOPENED → รับงานรอบใหม่ (ส่งคนเดิมก็ได้) */
+  pickupReopened(): void {
+    this.pickAssigneeAndAssign('รับงานรอบใหม่แล้ว — สถานะเป็นกำลังดำเนินการ', true);
+  }
+
+  /** IN_PROGRESS → เปลี่ยนผู้รับผิดชอบ */
+  changeAssignee(): void {
+    this.pickAssigneeAndAssign('เปลี่ยนผู้รับผิดชอบแล้ว');
+  }
+
+  private pickAssigneeAndAssign(successMsg: string, preferCurrent = false): void {
     if (!this.canAssign()) {
-      this.snack.open('ไม่มีสิทธิ์เริ่มดำเนินการ', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์มอบหมายงาน', 'ปิด', { duration: 3000 });
       return;
     }
-    const me = this.auth.currentUser();
     const current = this.ticket();
-    const assignedUserId = current?.assignedUserId ?? me?.id ?? null;
-    if (!assignedUserId) {
-      this.snack.open('กรุณาเลือกผู้รับผิดชอบก่อนเริ่มงาน', 'ปิด', { duration: 3500 });
-      return;
-    }
-    this.ticketsApi.assign(this.ticketId, assignedUserId).subscribe({
-      next: () => {
-        this.snack.open('มอบหมายและเริ่มดำเนินการแล้ว', 'ปิด', { duration: 2500 });
-        this.loadTicket();
+    const me = this.auth.currentUser();
+    const defaultId =
+      (preferCurrent ? current?.assignedUserId : null) ??
+      current?.assignedUserId ??
+      me?.id ??
+      null;
+
+    const ref = this.dialog.open(TicketAssignDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      data: {
+        users: this.users(),
+        defaultUserId: defaultId,
+        title: preferCurrent ? 'รับงานรอบใหม่' : 'เลือกผู้รับผิดชอบ',
       },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+    ref.afterClosed().subscribe((userId: number | null | undefined) => {
+      if (userId == null) {
+        return;
+      }
+      this.ticketsApi.assign(this.ticketId, userId).subscribe({
+        next: () => {
+          this.snack.open(successMsg, 'ปิด', { duration: 2500 });
+          this.loadTicket();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
     });
   }
 }
@@ -435,6 +522,317 @@ export class TicketResolutionFormDialogComponent {
           this.ref.close(true);
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
+  }
+}
+
+/* ——— Assign / pickup dialog ——— */
+
+export interface TicketAssignDialogData {
+  users: { id: number; fullName: string }[];
+  defaultUserId: number | null;
+  title: string;
+}
+
+@Component({
+  selector: 'app-ticket-assign-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatButtonModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <mat-dialog-content>
+      <form [formGroup]="form" id="ticket-assign-form" (ngSubmit)="confirm()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ผู้รับผิดชอบ</mat-label>
+          <mat-select formControlName="assignedUserId">
+            @for (u of data.users; track u.id) {
+              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button mat-flat-button color="primary" type="submit" form="ticket-assign-form">ยืนยัน</button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .full {
+      width: 100%;
+      margin-top: 0.35rem;
+    }
+  `,
+})
+export class TicketAssignDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly ref = inject(MatDialogRef<TicketAssignDialogComponent, number | null>);
+  readonly data = inject<TicketAssignDialogData>(MAT_DIALOG_DATA);
+
+  readonly form = this.fb.nonNullable.group({
+    assignedUserId: [this.data.defaultUserId ?? 0, Validators.min(1)],
+  });
+
+  confirm(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.ref.close(Number(this.form.getRawValue().assignedUserId));
+  }
+}
+
+/* ——— ปัญหาเดิมกลับมา: reopen + assign ในครั้งเดียว ——— */
+
+export interface TicketProblemReturnedDialogData {
+  ticketId: number;
+  ticket: Ticket;
+  lastResolution: TicketResolution | null;
+  users: { id: number; fullName: string }[];
+  canAssign: boolean;
+  defaultAssigneeId: number | null;
+}
+
+@Component({
+  selector: 'app-ticket-problem-returned-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatSnackBarModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>ปัญหาเดิมกลับมา</h2>
+    <mat-dialog-content>
+      <p class="intro">เปิดรอบใหม่ในใบเดิม — ไม่สร้างใบใหม่ · ให้คนตัดสินว่าเป็นปัญหาเดิมจริง</p>
+
+      @if (data.lastResolution; as last) {
+        <div class="last-round">
+          <strong>รอบล่าสุด (รอบที่ {{ last.round }})</strong>
+          <p>สาเหตุ「{{ last.rootCause?.trim() || '—' }}」</p>
+          <p>วิธีแก้「{{ last.detail.trim() || '—' }}」</p>
+          <p class="tip">ดูวิธีแก้รอบก่อน เพื่อไม่แก้ด้วยวิธีเดิมซ้ำ</p>
+        </div>
+      } @else {
+        <p class="muted">ยังไม่มีประวัติรอบแก้ไขในใบนี้</p>
+      }
+
+      @if (closedAgo(); as ago) {
+        <p class="ago" [class.ago-warn]="ago.old">
+          {{ ago.label }}
+          @if (ago.old) {
+            <span> — นานพอสมควร โปรดยืนยันว่าเป็นปัญหาเดิมจริง</span>
+          }
+        </p>
+      }
+
+      <form [formGroup]="form" id="ticket-reopen-form" class="dlg-form" (ngSubmit)="confirm()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>อาการที่กลับมา</mat-label>
+          <textarea matInput rows="3" formControlName="symptom" placeholder="อธิบายอาการที่กลับมาอีกครั้ง"></textarea>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ผู้รับผิดชอบรอบนี้</mat-label>
+          <mat-select formControlName="assignedUserId">
+            @for (u of data.users; track u.id) {
+              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+            }
+          </mat-select>
+          @if (!data.canAssign) {
+            <mat-hint>ไม่มีสิทธิ์มอบหมาย — จะเปิดเป็น「กลับมาเป็นซ้ำ」ให้คนที่มีสิทธิ์รับงานต่อ</mat-hint>
+          }
+        </mat-form-field>
+      </form>
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close [disabled]="saving()">ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="ticket-reopen-form"
+        [disabled]="saving()"
+      >
+        {{ saving() ? 'กำลังเปิด…' : 'เปิดรอบใหม่' }}
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .intro {
+      margin: 0 0 0.75rem;
+      color: #5b6762;
+      font-size: 0.86rem;
+    }
+    .last-round {
+      margin: 0 0 0.75rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 10px;
+      background: #f0f7f5;
+      border: 1px solid #d5e8e2;
+      font-size: 0.9rem;
+    }
+    .last-round strong {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+    .last-round p {
+      margin: 0.2rem 0;
+    }
+    .tip {
+      margin-top: 0.45rem !important;
+      color: #0f766e;
+      font-size: 0.8rem;
+    }
+    .ago {
+      margin: 0 0 0.75rem;
+      font-size: 0.88rem;
+      color: #334155;
+    }
+    .ago-warn {
+      color: #9a3412;
+      font-weight: 500;
+    }
+    .muted {
+      color: #64748b;
+      font-size: 0.86rem;
+    }
+    .dlg-form {
+      display: grid;
+      gap: 0.25rem;
+      min-width: min(480px, 80vw);
+    }
+    .full {
+      width: 100%;
+    }
+    .error {
+      color: #991b1b;
+      font-size: 0.86rem;
+      margin: 0.35rem 0 0;
+    }
+  `,
+})
+export class TicketProblemReturnedDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly ticketsApi = inject(TicketService);
+  private readonly snack = inject(MatSnackBar);
+  private readonly ref = inject(MatDialogRef<TicketProblemReturnedDialogComponent, boolean>);
+  readonly data = inject<TicketProblemReturnedDialogData>(MAT_DIALOG_DATA);
+
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+
+  readonly form = this.fb.group({
+    symptom: [''],
+    assignedUserId: [
+      {
+        value:
+          this.data.defaultAssigneeId ??
+          this.data.users[0]?.id ??
+          (null as number | null),
+        disabled: !this.data.canAssign,
+      },
+      this.data.canAssign ? [Validators.required, Validators.min(1)] : [],
+    ],
+  });
+
+  closedAgo(): { label: string; old: boolean } | null {
+    const t = this.data.ticket;
+    const at = t.closedAt || t.resolvedAt;
+    if (!at) {
+      return null;
+    }
+    const days = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(at).getTime()) / 86_400_000)
+    );
+    const kind = t.closedAt ? 'ปิดงาน' : 'แก้ไขแล้ว';
+    const old = days > 90;
+    if (days < 1) {
+      return { label: `${kind}ไปเมื่อวันนี้`, old: false };
+    }
+    if (days < 30) {
+      return { label: `${kind}ไปเมื่อ ${days} วันก่อน`, old };
+    }
+    const months = Math.floor(days / 30);
+    if (months < 12) {
+      return { label: `${kind}ไปเมื่อ ${months} เดือนก่อน`, old };
+    }
+    const years = Math.floor(months / 12);
+    return { label: `${kind}ไปเมื่อ ${years} ปีก่อน`, old };
+  }
+
+  confirm(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const raw = this.form.getRawValue();
+    const reason = (raw.symptom ?? '').trim() || null;
+    const assigneeId = raw.assignedUserId ? Number(raw.assignedUserId) : null;
+
+    this.saving.set(true);
+    this.error.set(null);
+
+    this.ticketsApi
+      .reopen(this.data.ticketId, reason)
+      .pipe(
+        switchMap(() => {
+          if (!this.data.canAssign || !assigneeId) {
+            return of({ assigned: false as const });
+          }
+          return this.ticketsApi.assign(this.data.ticketId, assigneeId).pipe(
+            switchMap(() => of({ assigned: true as const })),
+            catchError((err: Error) => {
+              this.saving.set(false);
+              this.error.set(
+                `เปิดรอบใหม่แล้ว แต่มอบหมายไม่สำเร็จ: ${err.message}`
+              );
+              this.snack.open(
+                `เปิดรอบใหม่แล้ว แต่มอบหมายไม่สำเร็จ: ${err.message}`,
+                'ปิด',
+                { duration: 6000 }
+              );
+              this.ref.close(true);
+              return EMPTY;
+            })
+          );
+        })
+      )
+      .subscribe({
+        next: (result) => {
+          this.saving.set(false);
+          if (result.assigned) {
+            this.snack.open(
+              'เปิดรอบใหม่แล้ว — สถานะกำลังดำเนินการ พร้อมบันทึกรอบถัดไป',
+              'ปิด',
+              { duration: 3500 }
+            );
+          } else {
+            this.snack.open(
+              'เปิดเป็น「กลับมาเป็นซ้ำ」แล้ว — ให้ผู้มีสิทธิ์มอบหมายรับงานรอบใหม่',
+              'ปิด',
+              { duration: 4500 }
+            );
+          }
+          this.ref.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+        },
       });
   }
 }

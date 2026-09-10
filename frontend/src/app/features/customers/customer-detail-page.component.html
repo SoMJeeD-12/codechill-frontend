@@ -109,7 +109,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredContacts()" class="data-table">
+              <table mat-table [dataSource]="contactsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>ชื่อ-นามสกุล</th>
                   <td mat-cell *matCellDef="let row">{{ row.name }}</td>
@@ -159,6 +159,13 @@
                 <tr mat-header-row *matHeaderRowDef="contactColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: contactColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="contactsPager.length()"
+                [pageIndex]="contactsPager.pageIndex()"
+                [pageSize]="contactsPager.pageSize()"
+                [pageSizeOptions]="contactsPager.pageSizeOptions"
+                (page)="contactsPager.onPage($event)"
+              />
               @if (filteredContacts().length === 0) {
                 <p class="data-empty">
                   {{ contactSearch().trim() ? 'ไม่พบผู้ติดต่อตามคำค้นหา' : 'ยังไม่มีผู้ติดต่อ' }}
@@ -191,7 +198,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredLogs()" class="data-table">
+              <table mat-table [dataSource]="logsPager.paged()" class="data-table">
                 <ng-container matColumnDef="occurredAt">
                   <th mat-header-cell *matHeaderCellDef>วันเวลา</th>
                   <td mat-cell *matCellDef="let row">{{ row.occurredAt | thaiDate }}</td>
@@ -227,6 +234,13 @@
                 <tr mat-header-row *matHeaderRowDef="logColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: logColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="logsPager.length()"
+                [pageIndex]="logsPager.pageIndex()"
+                [pageSize]="logsPager.pageSize()"
+                [pageSizeOptions]="logsPager.pageSizeOptions"
+                (page)="logsPager.onPage($event)"
+              />
               @if (filteredLogs().length === 0) {
                 <p class="data-empty">
                   {{ logSearch().trim() ? 'ไม่พบประวัติตามคำค้นหา' : 'ยังไม่มีประวัติการติดต่อ' }}
@@ -255,7 +269,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredProjects()" class="data-table">
+              <table mat-table [dataSource]="projectsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>ชื่อโครงการ</th>
                   <td mat-cell *matCellDef="let row">{{ row.name }}</td>
@@ -277,6 +291,13 @@
                 <tr mat-header-row *matHeaderRowDef="projectColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: projectColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="projectsPager.length()"
+                [pageIndex]="projectsPager.pageIndex()"
+                [pageSize]="projectsPager.pageSize()"
+                [pageSizeOptions]="projectsPager.pageSizeOptions"
+                (page)="projectsPager.onPage($event)"
+              />
               @if (filteredProjects().length === 0) {
                 <p class="data-empty">
                   {{ projectSearch().trim() ? 'ไม่พบโครงการตามคำค้นหา' : 'ยังไม่มีโครงการของลูกค้ารายนี้' }}
@@ -305,7 +326,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredWarranties()" class="data-table">
+              <table mat-table [dataSource]="warrantiesPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>รายการ</th>
                   <td mat-cell *matCellDef="let row">
@@ -333,6 +354,13 @@
                 <tr mat-header-row *matHeaderRowDef="warrantyColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: warrantyColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="warrantiesPager.length()"
+                [pageIndex]="warrantiesPager.pageIndex()"
+                [pageSize]="warrantiesPager.pageSize()"
+                [pageSizeOptions]="warrantiesPager.pageSizeOptions"
+                (page)="warrantiesPager.onPage($event)"
+              />
               @if (filteredWarranties().length === 0) {
                 <p class="data-empty">
                   {{ warrantySearch().trim() ? 'ไม่พบประกันตามคำค้นหา' : 'ยังไม่มีประกันของลูกค้ารายนี้' }}
@@ -357,7 +385,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredContracts()" class="data-table">
+              <table mat-table [dataSource]="contractsPager.paged()" class="data-table">
                 <ng-container matColumnDef="id">
                   <th mat-header-cell *matHeaderCellDef>สัญญา</th>
                   <td mat-cell *matCellDef="let row">
@@ -387,6 +415,13 @@
                 <tr mat-header-row *matHeaderRowDef="maColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: maColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="contractsPager.length()"
+                [pageIndex]="contractsPager.pageIndex()"
+                [pageSize]="contractsPager.pageSize()"
+                [pageSizeOptions]="contractsPager.pageSizeOptions"
+                (page)="contractsPager.onPage($event)"
+              />
               @if (filteredContracts().length === 0) {
                 <p class="data-empty">
                   {{ maSearch().trim() ? 'ไม่พบสัญญาตามคำค้นหา' : 'ยังไม่มีสัญญา MA' }}
@@ -415,7 +450,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredTickets()" class="data-table">
+              <table mat-table [dataSource]="ticketsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
                   <td mat-cell *matCellDef="let row">{{ row.title }}</td>
@@ -441,6 +476,13 @@
                 <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: ticketColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="ticketsPager.length()"
+                [pageIndex]="ticketsPager.pageIndex()"
+                [pageSize]="ticketsPager.pageSize()"
+                [pageSizeOptions]="ticketsPager.pageSizeOptions"
+                (page)="ticketsPager.onPage($event)"
+              />
               @if (filteredTickets().length === 0) {
                 <p class="data-empty">
                   {{ ticketSearch().trim() ? 'ไม่พบปัญหาตามคำค้นหา' : 'ยังไม่มีปัญหาของลูกค้ารายนี้' }}
@@ -469,7 +511,7 @@
               </div>
             </div>
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredFollowUps()" class="data-table">
+              <table mat-table [dataSource]="followUpsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
                   <td mat-cell *matCellDef="let row">{{ row.title }}</td>
@@ -496,6 +538,13 @@
                 <tr mat-header-row *matHeaderRowDef="followUpColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: followUpColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="followUpsPager.length()"
+                [pageIndex]="followUpsPager.pageIndex()"
+                [pageSize]="followUpsPager.pageSize()"
+                [pageSizeOptions]="followUpsPager.pageSizeOptions"
+                (page)="followUpsPager.onPage($event)"
+              />
               @if (filteredFollowUps().length === 0) {
                 <p class="data-empty">
                   {{ followUpSearch().trim() ? 'ไม่พบงานติดตามตามคำค้นหา' : 'ยังไม่มีแผนติดตามของลูกค้ารายนี้' }}

@@ -31,9 +31,14 @@
     <button type="button" class="ui-chip" [class.is-active]="view() === 'list'" (click)="setView('list')">
       รายการงาน
     </button>
+    <button type="button" class="ui-chip" [class.is-active]="view() === 'board'" (click)="setView('board')">
+      กระดาน
+    </button>
   </div>
 
-  @if (loading()) {
+  @if (view() === 'board') {
+    <app-task-kanban-board [projectId]="null" [showProjectFilter]="true" />
+  } @else if (loading()) {
     <p class="data-empty">กำลังโหลด…</p>
   } @else if (view() === 'summary') {
     @if (summary(); as s) {
@@ -84,7 +89,7 @@
             <p class="panel-hint">เรียงจากคนที่มีงานเกินกำหนดมากก่อน</p>
           </div>
           <div class="data-card__body">
-            <table mat-table [dataSource]="s.byAssignee" class="data-table">
+            <table mat-table [dataSource]="assigneePager.paged()" class="data-table">
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
                 <td mat-cell *matCellDef="let row">
@@ -106,6 +111,13 @@
               <tr mat-header-row *matHeaderRowDef="['name', 'open', 'overdue']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['name', 'open', 'overdue']"></tr>
             </table>
+            <app-table-paginator
+              [length]="assigneePager.length()"
+              [pageIndex]="assigneePager.pageIndex()"
+              [pageSize]="assigneePager.pageSize()"
+              [pageSizeOptions]="assigneePager.pageSizeOptions"
+              (page)="assigneePager.onPage($event)"
+            />
             @if (s.byAssignee.length === 0) {
               <p class="data-empty">ไม่มีงานค้าง</p>
             }
@@ -178,7 +190,7 @@
 
     <div class="data-card">
       <div class="data-card__body">
-        <table mat-table [dataSource]="displayRows()" class="data-table">
+        <table mat-table [dataSource]="rowsPager.paged()" class="data-table">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>งาน</th>
             <td mat-cell *matCellDef="let row">
@@ -222,6 +234,13 @@
           <tr mat-header-row *matHeaderRowDef="columns"></tr>
           <tr mat-row *matRowDef="let row; columns: columns" [class.dim]="isClosedProject(row)"></tr>
         </table>
+        <app-table-paginator
+          [length]="rowsPager.length()"
+          [pageIndex]="rowsPager.pageIndex()"
+          [pageSize]="rowsPager.pageSize()"
+          [pageSizeOptions]="rowsPager.pageSizeOptions"
+          (page)="rowsPager.onPage($event)"
+        />
         @if (displayRows().length === 0) {
           <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
         }

@@ -23,6 +23,8 @@ import {
   SurveyStatus,
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-surveys-page',
@@ -37,6 +39,7 @@ import { SurveyService } from '../../core/services/survey.service';
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './surveys-page.component.html',
   styleUrl: './surveys-page.component.scss',
@@ -66,6 +69,8 @@ export class SurveysPageComponent implements OnInit {
         this.statusLabels[s.status].toLowerCase().includes(q)
     );
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));

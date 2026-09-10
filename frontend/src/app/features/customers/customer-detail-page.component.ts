@@ -60,6 +60,8 @@ import { PhoneInputDirective } from '../../shared/directives/phone-input.directi
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-customer-detail-page',
@@ -76,6 +78,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
     MatSnackBarModule,
     MatTableModule,
     MatDialogModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './customer-detail-page.component.html',
   styleUrl: './customer-detail-page.component.scss',
@@ -261,6 +264,14 @@ export class CustomerDetailPageComponent implements OnInit {
         .some((v) => String(v).toLowerCase().includes(q))
     );
   });
+
+  readonly contactsPager = createClientPager(this.filteredContacts);
+  readonly logsPager = createClientPager(this.filteredLogs);
+  readonly projectsPager = createClientPager(this.filteredProjects);
+  readonly warrantiesPager = createClientPager(this.filteredWarranties);
+  readonly contractsPager = createClientPager(this.filteredContracts);
+  readonly ticketsPager = createClientPager(this.filteredTickets);
+  readonly followUpsPager = createClientPager(this.filteredFollowUps);
 
   private static readonly TAB_KEYS = [
     'contacts',

@@ -34,7 +34,7 @@ export interface TicketCreateInput {
   dueAt?: string | null;
 }
 
-/** UpdateTicketDto — PATCH /tickets/:id (ห้ามส่ง customerId / status / ฟิลด์ระบบ / ticketNo) */
+/** UpdateTicketDto — PATCH /tickets/:id (ห้ามส่ง customerId / status / assignedUserId / ฟิลด์ระบบ) */
 export interface TicketUpdateInput {
   title?: string;
   description?: string | null;
@@ -46,8 +46,6 @@ export interface TicketUpdateInput {
   reportedByContactId?: number | null;
   receivedByUserId?: number | null;
   dueAt?: string | null;
-  /** มอบหมายผ่าน PATCH /assign เป็นหลัก แต่ฟอร์มแก้ใบอาจส่งได้ */
-  assignedUserId?: number | null;
 }
 
 /** CreateResolutionDto */
@@ -218,7 +216,6 @@ export class TicketService {
           priority: input.priority,
           reportedByContactId: input.reportedByContactId,
           receivedByUserId: input.receivedByUserId,
-          assignedUserId: input.assignedUserId,
           dueAt: input.dueAt,
         })
       )

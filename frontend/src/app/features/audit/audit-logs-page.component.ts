@@ -18,6 +18,8 @@ import {
   auditTableLabel,
 } from '../../core/models/audit.model';
 import { AuditService } from '../../core/services/audit.service';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-audit-logs-page',
@@ -32,6 +34,7 @@ import { AuditService } from '../../core/services/audit.service';
     MatFormFieldModule,
     MatSelectModule,
     MatTooltipModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './audit-logs-page.component.html',
   styleUrl: './audit-logs-page.component.scss',
@@ -51,6 +54,8 @@ export class AuditLogsPageComponent implements OnInit {
   readonly actions = AUDIT_ACTIONS;
   readonly tables = AUDIT_TABLES;
   readonly actionLabels = AUDIT_ACTION_LABELS;
+
+  readonly pager = createClientPager(this.logs);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {

@@ -23,6 +23,7 @@ import {
   MaBillingCycle,
   MaContract,
   MaContractStatus,
+  MaQuotaStatus,
   maPlanDisplayName,
 } from '../../core/models/ma.model';
 import { CustomerService } from '../../core/services/customer.service';
@@ -41,6 +42,10 @@ import { parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-ma-page',
@@ -57,6 +62,7 @@ import { MoneyInputDirective } from '../../shared/directives/money-input.directi
     MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './ma-page.component.html',
   styleUrl: './ma-page.component.scss',
@@ -69,6 +75,9 @@ export class MaPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly contracts = signal<MaContract[]>([]);
+  /** โควตารอบปัจจุบัน — list API ไม่พ่วง ต้องโหลด GET /ma-contracts/:id/quota */
+  readonly quotasById = signal<Record<number, MaQuotaStatus>>({});
+  readonly quotasLoading = signal(false);
   /** ค่าเริ่มต้น = ทั้งหมด — สัญญาใหม่มักเป็น DRAFT จึงไม่ผ่านแท็บใช้งานอยู่ */
   readonly view = signal<'active' | 'all'>('all');
   readonly search = signal('');
@@ -76,8 +85,8 @@ export class MaPageComponent implements OnInit {
   readonly statusLabels = MA_STATUS_LABELS;
   readonly columns = [
     'id',
+    'project',
     'plan',
-    'customer',
     'period',
     'quota',
     'fee',
@@ -96,20 +105,19 @@ export class MaPageComponent implements OnInit {
       return rows;
     }
     return rows.filter((c) => {
-      const project = this.projectsApi.getProject(c.projectId);
-      const projectText = project
-        ? project.name.toLowerCase()
-        : (c.projectName ?? '').toLowerCase();
       return (
         String(c.id).includes(q) ||
+        (c.contractNo ?? '').toLowerCase().includes(q) ||
         maPlanDisplayName(c).toLowerCase().includes(q) ||
         this.customerName(c).toLowerCase().includes(q) ||
-        projectText.includes(q) ||
+        this.projectName(c).toLowerCase().includes(q) ||
         this.statusLabel(c.status).toLowerCase().includes(q) ||
         (c.note ?? '').toLowerCase().includes(q)
       );
     });
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   /** แท็บใช้งานอยู่: ใช้ isCurrentlyActive ถ้ามี ไม่งั้น fallback status ACTIVE */
   private isActiveViewRow(c: MaContract): boolean {
@@ -122,14 +130,55 @@ export class MaPageComponent implements OnInit {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.projectsApi.listProjects().subscribe({ error: () => undefined });
-    this.api.listPlans().subscribe({ error: () => undefined });
+    this.api.listPlans({ isActive: true }).subscribe({ error: () => undefined });
     this.reload();
   }
 
   reload(): void {
     this.api.list().subscribe({
-      next: (list) => this.contracts.set(list),
-      error: () => this.contracts.set([]),
+      next: (list) => {
+        this.contracts.set(list);
+        this.loadQuotasForList(list);
+      },
+      error: () => {
+        this.contracts.set([]);
+        this.quotasById.set({});
+      },
+    });
+  }
+
+  private loadQuotasForList(list: MaContract[]): void {
+    const targets = list.filter(
+      (c) => c.status !== 'DRAFT' && c.status !== 'CANCELLED'
+    );
+    if (!targets.length) {
+      this.quotasById.set({});
+      this.quotasLoading.set(false);
+      return;
+    }
+    this.quotasLoading.set(true);
+    forkJoin(
+      targets.map((c) =>
+        this.api.getQuota(c.id).pipe(
+          map((q) => [c.id, q] as const),
+          catchError(() => of([c.id, null] as const))
+        )
+      )
+    ).subscribe({
+      next: (pairs) => {
+        const next: Record<number, MaQuotaStatus> = {};
+        for (const [id, q] of pairs) {
+          if (q) {
+            next[id] = q;
+          }
+        }
+        this.quotasById.set(next);
+        this.quotasLoading.set(false);
+      },
+      error: () => {
+        this.quotasById.set({});
+        this.quotasLoading.set(false);
+      },
     });
   }
 
@@ -137,20 +186,44 @@ export class MaPageComponent implements OnInit {
     return c.customerName ?? this.customersApi.getCustomer(c.customerId)?.name ?? `#${c.customerId}`;
   }
 
+  projectName(c: MaContract): string {
+    if (c.projectName?.trim()) {
+      return c.projectName.trim();
+    }
+    const project = this.projectsApi.getProject(c.projectId);
+    if (project) {
+      return project.name;
+    }
+    return c.projectId ? `โครงการ #${c.projectId}` : '—';
+  }
+
+  /** โชว์เลขที่สัญญา ถ้าไม่มีใช้ #id */
+  contractLabel(c: MaContract): string {
+    const no = c.contractNo?.trim();
+    return no || `#${c.id}`;
+  }
+
   planName(c: MaContract): string {
     return maPlanDisplayName(c);
   }
 
   remaining(c: MaContract): number {
-    return this.api.remainingQuota(c);
+    const q = this.quotasById()[c.id] ?? c.quota;
+    return q?.remaining ?? this.api.remainingQuota(c);
   }
 
   quotaLabel(c: MaContract): string {
-    const q = c.quota;
-    if (!q) {
+    if (c.status === 'DRAFT') {
+      return '— (แบบร่าง)';
+    }
+    if (c.status === 'CANCELLED') {
       return '—';
     }
-    return `ใช้ ${q.used}/${q.quota} · เหลือ ${q.remaining}`;
+    const q = this.quotasById()[c.id] ?? c.quota ?? null;
+    if (!q) {
+      return this.quotasLoading() ? 'กำลังโหลด…' : '—';
+    }
+    return `ใช้แล้ว ${q.used}/${q.quota}`;
   }
 
   statusLabel(status: MaContract['status']): string {
@@ -227,6 +300,7 @@ export class MaFormDialogComponent {
       Validators.required,
     ],
     planId: [this.data?.planId ?? (null as number | null), Validators.required],
+    contractNo: [this.data?.contractNo ?? ''],
     startDate: [parseDateOnly(this.data?.startDate) as Date | null, Validators.required],
     endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
     status: [(this.data?.status === 'RENEWED' ? 'ACTIVE' : this.data?.status ?? 'DRAFT') as Exclude<MaContractStatus, 'RENEWED'>],
@@ -238,7 +312,7 @@ export class MaFormDialogComponent {
   });
 
   constructor() {
-    this.api.listPlans().subscribe();
+    this.api.listPlans({ isActive: true }).subscribe();
     if (!this.projects().length) {
       this.projectsApi.listProjects().subscribe();
     }
@@ -313,6 +387,7 @@ export class MaFormDialogComponent {
         startDate: toDateOnlyString(raw.startDate),
         endDate: toDateOnlyString(raw.endDate),
         status: raw.status as Exclude<MaContractStatus, 'RENEWED'>,
+        contractNo: raw.contractNo?.trim() || null,
         signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
         note: raw.note?.trim() || null,
       };
@@ -345,6 +420,7 @@ export class MaFormDialogComponent {
       startDate: toDateOnlyString(raw.startDate),
       endDate: toDateOnlyString(raw.endDate),
       status: (raw.status as Exclude<MaContractStatus, 'RENEWED'>) ?? 'DRAFT',
+      contractNo: raw.contractNo?.trim() || null,
       signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
       note: raw.note?.trim() || null,
     };

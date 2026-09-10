@@ -109,7 +109,7 @@
           </div>
           <div>
             <h3>รายลูกค้า</h3>
-            <table mat-table [dataSource]="bd.byCustomer" class="full-table">
+            <table mat-table [dataSource]="breakdownByCustomerPager.paged()" class="full-table">
               <ng-container matColumnDef="customer">
                 <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
                 <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>
@@ -127,6 +127,13 @@
               <tr mat-header-row *matHeaderRowDef="['customer', 'avg', 'count']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['customer', 'avg', 'count']"></tr>
             </table>
+            <app-table-paginator
+              [length]="breakdownByCustomerPager.length()"
+              [pageIndex]="breakdownByCustomerPager.pageIndex()"
+              [pageSize]="breakdownByCustomerPager.pageSize()"
+              [pageSizeOptions]="breakdownByCustomerPager.pageSizeOptions"
+              (page)="breakdownByCustomerPager.onPage($event)"
+            />
             @if (bd.byCustomer.length === 0) {
               <p class="empty">ยังไม่มีคำตอบในช่วงนี้</p>
             }
@@ -142,7 +149,7 @@
       <div class="left-stack">
         <mat-card>
           <h2>การส่งแบบประเมิน</h2>
-          <table mat-table [dataSource]="assignments()" class="full-table">
+          <table mat-table [dataSource]="assignmentsPager.paged()" class="full-table">
             <ng-container matColumnDef="customer">
               <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
               <td mat-cell *matCellDef="let row">
@@ -167,6 +174,13 @@
             <tr mat-header-row *matHeaderRowDef="assignmentColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: assignmentColumns"></tr>
           </table>
+          <app-table-paginator
+            [length]="assignmentsPager.length()"
+            [pageIndex]="assignmentsPager.pageIndex()"
+            [pageSize]="assignmentsPager.pageSize()"
+            [pageSizeOptions]="assignmentsPager.pageSizeOptions"
+            (page)="assignmentsPager.onPage($event)"
+          />
           @if (assignments().length === 0) {
             <p class="empty">ยังไม่มีการส่ง</p>
           }
@@ -174,7 +188,7 @@
 
         <mat-card>
           <h2>คำตอบล่าสุด</h2>
-          <table mat-table [dataSource]="responses()" class="full-table">
+          <table mat-table [dataSource]="responsesPager.paged()" class="full-table">
             <ng-container matColumnDef="customer">
               <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
               <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>
@@ -190,6 +204,13 @@
             <tr mat-header-row *matHeaderRowDef="responseColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: responseColumns"></tr>
           </table>
+          <app-table-paginator
+            [length]="responsesPager.length()"
+            [pageIndex]="responsesPager.pageIndex()"
+            [pageSize]="responsesPager.pageSize()"
+            [pageSizeOptions]="responsesPager.pageSizeOptions"
+            (page)="responsesPager.onPage($event)"
+          />
           @if (responses().length === 0) {
             <p class="empty">ยังไม่มีคำตอบ</p>
           }

@@ -48,6 +48,9 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
+import { TaskKanbanBoardComponent } from './task-kanban-board.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -68,6 +71,8 @@ import { TaskEditDialogComponent } from './task-edit-dialog.component';
     MatTooltipModule,
     MatDialogModule,
     MatMenuModule,
+    TaskKanbanBoardComponent,
+    TablePaginatorComponent,
   ],
   templateUrl: './project-detail-page.component.html',
   styleUrl: './project-detail-page.component.scss',
@@ -88,6 +93,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly notFound = signal(false);
   readonly progress = signal(0);
   readonly tasks = signal<TaskItem[]>([]);
+  readonly tasksView = signal<'table' | 'board'>('table');
   readonly statusFilter = signal<TaskStatus | 'ALL'>('ALL');
   readonly taskSearch = signal('');
   readonly taskSearchControl = this.fb.nonNullable.control('');
@@ -212,7 +218,15 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   });
 
+  readonly tasksPager = createClientPager(this.filteredTasks);
+  readonly deliveriesPager = createClientPager(this.filteredDeliveries);
+
   private projectId = 0;
+
+  /** ใช้ส่งเข้า kanban / ลิงก์ */
+  get currentProjectId(): number {
+    return this.projectId;
+  }
 
   goBack(): void {
     navigateBack(this.location, this.router, '/app/projects');

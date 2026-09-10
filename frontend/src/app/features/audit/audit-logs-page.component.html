@@ -50,7 +50,7 @@
     </div>
 
     <div class="data-card__body">
-      <table mat-table [dataSource]="logs()" class="data-table">
+      <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef>เวลา</th>
           <td mat-cell *matCellDef="let row">{{ row.createdAt | thaiDate }}</td>
@@ -85,6 +85,13 @@
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+      <app-table-paginator
+        [length]="pager.length()"
+        [pageIndex]="pager.pageIndex()"
+        [pageSize]="pager.pageSize()"
+        [pageSizeOptions]="pager.pageSizeOptions"
+        (page)="pager.onPage($event)"
+      />
       @if (logs().length === 0) {
         <p class="data-empty">
           {{ loading() ? 'กำลังโหลด…' : 'ไม่พบบันทึกตามคำค้นหา/ตัวกรอง' }}

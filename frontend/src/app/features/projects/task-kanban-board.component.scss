@@ -1,0 +1,232 @@
+.kanban {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.kanban-filters {
+  margin: 0;
+}
+
+.filters-row {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ui-filter.wide {
+  width: min(220px, 100%);
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(200px, 1fr));
+  gap: 0.65rem;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.kanban-col {
+  background: #f3f7f5;
+  border: 1px solid #d8e5e1;
+  border-radius: 12px;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+}
+
+.kanban-col__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.7rem 0.75rem 0.45rem;
+  border-bottom: 1px solid #e2ebe7;
+}
+
+.kanban-col__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #1c2b28;
+  }
+}
+
+.kanban-col__count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #5b6762;
+  background: #fff;
+  border: 1px solid #d8e5e1;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+.kanban-col__overdue {
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kanban-col__list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  min-height: 120px;
+}
+
+.kanban-empty {
+  margin: 0.75rem 0;
+  text-align: center;
+  color: #6b7f79;
+  font-size: 0.82rem;
+}
+
+.kanban-card {
+  background: #fff;
+  border: 1px solid #d8e5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  cursor: grab;
+  box-shadow: 0 1px 0 rgba(28, 43, 40, 0.04);
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    border-color: #b7cfc7;
+  }
+
+  &.cdk-drag-preview {
+    box-shadow: 0 8px 24px rgba(28, 43, 40, 0.16);
+    cursor: grabbing;
+  }
+
+  &.cdk-drag-animating {
+    transition: transform 200ms ease;
+  }
+
+  &.is-closed {
+    opacity: 0.62;
+  }
+}
+
+.kanban-card__drag {
+  background: #dceee8;
+  border: 1px dashed #0f766e;
+  border-radius: 10px;
+  min-height: 64px;
+}
+
+.kanban-card__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: #1c2b28;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.kanban-card__project {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+
+  a {
+    color: #0f766e;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.project-status-badge {
+  display: inline-block;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+
+  &[data-status='CLOSED'],
+  &[data-status='CANCELLED'] {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+}
+
+.kanban-card__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  color: #5b6762;
+
+  .due {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    &.is-overdue {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+  }
+
+  .assignee {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.kanban-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.overdue-badge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.load-more {
+  margin: 0 0.55rem 0.65rem;
+  align-self: stretch;
+}
+
+.cdk-drop-list-dragging .kanban-card:not(.cdk-drag-placeholder) {
+  transition: transform 200ms ease;
+}
+
+@media (max-width: 1100px) {
+  .kanban-board {
+    grid-template-columns: repeat(5, minmax(180px, 220px));
+  }
+}

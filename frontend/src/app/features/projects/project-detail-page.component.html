@@ -48,6 +48,31 @@
           @if (tasksDenied()) {
             <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
           } @else {
+          <div class="tasks-view-chips ui-chips" role="tablist" aria-label="มุมมองงาน">
+            <button
+              type="button"
+              class="ui-chip"
+              [class.is-active]="tasksView() === 'table'"
+              (click)="tasksView.set('table')"
+            >
+              ตาราง
+            </button>
+            <button
+              type="button"
+              class="ui-chip"
+              [class.is-active]="tasksView() === 'board'"
+              (click)="tasksView.set('board')"
+            >
+              กระดาน
+            </button>
+          </div>
+
+          @if (tasksView() === 'board') {
+            <app-task-kanban-board
+              [projectId]="currentProjectId"
+              [showProjectFilter]="false"
+            />
+          } @else {
           <div class="data-card">
             <div class="data-card__head">
               <div class="data-card__row">
@@ -97,7 +122,7 @@
             </div>
 
             <div class="data-card__body">
-              <table mat-table [dataSource]="filteredTasks()" class="data-table tasks-table">
+              <table mat-table [dataSource]="tasksPager.paged()" class="data-table tasks-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>งาน</th>
                   <td mat-cell *matCellDef="let row">
@@ -219,6 +244,13 @@
                 <tr mat-header-row *matHeaderRowDef="taskColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: taskColumns"></tr>
               </table>
+              <app-table-paginator
+                [length]="tasksPager.length()"
+                [pageIndex]="tasksPager.pageIndex()"
+                [pageSize]="tasksPager.pageSize()"
+                [pageSizeOptions]="tasksPager.pageSizeOptions"
+                (page)="tasksPager.onPage($event)"
+              />
 
               @if (filteredTasks().length === 0) {
                 <p class="data-empty">
@@ -227,6 +259,7 @@
               }
             </div>
           </div>
+          }
           }
         </div>
       </mat-tab>
@@ -266,7 +299,7 @@
                 </div>
               </div>
               <div class="data-card__body">
-                <table mat-table [dataSource]="filteredDeliveries()" class="data-table">
+                <table mat-table [dataSource]="deliveriesPager.paged()" class="data-table">
                   <ng-container matColumnDef="title">
                     <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
                     <td mat-cell *matCellDef="let row">
@@ -337,6 +370,13 @@
                   <tr mat-header-row *matHeaderRowDef="deliveryColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: deliveryColumns"></tr>
                 </table>
+                <app-table-paginator
+                  [length]="deliveriesPager.length()"
+                  [pageIndex]="deliveriesPager.pageIndex()"
+                  [pageSize]="deliveriesPager.pageSize()"
+                  [pageSizeOptions]="deliveriesPager.pageSizeOptions"
+                  (page)="deliveriesPager.onPage($event)"
+                />
                 @if (filteredDeliveries().length === 0) {
                   <p class="data-empty">
                     {{

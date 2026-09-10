@@ -12,6 +12,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { RoleEditorDialogComponent } from './role-editor-dialog.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { createClientPager } from '../../shared/utils/client-pager';
 
 @Component({
   selector: 'app-roles-page',
@@ -25,6 +27,7 @@ import { RoleEditorDialogComponent } from './role-editor-dialog.component';
     MatSnackBarModule,
     MatDialogModule,
     MatTooltipModule,
+    TablePaginatorComponent,
   ],
   templateUrl: './roles-page.component.html',
   styleUrl: './roles-page.component.scss',
@@ -60,6 +63,8 @@ export class RolesPageComponent implements OnInit {
         (r.description ?? '').toLowerCase().includes(q)
     );
   });
+
+  readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
