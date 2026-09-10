@@ -313,6 +313,21 @@ export class TicketDetailPageComponent implements OnInit {
       this.snack.open('ไม่มีสิทธิ์ปิดงาน', 'ปิด', { duration: 3000 });
       return;
     }
+    const ticket = this.ticket();
+    if (!ticket || ticket.status !== 'RESOLVED') {
+      this.snack.open(
+        'ปิดงานได้เมื่อสถานะเป็น「แก้ไขแล้ว」— ให้บันทึกการแก้ไขก่อน',
+        'ปิด',
+        { duration: 4000 }
+      );
+      return;
+    }
+    if ((ticket.resolutionCount ?? 0) < 1) {
+      this.snack.open('ยังไม่มีรอบแก้ไข — บันทึกการแก้ไขก่อนปิดงาน', 'ปิด', {
+        duration: 4000,
+      });
+      return;
+    }
     this.ticketsApi.close(this.ticketId).subscribe({
       next: () => {
         this.snack.open('ปิดงานแล้ว — จะหายจากหน้ารอรับแก้ไข', 'ปิด', { duration: 3000 });

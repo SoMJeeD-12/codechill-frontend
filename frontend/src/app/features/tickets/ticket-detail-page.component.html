@@ -69,8 +69,18 @@
             ปัญหาเดิมกลับมา
           </button>
         }
-        @if (canResolve() && t.status !== 'CLOSED') {
-          <button mat-flat-button color="primary" type="button" (click)="closeTicket()">ปิดงาน</button>
+        @if (canResolve() && t.status === 'RESOLVED') {
+          <button mat-flat-button color="primary" type="button" (click)="closeTicket()">
+            ปิดงาน
+          </button>
+        }
+        @if (
+          canResolve() &&
+          t.status !== 'CLOSED' &&
+          t.status !== 'RESOLVED' &&
+          (t.resolutionCount ?? 0) === 0
+        ) {
+          <p class="close-hint">บันทึกการแก้ไขอย่างน้อย 1 รอบก่อน จึงจะปิดงานได้</p>
         }
       </div>
     </header>
