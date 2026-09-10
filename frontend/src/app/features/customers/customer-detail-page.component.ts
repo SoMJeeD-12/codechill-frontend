@@ -23,9 +23,9 @@ import {
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
 import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
 import {
-  FOLLOW_UP_CHANNEL_LABELS,
   FOLLOW_UP_STATUS_LABELS,
   FollowUp,
+  followUpDisplayStatus,
 } from '../../core/models/follow-up.model';
 import { TICKET_STATUS_LABELS, Ticket } from '../../core/models/ticket.model';
 import {
@@ -99,7 +99,6 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
   readonly maStatusLabels = MA_STATUS_LABELS;
   readonly followUpStatusLabels = FOLLOW_UP_STATUS_LABELS;
-  readonly followUpChannelLabels = FOLLOW_UP_CHANNEL_LABELS;
   readonly notFound = signal(false);
   readonly editingContactId = signal<number | null>(null);
   readonly editingLogId = signal<number | null>(null);
@@ -214,14 +213,7 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   followUpStatusLabel(f: FollowUp): string {
-    if (this.followUpsApi.isOverdue(f)) {
-      return 'เลยกำหนด';
-    }
-    return this.followUpStatusLabels[f.status];
-  }
-
-  followUpChannelLabel(channel: FollowUp['channel']): string {
-    return this.followUpChannelLabels[channel];
+    return followUpDisplayStatus(f);
   }
 
   warrantyStatusLabel(status: Warranty['status']): string {

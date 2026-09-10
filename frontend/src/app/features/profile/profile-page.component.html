@@ -105,27 +105,22 @@
             <mat-icon>lock_open</mat-icon>
             <h3>สิทธิ์ที่มีอยู่</h3>
           </div>
-          <span class="muted">{{ permissionCount() }} รายการ · กดหัวข้อเพื่อดู</span>
+          <span class="muted">{{ permissionCount() }} รายการ</span>
         </div>
 
         @if (permissionGroups().length) {
-          <mat-accordion class="perm-accordion" multi>
+          <ul class="perm-list">
             @for (group of permissionGroups(); track group.module) {
-              <mat-expansion-panel class="perm-panel">
-                <mat-expansion-panel-header>
-                  <mat-panel-title>{{ group.label }}</mat-panel-title>
-                  <mat-panel-description>
-                    {{ group.actions.join(' · ') }}
-                  </mat-panel-description>
-                </mat-expansion-panel-header>
+              <li class="perm-item">
+                <strong>{{ group.label }}</strong>
                 <div class="perm-actions">
                   @for (action of group.actions; track action) {
                     <span class="chip">{{ action }}</span>
                   }
                 </div>
-              </mat-expansion-panel>
+              </li>
             }
-          </mat-accordion>
+          </ul>
         } @else {
           <p class="empty">ยังไม่มีสิทธิ์ในระบบ</p>
         }

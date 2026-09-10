@@ -326,7 +326,6 @@
                 <strong>{{ f.title }}</strong>
                 <p>
                   {{ followUpStatusLabel(f) }} ·
-                  {{ followUpChannelLabel(f.channel) }} ·
                   ครบกำหนด {{ f.dueDate }}
                   @if (isFollowUpOverdue(f)) {
                     <span class="overdue-tag">เลยกำหนด</span>

@@ -1,6 +1,5 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
@@ -74,7 +73,7 @@ const ACTION_ORDER = [
 @Component({
   selector: 'app-profile-page',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatExpansionModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })

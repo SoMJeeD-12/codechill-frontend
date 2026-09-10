@@ -65,11 +65,10 @@ export class MaDetailPageComponent implements OnInit {
   readonly quota = signal<MaQuotaStatus | null>(null);
   readonly addons = signal<MaAddon[]>([]);
   readonly notFound = signal(false);
-  readonly editingAddonId = signal<number | null>(null);
   readonly savingAddon = signal(false);
   readonly statusLabels = MA_STATUS_LABELS;
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
-  readonly addonColumns = ['title', 'extraQuota', 'price', 'effective', 'createdAt', 'actions'];
+  readonly addonColumns = ['title', 'extraQuota', 'price', 'effective', 'createdAt'];
 
   statusLabel(status: MaContract['status']): string {
     return this.statusLabels[status];
@@ -140,20 +139,6 @@ export class MaDetailPageComponent implements OnInit {
     return this.quota()?.remaining ?? this.api.remainingQuota(this.contract()!);
   }
 
-  startEditAddon(row: MaAddon): void {
-    this.editingAddonId.set(row.id);
-    this.addonForm.reset({
-      title: row.title,
-      extraQuota: row.extraQuota,
-      price: parseMoneyValue(row.price) ?? 0,
-    });
-  }
-
-  cancelEditAddon(): void {
-    this.editingAddonId.set(null);
-    this.addonForm.reset({ title: '', extraQuota: 1, price: 0 });
-  }
-
   saveAddon(): void {
     const c = this.contract();
     if (!c || this.addonForm.invalid) {
@@ -167,47 +152,19 @@ export class MaDetailPageComponent implements OnInit {
       extraQuota: Number(raw.extraQuota) || 0,
       price: toMoneyString(raw.price),
     };
-    const editingId = this.editingAddonId();
     this.savingAddon.set(true);
 
-    const req =
-      editingId != null
-        ? this.api.updateAddon(c.id, editingId, payload)
-        : this.api.addAddon(c.id, payload);
-
-    req.subscribe({
+    this.api.addAddon(c.id, payload).subscribe({
       next: () => {
         this.savingAddon.set(false);
-        this.snack.open(editingId != null ? 'แก้ไข Add-on แล้ว' : 'เพิ่ม Add-on แล้ว', 'ปิด', {
-          duration: 2500,
-        });
-        this.cancelEditAddon();
+        this.snack.open('เพิ่ม Add-on แล้ว', 'ปิด', { duration: 2500 });
+        this.addonForm.reset({ title: '', extraQuota: 1, price: 0 });
         this.reload();
       },
       error: (err: Error) => {
         this.savingAddon.set(false);
         this.snack.open(err.message, 'ปิด', { duration: 4000 });
       },
-    });
-  }
-
-  deleteAddon(row: MaAddon): void {
-    const c = this.contract();
-    if (!c) {
-      return;
-    }
-    if (!confirm(`ลบ Add-on「${row.title}」หรือไม่?`)) {
-      return;
-    }
-    this.api.deleteAddon(c.id, row.id).subscribe({
-      next: () => {
-        if (this.editingAddonId() === row.id) {
-          this.cancelEditAddon();
-        }
-        this.snack.open('ลบ Add-on แล้ว', 'ปิด', { duration: 2500 });
-        this.reload();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
     });
   }
 

@@ -2,8 +2,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MAT_DIALOG_DATA,
@@ -18,15 +18,22 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import {
-  FOLLOW_UP_CHANNEL_LABELS,
   FOLLOW_UP_STATUS_LABELS,
   FollowUp,
-  FollowUpChannel,
-  FollowUpStatus,
+  FollowUpWritableStatus,
+  followUpDisplayStatus,
 } from '../../core/models/follow-up.model';
+import {
+  CHANNEL_LABELS,
+  CommunicationChannel,
+} from '../../core/models/customer.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { FollowUpInput, FollowUpService } from '../../core/services/follow-up.service';
+import {
+  FollowUpCreateInput,
+  FollowUpService,
+  FollowUpUpdateInput,
+} from '../../core/services/follow-up.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -36,13 +43,12 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
   standalone: true,
   imports: [
     ThaiDatePipe,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
-    MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
   ],
@@ -59,7 +65,8 @@ export class FollowUpsPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly items = signal<FollowUp[]>([]);
-  readonly view = signal<'all' | 'overdue' | 'planned'>('all');
+  readonly loading = signal(false);
+  readonly view = signal<'all' | 'overdue' | 'planned' | 'mine'>('all');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly columns = [
@@ -68,82 +75,94 @@ export class FollowUpsPageComponent implements OnInit {
     'dueDate',
     'daysLeft',
     'assignee',
-    'channel',
     'status',
     'actions',
   ];
 
+  readonly canCreate = computed(() => this.auth.hasPermission('follow-ups', 'create'));
+  readonly canUpdate = computed(() => this.auth.hasPermission('follow-ups', 'update'));
+  readonly canComplete = computed(
+    () =>
+      this.auth.hasPermissionCode('followup.complete') ||
+      this.auth.hasPermission('follow-ups', 'complete') ||
+      this.auth.hasPermission('follow-ups', 'update')
+  );
+  readonly canDelete = computed(() => this.auth.hasPermission('follow-ups', 'delete'));
+
   readonly filtered = computed(() => {
-    const view = this.view();
-    let list = this.items();
-    if (view === 'overdue') {
-      list = list.filter((f) => this.api.isOverdue(f));
-    } else if (view === 'planned') {
-      list = list.filter((f) => f.status === 'PLANNED');
-    }
     const q = this.search().trim().toLowerCase();
-    if (q) {
-      list = list.filter((f) => {
-        const customer = this.customerName(f.customerId).toLowerCase();
-        const assignee = this.userName(f.assigneeId).toLowerCase();
-        return (
-          f.title.toLowerCase().includes(q) ||
-          (f.note ?? '').toLowerCase().includes(q) ||
-          customer.includes(q) ||
-          assignee.includes(q) ||
-          this.channelLabel(f.channel).toLowerCase().includes(q) ||
-          this.statusLabel(f).toLowerCase().includes(q) ||
-          f.dueDate.toLowerCase().includes(q)
-        );
-      });
+    let list = this.items();
+    if (!q) {
+      return list;
     }
-    return [...list].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return list.filter((f) => {
+      const customer = this.customerName(f).toLowerCase();
+      const assignee = this.userName(f).toLowerCase();
+      return (
+        f.title.toLowerCase().includes(q) ||
+        (f.detail ?? '').toLowerCase().includes(q) ||
+        (f.resultNote ?? '').toLowerCase().includes(q) ||
+        customer.includes(q) ||
+        assignee.includes(q) ||
+        this.statusLabel(f).toLowerCase().includes(q) ||
+        f.dueDate.toLowerCase().includes(q)
+      );
+    });
   });
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.customersApi.listCustomers().subscribe({
-      next: (customers) => {
-        const first = customers[0];
-        const second = customers[1];
-        const me = this.auth.currentUser();
-        if (first) {
-          this.api
-            .ensureDemoSeed(first.id, me?.id ?? null, second?.id ?? null)
-            .subscribe((list) => this.items.set(list));
-        } else {
-          this.reload();
-        }
-      },
-      error: () => this.reload(),
-    });
+    this.customersApi.listCustomers({ limit: 100 }).subscribe();
     this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
+    this.reload();
+  }
+
+  setView(view: 'all' | 'overdue' | 'planned' | 'mine'): void {
+    this.view.set(view);
+    this.reload();
   }
 
   reload(): void {
-    this.api.list().subscribe((list) => this.items.set(list));
+    this.loading.set(true);
+    const view = this.view();
+    const me = this.auth.currentUser();
+    const params =
+      view === 'overdue'
+        ? { overdue: true as const, limit: 100 }
+        : view === 'planned'
+          ? { status: 'PLANNED' as const, limit: 100 }
+          : view === 'mine' && me
+            ? { assignedUserId: me.id, limit: 100 }
+            : { limit: 100 };
+
+    this.api.list(params).subscribe({
+      next: (list) => {
+        this.items.set(list);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        this.snack.open(err.message, 'ปิด', { duration: 3500 });
+      },
+    });
   }
 
-  customerName(id: number): string {
-    return this.customersApi.getCustomer(id)?.name ?? `#${id}`;
+  customerName(f: FollowUp): string {
+    return f.customer?.name ?? this.customersApi.getCustomer(f.customerId)?.name ?? `#${f.customerId}`;
   }
 
-  userName(id: number | null): string {
-    if (!id) {
+  userName(f: FollowUp): string {
+    if (f.assignedUser?.fullName) {
+      return f.assignedUser.fullName;
+    }
+    if (!f.assignedUserId) {
       return '—';
     }
-    return this.usersApi.getById(id)?.fullName ?? `#${id}`;
+    return this.usersApi.getById(f.assignedUserId)?.fullName ?? `#${f.assignedUserId}`;
   }
 
   statusLabel(f: FollowUp): string {
-    if (this.api.isOverdue(f)) {
-      return 'เลยกำหนด';
-    }
-    return FOLLOW_UP_STATUS_LABELS[f.status];
-  }
-
-  channelLabel(channel: FollowUpChannel): string {
-    return FOLLOW_UP_CHANNEL_LABELS[channel];
+    return followUpDisplayStatus(f);
   }
 
   daysLeftLabel(f: FollowUp): string {
@@ -161,24 +180,24 @@ export class FollowUpsPageComponent implements OnInit {
   }
 
   daysLeftClass(f: FollowUp): string {
-    const days = this.api.daysUntilDue(f);
-    if (days === null) {
-      return '';
-    }
-    // รายการที่ทำเสร็จแล้วไม่ต้องเน้นสีเตือน
     if (f.status === 'DONE' || f.status === 'CANCELLED') {
       return '';
     }
-    if (days < 0) {
+    if (this.api.isOverdue(f)) {
       return 'overdue';
     }
-    if (days <= 3) {
+    const days = this.api.daysUntilDue(f);
+    if (days !== null && days <= 3) {
       return 'soon';
     }
     return '';
   }
 
   openCreate(row?: FollowUp): void {
+    if (row ? !this.canUpdate() : !this.canCreate()) {
+      this.snack.open('คุณไม่มีสิทธิ์ดำเนินการนี้', 'ปิด', { duration: 3000 });
+      return;
+    }
     const ref = this.dialog.open(FollowUpFormDialogComponent, {
       width: '560px',
       maxWidth: '95vw',
@@ -192,10 +211,32 @@ export class FollowUpsPageComponent implements OnInit {
   }
 
   markDone(row: FollowUp): void {
-    const actor = this.auth.currentUser()?.fullName ?? 'ระบบ';
-    this.api.markDone(row.id, actor).subscribe({
+    if (!this.canComplete()) {
+      this.snack.open('คุณไม่มีสิทธิ์ปิดงานติดตาม', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(FollowUpCompleteDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: row,
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.reload();
+      }
+    });
+  }
+
+  remove(row: FollowUp): void {
+    if (!this.canDelete()) {
+      return;
+    }
+    if (!confirm(`ลบงานติดตาม "${row.title}" ?`)) {
+      return;
+    }
+    this.api.remove(row.id).subscribe({
       next: () => {
-        this.snack.open('บันทึกว่าติดตามแล้ว', 'ปิด', { duration: 2500 });
+        this.snack.open('ลบแล้ว', 'ปิด', { duration: 2500 });
         this.reload();
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
@@ -231,27 +272,27 @@ export class FollowUpFormDialogComponent {
 
   readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
-  readonly channels = Object.keys(FOLLOW_UP_CHANNEL_LABELS) as FollowUpChannel[];
-  readonly channelLabels = FOLLOW_UP_CHANNEL_LABELS;
-  readonly statuses = Object.keys(FOLLOW_UP_STATUS_LABELS) as FollowUpStatus[];
+  readonly statuses = Object.keys(FOLLOW_UP_STATUS_LABELS) as FollowUpWritableStatus[];
   readonly statusLabels = FOLLOW_UP_STATUS_LABELS;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isEdit = !!this.data;
 
   readonly form = this.fb.group({
-    customerId: [this.data?.customerId ?? 0, Validators.min(1)],
+    customerId: [
+      { value: this.data?.customerId ?? 0, disabled: this.isEdit },
+      Validators.min(1),
+    ],
     title: [this.data?.title ?? '', Validators.required],
     dueDate: [parseDateOnly(this.data?.dueDate) as Date | null, Validators.required],
-    assigneeId: [this.data?.assigneeId ?? (null as number | null)],
-    channel: [(this.data?.channel ?? 'PHONE') as FollowUpChannel],
-    status: [(this.data?.status ?? 'PLANNED') as FollowUpStatus],
-    note: [this.data?.note ?? ''],
+    assignedUserId: [this.data?.assignedUserId ?? (null as number | null)],
+    status: [(this.data?.status === 'OVERDUE' ? 'PLANNED' : this.data?.status ?? 'PLANNED') as FollowUpWritableStatus],
+    detail: [this.data?.detail ?? ''],
+    resultNote: [this.data?.resultNote ?? ''],
   });
 
-  /** คำใบ้เมื่อวันครบกำหนดผ่านแล้ว */
   overdueHint(): string | null {
     const due = this.form.getRawValue().dueDate;
-    const status = this.form.getRawValue().status as FollowUpStatus;
     if (!due) {
       return null;
     }
@@ -260,10 +301,7 @@ export class FollowUpFormDialogComponent {
     if (!dueStr || dueStr >= todayStr) {
       return null;
     }
-    if (status === 'PLANNED') {
-      return 'วันครบกำหนดผ่านแล้ว และสถานะเป็น「วางแผนไว้」— หลังบันทึกจะอยู่ในหมวด เลยกำหนด';
-    }
-    return 'วันครบกำหนดผ่านแล้ว แต่สถานะไม่ใช่「วางแผนไว้」— จะไม่ขึ้นหมวด เลยกำหนด (ต้องเป็นวางแผนไว้)';
+    return 'วันครบกำหนดผ่านแล้ว — ระบบจะแสดงเป็น「เลยกำหนด」จาก isOverdue (สถานะในฐานยังเป็นวางแผนไว้)';
   }
 
   constructor() {
@@ -272,7 +310,7 @@ export class FollowUpFormDialogComponent {
       const me = this.auth.currentUser();
       this.form.patchValue({
         customerId: first?.id ?? 0,
-        assigneeId: me?.id ?? null,
+        assignedUserId: me?.id ?? null,
         dueDate: new Date(),
       });
     }
@@ -284,35 +322,195 @@ export class FollowUpFormDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
-    const payload: FollowUpInput = {
+    this.saving.set(true);
+    this.error.set(null);
+
+    if (this.data) {
+      const payload: FollowUpUpdateInput = {
+        title: raw.title ?? '',
+        dueDate: toDateOnlyString(raw.dueDate),
+        assignedUserId: raw.assignedUserId,
+        status: (raw.status as FollowUpWritableStatus) ?? 'PLANNED',
+        detail: raw.detail ?? '',
+        resultNote: raw.resultNote ?? '',
+      };
+      this.api.update(this.data.id, payload).subscribe({
+        next: (row) => this.onSaved(row, true),
+        error: (err: Error) => this.onError(err),
+      });
+      return;
+    }
+
+    const payload: FollowUpCreateInput = {
       customerId: Number(raw.customerId),
       title: raw.title ?? '',
       dueDate: toDateOnlyString(raw.dueDate),
-      assigneeId: raw.assigneeId,
-      channel: (raw.channel as FollowUpChannel) ?? 'PHONE',
-      status: (raw.status as FollowUpStatus) ?? 'PLANNED',
-      note: raw.note ?? '',
+      assignedUserId: raw.assignedUserId,
+      detail: raw.detail ?? '',
     };
-    const actor = this.auth.currentUser()?.fullName ?? 'ระบบ';
+    this.api.create(payload).subscribe({
+      next: (row) => this.onSaved(row, false),
+      error: (err: Error) => this.onError(err),
+    });
+  }
+
+  private onSaved(row: FollowUp, isEdit: boolean): void {
+    this.saving.set(false);
+    this.snack.open(
+      row.isOverdue
+        ? 'บันทึกแล้ว — รายการนี้อยู่ในหมวดเลยกำหนด'
+        : isEdit
+          ? 'บันทึกแล้ว'
+          : 'สร้างงานติดตามแล้ว',
+      'ปิด',
+      { duration: 2800 }
+    );
+    this.ref.close(true);
+  }
+
+  private onError(err: Error): void {
+    this.saving.set(false);
+    this.error.set(err.message);
+  }
+}
+
+@Component({
+  selector: 'app-follow-up-complete-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatSnackBarModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>ปิดงานติดตาม</h2>
+    <mat-dialog-content>
+      <p class="lead"><strong>{{ data.title }}</strong></p>
+      <p class="muted">ลูกค้า: {{ customerLabel }}</p>
+
+      <form [formGroup]="form" class="form" id="follow-up-complete-form" (ngSubmit)="save()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ผลการติดตาม</mat-label>
+          <textarea matInput rows="3" formControlName="resultNote" placeholder="สรุปสิ่งที่คุย / ผลลัพธ์"></textarea>
+        </mat-form-field>
+
+        <mat-checkbox formControlName="alsoLog">บันทึกการติดต่อครั้งนี้ด้วย</mat-checkbox>
+        <p class="hint">
+          แนะนำให้ติ๊กไว้ — การปิดงานติดตามอย่างเดียวจะไม่อัปเดต「ลูกค้าที่ถูกลืม」
+        </p>
+
+        @if (form.controls.alsoLog.value) {
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>ช่องทางที่ติดต่อ</mat-label>
+            <mat-select formControlName="channel">
+              @for (ch of channels; track ch) {
+                <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>เนื้อหาการติดต่อ</mat-label>
+            <textarea matInput rows="2" formControlName="logContent"></textarea>
+          </mat-form-field>
+        }
+
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="follow-up-complete-form"
+        [disabled]="saving()"
+      >
+        ปิดงาน
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .lead { margin: 0 0 0.25rem; }
+    .muted { margin: 0 0 1rem; color: #64748b; font-size: 0.9rem; }
+    .form { display: flex; flex-direction: column; gap: 0.35rem; min-width: min(440px, 80vw); }
+    .full { width: 100%; }
+    .hint { margin: 0 0 0.5rem; font-size: 0.8rem; color: #64748b; line-height: 1.4; }
+    .error { color: #b91c1c; margin: 0.25rem 0 0; }
+  `,
+})
+export class FollowUpCompleteDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(FollowUpService);
+  private readonly customersApi = inject(CustomerService);
+  private readonly auth = inject(AuthService);
+  private readonly snack = inject(MatSnackBar);
+  private readonly ref = inject(MatDialogRef<FollowUpCompleteDialogComponent, boolean>);
+  readonly data = inject<FollowUp>(MAT_DIALOG_DATA);
+
+  readonly channels = Object.keys(CHANNEL_LABELS) as CommunicationChannel[];
+  readonly channelLabels = CHANNEL_LABELS;
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+
+  readonly customerLabel =
+    this.data.customer?.name ??
+    this.customersApi.getCustomer(this.data.customerId)?.name ??
+    `#${this.data.customerId}`;
+
+  readonly form = this.fb.nonNullable.group({
+    resultNote: [this.data.resultNote ?? ''],
+    alsoLog: [true],
+    channel: ['PHONE' as CommunicationChannel],
+    logContent: [this.data.resultNote || this.data.detail || this.data.title],
+  });
+
+  save(): void {
+    const raw = this.form.getRawValue();
     this.saving.set(true);
     this.error.set(null);
-    const req = this.data
-      ? this.api.update(this.data.id, payload, actor)
-      : this.api.create(payload, actor);
-    req.subscribe({
-      next: (row) => {
-        this.saving.set(false);
-        const overdue = this.api.isOverdue(row);
-        this.snack.open(
-          overdue
-            ? 'บันทึกแล้ว — รายการนี้อยู่ในหมวดเลยกำหนด'
-            : this.data
-              ? 'บันทึกแล้ว'
-              : 'สร้างแผนติดตามแล้ว',
-          'ปิด',
-          { duration: 2800 }
-        );
-        this.ref.close(true);
+
+    this.api.complete(this.data.id, { resultNote: raw.resultNote }).subscribe({
+      next: () => {
+        if (!raw.alsoLog) {
+          this.saving.set(false);
+          this.snack.open('ปิดงานติดตามแล้ว', 'ปิด', { duration: 2500 });
+          this.ref.close(true);
+          return;
+        }
+
+        const me = this.auth.currentUser();
+        this.customersApi
+          .addLog(this.data.customerId, {
+            channel: raw.channel,
+            occurredAt: new Date().toISOString(),
+            content: raw.logContent.trim() || raw.resultNote.trim() || this.data.title,
+            subject: `ติดตาม: ${this.data.title}`,
+            handledByUserId: me?.id,
+          })
+          .subscribe({
+            next: () => {
+              this.saving.set(false);
+              this.snack.open('ปิดงานและบันทึกการติดต่อแล้ว', 'ปิด', { duration: 2800 });
+              this.ref.close(true);
+            },
+            error: (err: Error) => {
+              this.saving.set(false);
+              this.snack.open(
+                `ปิดงานแล้ว แต่บันทึกการติดต่อไม่สำเร็จ: ${err.message}`,
+                'ปิด',
+                { duration: 4500 }
+              );
+              this.ref.close(true);
+            },
+          });
       },
       error: (err: Error) => {
         this.saving.set(false);

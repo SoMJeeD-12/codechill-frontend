@@ -1,10 +1,22 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, firstValueFrom, shareReplay, throwError } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  finalize,
+  firstValueFrom,
+  shareReplay,
+  throwError,
+} from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { permissionCandidates, hasAnyModulePermission, actionAliases, moduleAliases } from '../auth/permission-codes';
+import {
+  permissionCandidates,
+  hasAnyModulePermission,
+  actionAliases,
+  moduleAliases,
+} from '../auth/permission-codes';
 import { apiErrorMessage } from '../http/api-error';
 import { MENU_ITEMS } from '../nav/menu-items';
 import { MenuCode, PermissionAction } from '../models/permission.model';
@@ -66,8 +78,12 @@ export class AuthService {
 
   readonly session = this.sessionSignal.asReadonly();
   readonly currentUser = computed(() => this.sessionSignal()?.user ?? null);
-  readonly isAuthenticated = computed(() => !!this.sessionSignal()?.accessToken);
-  readonly isSuperAdmin = computed(() => this.currentUser()?.accountType === 'SUPER_ADMIN');
+  readonly isAuthenticated = computed(
+    () => !!this.sessionSignal()?.accessToken,
+  );
+  readonly isSuperAdmin = computed(
+    () => this.currentUser()?.accountType === 'SUPER_ADMIN',
+  );
   readonly isAdminLevel = computed(() => {
     const type = this.currentUser()?.accountType;
     return type === 'SUPER_ADMIN' || type === 'ADMIN';
@@ -85,21 +101,53 @@ export class AuthService {
     // ใช้งานผ่าน APP_INITIALIZER แล้วค่อย initAuthFromStorage()
   }
 
-  login(username: string, password: string, rememberMe: boolean): Observable<AuthSession> {
-    return this.http.post<LoginResponse>(`${this.base}/login`, { username, password }).pipe(
-      map((res) => this.toSession(res)),
-      tap((session) => {
-        this.users.clearCache();
-        this.refreshPolicy = rememberMe ? 'local' : 'session';
-        this.tokenStorage.setRefreshToken(session.refreshToken, this.refreshPolicy);
-        this.setSession(session);
-      }),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err, 'เข้าสู่ระบบไม่สำเร็จ'))))
-    );
+  /** รอให้ hydrate session จาก storage เสร็จ — ใช้ใน route guard */
+  whenReady(): Promise<void> {
+    const status = this.initStatus();
+    if (status === 'done' || status === 'failed') {
+      return Promise.resolve();
+    }
+    return this.initAuthFromStorage();
+  }
+
+  login(
+    username: string,
+    password: string,
+    rememberMe: boolean,
+  ): Observable<AuthSession> {
+    // กันล็อกอินซ้อน — ต้องออกจากระบบก่อนถึงจะเข้าบัญชีอื่นได้
+    if (this.isAuthenticated()) {
+      return throwError(
+        () => new Error('คุณเข้าสู่ระบบอยู่แล้ว กรุณาออกจากระบบก่อน'),
+      );
+    }
+
+    return this.http
+      .post<LoginResponse>(`${this.base}/login`, { username, password })
+      .pipe(
+        map((res) => this.toSession(res)),
+        tap((session) => {
+          this.users.clearCache();
+          this.refreshPolicy = rememberMe ? 'local' : 'session';
+          this.tokenStorage.setRefreshToken(
+            session.refreshToken,
+            this.refreshPolicy,
+          );
+          this.setSession(session);
+        }),
+        catchError((err) =>
+          throwError(
+            () => new Error(apiErrorMessage(err, 'เข้าสู่ระบบไม่สำเร็จ')),
+          ),
+        ),
+      );
   }
 
   /** ต่ออายุ access + refresh (หมุนใบใหม่ทับเสมอ) */
-  refresh(refreshTokenOverride?: string, opts?: { silent?: boolean }): Observable<AuthTokens> {
+  refresh(
+    refreshTokenOverride?: string,
+    opts?: { silent?: boolean },
+  ): Observable<AuthTokens> {
     if (this.refreshInFlight$) {
       return this.refreshInFlight$;
     }
@@ -117,7 +165,10 @@ export class AuthService {
       .pipe(
         tap((tokens) => {
           const current = this.sessionSignal();
-          this.tokenStorage.setRefreshToken(tokens.refreshToken, this.refreshPolicy);
+          this.tokenStorage.setRefreshToken(
+            tokens.refreshToken,
+            this.refreshPolicy,
+          );
           this.sessionSignal.set({
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
@@ -135,7 +186,7 @@ export class AuthService {
         finalize(() => {
           this.refreshInFlight$ = null;
         }),
-        shareReplay(1)
+        shareReplay(1),
       );
 
     return this.refreshInFlight$;
@@ -145,7 +196,7 @@ export class AuthService {
     const accessToken = this.accessToken;
     const clearAndGo = () => {
       this.clearSession();
-      void this.router.navigateByUrl('/login');
+      void this.router.navigateByUrl('/login', { replaceUrl: true });
     };
 
     if (!accessToken) {
@@ -197,21 +248,31 @@ export class AuthService {
   }
 
   /** เช็คสิทธิ์แบบ API เช่น customer.view — รองรับ edit/update ที่ API ใช้สลับกัน */
-  hasPermission(menuCode: MenuCode, action: PermissionAction | string = 'view'): boolean {
+  hasPermission(
+    menuCode: MenuCode,
+    action: PermissionAction | string = 'view',
+  ): boolean {
     const session = this.sessionSignal();
     if (!session) {
       return false;
     }
-    // Super Admin เข้าได้ทุกเมนู — รวมโมดูลที่ API ยังไม่ seed (เช่น follow-ups mock)
-    if (session.user.accountType === 'SUPER_ADMIN') {
+    // เมนูบทบาททั้งหมดสงวนไว้เฉพาะ Super Admin (Admin มองไม่เห็น/เข้าไม่ได้)
+    if (menuCode === 'roles') {
+      return session.user.accountType === 'SUPER_ADMIN';
+    }
+    // SUPER_ADMIN / ADMIN เห็นและใช้ทุกเมนูอื่น
+    if (
+      session.user.accountType === 'SUPER_ADMIN' ||
+      session.user.accountType === 'ADMIN'
+    ) {
       return true;
     }
-    // สร้าง/แก้บทบาทสงวนไว้เฉพาะ Super Admin
-    if (menuCode === 'roles' && action !== 'view') {
-      return false;
-    }
     const perms = session.permissions;
-    if (permissionCandidates(menuCode, action).some((code) => perms.includes(code))) {
+    if (
+      permissionCandidates(menuCode, action).some((code) =>
+        perms.includes(code),
+      )
+    ) {
       return true;
     }
     // บางโมดูลใช้ action พิเศษ (เช่น role.manage) — ถือว่ามีสิทธิ์ดูเมนูได้ถ้ามี permission ของโมดูลนั้น
@@ -223,27 +284,36 @@ export class AuthService {
 
   /** เช็ครหัสสิทธิ์ตรงๆ เช่น task.update, delivery.create */
   hasPermissionCode(code: string): boolean {
-    if (this.isSuperAdmin()) {
+    const [module, action] = code.split('.');
+    if (module === 'role') {
+      return this.isSuperAdmin();
+    }
+    if (this.isAdminLevel()) {
       return true;
     }
     const perms = this.sessionSignal()?.permissions ?? [];
     if (perms.includes(code)) {
       return true;
     }
-    const [module, action] = code.split('.');
     if (!module || !action) {
       return false;
     }
     return moduleAliases(module).some((m) =>
-      actionAliases(action).some((a) => perms.includes(`${m}.${a}`))
+      actionAliases(action).some((a) => perms.includes(`${m}.${a}`)),
     );
   }
 
   /** มีสิทธิ์ใดๆ ของโมดูลนี้หรือไม่ เช่น task / delivery */
   hasModuleAccess(module: string): boolean {
+    if (module === 'role') {
+      return this.isSuperAdmin();
+    }
+    if (this.isAdminLevel()) {
+      return true;
+    }
     const perms = this.sessionSignal()?.permissions ?? [];
     return moduleAliases(module).some(
-      (m) => perms.includes(m) || perms.some((p) => p.startsWith(`${m}.`))
+      (m) => perms.includes(m) || perms.some((p) => p.startsWith(`${m}.`)),
     );
   }
 
@@ -251,15 +321,26 @@ export class AuthService {
     if (this.isSuperAdmin()) {
       return MENU_ITEMS.map((item) => item.code);
     }
+    // Admin เห็นทุกเมนูยกเว้นบทบาทและสิทธิ์
+    if (this.isAdminLevel()) {
+      return MENU_ITEMS.filter((item) => item.code !== 'roles').map(
+        (item) => item.code,
+      );
+    }
     const perms = this.sessionSignal()?.permissions ?? [];
     if (!perms.length) {
       return [];
     }
-    return MENU_ITEMS.filter((item) => this.hasPermission(item.code, 'view')).map((item) => item.code);
+    return MENU_ITEMS.filter((item) =>
+      this.hasPermission(item.code, 'view'),
+    ).map((item) => item.code);
   }
 
-  /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — ต้องดู permissions เท่านั้น */
+  /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — Admin ระดับระบบเข้าเมนูได้แม้ permissions จาก API ไม่ครบ */
   hasAnyMenuAccess(): boolean {
+    if (this.isAdminLevel()) {
+      return true;
+    }
     return (this.sessionSignal()?.permissions.length ?? 0) > 0;
   }
 
@@ -304,7 +385,8 @@ export class AuthService {
 
     this.initStatus.set('loading');
 
-    const stored = this.tokenStorage.getRefreshToken() ?? this.tryReadLegacyRefreshToken();
+    const stored =
+      this.tokenStorage.getRefreshToken() ?? this.tryReadLegacyRefreshToken();
     if (!stored) {
       this.initStatus.set('done');
       return Promise.resolve();
@@ -317,7 +399,9 @@ export class AuthService {
       try {
         // refresh() จะใส่ accessToken + refreshToken ลงใน sessionSignal ให้ก่อน
         await firstValueFrom(this.refresh(stored.token, { silent: true }));
-        const profile = await firstValueFrom(this.http.get<AuthProfile>(`${this.base}/me`));
+        const profile = await firstValueFrom(
+          this.http.get<AuthProfile>(`${this.base}/me`),
+        );
         this.applyProfile(profile);
         this.initStatus.set('done');
       } catch {
@@ -346,14 +430,18 @@ export class AuthService {
     this.users.upsertLocal(user);
   }
 
-  private tryReadLegacyRefreshToken(): { token: string; policy: 'local' | 'session' } | null {
+  private tryReadLegacyRefreshToken(): {
+    token: string;
+    policy: 'local' | 'session';
+  } | null {
     try {
       const raw = localStorage.getItem(LEGACY_SESSION_KEY);
       if (!raw) {
         return null;
       }
       const parsed = JSON.parse(raw) as Partial<AuthSession>;
-      const refreshToken = typeof parsed?.refreshToken === 'string' ? parsed.refreshToken : null;
+      const refreshToken =
+        typeof parsed?.refreshToken === 'string' ? parsed.refreshToken : null;
       if (!refreshToken) {
         return null;
       }

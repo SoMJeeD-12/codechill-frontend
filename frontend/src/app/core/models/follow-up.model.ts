@@ -1,35 +1,51 @@
-export type FollowUpStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
+import { UserSummary } from './user.model';
 
-export type FollowUpChannel = 'PHONE' | 'LINE' | 'EMAIL' | 'ONSITE' | 'OTHER';
+/** สถานะใน DB — OVERDUE เป็นค่าคำนวณ อย่าเช็ค status === 'OVERDUE' */
+export type FollowUpStatus = 'PLANNED' | 'DONE' | 'OVERDUE' | 'CANCELLED';
+
+export interface FollowUpCustomerSummary {
+  id: number;
+  name: string;
+  code: string | null;
+}
 
 /**
- * แผนติดตามลูกค้า (M7)
- * เส้นทางที่คาดไว้: /api/follow-ups
+ * งานติดตามลูกค้า (M7) — FollowUpResponseDto
+ * หน้าจอต้องอ่าน isOverdue ไม่ใช่ status === 'OVERDUE'
  */
 export interface FollowUp {
   id: number;
   customerId: number;
+  customer: FollowUpCustomerSummary | null;
   title: string;
+  detail: string | null;
   dueDate: string;
-  assigneeId: number | null;
-  channel: FollowUpChannel;
   status: FollowUpStatus;
-  note: string | null;
+  isOverdue: boolean;
+  daysUntilDue: number;
+  assignedUserId: number | null;
+  assignedUser: UserSummary | null;
   completedAt: string | null;
+  resultNote: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {
+/** สถานะที่ตั้งผ่าน PATCH ได้ (ห้ามส่ง OVERDUE) */
+export type FollowUpWritableStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
+
+export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpWritableStatus, string> = {
   PLANNED: 'วางแผนไว้',
   DONE: 'ติดตามแล้ว',
   CANCELLED: 'ยกเลิก',
 };
 
-export const FOLLOW_UP_CHANNEL_LABELS: Record<FollowUpChannel, string> = {
-  PHONE: 'โทรศัพท์',
-  LINE: 'LINE',
-  EMAIL: 'อีเมล',
-  ONSITE: 'เข้าพบ',
-  OTHER: 'อื่นๆ',
-};
+export function followUpDisplayStatus(f: FollowUp): string {
+  if (f.isOverdue && f.status === 'PLANNED') {
+    return 'เลยกำหนด';
+  }
+  if (f.status === 'OVERDUE') {
+    return 'เลยกำหนด';
+  }
+  return FOLLOW_UP_STATUS_LABELS[f.status as FollowUpWritableStatus] ?? f.status;
+}

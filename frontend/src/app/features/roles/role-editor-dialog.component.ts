@@ -31,6 +31,7 @@ const MODULE_LABELS: Record<string, string> = {
   warranty: 'การรับประกัน',
   ma: 'สัญญาบำรุงรักษา',
   follow_up: 'ติดตามลูกค้า',
+  followup: 'ติดตามลูกค้า',
   survey: 'แบบประเมิน',
   document: 'เอกสาร',
   report: 'รายงาน',

@@ -42,7 +42,11 @@ export class RolesPageComponent implements OnInit {
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly canManage = computed(() => this.auth.isSuperAdmin());
-  readonly columns = ['name', 'description', 'permissions', 'users', 'active', 'actions'];
+  readonly columns = computed(() =>
+    this.canManage()
+      ? (['name', 'description', 'permissions', 'users', 'active', 'actions'] as const)
+      : (['name', 'description', 'permissions', 'users', 'active'] as const)
+  );
 
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();

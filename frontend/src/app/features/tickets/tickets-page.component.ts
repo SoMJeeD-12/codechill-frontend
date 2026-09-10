@@ -33,7 +33,6 @@ import { ProjectService } from '../../core/services/project.service';
 import {
   TicketCreateInput,
   TicketService,
-  TicketUpdateInput,
 } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import {
@@ -78,8 +77,6 @@ export class TicketsPageComponent implements OnInit {
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
   readonly canCreate = computed(() => this.auth.hasPermission('tickets', 'create'));
-  readonly canEdit = computed(() => this.auth.hasPermission('tickets', 'edit'));
-  readonly canDelete = computed(() => this.auth.hasPermission('tickets', 'delete'));
   readonly columns = [
     'title',
     'customer',
@@ -161,44 +158,15 @@ export class TicketsPageComponent implements OnInit {
       this.snack.open('ไม่มีสิทธิ์เปิดปัญหา', 'ปิด', { duration: 3000 });
       return;
     }
-    this.openForm(null);
-  }
-
-  openEdit(ticket: Ticket): void {
-    if (!this.canEdit()) {
-      this.snack.open('ไม่มีสิทธิ์แก้ไขปัญหา', 'ปิด', { duration: 3000 });
-      return;
-    }
-    this.openForm(ticket);
-  }
-
-  private openForm(ticket: Ticket | null): void {
     const ref = this.dialog.open(TicketFormDialogComponent, {
       width: '600px',
       maxWidth: '95vw',
-      data: ticket,
+      data: null,
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
         this.reload();
       }
-    });
-  }
-
-  remove(ticket: Ticket): void {
-    if (!this.canDelete()) {
-      this.snack.open('ไม่มีสิทธิ์ลบปัญหา', 'ปิด', { duration: 3000 });
-      return;
-    }
-    if (!confirm(`ลบปัญหา「${ticket.title}」หรือไม่?`)) {
-      return;
-    }
-    this.ticketsApi.remove(ticket.id).subscribe({
-      next: () => {
-        this.snack.open('ลบปัญหาแล้ว', 'ปิด', { duration: 2500 });
-        this.reload();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
     });
   }
 }
@@ -242,7 +210,6 @@ export class TicketFormDialogComponent {
   readonly priorities = Object.keys(TICKET_PRIORITY_LABELS) as TicketPriority[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data;
   /** ผู้รับเรื่อง — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN */
   readonly canChangeReceiver = this.auth.isAdminLevel();
   /** ผู้รับผิดชอบ — ตามสิทธิ์ ticket.assign ในบทบาท */
@@ -327,22 +294,6 @@ export class TicketFormDialogComponent {
     };
     this.saving.set(true);
     this.error.set(null);
-
-    if (this.data) {
-      const update: TicketUpdateInput = payload;
-      this.ticketsApi.update(this.data.id, update).subscribe({
-        next: () => {
-          this.saving.set(false);
-          this.snack.open('แก้ไขปัญหาแล้ว', 'ปิด', { duration: 2800 });
-          this.ref.close(true);
-        },
-        error: (err: Error) => {
-          this.saving.set(false);
-          this.error.set(err.message);
-        },
-      });
-      return;
-    }
 
     this.ticketsApi.create(payload).subscribe({
       next: () => {

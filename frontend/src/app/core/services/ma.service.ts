@@ -258,24 +258,16 @@ export class MaService {
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
-  /** PATCH /ma-contracts/:contractId/addons/:addonId */
+  /** Add-on แก้/ลบไม่ได้ตามสัญญา API — เพิ่มได้อย่างเดียว */
   updateAddon(
-    contractId: number,
-    addonId: number,
-    input: MaAddonUpdateInput
+    _contractId: number,
+    _addonId: number,
+    _input: MaAddonUpdateInput
   ): Observable<MaAddon> {
-    return this.http
-      .patch<MaAddon>(
-        `${this.contractsBase}/${contractId}/addons/${addonId}`,
-        pruneUndefined(input)
-      )
-      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+    return throwError(() => new Error('ระบบไม่รองรับการแก้ไข Add-on'));
   }
 
-  /** DELETE /ma-contracts/:contractId/addons/:addonId */
-  deleteAddon(contractId: number, addonId: number): Observable<void> {
-    return this.http
-      .delete<void>(`${this.contractsBase}/${contractId}/addons/${addonId}`)
-      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  deleteAddon(_contractId: number, _addonId: number): Observable<void> {
+    return throwError(() => new Error('ระบบไม่รองรับการลบ Add-on'));
   }
 }

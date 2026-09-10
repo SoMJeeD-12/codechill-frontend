@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>{{ data ? 'แก้ไขแผนติดตาม' : 'สร้างแผนติดตาม' }}</h2>
+<h2 mat-dialog-title>{{ data ? 'แก้ไขงานติดตาม' : 'สร้างงานติดตาม' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
     <mat-form-field appearance="outline" class="full">
@@ -8,6 +8,9 @@
           <mat-option [value]="c.id">{{ c.name }}</mat-option>
         }
       </mat-select>
+      @if (isEdit) {
+        <mat-hint>ย้ายลูกค้าไม่ได้ — ถ้าผิดรายให้ยกเลิกแล้วสร้างใหม่</mat-hint>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full">
@@ -23,26 +26,18 @@
         <mat-datepicker #duePicker></mat-datepicker>
       </mat-form-field>
       <mat-form-field appearance="outline">
-        <mat-label>ช่องทาง</mat-label>
-        <mat-select formControlName="channel">
-          @for (ch of channels; track ch) {
-            <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    <div class="row">
-      <mat-form-field appearance="outline">
         <mat-label>ผู้รับผิดชอบ</mat-label>
-        <mat-select formControlName="assigneeId">
+        <mat-select formControlName="assignedUserId">
           <mat-option [value]="null">— ไม่ระบุ —</mat-option>
           @for (u of users(); track u.id) {
             <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+    </div>
+
+    @if (isEdit) {
+      <mat-form-field appearance="outline" class="full">
         <mat-label>สถานะ</mat-label>
         <mat-select formControlName="status">
           @for (s of statuses; track s) {
@@ -50,15 +45,22 @@
           }
         </mat-select>
       </mat-form-field>
-    </div>
+    }
 
     <mat-form-field appearance="outline" class="full">
-      <mat-label>หมายเหตุ</mat-label>
-      <textarea matInput rows="2" formControlName="note"></textarea>
+      <mat-label>รายละเอียดตอนวางแผน</mat-label>
+      <textarea matInput rows="2" formControlName="detail"></textarea>
     </mat-form-field>
 
+    @if (isEdit) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ผลการติดตาม</mat-label>
+        <textarea matInput rows="2" formControlName="resultNote"></textarea>
+      </mat-form-field>
+    }
+
     @if (overdueHint(); as hint) {
-      <p class="hint" [class.warn]="form.getRawValue().status !== 'PLANNED'">{{ hint }}</p>
+      <p class="hint">{{ hint }}</p>
     }
 
     @if (error()) {

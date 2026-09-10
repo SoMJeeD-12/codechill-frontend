@@ -11,7 +11,7 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   tickets: 'ticket',
   warranties: 'warranty',
   ma: 'ma',
-  'follow-ups': 'follow_up',
+  'follow-ups': 'followup',
   surveys: 'survey',
   documents: 'document',
   reports: 'report',
@@ -25,6 +25,7 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
 const MODULE_ALIASES: Record<string, string[]> = {
   audit_log: ['audit_log', 'audit'],
   communication_log: ['communication_log', 'communication'],
+  followup: ['followup', 'follow_up'],
 };
 
 export function permissionCode(

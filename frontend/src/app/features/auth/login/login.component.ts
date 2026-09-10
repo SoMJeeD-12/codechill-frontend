@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,7 +27,7 @@ import { AuthService } from '../../../core/services/auth.service';
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -42,6 +42,11 @@ export class LoginComponent {
     username: ['', Validators.required],
     password: ['', Validators.required],
   });
+
+  ngOnInit(): void {
+    // กันกรณีกดย้อนกลับแล้วยังค้างที่หน้า login ทั้งที่มี session
+    void this.redirectIfAuthenticated();
+  }
 
   @HostListener('document:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
@@ -69,6 +74,11 @@ export class LoginComponent {
       return;
     }
 
+    if (this.auth.isAuthenticated()) {
+      void this.redirectIfAuthenticated();
+      return;
+    }
+
     this.loading.set(true);
     this.error.set(null);
 
@@ -76,12 +86,24 @@ export class LoginComponent {
     this.auth.login(username, password, this.rememberMe()).subscribe({
       next: () => {
         this.loading.set(false);
-        void this.router.navigateByUrl(this.auth.defaultAppPath());
+        void this.router.navigateByUrl(this.auth.defaultAppPath(), {
+          replaceUrl: true,
+        });
       },
       error: (err: Error) => {
         this.loading.set(false);
         this.error.set(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
       },
+    });
+  }
+
+  private async redirectIfAuthenticated(): Promise<void> {
+    await this.auth.whenReady();
+    if (!this.auth.isAuthenticated()) {
+      return;
+    }
+    await this.router.navigateByUrl(this.auth.defaultAppPath(), {
+      replaceUrl: true,
     });
   }
 }

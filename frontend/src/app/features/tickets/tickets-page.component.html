@@ -89,29 +89,6 @@
             <a mat-icon-button [routerLink]="['/app/tickets', row.id]" matTooltip="เปิดรายละเอียด">
               <mat-icon>open_in_new</mat-icon>
             </a>
-            @if (canEdit()) {
-              <button
-                mat-icon-button
-                type="button"
-                matTooltip="แก้ไข"
-                (click)="openEdit(row)"
-                aria-label="แก้ไขปัญหา"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
-            }
-            @if (canDelete()) {
-              <button
-                mat-icon-button
-                type="button"
-                color="warn"
-                matTooltip="ลบ"
-                (click)="remove(row)"
-                aria-label="ลบปัญหา"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-            }
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

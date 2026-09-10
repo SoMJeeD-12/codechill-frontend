@@ -189,44 +189,14 @@ export class TicketService {
       );
   }
 
-  /** PATCH /tickets/:id — แก้ข้อมูลที่ใส่ผิดตอนเปิดใบ */
-  update(id: number, input: TicketUpdateInput): Observable<Ticket> {
-    return this.http
-      .patch<ApiTicket>(
-        `${this.base}/${id}`,
-        pruneUndefined({
-          customerId: input.customerId,
-          title: input.title?.trim(),
-          reportedChannel: input.reportedChannel,
-          reportedAt: input.reportedAt,
-          projectId: input.projectId === undefined ? undefined : input.projectId,
-          billingType: input.billingType,
-          description:
-            input.description === undefined
-              ? undefined
-              : input.description?.trim() || null,
-          priority: input.priority,
-          ticketNo:
-            input.ticketNo === undefined ? undefined : input.ticketNo?.trim() || null,
-          reportedByContactId: input.reportedByContactId,
-          receivedByUserId: input.receivedByUserId,
-          assignedUserId: input.assignedUserId,
-          dueAt: input.dueAt,
-        })
-      )
-      .pipe(
-        map((row) => this.normalizeTicket(row)),
-        tap((row) => this.items.update((list) => upsertById(list, row))),
-        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-      );
+  /** แก้ใบปัญหาเต็ม — backend ไม่มี endpoint (ใช้ assign / reopen / close เท่านั้น) */
+  update(_id: number, _input: TicketUpdateInput): Observable<Ticket> {
+    return throwError(() => new Error('ระบบไม่รองรับการแก้ไขใบปัญหา — ใช้มอบหมาย / เปิดใหม่ / ปิดงาน'));
   }
 
-  /** DELETE /tickets/:id */
-  remove(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`).pipe(
-      tap(() => this.items.update((list) => list.filter((t) => t.id !== id))),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
+  /** ลบใบปัญหา — backend ไม่มี endpoint */
+  remove(_id: number): Observable<void> {
+    return throwError(() => new Error('ระบบไม่รองรับการลบใบปัญหา'));
   }
 
   assign(

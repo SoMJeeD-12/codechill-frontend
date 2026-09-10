@@ -1,68 +1,89 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
-import { buildMockFollowUps } from '../mock/follow-up.mock';
+import { Observable, catchError, map, throwError } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   FollowUp,
-  FollowUpChannel,
   FollowUpStatus,
+  FollowUpWritableStatus,
 } from '../models/follow-up.model';
-import { parseDateOnly, toDateOnlyString } from '../utils/date.util';
-import { AuditService } from './audit.service';
 
-export interface FollowUpInput {
+/** CreateFollowUpDto */
+export interface FollowUpCreateInput {
   customerId: number;
   title: string;
   dueDate: string;
-  assigneeId?: number | null;
-  channel: FollowUpChannel;
-  status: FollowUpStatus;
-  note?: string | null;
+  detail?: string | null;
+  assignedUserId?: number | null;
+}
+
+/** UpdateFollowUpDto — ไม่มี customerId / ห้ามส่ง OVERDUE */
+export interface FollowUpUpdateInput {
+  title?: string;
+  detail?: string | null;
+  dueDate?: string;
+  status?: FollowUpWritableStatus;
+  assignedUserId?: number | null;
+  resultNote?: string | null;
+}
+
+export interface FollowUpCompleteInput {
+  resultNote?: string | null;
 }
 
 export interface FollowUpListParams {
-  customerId?: number;
-  assigneeId?: number;
-  status?: FollowUpStatus;
-  overdueOnly?: boolean;
+  page?: number;
+  limit?: number;
   search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  customerId?: number;
+  assignedUserId?: number;
+  status?: FollowUpStatus;
+  /** ใช้ query ?overdue=true ตาม API */
+  overdue?: boolean;
+  dueFrom?: string;
+  dueTo?: string;
 }
 
 /**
- * Follow-ups M7 — mock จนกว่า backend จะปล่อย /api/follow-ups
+ * Follow-ups M7 — /api/follow-ups
  */
 @Injectable({ providedIn: 'root' })
 export class FollowUpService {
-  private readonly audit = inject(AuditService);
+  private readonly http = inject(HttpClient);
+  private readonly base = `${environment.apiBaseUrl}/follow-ups`;
   private readonly items = signal<FollowUp[]>([]);
-  private nextId = 1;
-  private demoSeeded = false;
 
   readonly followUps = this.items.asReadonly();
   readonly overdueCount = computed(() => this.listOverdue().length);
 
   list(params: FollowUpListParams = {}): Observable<FollowUp[]> {
-    let rows = this.items();
-    if (params.customerId != null) {
-      rows = rows.filter((f) => f.customerId === params.customerId);
-    }
-    if (params.assigneeId != null) {
-      rows = rows.filter((f) => f.assigneeId === params.assigneeId);
-    }
-    if (params.status) {
-      rows = rows.filter((f) => f.status === params.status);
-    }
-    if (params.overdueOnly) {
-      rows = rows.filter((f) => this.isOverdue(f));
-    }
-    if (params.search?.trim()) {
-      const q = params.search.trim().toLowerCase();
-      rows = rows.filter(
-        (f) =>
-          f.title.toLowerCase().includes(q) ||
-          (f.note ?? '').toLowerCase().includes(q)
+    return this.http
+      .get<FollowUp[] | { items: FollowUp[] }>(this.base, {
+        params: toHttpParams({
+          limit: 100,
+          ...params,
+          overdue: params.overdue === true ? true : params.overdue === false ? false : undefined,
+        }),
+      })
+      .pipe(
+        map(asList),
+        tap((rows) => {
+          if (params.customerId != null) {
+            this.items.update((all) => [
+              ...all.filter((f) => f.customerId !== params.customerId),
+              ...rows,
+            ]);
+          } else {
+            this.items.set(rows);
+          }
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
-    }
-    return of(structuredClone(rows)).pipe(delay(180));
   }
 
   getById(id: number): FollowUp | undefined {
@@ -70,11 +91,10 @@ export class FollowUpService {
   }
 
   get(id: number): Observable<FollowUp> {
-    const row = this.getById(id);
-    if (!row) {
-      return throwError(() => new Error('ไม่พบแผนติดตาม'));
-    }
-    return of(structuredClone(row)).pipe(delay(100));
+    return this.http.get<FollowUp>(`${this.base}/${id}`).pipe(
+      tap((row) => this.items.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   getByCustomer(customerId: number): FollowUp[] {
@@ -83,120 +103,86 @@ export class FollowUpService {
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   }
 
+  /** อ่าน isOverdue จาก API เป็นหลัก */
   isOverdue(f: FollowUp): boolean {
-    if (f.status !== 'PLANNED') {
-      return false;
-    }
-    const days = this.daysUntilDue(f);
-    return days !== null && days < 0;
+    return !!f.isOverdue;
   }
 
   daysUntilDue(f: FollowUp): number | null {
-    const today = parseDateOnly(toDateOnlyString(new Date()));
-    const due = parseDateOnly(f.dueDate);
-    if (!today || !due) {
-      return null;
+    if (typeof f.daysUntilDue === 'number' && Number.isFinite(f.daysUntilDue)) {
+      return f.daysUntilDue;
     }
-    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return null;
   }
 
   listOverdue(): FollowUp[] {
     return this.items().filter((f) => this.isOverdue(f));
   }
 
-  create(input: FollowUpInput, actorName = 'ระบบ'): Observable<FollowUp> {
+  create(input: FollowUpCreateInput): Observable<FollowUp> {
     if (!input.title.trim() || !input.customerId || !input.dueDate) {
       return throwError(() => new Error('กรุณากรอกหัวข้อ ลูกค้า และวันครบกำหนด'));
     }
-    const now = new Date().toISOString();
-    const row: FollowUp = {
-      id: this.nextId++,
-      customerId: input.customerId,
-      title: input.title.trim(),
-      dueDate: input.dueDate,
-      assigneeId: input.assigneeId ?? null,
-      channel: input.channel,
-      status: input.status,
-      note: input.note?.trim() || null,
-      completedAt: input.status === 'DONE' ? now : null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.items.update((list) => [row, ...list]);
-    this.audit.log({
-      actorUserId: null,
-      actorName,
-      action: 'CREATE',
-      entityType: 'follow-up',
-      entityId: row.id,
-      summary: `สร้างแผนติดตาม: ${row.title}`,
-    });
-    return of(structuredClone(row)).pipe(delay(220));
+    return this.http
+      .post<FollowUp>(
+        this.base,
+        pruneUndefined({
+          customerId: input.customerId,
+          title: input.title.trim(),
+          dueDate: input.dueDate,
+          detail: input.detail?.trim() || undefined,
+          assignedUserId: input.assignedUserId,
+        })
+      )
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  update(id: number, input: FollowUpInput, actorName = 'ระบบ'): Observable<FollowUp> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบแผนติดตาม'));
-    }
-    const now = new Date().toISOString();
-    const updated: FollowUp = {
-      ...current,
-      customerId: input.customerId,
-      title: input.title.trim(),
-      dueDate: input.dueDate,
-      assigneeId: input.assigneeId ?? null,
-      channel: input.channel,
-      status: input.status,
-      note: input.note?.trim() || null,
-      completedAt:
-        input.status === 'DONE' ? current.completedAt ?? now : null,
-      updatedAt: now,
-    };
-    this.items.update((list) => list.map((f) => (f.id === id ? updated : f)));
-    this.audit.log({
-      actorUserId: null,
-      actorName,
-      action: input.status !== current.status ? 'STATUS_CHANGE' : 'UPDATE',
-      entityType: 'follow-up',
-      entityId: id,
-      summary: `อัปเดตแผนติดตาม: ${updated.title}`,
-    });
-    return of(structuredClone(updated)).pipe(delay(200));
+  update(id: number, input: FollowUpUpdateInput): Observable<FollowUp> {
+    return this.http
+      .patch<FollowUp>(
+        `${this.base}/${id}`,
+        pruneUndefined({
+          title: input.title?.trim(),
+          detail: input.detail === undefined ? undefined : input.detail?.trim() || null,
+          dueDate: input.dueDate,
+          status: input.status,
+          assignedUserId: input.assignedUserId,
+          resultNote:
+            input.resultNote === undefined ? undefined : input.resultNote?.trim() || null,
+        })
+      )
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  markDone(id: number, actorName = 'ระบบ'): Observable<FollowUp> {
-    const current = this.getById(id);
-    if (!current) {
-      return throwError(() => new Error('ไม่พบแผนติดตาม'));
-    }
-    return this.update(
-      id,
-      {
-        customerId: current.customerId,
-        title: current.title,
-        dueDate: current.dueDate,
-        assigneeId: current.assigneeId,
-        channel: current.channel,
-        status: 'DONE',
-        note: current.note,
-      },
-      actorName
+  complete(id: number, input: FollowUpCompleteInput = {}): Observable<FollowUp> {
+    return this.http
+      .patch<FollowUp>(
+        `${this.base}/${id}/complete`,
+        pruneUndefined({
+          resultNote: input.resultNote?.trim() || undefined,
+        })
+      )
+      .pipe(
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** alias เดิม — ใช้ complete */
+  markDone(id: number, resultNote?: string | null): Observable<FollowUp> {
+    return this.complete(id, { resultNote });
+  }
+
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`).pipe(
+      tap(() => this.items.update((list) => list.filter((f) => f.id !== id))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
-  }
-
-  ensureDemoSeed(
-    customerId: number,
-    assigneeId: number | null,
-    secondCustomerId?: number | null
-  ): Observable<FollowUp[]> {
-    if (this.demoSeeded || this.items().length > 0) {
-      return this.list();
-    }
-    const rows = buildMockFollowUps({ customerId, assigneeId, secondCustomerId });
-    this.items.set(rows);
-    this.nextId = Math.max(...rows.map((r) => r.id)) + 1;
-    this.demoSeeded = true;
-    return of(structuredClone(rows)).pipe(delay(160));
   }
 }

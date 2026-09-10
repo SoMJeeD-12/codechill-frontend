@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { OPEN_PROJECT_STATUSES } from '../models/project.model';
 import { WARRANTY_NEAR_EXPIRY_DAYS } from '../models/warranty.model';
@@ -45,11 +45,14 @@ export class ReportService {
   private readonly surveys = inject(SurveyService);
 
   getExecutiveReport(): Observable<ExecutiveReport> {
-    return this.warranties.listExpiring({ days: WARRANTY_NEAR_EXPIRY_DAYS, limit: 100 }).pipe(
-      map(() => this.buildReport()),
-      // ถ้าโหลดประกันไม่ได้ ยังสร้างรายงานจากข้อมูลอื่นได้
-      catchError(() => of(this.buildReport()))
-    );
+    return forkJoin({
+      warranties: this.warranties
+        .listExpiring({ days: WARRANTY_NEAR_EXPIRY_DAYS, limit: 100 })
+        .pipe(catchError(() => of([]))),
+      followUps: this.followUps
+        .list({ overdue: true, limit: 100 })
+        .pipe(catchError(() => of([]))),
+    }).pipe(map(() => this.buildReport()));
   }
 
   private buildReport(): ExecutiveReport {
