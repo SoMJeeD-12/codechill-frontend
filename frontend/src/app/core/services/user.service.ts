@@ -152,9 +152,9 @@ export class UserService {
     );
   }
 
-  /** PATCH /users/{id} — เฉพาะข้อมูลโปรไฟล์ */
+  /** PUT /users/{id} — เฉพาะข้อมูลโปรไฟล์ */
   update(id: number, input: UpdateUserInput): Observable<User> {
-    return this.http.patch<User>(`${this.base}/${id}`, pruneUndefined(input)).pipe(
+    return this.http.put<User>(`${this.base}/${id}`, pruneUndefined(input)).pipe(
       tap((user) => this.usersSignal.update((list) => upsertById(list, user))),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );

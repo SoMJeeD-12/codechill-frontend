@@ -95,6 +95,26 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly users = this.usersApi.users;
   readonly taskColumns = ['title', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
 
+  /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
+  readonly canViewTasks = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('task.view');
+  });
+  readonly canViewDeliveries = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('delivery.view');
+  });
+  readonly canCreateDelivery = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('delivery.create');
+  });
+  readonly canAcceptDelivery = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('delivery.accept');
+  });
+  readonly deliveriesDenied = signal(false);
+  readonly tasksDenied = signal(false);
+
   readonly filteredTasks = computed(() => {
     const filter = this.statusFilter();
     const q = this.taskSearch().trim().toLowerCase();
@@ -227,17 +247,37 @@ export class ProjectDetailPageComponent implements OnInit {
       },
       error: () => undefined,
     });
-    this.projectsApi.listTasks(this.projectId).subscribe({
-      next: (tasks) => {
-        this.tasks.set(tasks);
-        this.progress.set(this.projectsApi.progressPercent(this.projectId));
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-    });
-    this.projectsApi.listDeliveries(this.projectId).subscribe({
-      next: (rows) => this.deliveries.set(rows),
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-    });
+
+    if (this.canViewTasks()) {
+      this.tasksDenied.set(false);
+      this.projectsApi.listTasks(this.projectId, undefined, { optional: true }).subscribe({
+        next: (tasks) => {
+          this.tasks.set(tasks);
+          this.progress.set(this.projectsApi.progressPercent(this.projectId));
+        },
+        error: () => {
+          this.tasks.set([]);
+          this.tasksDenied.set(true);
+        },
+      });
+    } else {
+      this.tasks.set([]);
+      this.tasksDenied.set(false);
+    }
+
+    if (this.canViewDeliveries()) {
+      this.deliveriesDenied.set(false);
+      this.projectsApi.listDeliveries(this.projectId, { optional: true }).subscribe({
+        next: (rows) => this.deliveries.set(rows),
+        error: () => {
+          this.deliveries.set([]);
+          this.deliveriesDenied.set(true);
+        },
+      });
+    } else {
+      this.deliveries.set([]);
+      this.deliveriesDenied.set(false);
+    }
   }
 
   setStatusFilter(filter: TaskStatus | 'ALL'): void {

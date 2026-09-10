@@ -36,8 +36,12 @@
     </header>
 
     <mat-tab-group animationDuration="150ms">
+      @if (canViewTasks()) {
       <mat-tab label="งานย่อย">
         <div class="tasks-panel">
+          @if (tasksDenied()) {
+            <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
+          } @else {
           <div class="data-card">
             <div class="data-card__head">
               <div class="data-card__row">
@@ -183,11 +187,17 @@
               }
             </div>
           </div>
+          }
         </div>
       </mat-tab>
+      }
 
+      @if (canViewDeliveries()) {
       <mat-tab label="การส่งมอบ">
         <div class="delivery-wrap">
+          @if (deliveriesDenied()) {
+            <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
+          } @else {
           <div class="list">
             @for (d of deliveries(); track d.id) {
               <mat-card class="delivery-item">
@@ -198,6 +208,7 @@
                       · {{ d.version }}
                     }
                   </strong>
+                  @if (canAcceptDelivery()) {
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="accept">
                     <mat-label>สถานะยอมรับ</mat-label>
                     <mat-select
@@ -209,6 +220,9 @@
                       }
                     </mat-select>
                   </mat-form-field>
+                  } @else {
+                    <span class="accept-label">{{ acceptanceLabels[d.acceptanceStatus] }}</span>
+                  }
                 </div>
                 <p>
                   ส่งเมื่อ {{ d.deliveredAt | thaiDate }} ·
@@ -227,6 +241,7 @@
             }
           </div>
 
+          @if (canCreateDelivery()) {
           <mat-card class="side-form">
             <h3>บันทึกการส่งมอบ</h3>
             <form [formGroup]="deliveryForm" (ngSubmit)="addDelivery()" class="form">
@@ -286,8 +301,11 @@
               <button mat-flat-button color="primary" type="submit">บันทึกส่งมอบ</button>
             </form>
           </mat-card>
+          }
+          }
         </div>
       </mat-tab>
+      }
     </mat-tab-group>
   </section>
   }

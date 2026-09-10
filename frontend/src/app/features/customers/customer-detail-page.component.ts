@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -43,6 +44,7 @@ import { combineDateAndTime, nowTimeString, toTimeString } from '../../core/util
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 
@@ -53,7 +55,7 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
     ThaiDatePipe,
     ThaiTimeInputDirective,
     PhoneInputDirective,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -65,6 +67,7 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
     MatCheckboxModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    MatDialogModule,
   ],
   templateUrl: './customer-detail-page.component.html',
   styleUrl: './customer-detail-page.component.scss',
@@ -82,6 +85,7 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   readonly customer = signal<Customer | null>(null);
   readonly contacts = signal<Contact[]>([]);
@@ -292,17 +296,24 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   removeContact(contact: Contact): void {
-    if (!confirm(`ลบผู้ติดต่อ ${contact.name}?`)) {
-      return;
-    }
-    this.api.removeContact(contact.id).subscribe({
-      next: () => {
-        if (this.editingContactId() === contact.id) {
-          this.cancelEditContact();
-        }
-        this.snack.open('ลบผู้ติดต่อแล้ว', 'ปิด', { duration: 2500 });
-        this.refreshChildren();
-      },
+    openConfirmDialog(this.dialog, {
+      title: 'ลบผู้ติดต่อ',
+      message: `ต้องการลบผู้ติดต่อ「${contact.name}」หรือไม่?`,
+      confirmLabel: 'ลบผู้ติดต่อ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.removeContact(contact.id).subscribe({
+        next: () => {
+          if (this.editingContactId() === contact.id) {
+            this.cancelEditContact();
+          }
+          this.snack.open('ลบผู้ติดต่อแล้ว', 'ปิด', { duration: 2500 });
+          this.refreshChildren();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
     });
   }
 
@@ -369,18 +380,24 @@ export class CustomerDetailPageComponent implements OnInit {
 
   removeLog(log: CommunicationLog): void {
     const label = log.subject?.trim() || this.channelLabels[log.channel];
-    if (!confirm(`ลบประวัติการติดต่อ ${label}?`)) {
-      return;
-    }
-    this.api.removeLog(log.id).subscribe({
-      next: () => {
-        if (this.editingLogId() === log.id) {
-          this.cancelEditLog();
-        }
-        this.snack.open('ลบประวัติการติดต่อแล้ว', 'ปิด', { duration: 2500 });
-        this.refreshChildren();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    openConfirmDialog(this.dialog, {
+      title: 'ลบประวัติการติดต่อ',
+      message: `ต้องการลบ「${label}」หรือไม่?`,
+      confirmLabel: 'ลบประวัติ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.removeLog(log.id).subscribe({
+        next: () => {
+          if (this.editingLogId() === log.id) {
+            this.cancelEditLog();
+          }
+          this.snack.open('ลบประวัติการติดต่อแล้ว', 'ปิด', { duration: 2500 });
+          this.refreshChildren();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+      });
     });
   }
 }

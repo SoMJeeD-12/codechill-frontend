@@ -35,6 +35,20 @@
   min-width: 0;
 }
 
+.perm-denied {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1rem;
+  color: #5b6762;
+  background: #f3f6f5;
+  border-radius: 8px;
+}
+
+.accept-label {
+  color: #5b6762;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 .task-link {
   display: inline-block;
   max-width: 280px;

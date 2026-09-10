@@ -33,6 +33,7 @@ import { ProjectService } from '../../core/services/project.service';
 import {
   TicketCreateInput,
   TicketService,
+  TicketUpdateInput,
 } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import {
@@ -77,6 +78,11 @@ export class TicketsPageComponent implements OnInit {
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
   readonly canCreate = computed(() => this.auth.hasPermission('tickets', 'create'));
+  readonly canEdit = computed(
+    () =>
+      this.auth.hasPermission('tickets', 'edit') ||
+      this.auth.hasPermissionCode('ticket.update')
+  );
   readonly columns = [
     'title',
     'customer',
@@ -158,10 +164,22 @@ export class TicketsPageComponent implements OnInit {
       this.snack.open('ไม่มีสิทธิ์เปิดปัญหา', 'ปิด', { duration: 3000 });
       return;
     }
+    this.openForm(null);
+  }
+
+  openEdit(ticket: Ticket): void {
+    if (!this.canEdit()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขปัญหา', 'ปิด', { duration: 3000 });
+      return;
+    }
+    this.openForm(ticket);
+  }
+
+  private openForm(ticket: Ticket | null): void {
     const ref = this.dialog.open(TicketFormDialogComponent, {
       width: '600px',
       maxWidth: '95vw',
-      data: null,
+      data: ticket,
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
@@ -210,13 +228,17 @@ export class TicketFormDialogComponent {
   readonly priorities = Object.keys(TICKET_PRIORITY_LABELS) as TicketPriority[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isEdit = !!this.data;
   /** ผู้รับเรื่อง — เปลี่ยนได้เฉพาะ ADMIN / SUPER_ADMIN */
   readonly canChangeReceiver = this.auth.isAdminLevel();
   /** ผู้รับผิดชอบ — ตามสิทธิ์ ticket.assign ในบทบาท */
   readonly canAssign = this.auth.hasPermissionCode('ticket.assign');
 
   readonly form = this.fb.group({
-    customerId: [this.data?.customerId ?? 0, Validators.min(1)],
+    customerId: [
+      { value: this.data?.customerId ?? 0, disabled: !!this.data },
+      Validators.min(1),
+    ],
     projectId: [this.data?.projectId ?? (null as number | null)],
     title: [this.data?.title ?? '', Validators.required],
     description: [this.data?.description ?? ''],
@@ -294,6 +316,32 @@ export class TicketFormDialogComponent {
     };
     this.saving.set(true);
     this.error.set(null);
+
+    if (this.data) {
+      const update: TicketUpdateInput = {
+        title: payload.title,
+        description: payload.description,
+        priority: payload.priority,
+        billingType: payload.billingType,
+        reportedChannel: payload.reportedChannel,
+        reportedAt: payload.reportedAt,
+        projectId: payload.projectId,
+        receivedByUserId: payload.receivedByUserId,
+        assignedUserId: payload.assignedUserId,
+      };
+      this.ticketsApi.update(this.data.id, update).subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.snack.open('แก้ไขปัญหาแล้ว', 'ปิด', { duration: 2800 });
+          this.ref.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+        },
+      });
+      return;
+    }
 
     this.ticketsApi.create(payload).subscribe({
       next: () => {

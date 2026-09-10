@@ -35,8 +35,22 @@ export interface TicketCreateInput {
   dueAt?: string | null;
 }
 
-/** UpdateTicketDto — partial ของ create (รอ backend PATCH /tickets/:id) */
-export type TicketUpdateInput = Partial<TicketCreateInput>;
+/** UpdateTicketDto — PATCH /tickets/:id (ห้ามส่ง customerId / status / ฟิลด์ระบบ) */
+export interface TicketUpdateInput {
+  title?: string;
+  description?: string | null;
+  priority?: TicketPriority;
+  billingType?: BillingType;
+  reportedChannel?: ReportedChannel;
+  reportedAt?: string;
+  projectId?: number | null;
+  reportedByContactId?: number | null;
+  receivedByUserId?: number | null;
+  dueAt?: string | null;
+  ticketNo?: string | null;
+  /** มอบหมายผ่าน PATCH /assign เป็นหลัก แต่ฟอร์มแก้ใบอาจส่งได้ */
+  assignedUserId?: number | null;
+}
 
 /** CreateResolutionDto */
 export interface ResolutionCreateInput {
@@ -189,14 +203,40 @@ export class TicketService {
       );
   }
 
-  /** แก้ใบปัญหาเต็ม — backend ไม่มี endpoint (ใช้ assign / reopen / close เท่านั้น) */
-  update(_id: number, _input: TicketUpdateInput): Observable<Ticket> {
-    return throwError(() => new Error('ระบบไม่รองรับการแก้ไขใบปัญหา — ใช้มอบหมาย / เปิดใหม่ / ปิดงาน'));
+  /** PATCH /tickets/:id — แก้ข้อมูลใบ (ห้ามส่ง status / customerId) */
+  update(id: number, input: TicketUpdateInput): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(
+        `${this.base}/${id}`,
+        pruneUndefined({
+          title: input.title?.trim(),
+          reportedChannel: input.reportedChannel,
+          reportedAt: input.reportedAt,
+          projectId: input.projectId === undefined ? undefined : input.projectId,
+          billingType: input.billingType,
+          description:
+            input.description === undefined
+              ? undefined
+              : input.description?.trim() || null,
+          priority: input.priority,
+          ticketNo:
+            input.ticketNo === undefined ? undefined : input.ticketNo?.trim() || null,
+          reportedByContactId: input.reportedByContactId,
+          receivedByUserId: input.receivedByUserId,
+          assignedUserId: input.assignedUserId,
+          dueAt: input.dueAt,
+        })
+      )
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
-  /** ลบใบปัญหา — backend ไม่มี endpoint */
+  /** ลบใบปัญหา — backend ไม่มี endpoint ใช้ close แทน */
   remove(_id: number): Observable<void> {
-    return throwError(() => new Error('ระบบไม่รองรับการลบใบปัญหา'));
+    return throwError(() => new Error('ระบบไม่รองรับการลบใบปัญหา — ให้ปิดงานแทน'));
   }
 
   assign(

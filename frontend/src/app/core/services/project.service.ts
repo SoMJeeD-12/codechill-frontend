@@ -4,6 +4,7 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
+import { optionalResourceOptions } from '../http/http-context';
 import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   Delivery,
@@ -163,10 +164,15 @@ export class ProjectService {
       .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
   }
 
-  listTasks(projectId: number, params?: TaskListParams): Observable<TaskItem[]> {
+  listTasks(
+    projectId: number,
+    params?: TaskListParams,
+    opts?: { optional?: boolean }
+  ): Observable<TaskItem[]> {
     return this.http
       .get<ApiTask[] | { items: ApiTask[] }>(`${this.base}/${projectId}/tasks`, {
         params: toHttpParams({ ...params }),
+        ...(opts?.optional ? optionalResourceOptions() : {}),
       })
       .pipe(
         map((body) => this.flattenTasks(asList(body), projectId)),
@@ -272,9 +278,11 @@ export class ProjectService {
       .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt));
   }
 
-  listDeliveries(projectId: number): Observable<Delivery[]> {
+  listDeliveries(projectId: number, opts?: { optional?: boolean }): Observable<Delivery[]> {
     return this.http
-      .get<Delivery[] | { items: Delivery[] }>(`${this.base}/${projectId}/deliveries`)
+      .get<Delivery[] | { items: Delivery[] }>(`${this.base}/${projectId}/deliveries`, {
+        ...(opts?.optional ? optionalResourceOptions() : {}),
+      })
       .pipe(
         map(asList),
         tap((rows) => {
