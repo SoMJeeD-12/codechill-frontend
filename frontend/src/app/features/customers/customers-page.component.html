@@ -15,7 +15,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ชื่อ / รหัส / เลขผู้เสียภาษี / ประเภทธุรกิจ / จังหวัด"
+            placeholder="ชื่อ / เบอร์ / อีเมล / เลขผู้เสียภาษี"
             aria-label="ค้นหาลูกค้า"
           />
         </label>
@@ -54,21 +54,9 @@
             <a [routerLink]="['/app/customers', row.id]">{{ row.name }}</a>
           </td>
         </ng-container>
-        <ng-container matColumnDef="code">
-          <th mat-header-cell *matHeaderCellDef>รหัส</th>
-          <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="taxId">
-          <th mat-header-cell *matHeaderCellDef>เลขผู้เสียภาษี</th>
-          <td mat-cell *matCellDef="let row">{{ row.taxId || '—' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="businessType">
-          <th mat-header-cell *matHeaderCellDef>ประเภทธุรกิจ</th>
-          <td mat-cell *matCellDef="let row">{{ row.businessType || '—' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="province">
-          <th mat-header-cell *matHeaderCellDef>จังหวัด</th>
-          <td mat-cell *matCellDef="let row">{{ row.province || '—' }}</td>
+        <ng-container matColumnDef="phone">
+          <th mat-header-cell *matHeaderCellDef>โทรศัพท์</th>
+          <td mat-cell *matCellDef="let row">{{ row.phone || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="owner">
           <th mat-header-cell *matHeaderCellDef>ผู้ดูแล</th>

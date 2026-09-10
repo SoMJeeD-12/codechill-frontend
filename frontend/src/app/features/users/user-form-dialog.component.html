@@ -20,8 +20,11 @@
         <input matInput formControlName="username" />
       </mat-form-field>
       <mat-form-field appearance="outline">
-        <mat-label>รหัสพนักงาน</mat-label>
-        <input matInput formControlName="employeeCode" />
+        <mat-label>ระดับบัญชี</mat-label>
+        <mat-select formControlName="accountType">
+          <mat-option value="ADMIN">Admin</mat-option>
+          <mat-option value="USER">User</mat-option>
+        </mat-select>
       </mat-form-field>
     </div>
     <div class="row">
@@ -43,19 +46,6 @@
         @if (form.controls.phone.hasError('thaiPhone')) {
           <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก (เช่น 0921234567)</mat-error>
         }
-      </mat-form-field>
-    </div>
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>ตำแหน่ง</mat-label>
-        <input matInput formControlName="position" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>ระดับบัญชี</mat-label>
-        <mat-select formControlName="accountType">
-          <mat-option value="ADMIN">Admin</mat-option>
-          <mat-option value="USER">User</mat-option>
-        </mat-select>
       </mat-form-field>
     </div>
 

@@ -73,6 +73,26 @@ export function nowTimeString(): string {
   return toTimeString(new Date());
 }
 
+/**
+ * จำนวนเดือนของสัญญา จาก start ถึง end (นับวันสิ้นสุดรวม)
+ * เช่น 1 ม.ค. – 31 ธ.ค. = 12 เดือน
+ */
+export function contractMonthCount(
+  start: Date | string | null | undefined,
+  end: Date | string | null | undefined
+): number {
+  const s = start instanceof Date ? start : parseDateOnly(start);
+  const e = end instanceof Date ? end : parseDateOnly(end);
+  if (!s || !e || e < s) {
+    return 0;
+  }
+  const endExclusive = new Date(e.getFullYear(), e.getMonth(), e.getDate() + 1);
+  const months =
+    (endExclusive.getFullYear() - s.getFullYear()) * 12 +
+    (endExclusive.getMonth() - s.getMonth());
+  return Math.max(0, months);
+}
+
 /** pattern สำหรับช่องกรอกเวลาไทย */
 export const THAI_TIME_PATTERN = /^\d{1,2}[.:]\d{2}$/;
 

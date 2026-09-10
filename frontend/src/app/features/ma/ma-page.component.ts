@@ -32,7 +32,11 @@ import {
   MaService,
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
-import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import {
+  contractMonthCount,
+  parseDateOnly,
+  toDateOnlyString,
+} from '../../core/utils/date.util';
 import { parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
@@ -71,7 +75,7 @@ export class MaPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = MA_STATUS_LABELS;
   readonly columns = [
-    'contractNo',
+    'id',
     'plan',
     'customer',
     'period',
@@ -94,10 +98,10 @@ export class MaPageComponent implements OnInit {
     return rows.filter((c) => {
       const project = this.projectsApi.getProject(c.projectId);
       const projectText = project
-        ? `${project.code} ${project.name}`.toLowerCase()
+        ? project.name.toLowerCase()
         : (c.projectName ?? '').toLowerCase();
       return (
-        c.contractNo?.toLowerCase().includes(q) ||
+        String(c.id).includes(q) ||
         maPlanDisplayName(c).toLowerCase().includes(q) ||
         this.customerName(c).toLowerCase().includes(q) ||
         projectText.includes(q) ||
@@ -227,8 +231,8 @@ export class MaFormDialogComponent {
     endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
     status: [(this.data?.status === 'RENEWED' ? 'ACTIVE' : this.data?.status ?? 'DRAFT') as Exclude<MaContractStatus, 'RENEWED'>],
     price: [parseMoneyValue(this.data?.price) ?? 0, Validators.min(0)],
+    monthlyPrice: [null as number | null],
     billingCycle: [(this.data?.billingCycle ?? 'YEARLY') as MaBillingCycle],
-    contractNo: [this.data?.contractNo ?? ''],
     signedDate: [parseDateOnly(this.data?.signedDate) as Date | null],
     note: [this.data?.note ?? ''],
   });
@@ -274,6 +278,24 @@ export class MaFormDialogComponent {
     return `โควตา ${plan.bugQuotaPerMonth} เคส/รอบ · ${sla}`;
   }
 
+  monthCount(): number {
+    const { startDate, endDate } = this.form.getRawValue();
+    return contractMonthCount(startDate, endDate);
+  }
+
+  fillPriceFromMonthly(): void {
+    const { monthlyPrice, startDate, endDate } = this.form.getRawValue();
+    const months = contractMonthCount(startDate, endDate);
+    const monthly =
+      typeof monthlyPrice === 'number'
+        ? monthlyPrice
+        : (parseMoneyValue(monthlyPrice as string | null) ?? 0);
+    if (months <= 0 || monthly <= 0) {
+      return;
+    }
+    this.form.patchValue({ price: monthly * months });
+  }
+
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -291,7 +313,6 @@ export class MaFormDialogComponent {
         startDate: toDateOnlyString(raw.startDate),
         endDate: toDateOnlyString(raw.endDate),
         status: raw.status as Exclude<MaContractStatus, 'RENEWED'>,
-        contractNo: raw.contractNo?.trim() || null,
         signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
         note: raw.note?.trim() || null,
       };
@@ -324,7 +345,6 @@ export class MaFormDialogComponent {
       startDate: toDateOnlyString(raw.startDate),
       endDate: toDateOnlyString(raw.endDate),
       status: (raw.status as Exclude<MaContractStatus, 'RENEWED'>) ?? 'DRAFT',
-      contractNo: raw.contractNo?.trim() || null,
       signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
       note: raw.note?.trim() || null,
     };

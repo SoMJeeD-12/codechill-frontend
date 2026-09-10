@@ -5,7 +5,7 @@
       <mat-label>โครงการ</mat-label>
       <mat-select formControlName="projectId">
         @for (p of projects(); track p.id) {
-          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+          <mat-option [value]="p.id">{{ p.name }}</mat-option>
         }
       </mat-select>
     </mat-form-field>

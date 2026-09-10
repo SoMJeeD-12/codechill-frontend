@@ -15,6 +15,46 @@
   width: 100%;
 }
 
+.section {
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.65rem 0.75rem 0.25rem;
+  border: 1px solid rgba(28, 43, 40, 0.12);
+  border-radius: 10px;
+
+  legend {
+    padding: 0 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1c2b28;
+  }
+}
+
+.more {
+  margin-top: 0.35rem;
+  border: 1px dashed rgba(28, 43, 40, 0.18);
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem 0.15rem;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #0f766e;
+    list-style: none;
+    padding: 0.35rem 0;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+}
+
+.more-body {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: 0.35rem;
+}
+
 .error {
   color: #991b1b;
 }

@@ -1,6 +1,6 @@
 import { UserSummary } from './user.model';
 
-export type CustomerStatus = 'PROSPECT' | 'ACTIVE' | 'INACTIVE' | 'CHURNED';
+export type CustomerStatus = 'ACTIVE' | 'INACTIVE' | 'CHURNED';
 
 export type CommunicationChannel =
   | 'LINE'
@@ -70,10 +70,9 @@ export interface CommunicationLog {
 }
 
 export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
-  PROSPECT: 'ผู้มุ่งหวัง',
-  ACTIVE: 'ปัจจุบัน',
+  ACTIVE: 'ลูกค้าปัจจุบัน',
   INACTIVE: 'ไม่ได้ใช้บริการแล้ว',
-  CHURNED: 'ยกเลิก',
+  CHURNED: 'เลิกใช้บริการ',
 };
 
 export const CHANNEL_LABELS: Record<CommunicationChannel, string> = {

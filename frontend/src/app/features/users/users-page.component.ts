@@ -1,4 +1,3 @@
-import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,7 +25,6 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
   selector: 'app-users-page',
   standalone: true,
   imports: [
-    ThaiDatePipe,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -57,11 +55,13 @@ export class UsersPageComponent implements OnInit {
 
   readonly columns = [
     'fullName',
+    'nickname',
     'username',
+    'email',
+    'phone',
     'accountType',
     'roles',
     'status',
-    'lastLoginAt',
     'actions',
   ];
 
@@ -78,8 +78,10 @@ export class UsersPageComponent implements OnInit {
     return list.filter((u) => {
       return (
         u.fullName.toLowerCase().includes(q) ||
+        (u.nickname ?? '').toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
         (u.email ?? '').toLowerCase().includes(q) ||
+        (u.phone ?? '').includes(q) ||
         this.accountLabel(u.accountType).toLowerCase().includes(q) ||
         this.roleNames(u).toLowerCase().includes(q) ||
         this.statusLabel(u.status).toLowerCase().includes(q)

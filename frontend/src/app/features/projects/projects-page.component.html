@@ -19,7 +19,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="รหัส / ชื่อโครงการ / ลูกค้า"
+            placeholder="ชื่อโครงการ / ลูกค้า"
             aria-label="ค้นหาโครงการ"
           />
         </label>
@@ -52,10 +52,6 @@
 
     <div class="data-card__body">
       <table mat-table [dataSource]="filtered()" class="data-table">
-        <ng-container matColumnDef="code">
-          <th mat-header-cell *matHeaderCellDef>รหัส</th>
-          <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
-        </ng-container>
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อโครงการ</th>
           <td mat-cell *matCellDef="let row">

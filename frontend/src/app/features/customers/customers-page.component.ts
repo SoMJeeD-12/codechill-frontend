@@ -49,7 +49,7 @@ export class CustomersPageComponent implements OnInit {
   readonly search = signal('');
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
-  readonly columns = ['name', 'code', 'taxId', 'businessType', 'province', 'owner', 'status', 'actions'];
+  readonly columns = ['name', 'phone', 'owner', 'status', 'actions'];
   readonly searchControl = this.fb.nonNullable.control('');
 
   readonly filtered = computed(() => {
@@ -60,10 +60,10 @@ export class CustomersPageComponent implements OnInit {
       const matchQ =
         !q ||
         c.name.toLowerCase().includes(q) ||
-        (c.code ?? '').toLowerCase().includes(q) ||
+        (c.phone ?? '').includes(q) ||
+        (c.email ?? '').toLowerCase().includes(q) ||
         (c.taxId ?? '').includes(q) ||
-        (c.businessType ?? '').toLowerCase().includes(q) ||
-        (c.province ?? '').toLowerCase().includes(q);
+        (c.owner?.fullName ?? '').toLowerCase().includes(q);
       return matchStatus && matchQ;
     });
   });

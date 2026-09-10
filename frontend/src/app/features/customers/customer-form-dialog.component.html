@@ -2,43 +2,10 @@
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
     <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อลูกค้า</mat-label>
+      <mat-label>ชื่อลูกค้า *</mat-label>
       <input matInput formControlName="name" />
     </mat-form-field>
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>รหัสลูกค้า</mat-label>
-        <input matInput formControlName="code" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>เลขผู้เสียภาษี</mat-label>
-        <input matInput formControlName="taxId" />
-      </mat-form-field>
-    </div>
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>ประเภทธุรกิจ</mat-label>
-        <input matInput formControlName="businessType" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>ที่มาของลูกค้า</mat-label>
-        <input matInput formControlName="source" />
-      </mat-form-field>
-    </div>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ที่อยู่</mat-label>
-      <textarea matInput rows="2" formControlName="address"></textarea>
-    </mat-form-field>
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>จังหวัด</mat-label>
-        <input matInput formControlName="province" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>รหัสไปรษณีย์</mat-label>
-        <input matInput formControlName="postalCode" />
-      </mat-form-field>
-    </div>
+
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>โทรศัพท์</mat-label>
@@ -52,7 +19,7 @@
           placeholder="เช่น 0921234567"
         />
         @if (form.controls.phone.hasError('thaiPhone')) {
-          <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก (เช่น 0921234567)</mat-error>
+          <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
         }
       </mat-form-field>
       <mat-form-field appearance="outline">
@@ -60,20 +27,18 @@
         <input matInput formControlName="email" />
       </mat-form-field>
     </div>
+
     <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>เว็บไซต์</mat-label>
-        <input matInput formControlName="website" />
+        <mat-label>LINE</mat-label>
+        <input matInput formControlName="lineOfficialId" placeholder="LINE Official ID" />
       </mat-form-field>
       <mat-form-field appearance="outline">
-        <mat-label>LINE Official ID</mat-label>
-        <input matInput formControlName="lineOfficialId" />
+        <mat-label>Facebook</mat-label>
+        <input matInput formControlName="facebookUrl" placeholder="URL" />
       </mat-form-field>
     </div>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>Facebook URL</mat-label>
-      <input matInput formControlName="facebookUrl" />
-    </mat-form-field>
+
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>สถานะ</mat-label>
@@ -93,10 +58,51 @@
         </mat-select>
       </mat-form-field>
     </div>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>หมายเหตุ</mat-label>
-      <textarea matInput rows="2" formControlName="note"></textarea>
-    </mat-form-field>
+
+    <fieldset class="section" formGroupName="primaryContact">
+      <legend>ผู้ติดต่อหลัก</legend>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ชื่อผู้ติดต่อ</mat-label>
+        <input matInput formControlName="name" placeholder="ถ้ามี — จะบันทึกเป็นผู้ติดต่อหลัก" />
+      </mat-form-field>
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>เบอร์ผู้ติดต่อ</mat-label>
+          <input
+            matInput
+            appPhoneInput
+            formControlName="phone"
+            type="tel"
+            inputmode="numeric"
+            maxlength="10"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>LINE ID</mat-label>
+          <input matInput formControlName="lineId" />
+        </mat-form-field>
+      </div>
+    </fieldset>
+
+    <details class="more" [open]="showMore()">
+      <summary (click)="toggleMore($event)">ข้อมูลเพิ่มเติม</summary>
+      <div class="more-body">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>เลขผู้เสียภาษี</mat-label>
+          <input matInput formControlName="taxId" />
+          <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ที่อยู่</mat-label>
+          <textarea matInput rows="2" formControlName="address"></textarea>
+          <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+      </div>
+    </details>
   </form>
   @if (error()) {
     <p class="error">{{ error() }}</p>

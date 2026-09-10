@@ -28,14 +28,13 @@ export interface TicketCreateInput {
   billingType?: BillingType;
   description?: string | null;
   priority?: TicketPriority;
-  ticketNo?: string | null;
   reportedByContactId?: number | null;
   receivedByUserId?: number | null;
   assignedUserId?: number | null;
   dueAt?: string | null;
 }
 
-/** UpdateTicketDto — PATCH /tickets/:id (ห้ามส่ง customerId / status / ฟิลด์ระบบ) */
+/** UpdateTicketDto — PATCH /tickets/:id (ห้ามส่ง customerId / status / ฟิลด์ระบบ / ticketNo) */
 export interface TicketUpdateInput {
   title?: string;
   description?: string | null;
@@ -47,7 +46,6 @@ export interface TicketUpdateInput {
   reportedByContactId?: number | null;
   receivedByUserId?: number | null;
   dueAt?: string | null;
-  ticketNo?: string | null;
   /** มอบหมายผ่าน PATCH /assign เป็นหลัก แต่ฟอร์มแก้ใบอาจส่งได้ */
   assignedUserId?: number | null;
 }
@@ -189,7 +187,6 @@ export class TicketService {
           billingType: input.billingType,
           description: input.description?.trim() || undefined,
           priority: input.priority,
-          ticketNo: input.ticketNo?.trim() || undefined,
           reportedByContactId: input.reportedByContactId ?? undefined,
           receivedByUserId: input.receivedByUserId ?? undefined,
           assignedUserId: input.assignedUserId ?? undefined,
@@ -219,8 +216,6 @@ export class TicketService {
               ? undefined
               : input.description?.trim() || null,
           priority: input.priority,
-          ticketNo:
-            input.ticketNo === undefined ? undefined : input.ticketNo?.trim() || null,
           reportedByContactId: input.reportedByContactId,
           receivedByUserId: input.receivedByUserId,
           assignedUserId: input.assignedUserId,

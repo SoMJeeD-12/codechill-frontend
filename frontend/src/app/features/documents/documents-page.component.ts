@@ -168,7 +168,7 @@ export class DocumentsPageComponent implements OnInit {
     }
     return list.filter((d) => {
       const project = this.projectsApi.getProject(d.projectId);
-      const projectText = project ? `${project.code} ${project.name}`.toLowerCase() : '';
+      const projectText = project ? project.name.toLowerCase() : '';
       const versions = this.api.getVersions(d.id);
       const fileMatch = versions.some(
         (v) =>
@@ -224,7 +224,7 @@ export class DocumentsPageComponent implements OnInit {
     }
     if (typeof value === 'number') {
       const p = this.projectsApi.getProject(value);
-      return p ? `${p.code ?? ''} · ${p.name}` : `#${value}`;
+      return p ? p.name : `#${value}`;
     }
     return String(value);
   };
@@ -271,7 +271,7 @@ export class DocumentsPageComponent implements OnInit {
 
   projectLabel(id: number): string {
     const p = this.projectsApi.getProject(id);
-    return p ? `${p.code}` : `#${id}`;
+    return p ? p.name : `#${id}`;
   }
 
   customerName(id: number): string {

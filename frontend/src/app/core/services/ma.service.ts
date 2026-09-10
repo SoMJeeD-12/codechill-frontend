@@ -16,9 +16,9 @@ import {
   MaQuotaStatus,
 } from '../models/ma.model';
 
-/** CreateMaPlanDto — ห้ามส่ง price */
+/** CreateMaPlanDto — ห้ามส่ง price · code ไม่บังคับแล้ว */
 export interface MaPlanInput {
-  code: string;
+  code?: string | null;
   name: string;
   description?: string | null;
   bugQuotaPerMonth?: number;

@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -26,6 +26,7 @@ import {
   CommunicationLog,
   Contact,
   Customer,
+  CustomerStatus,
 } from '../../core/models/customer.model';
 import { CustomerOverview } from '../../core/models/customer-overview.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
@@ -66,6 +67,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
   imports: [
     ThaiDatePipe,
     BahtPipe,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -138,9 +140,9 @@ export class CustomerDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly logColumns = ['occurredAt', 'channel', 'subject', 'contact', 'handler', 'actions'];
-  readonly projectColumns = ['code', 'name', 'status', 'targetEndDate', 'actions'];
+  readonly projectColumns = ['name', 'status', 'targetEndDate', 'actions'];
   readonly warrantyColumns = ['title', 'duration', 'status', 'endDate', 'actions'];
-  readonly maColumns = ['contractNo', 'plan', 'status', 'quota', 'actions'];
+  readonly maColumns = ['id', 'plan', 'status', 'quota', 'actions'];
   readonly ticketColumns = ['title', 'status', 'priority', 'actions'];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'actions'];
 
@@ -184,7 +186,7 @@ export class CustomerDetailPageComponent implements OnInit {
       return list;
     }
     return list.filter((p) =>
-      [p.code, p.name, this.projectStatusLabels[p.status], p.targetEndDate]
+      [p.name, this.projectStatusLabels[p.status], p.targetEndDate]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -217,7 +219,7 @@ export class CustomerDetailPageComponent implements OnInit {
     }
     return list.filter((m) =>
       [
-        m.contractNo,
+        String(m.id),
         m.plan?.name,
         String(m.planId),
         this.maStatusLabels[m.status],
@@ -235,7 +237,13 @@ export class CustomerDetailPageComponent implements OnInit {
       return list;
     }
     return list.filter((t) =>
-      [t.ticketNo, t.title, this.ticketStatusLabels[t.status], this.ticketPriorityLabels[t.priority]]
+      [
+        String(t.id),
+        t.ticketNo,
+        t.title,
+        this.ticketStatusLabels[t.status],
+        this.ticketPriorityLabels[t.priority],
+      ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -265,8 +273,8 @@ export class CustomerDetailPageComponent implements OnInit {
 
   private customerId = 0;
 
-  statusLabel(status: Customer['status']): string {
-    return this.statusLabels[status];
+  statusLabel(status: Customer['status'] | string): string {
+    return this.statusLabels[status as CustomerStatus] ?? String(status);
   }
 
   channelLabel(channel: CommunicationChannel): string {

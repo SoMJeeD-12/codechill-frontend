@@ -15,7 +15,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="เลขที่ / แผน / ลูกค้า / โครงการ"
+            placeholder="รหัส / แผน / ลูกค้า / โครงการ"
             aria-label="ค้นหาสัญญา MA"
           />
         </label>
@@ -36,10 +36,10 @@
 
     <div class="data-card__body">
       <table mat-table [dataSource]="filtered()" class="data-table">
-        <ng-container matColumnDef="contractNo">
-          <th mat-header-cell *matHeaderCellDef>เลขที่</th>
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef>สัญญา</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/ma', row.id]">{{ row.contractNo || ('#' + row.id) }}</a>
+            <a [routerLink]="['/app/ma', row.id]">#{{ row.id }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="plan">

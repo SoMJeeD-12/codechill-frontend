@@ -10,6 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Observable, of, switchMap } from 'rxjs';
 import {
   CUSTOMER_STATUS_LABELS,
   Customer,
@@ -41,33 +42,34 @@ export class CustomerFormDialogComponent {
   private readonly api = inject(CustomerService);
   private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
-  private readonly ref = inject(MatDialogRef<CustomerFormDialogComponent, boolean>);
-  readonly data = inject<{ customer: Customer | null }>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<CustomerFormDialogComponent, boolean | Customer>);
+  readonly data = inject<{ customer: Customer | null; returnCustomer?: boolean }>(MAT_DIALOG_DATA);
 
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
   readonly users = this.usersApi.users;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly showMore = signal(false);
   readonly isEdit = !!this.data.customer;
+  private primaryContactId: number | null = null;
 
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
-    code: [''],
-    taxId: [''],
-    businessType: [''],
-    address: [''],
-    province: [''],
-    postalCode: [''],
     phone: ['', thaiPhoneValidator],
     email: ['', Validators.email],
-    website: [''],
     lineOfficialId: [''],
     facebookUrl: [''],
-    status: ['PROSPECT' as CustomerStatus, Validators.required],
-    source: [''],
+    status: ['ACTIVE' as CustomerStatus, Validators.required],
     ownerUserId: [null as number | null],
+    taxId: [''],
+    address: [''],
     note: [''],
+    primaryContact: this.fb.nonNullable.group({
+      name: [''],
+      phone: ['', thaiPhoneValidator],
+      lineId: [''],
+    }),
   });
 
   constructor() {
@@ -76,23 +78,39 @@ export class CustomerFormDialogComponent {
     if (c) {
       this.form.patchValue({
         name: c.name,
-        code: c.code ?? '',
-        taxId: c.taxId ?? '',
-        businessType: c.businessType ?? '',
-        address: c.address ?? '',
-        province: c.province ?? '',
-        postalCode: c.postalCode ?? '',
         phone: sanitizePhoneDigits(c.phone),
         email: c.email ?? '',
-        website: c.website ?? '',
         lineOfficialId: c.lineOfficialId ?? '',
         facebookUrl: c.facebookUrl ?? '',
-        status: c.status,
-        source: c.source ?? '',
+        status: normalizeStatus(c.status),
         ownerUserId: c.ownerUserId ?? null,
+        taxId: c.taxId ?? '',
+        address: c.address ?? '',
         note: c.note ?? '',
       });
+      if (c.taxId || c.address || c.note) {
+        this.showMore.set(true);
+      }
+      this.api.listContacts(c.id).subscribe({
+        next: (rows) => {
+          const primary = rows.find((x) => x.isPrimary) ?? rows[0];
+          if (primary) {
+            this.primaryContactId = primary.id;
+            this.form.controls.primaryContact.patchValue({
+              name: primary.name,
+              phone: sanitizePhoneDigits(primary.phone),
+              lineId: primary.lineId ?? '',
+            });
+          }
+        },
+        error: () => undefined,
+      });
     }
+  }
+
+  toggleMore(event: Event): void {
+    event.preventDefault();
+    this.showMore.update((v) => !v);
   }
 
   save(): void {
@@ -103,42 +121,90 @@ export class CustomerFormDialogComponent {
     const raw = this.form.getRawValue();
     const payload: CustomerInput = {
       name: raw.name.trim(),
-      code: trimmed(raw.code),
-      taxId: trimmed(raw.taxId),
-      businessType: trimmed(raw.businessType),
-      address: trimmed(raw.address),
-      province: trimmed(raw.province),
-      postalCode: trimmed(raw.postalCode),
-      phone: trimmed(raw.phone) ? sanitizePhoneDigits(raw.phone) : undefined,
-      email: trimmed(raw.email),
-      website: trimmed(raw.website),
-      lineOfficialId: trimmed(raw.lineOfficialId),
-      facebookUrl: trimmed(raw.facebookUrl),
       status: raw.status,
-      source: trimmed(raw.source),
-      ownerUserId: raw.ownerUserId ?? undefined,
-      note: trimmed(raw.note),
     };
+    const phone = trimmed(raw.phone);
+    if (phone) {
+      payload.phone = sanitizePhoneDigits(phone);
+    }
+    const email = trimmed(raw.email);
+    if (email) {
+      payload.email = email;
+    }
+    const lineOfficialId = trimmed(raw.lineOfficialId);
+    if (lineOfficialId) {
+      payload.lineOfficialId = lineOfficialId;
+    }
+    const facebookUrl = trimmed(raw.facebookUrl);
+    if (facebookUrl) {
+      payload.facebookUrl = facebookUrl;
+    }
+    if (raw.ownerUserId != null) {
+      payload.ownerUserId = raw.ownerUserId;
+    }
+    const taxId = trimmed(raw.taxId);
+    if (taxId) {
+      payload.taxId = taxId;
+    }
+    const address = trimmed(raw.address);
+    if (address) {
+      payload.address = address;
+    }
+    const note = trimmed(raw.note);
+    if (note) {
+      payload.note = note;
+    }
+
     this.saving.set(true);
     this.error.set(null);
-    const req$ = this.data.customer
+
+    const contactName = trimmed(raw.primaryContact.name);
+    const contactPhone = trimmed(raw.primaryContact.phone);
+    const contactLine = trimmed(raw.primaryContact.lineId);
+
+    const req$: Observable<Customer> = this.data.customer
       ? this.api.updateCustomer(this.data.customer.id, payload)
       : this.api.createCustomer(payload);
-    req$.subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.snack.open('บันทึกลูกค้าแล้ว', 'ปิด', { duration: 2500 });
-        this.ref.close(true);
-      },
-      error: (err: Error) => {
-        this.saving.set(false);
-        this.error.set(err.message);
-      },
-    });
+
+    req$
+      .pipe(
+        switchMap((customer) => {
+          if (!contactName) {
+            return of(customer);
+          }
+          const contactPayload = {
+            name: contactName,
+            phone: contactPhone ? sanitizePhoneDigits(contactPhone) : undefined,
+            lineId: contactLine,
+            isPrimary: true as const,
+          };
+          return this.api
+            .saveContact(customer.id, contactPayload, this.primaryContactId ?? undefined)
+            .pipe(switchMap(() => of(customer)));
+        })
+      )
+      .subscribe({
+        next: (customer) => {
+          this.saving.set(false);
+          this.snack.open('บันทึกลูกค้าแล้ว', 'ปิด', { duration: 2500 });
+          this.ref.close(this.data.returnCustomer ? customer : true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+        },
+      });
   }
 }
 
 function trimmed(value: string): string | undefined {
   const v = value.trim();
   return v === '' ? undefined : v;
+}
+
+function normalizeStatus(status: string): CustomerStatus {
+  if (status === 'INACTIVE' || status === 'CHURNED') {
+    return status;
+  }
+  return 'ACTIVE';
 }

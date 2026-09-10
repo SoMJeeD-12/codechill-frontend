@@ -69,7 +69,6 @@ export class ProjectsPageComponent implements OnInit {
   readonly statuses = PROJECT_STATUSES;
   readonly priorityLabels = PRIORITY_LABELS;
   readonly columns = [
-    'code',
     'name',
     'customer',
     'priority',
@@ -93,7 +92,6 @@ export class ProjectsPageComponent implements OnInit {
       }
       const customer = this.customerName(p.customerId).toLowerCase();
       return (
-        (p.code ?? '').toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
         customer.includes(q) ||
         (p.description ?? '').toLowerCase().includes(q)
@@ -166,6 +164,10 @@ export class ProjectsPageComponent implements OnInit {
 }
 
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { Customer } from '../../core/models/customer.model';
+import { CustomerFormDialogComponent } from '../customers/customer-form-dialog.component';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-project-form-dialog',
@@ -179,6 +181,7 @@ import { MoneyInputDirective } from '../../shared/directives/money-input.directi
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    MatAutocompleteModule,
     MoneyInputDirective,
   ],
   templateUrl: './project-form-dialog.component.html',
@@ -190,6 +193,7 @@ export class ProjectFormDialogComponent {
   private readonly customersApi = inject(CustomerService);
   private readonly usersApi = inject(UserService);
   private readonly snack = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly ref = inject(MatDialogRef<ProjectFormDialogComponent, boolean>);
   readonly data = inject<{ project: Project | null; customerId?: number }>(MAT_DIALOG_DATA);
 
@@ -201,11 +205,14 @@ export class ProjectFormDialogComponent {
   readonly priorityLabels = PRIORITY_LABELS;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly showMore = signal(false);
   readonly isEdit = !!this.data.project;
+  readonly customerLocked = !this.data.project && !!this.data.customerId;
+
+  readonly customerSearchControl = this.fb.control<string | Customer>('');
 
   readonly form = this.fb.group({
     name: ['', Validators.required],
-    code: [''],
     customerId: [0, Validators.min(1)],
     projectType: [''],
     contractValue: [null as number | null, Validators.min(0)],
@@ -221,23 +228,36 @@ export class ProjectFormDialogComponent {
   constructor() {
     this.usersApi.loadForPicker().subscribe({ error: () => undefined });
     this.customersApi.listCustomers().subscribe({
-      next: () => {
-        if (!this.data.project) {
-          const preferred = this.data.customerId ?? this.customers()[0]?.id;
-          if (preferred && !this.form.value.customerId) {
-            this.form.patchValue({ customerId: preferred });
-          }
-          if (this.data.customerId) {
-            this.form.controls.customerId.disable({ emitEvent: false });
+      next: () => this.applyPreferredCustomer(),
+      error: () => undefined,
+    });
+
+    this.customerSearchControl.valueChanges
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged((a, b) => this.customerSearchKey(a) === this.customerSearchKey(b))
+      )
+      .subscribe((value) => {
+        if (this.customerLocked || typeof value !== 'string') {
+          return;
+        }
+        const search = value.trim();
+        this.customersApi.listCustomers(search ? { search } : undefined).subscribe({
+          error: () => undefined,
+        });
+        // Typing clears a prior selection until an option is chosen again.
+        if (this.form.controls.customerId.value) {
+          const selected = this.customersApi.getCustomer(this.form.controls.customerId.value);
+          if (!selected || selected.name !== search) {
+            this.form.patchValue({ customerId: 0 });
           }
         }
-      },
-    });
+      });
+
     if (this.data.project) {
       const p = this.data.project;
       this.form.patchValue({
         name: p.name,
-        code: p.code ?? '',
         customerId: p.customerId,
         projectType: p.projectType ?? '',
         contractValue: p.contractValue,
@@ -249,7 +269,53 @@ export class ProjectFormDialogComponent {
         managerUserId: p.managerUserId,
         description: p.description ?? '',
       });
+      if (p.functionCount != null) {
+        this.showMore.set(true);
+      }
+      const existing = this.customersApi.getCustomer(p.customerId);
+      if (existing) {
+        this.customerSearchControl.setValue(existing, { emitEvent: false });
+      } else {
+        this.customersApi.fetchCustomer(p.customerId).subscribe({
+          next: (c) => this.customerSearchControl.setValue(c, { emitEvent: false }),
+          error: () => this.customerSearchControl.setValue(`#${p.customerId}`, { emitEvent: false }),
+        });
+      }
     }
+  }
+
+  readonly displayCustomer = (value: string | Customer | null): string => {
+    if (!value) {
+      return '';
+    }
+    return typeof value === 'string' ? value : value.name;
+  };
+
+  onCustomerSelected(event: MatAutocompleteSelectedEvent): void {
+    const customer = event.option.value as Customer;
+    this.form.patchValue({ customerId: customer.id });
+    this.form.controls.customerId.markAsTouched();
+  }
+
+  openCreateCustomer(): void {
+    const ref = this.dialog.open(CustomerFormDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      data: { customer: null, returnCustomer: true },
+    });
+    ref.afterClosed().subscribe((result) => {
+      if (result && typeof result === 'object' && 'id' in result) {
+        const customer = result as Customer;
+        this.form.patchValue({ customerId: customer.id });
+        this.customerSearchControl.setValue(customer, { emitEvent: false });
+        this.form.controls.customerId.markAsTouched();
+      }
+    });
+  }
+
+  toggleMore(event: Event): void {
+    event.preventDefault();
+    this.showMore.update((v) => !v);
   }
 
   save(): void {
@@ -260,7 +326,6 @@ export class ProjectFormDialogComponent {
     const raw = this.form.getRawValue();
     const payload: ProjectInput = {
       name: (raw.name ?? '').trim(),
-      code: (raw.code ?? '').trim() || undefined,
       customerId: Number(raw.customerId),
       projectType: (raw.projectType ?? '').trim() || undefined,
       contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
@@ -288,5 +353,26 @@ export class ProjectFormDialogComponent {
         this.error.set(err.message);
       },
     });
+  }
+
+  private applyPreferredCustomer(): void {
+    if (this.data.project || !this.data.customerId) {
+      return;
+    }
+    if ((this.form.value.customerId ?? 0) > 0) {
+      return;
+    }
+    this.form.patchValue({ customerId: this.data.customerId });
+    const customer = this.customersApi.getCustomer(this.data.customerId);
+    if (customer) {
+      this.customerSearchControl.setValue(customer, { emitEvent: false });
+    }
+  }
+
+  private customerSearchKey(value: string | Customer | null): string {
+    if (!value) {
+      return '';
+    }
+    return typeof value === 'string' ? value : `id:${value.id}`;
   }
 }

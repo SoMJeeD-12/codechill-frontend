@@ -16,7 +16,7 @@
           กลับ
         </button>
         <p class="eyebrow">M6 · รายละเอียดสัญญา</p>
-        <h1>{{ c.contractNo || ('#' + c.id) }}</h1>
+        <h1>สัญญา MA #{{ c.id }}</h1>
         <p class="subtitle">
           {{ planName(c) }} · {{ statusLabel(c.status) }} · {{ slaLabel(c) }}
           @if (!c.isCurrentlyActive && c.status === 'ACTIVE') {

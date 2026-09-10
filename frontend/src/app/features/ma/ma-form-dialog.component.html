@@ -17,7 +17,7 @@
       <mat-label>โครงการ *</mat-label>
       <mat-select formControlName="projectId">
         @for (p of filteredProjects(); track p.id) {
-          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+          <mat-option [value]="p.id">#{{ p.id }} · {{ p.name }}</mat-option>
         }
       </mat-select>
       @if (isEdit) {
@@ -29,7 +29,7 @@
       <mat-label>แผน MA *</mat-label>
       <mat-select formControlName="planId" (selectionChange)="onPlanChange($event.value)">
         @for (p of plans(); track p.id) {
-          <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+          <mat-option [value]="p.id">#{{ p.id }} · {{ p.name }}</mat-option>
         }
       </mat-select>
       @if (planHint()) {
@@ -64,10 +64,30 @@
       </mat-form-field>
     </div>
 
+    <div class="price-helper">
+      <mat-form-field appearance="outline" class="price-helper__field">
+        <mat-label>ราคาต่อเดือน (บาท)</mat-label>
+        <input matInput appMoneyInput formControlName="monthlyPrice" inputmode="decimal" />
+        @if (monthCount() > 0) {
+          <mat-hint>ระยะสัญญา {{ monthCount() }} เดือน</mat-hint>
+        }
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        class="price-helper__btn"
+        (click)="fillPriceFromMonthly()"
+        [disabled]="monthCount() <= 0"
+      >
+        คำนวณมูลค่ารวม
+      </button>
+    </div>
+
     <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>ค่าบริการ (บาท) *</mat-label>
+        <mat-label>มูลค่ารวมตลอดอายุสัญญา (บาท) *</mat-label>
         <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+        <mat-hint>ไม่ใช่ราคาต่อเดือน เช่น เดือนละ 500 สัญญา 12 เดือน ให้กรอก 6,000</mat-hint>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>รอบวางบิล</mat-label>
@@ -79,20 +99,14 @@
       </mat-form-field>
     </div>
 
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>เลขที่สัญญา</mat-label>
-        <input matInput formControlName="contractNo" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>สถานะ</mat-label>
-        <mat-select formControlName="status">
-          @for (s of statuses; track s) {
-            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>สถานะ</mat-label>
+      <mat-select formControlName="status">
+        @for (s of statuses; track s) {
+          <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
     <mat-form-field appearance="outline" class="full">
       <mat-label>วันที่เซ็น</mat-label>

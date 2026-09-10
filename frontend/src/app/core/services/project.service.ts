@@ -89,7 +89,6 @@ export interface DeliveryInput {
   title: string;
   deliveredAt: string;
   version?: string | null;
-  deliveryNo?: string | null;
   description?: string | null;
   deliveredByUserId?: number | null;
   acceptedByContactId?: number | null;
@@ -368,7 +367,6 @@ export class ProjectService {
         title: input.title.trim(),
         deliveredAt: input.deliveredAt,
         version: input.version?.trim() || undefined,
-        deliveryNo: input.deliveryNo?.trim() || undefined,
         description: input.description?.trim() || undefined,
         deliveredByUserId: input.deliveredByUserId ?? undefined,
         acceptedByContactId: input.acceptedByContactId ?? undefined,

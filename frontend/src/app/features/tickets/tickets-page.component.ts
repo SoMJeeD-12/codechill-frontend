@@ -105,6 +105,7 @@ export class TicketsPageComponent implements OnInit {
       list = list.filter((t) => {
         const customer = this.customerName(t.customerId).toLowerCase();
         return (
+          String(t.id).includes(q) ||
           (t.ticketNo ?? '').toLowerCase().includes(q) ||
           t.title.toLowerCase().includes(q) ||
           (t.description ?? '').toLowerCase().includes(q) ||
@@ -219,7 +220,7 @@ export class TicketFormDialogComponent {
     optional: true,
   }) ?? null;
   private readonly ticket: Ticket | null =
-    this.data && typeof this.data === 'object' && 'ticketNo' in this.data
+    this.data && typeof this.data === 'object' && 'id' in this.data && 'title' in this.data
       ? (this.data as Ticket)
       : null;
 

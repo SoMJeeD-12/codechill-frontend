@@ -13,6 +13,22 @@
 
 .full { width: 100%; }
 
+.price-helper {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.price-helper__field {
+  width: 100%;
+}
+
+.price-helper__btn {
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
 .error {
   margin: 0.25rem 0 0;
   color: #b91c1c;
@@ -20,5 +36,8 @@
 }
 
 @media (max-width: 560px) {
-  .row { grid-template-columns: 1fr; }
+  .row,
+  .price-helper {
+    grid-template-columns: 1fr;
+  }
 }

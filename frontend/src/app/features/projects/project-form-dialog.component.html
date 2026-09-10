@@ -5,34 +5,43 @@
       <mat-label>ชื่อโครงการ</mat-label>
       <input matInput formControlName="name" />
     </mat-form-field>
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>รหัสโครงการ</mat-label>
-        <input matInput formControlName="code" />
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ประเภทโครงการ</mat-label>
+      <input matInput formControlName="projectType" />
+    </mat-form-field>
+    <div class="customer-picker">
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ลูกค้า</mat-label>
+        <input
+          matInput
+          [formControl]="customerSearchControl"
+          [matAutocomplete]="customerAuto"
+          [readonly]="customerLocked"
+          placeholder="ค้นหาชื่อ เบอร์ หรือเลขผู้เสียภาษี"
+        />
+        <mat-autocomplete
+          #customerAuto="matAutocomplete"
+          [displayWith]="displayCustomer"
+          (optionSelected)="onCustomerSelected($event)"
+        >
+          @for (c of customers(); track c.id) {
+            <mat-option [value]="c">{{ c.name }}</mat-option>
+          }
+        </mat-autocomplete>
+        @if (form.controls.customerId.invalid && form.controls.customerId.touched) {
+          <mat-error>เลือกลูกค้า</mat-error>
+        }
       </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>ประเภทโครงการ</mat-label>
-        <input matInput formControlName="projectType" />
-      </mat-form-field>
+      @if (!isEdit && !customerLocked) {
+        <button mat-stroked-button type="button" class="add-customer-btn" (click)="openCreateCustomer()">
+          เพิ่มลูกค้าใหม่
+        </button>
+      }
     </div>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>ลูกค้า</mat-label>
-      <mat-select formControlName="customerId">
-        @for (c of customers(); track c.id) {
-          <mat-option [value]="c.id">{{ c.name }}</mat-option>
-        }
-      </mat-select>
+      <mat-label>มูลค่าสัญญา</mat-label>
+      <input matInput appMoneyInput formControlName="contractValue" inputmode="decimal" />
     </mat-form-field>
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>มูลค่าสัญญา</mat-label>
-        <input matInput appMoneyInput formControlName="contractValue" inputmode="decimal" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>จำนวนฟังก์ชัน</mat-label>
-        <input matInput type="number" formControlName="functionCount" />
-      </mat-form-field>
-    </div>
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>วันเริ่มโครงการ</mat-label>
@@ -92,6 +101,15 @@
       <mat-label>รายละเอียด</mat-label>
       <textarea matInput rows="3" formControlName="description"></textarea>
     </mat-form-field>
+    <details class="more" [open]="showMore()">
+      <summary (click)="toggleMore($event)">ข้อมูลเพิ่มเติม</summary>
+      <div class="more-body">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>จำนวนฟังก์ชัน</mat-label>
+          <input matInput type="number" formControlName="functionCount" />
+        </mat-form-field>
+      </div>
+    </details>
   </form>
   @if (error()) {
     <p class="error">{{ error() }}</p>

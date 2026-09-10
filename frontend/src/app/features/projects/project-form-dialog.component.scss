@@ -1,5 +1,41 @@
 .form { display: grid; gap: 0.15rem; min-width: min(480px, 80vw); margin-top: 0.5rem; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .full { width: 100%; }
+
+.customer-picker {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.add-customer-btn {
+  justify-self: start;
+}
+
+.more {
+  margin-top: 0.35rem;
+  border: 1px dashed rgba(28, 43, 40, 0.18);
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem 0.15rem;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #0f766e;
+    list-style: none;
+    padding: 0.35rem 0;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+}
+
+.more-body {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: 0.35rem;
+}
+
 .error { color: #991b1b; }
 @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }

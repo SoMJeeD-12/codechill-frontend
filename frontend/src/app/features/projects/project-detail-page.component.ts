@@ -106,7 +106,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskColumns = ['title', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   readonly deliveryColumns = [
     'title',
-    'deliveryNo',
+    'id',
     'deliveredAt',
     'deliveredBy',
     'acceptedBy',
@@ -198,6 +198,8 @@ export class ProjectDetailPageComponent implements OnInit {
       const deliveredBy = this.userName(d.deliveredByUserId).toLowerCase();
       const acceptedBy = this.contactName(d.acceptedByContactId).toLowerCase();
       return (
+        String(d.id).includes(q) ||
+        `ส่งมอบ #${d.id}`.includes(q) ||
         d.title.toLowerCase().includes(q) ||
         (d.deliveryNo ?? '').toLowerCase().includes(q) ||
         (d.version ?? '').toLowerCase().includes(q) ||
@@ -422,7 +424,7 @@ export class ProjectDetailPageComponent implements OnInit {
     openConfirmDialog(this.dialog, {
       title: d.title,
       message: [
-        `เลขที่: ${d.deliveryNo || '—'}`,
+        `ส่งมอบ #${d.id}`,
         `เวอร์ชัน: ${d.version || '—'}`,
         `วันเวลาส่ง: ${d.deliveredAt}`,
         `ผู้ส่งมอบ: ${this.userName(d.deliveredByUserId)}`,
@@ -485,16 +487,10 @@ export interface DeliveryFormDialogData {
           <mat-label>หัวข้อการส่งมอบ</mat-label>
           <input matInput formControlName="title" placeholder="เช่น ส่งมอบรอบที่ 1" />
         </mat-form-field>
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>เวอร์ชัน</mat-label>
-            <input matInput formControlName="version" placeholder="เช่น v1.0" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>เลขที่ส่งมอบ</mat-label>
-            <input matInput formControlName="deliveryNo" placeholder="เช่น DN-2026-001" />
-          </mat-form-field>
-        </div>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>เวอร์ชัน</mat-label>
+          <input matInput formControlName="version" placeholder="เช่น v1.0" />
+        </mat-form-field>
         <div class="row">
           <mat-form-field appearance="outline">
             <mat-label>วันที่ส่ง</mat-label>
@@ -576,7 +572,6 @@ export class DeliveryFormDialogComponent {
   readonly form = this.fb.group({
     title: ['', Validators.required],
     version: [''],
-    deliveryNo: [''],
     description: [''],
     deliveredDate: [new Date() as Date | null, Validators.required],
     deliveredTime: [nowTimeString(), Validators.required],
@@ -596,7 +591,6 @@ export class DeliveryFormDialogComponent {
       .createDelivery(this.data.projectId, {
         title: (raw.title ?? '').trim(),
         version: (raw.version ?? '').trim() || null,
-        deliveryNo: (raw.deliveryNo ?? '').trim() || null,
         description: (raw.description ?? '').trim() || null,
         deliveredAt: combineDateAndTime(raw.deliveredDate, raw.deliveredTime),
         deliveredByUserId: raw.deliveredByUserId,

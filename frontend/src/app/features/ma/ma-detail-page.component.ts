@@ -141,7 +141,7 @@ export class MaDetailPageComponent implements OnInit {
       return c.projectName;
     }
     const p = this.projectsApi.getProject(c.projectId);
-    return p ? `${p.code} · ${p.name}` : `#${c.projectId}`;
+    return p ? p.name : `#${c.projectId}`;
   }
 
   planName(c: MaContract): string {
@@ -208,7 +208,7 @@ export class MaDetailPageComponent implements OnInit {
     openConfirmDialog(this.dialog, {
       title: 'ต่ออายุสัญญา MA',
       message: [
-        `สร้างสัญญาใหม่จาก ${c.contractNo || '#' + c.id}`,
+        `สร้างสัญญาใหม่จากสัญญา #${c.id}`,
         `ระยะใหม่: ${startDate} – ${endDate}`,
         `ราคา: ${formatMoneyDisplay(price)} บาท`,
       ].join('\n'),
@@ -222,7 +222,7 @@ export class MaDetailPageComponent implements OnInit {
         next: (created) => {
           this.renewing.set(false);
           this.snack.open(
-            `ต่ออายุแล้ว · สัญญาใหม่ ${created.contractNo || '#' + created.id}`,
+            `ต่ออายุแล้ว · สัญญาใหม่ #${created.id}`,
             'ปิด',
             { duration: 3500 }
           );
@@ -253,7 +253,7 @@ export class MaDetailPageComponent implements OnInit {
       .join('');
     const addonTotal = this.addons().reduce((sum, a) => sum + (parseMoneyValue(a.price) ?? 0), 0);
     const fee = parseMoneyValue(c.price) ?? 0;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งค่าบริการ ${c.contractNo || c.id}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งค่าบริการ #${c.id}</title>
 <style>
 body{font-family:Sarabun,sans-serif;padding:32px;color:#1c2b28}
 h1{margin:0 0 4px;font-size:1.4rem} .muted{color:#5b6762}
@@ -263,7 +263,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 @media print{button{display:none}}
 </style></head><body>
 <p class="muted">CPAMS · ใบแจ้งค่าบริการ</p>
-<h1>${c.contractNo || '#' + c.id} · ${this.planName(c)}</h1>
+<h1>${this.planName(c)} · #${c.id}</h1>
 <p>ลูกค้า: ${customer}<br>ระยะสัญญา: ${c.startDate} – ${c.endDate}<br>พิมพ์โดย: ${user}</p>
 <table>
 <thead><tr><th>รายการ</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
@@ -313,7 +313,7 @@ ${addonLines}
       )
       .join('');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ร่างสัญญา ${contract.contractNo || contract.id}</title>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ร่างสัญญา ${escapeHtml(plan.name)} #${contract.id}</title>
 <style>
 body{font-family:Sarabun,sans-serif;padding:36px;color:#1c2b28;position:relative}
 .watermark{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
@@ -333,7 +333,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:to
 <div class="watermark"><span>${watermark}</span></div>
 <div class="content">
 <p class="muted">CPAMS · ร่างสัญญาบำรุงรักษา (MA)</p>
-<h1>${escapeHtml(contract.contractNo || '#' + contract.id)} · ${escapeHtml(plan.name)}</h1>
+<h1>${escapeHtml(plan.name)} · #${contract.id}</h1>
 <p class="muted">สถานะ: ${escapeHtml(contract.status)} · ระยะ ${escapeHtml(contract.startDate)} – ${escapeHtml(contract.endDate)} · สร้างเอกสาร ${escapeHtml(payload.generatedAt)}</p>
 
 <div class="party">
@@ -355,8 +355,8 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:to
   </div>
 </div>
 
-<p>โครงการ: ${escapeHtml(project.code ? `${project.code} · ${project.name}` : project.name)}<br>
-แผน: ${escapeHtml(plan.code)} · ${escapeHtml(plan.name)} · โควตา ${plan.bugQuotaPerMonth} เคส/เดือน<br>
+<p>โครงการ: ${escapeHtml(project.name)}<br>
+แผน: ${escapeHtml(plan.code ? `${plan.code} · ${plan.name}` : plan.name)} · โควตา ${plan.bugQuotaPerMonth} เคส/เดือน<br>
 ค่าบริการ: ${formatMoneyDisplay(contract.price)} บาท (${escapeHtml(this.billingLabels[contract.billingCycle])})</p>
 
 <h3>รายการในแผน</h3>

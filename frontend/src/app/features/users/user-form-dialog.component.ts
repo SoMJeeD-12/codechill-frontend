@@ -49,10 +49,8 @@ export class UserFormDialogComponent {
     password: [''],
     fullName: ['', Validators.required],
     nickname: [''],
-    employeeCode: [''],
     email: ['', Validators.email],
     phone: ['', thaiPhoneValidator],
-    position: [''],
     accountType: ['USER' as AccountType, Validators.required],
     roleIds: [[] as number[]],
   });
@@ -64,10 +62,8 @@ export class UserFormDialogComponent {
         username: user.username,
         fullName: user.fullName,
         nickname: user.nickname ?? '',
-        employeeCode: user.employeeCode ?? '',
         email: user.email ?? '',
         phone: sanitizePhoneDigits(user.phone),
-        position: user.position ?? '',
         accountType: user.accountType === 'SUPER_ADMIN' ? 'USER' : user.accountType,
         roleIds: (user.roles ?? []).map((r) => r.id),
       });
@@ -97,11 +93,9 @@ export class UserFormDialogComponent {
     const roleIds = raw.accountType === 'USER' ? raw.roleIds : [];
     const profile = {
       fullName: raw.fullName.trim(),
-      employeeCode: optional(raw.employeeCode),
       email: optional(raw.email),
       nickname: optional(raw.nickname),
       phone: optional(raw.phone) ? sanitizePhoneDigits(raw.phone) : undefined,
-      position: optional(raw.position),
       accountType: raw.accountType,
     };
 

@@ -193,7 +193,7 @@ export class TasksOverviewPageComponent implements OnInit {
 
   projectLabel(task: TaskItem): string {
     if (task.project) {
-      return `${task.project.code || '#' + task.project.id} · ${task.project.name}`;
+      return `#${task.project.id} · ${task.project.name}`;
     }
     return `#${task.projectId}`;
   }

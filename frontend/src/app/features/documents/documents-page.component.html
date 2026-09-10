@@ -38,7 +38,7 @@
           >
             <mat-option [value]="'ALL'">ทั้งหมด</mat-option>
             @for (p of filteredProjects(); track p.id) {
-              <mat-option [value]="p.id">{{ p.code }} · {{ p.name }}</mat-option>
+              <mat-option [value]="p.id">{{ p.name }}</mat-option>
             }
             @if (filteredProjects().length === 0) {
               <mat-option disabled>ไม่พบโครงการ</mat-option>
