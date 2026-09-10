@@ -61,6 +61,14 @@ export const routes: Routes = [
           import('./features/projects/projects-page.component').then((m) => m.ProjectsPageComponent),
       },
       {
+        path: 'projects/board',
+        canActivate: [permissionGuard('projects')],
+        loadComponent: () =>
+          import('./features/projects/tasks-overview-page.component').then(
+            (m) => m.TasksOverviewPageComponent
+          ),
+      },
+      {
         path: 'projects/:id',
         canActivate: [permissionGuard('projects')],
         loadComponent: () =>

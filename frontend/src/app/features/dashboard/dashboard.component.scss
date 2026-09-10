@@ -1,6 +1,8 @@
 .dashboard {
   max-width: none;
   width: 100%;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .page-header {
@@ -9,11 +11,18 @@
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  min-width: 0;
+
+  > div {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
 
   h1 {
     margin: 0.15rem 0;
-    font-size: 1.75rem;
+    font-size: clamp(1.35rem, 2vw + 0.8rem, 1.75rem);
     color: var(--app-ink);
+    overflow-wrap: anywhere;
   }
 }
 
@@ -35,6 +44,8 @@
 .subtitle {
   margin: 0.35rem 0 0;
   color: var(--app-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .loading {
@@ -67,6 +78,7 @@
   background: #fff;
   border: 1px solid rgba(15, 23, 42, 0.08);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-width: 0;
 
   &:hover {
     border-color: rgba(15, 118, 110, 0.35);
@@ -75,18 +87,27 @@
 
   mat-icon {
     color: #0f766e;
+    flex-shrink: 0;
+  }
+
+  > div {
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   strong {
     display: block;
-    font-size: 1.35rem;
+    font-size: clamp(1.05rem, 1.6vw + 0.55rem, 1.35rem);
     line-height: 1.15;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   span {
     display: block;
     font-size: 0.85rem;
     color: var(--app-ink);
+    overflow-wrap: anywhere;
   }
 
   small {
@@ -94,6 +115,8 @@
     margin-top: 0.15rem;
     font-size: 0.75rem;
     color: var(--app-muted);
+    overflow-wrap: anywhere;
+    line-height: 1.35;
   }
 
   &.warn {

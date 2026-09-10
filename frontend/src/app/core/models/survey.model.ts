@@ -52,7 +52,9 @@ export interface SurveyAssignment {
   createdAt: string;
 }
 
-/** SurveyAnswerDto — ตอนส่งคำตอบ */
+/** SurveyAnswerDto — ตอนส่งคำตอบ
+ * RATING → answerNumber | CHOICE/TEXT → answerText | MULTI_CHOICE → answerChoices
+ */
 export interface SurveyAnswerInput {
   questionId: number;
   answerText?: string | null;
@@ -94,6 +96,33 @@ export interface SurveySummary {
   responseRate: number;
   averageScore: number | null;
   questions: QuestionSummary[];
+}
+
+export interface SurveyScoreBucket {
+  responseCount: number;
+  scoredCount: number;
+  averageScore: number | null;
+}
+
+export interface SurveyScoreByCustomer extends SurveyScoreBucket {
+  customerId: number;
+  customerName: string | null;
+  lastSubmittedAt: string | null;
+}
+
+export interface SurveyScoreByMonth extends SurveyScoreBucket {
+  month: string;
+}
+
+/** GET /surveys/:id/score-breakdown */
+export interface SurveyScoreBreakdown {
+  surveyId: number;
+  title: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+  overall: SurveyScoreBucket;
+  byCustomer: SurveyScoreByCustomer[];
+  byMonth: SurveyScoreByMonth[];
 }
 
 export const SURVEY_STATUS_LABELS: Record<SurveyStatus, string> = {

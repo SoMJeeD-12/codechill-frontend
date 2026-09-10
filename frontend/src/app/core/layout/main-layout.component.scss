@@ -1,6 +1,10 @@
 .layout-shell {
   height: 100vh;
   background: var(--app-bg);
+
+  .mat-drawer-content {
+    min-width: 0;
+  }
 }
 
 .layout-sidenav {
@@ -91,6 +95,8 @@ a.mat-mdc-list-item {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .topbar {
@@ -107,6 +113,10 @@ a.mat-mdc-list-item {
   font-size: 0.95rem;
   font-weight: 500;
   margin-left: 0.25rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .spacer {
@@ -142,6 +152,8 @@ a.mat-mdc-list-item {
 .page-area {
   flex: 1;
   padding: 1.25rem 1.5rem 2rem;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 @media (max-width: 768px) {

@@ -7,7 +7,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { MENU_ITEMS } from '../../core/nav/menu-items';
 import { MenuItem } from '../../core/models/permission.model';
-import { OPEN_PROJECT_STATUSES, Project } from '../../core/models/project.model';
+import { OPEN_PROJECT_STATUSES, Project, TaskItem } from '../../core/models/project.model';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -139,6 +139,10 @@ export class DashboardComponent implements OnInit {
         .list({ expiringInDays: 60, limit: 100 })
         .pipe(catchError(() => of([] as MaContract[]))),
       maAll: this.ma.list({ limit: 100 }).pipe(catchError(() => of([] as MaContract[]))),
+      overdueTasks: this.projects.listOverdueTasks({ limit: 100 }).pipe(catchError(() => of([]))),
+      dueSoonTasks: this.projects
+        .listDueSoonTasks({ withinDays: 7, limit: 100 })
+        .pipe(catchError(() => of([]))),
     })
       .pipe(
         switchMap((data) => {
@@ -165,11 +169,15 @@ export class DashboardComponent implements OnInit {
     maAll: MaContract[];
     followUpList: FollowUp[];
     surveys: Survey[];
+    overdueTasks: TaskItem[];
+    dueSoonTasks: TaskItem[];
   }): void {
     const openProjects = data.projects.filter((p) =>
       OPEN_PROJECT_STATUSES.includes(p.status)
     ).length;
     const overdueFollowUps = data.followUpList.filter((f) => this.followUps.isOverdue(f));
+    const overdueTaskCount = data.overdueTasks.length;
+    const dueSoonCount = data.dueSoonTasks.length;
     const activeMa = data.maAll.filter((c) => c.isCurrentlyActive);
     const lowQuota = activeMa.filter((c) => this.ma.remainingQuota(c) <= 2);
     const maExpiring30 = data.maExpiring.filter((c) => c.daysUntilExpiry <= 30);
@@ -187,6 +195,23 @@ export class DashboardComponent implements OnInit {
 
     const totalResponses = data.surveys.reduce((sum, s) => sum + (s.responseCount || 0), 0);
     this.csatAvg.set(totalResponses > 0 ? String(totalResponses) : '—');
+
+    const taskOverdueStat: DashboardStat = {
+      label: 'งานเกินกำหนด',
+      value: String(overdueTaskCount),
+      icon: 'assignment_late',
+      hint: 'เลย due date แล้ว (ไม่รวมครบวันนี้)',
+      route: '/app/projects/board',
+      tone: overdueTaskCount > 0 ? 'urgent' : 'neutral',
+    };
+    const taskDueSoonStat: DashboardStat = {
+      label: 'งานใกล้ครบกำหนด',
+      value: String(dueSoonCount),
+      icon: 'event_upcoming',
+      hint: 'ภายใน 7 วัน (รวมครบวันนี้)',
+      route: '/app/projects/board',
+      tone: dueSoonCount > 0 ? 'warn' : 'neutral',
+    };
 
     if (this.isExecutive()) {
       this.stats.set([
@@ -206,6 +231,8 @@ export class DashboardComponent implements OnInit {
           route: '/app/tickets',
           tone: openCount > 0 ? 'warn' : 'neutral',
         },
+        taskOverdueStat,
+        taskDueSoonStat,
         {
           label: 'อัตรากลับมาซ้ำ',
           value: `${reopenRate}%`,
@@ -265,6 +292,8 @@ export class DashboardComponent implements OnInit {
           route: '/app/tickets',
           tone: openCount > 0 ? 'warn' : 'neutral',
         },
+        taskOverdueStat,
+        taskDueSoonStat,
         {
           label: 'ติดตามเลยกำหนด',
           value: String(overdueFollowUps.length),
@@ -301,6 +330,20 @@ export class DashboardComponent implements OnInit {
         text: `ประกันใกล้หมดอายุ ${data.warranties.length} รายการ`,
         tone: 'warn',
         route: '/app/warranties',
+      });
+    }
+    if (overdueTaskCount > 0) {
+      risks.push({
+        text: `งานโครงการเกินกำหนด ${overdueTaskCount} รายการ`,
+        tone: 'urgent',
+        route: '/app/projects/board',
+      });
+    }
+    if (dueSoonCount > 0) {
+      risks.push({
+        text: `งานใกล้ครบกำหนดภายใน 7 วัน ${dueSoonCount} รายการ`,
+        tone: 'warn',
+        route: '/app/projects/board',
       });
     }
     if (overdueFollowUps.length > 0) {

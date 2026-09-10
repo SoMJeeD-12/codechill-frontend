@@ -11,6 +11,7 @@ import {
   SurveyAnswerInput,
   SurveyAssignment,
   SurveyResponseDetail,
+  SurveyScoreBreakdown,
   SurveyStatus,
   SurveySummary,
 } from '../models/survey.model';
@@ -144,6 +145,18 @@ export class SurveyService {
   getSummary(id: number): Observable<SurveySummary> {
     return this.http
       .get<SurveySummary>(`${this.base}/${id}/summary`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  /** GET /surveys/:id/score-breakdown — ตามลูกค้าและรายเดือน */
+  getScoreBreakdown(
+    id: number,
+    params?: { dateFrom?: string; dateTo?: string }
+  ): Observable<SurveyScoreBreakdown> {
+    return this.http
+      .get<SurveyScoreBreakdown>(`${this.base}/${id}/score-breakdown`, {
+        params: toHttpParams(params ?? {}),
+      })
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 

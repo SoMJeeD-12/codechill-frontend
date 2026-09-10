@@ -14,7 +14,9 @@ import {
   ProjectStatus,
   TaskItem,
   TaskPriority,
+  TaskProjectRef,
   TaskStatus,
+  TaskSummary,
 } from '../models/project.model';
 
 /** CreateProjectDto / UpdateProjectDto */
@@ -68,8 +70,19 @@ export interface TaskListParams {
   search?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  assignedUserId?: number;
+  assignedUserId?: number | null;
   parentTaskId?: number;
+  projectId?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC' | 'asc' | 'desc';
+}
+
+export interface TaskDueListParams {
+  withinDays?: number;
+  projectId?: number;
+  assignedUserId?: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface DeliveryInput {
@@ -85,10 +98,11 @@ export interface DeliveryInput {
 
 /** รูปดิบจาก API — contractValue/estimatedHours เป็น decimal string, subTasks ซ้อนกัน */
 type ApiProject = Omit<Project, 'contractValue'> & { contractValue: string | number | null };
-type ApiTask = Omit<TaskItem, 'estimatedHours' | 'actualHours'> & {
+type ApiTask = Omit<TaskItem, 'estimatedHours' | 'actualHours' | 'project'> & {
   estimatedHours: string | number | null;
   actualHours: string | number | null;
   subTasks?: ApiTask[];
+  project?: TaskProjectRef | null;
 };
 
 function toNumber(value: string | number | null | undefined): number | null {
@@ -250,24 +264,74 @@ export class ProjectService {
   listOverdueTasks(params?: {
     projectId?: number;
     assignedUserId?: number;
+    page?: number;
+    limit?: number;
   }): Observable<TaskItem[]> {
     return this.http
       .get<ApiTask[] | { items: ApiTask[] }>(`${this.tasksBase}/overdue`, {
-        params: toHttpParams({ ...params }),
+        params: toHttpParams({ limit: 100, ...params }),
       })
       .pipe(
         map((body) => asList(body).map((t) => this.normalizeTask(t, t.projectId))),
-        tap((rows) => {
-          this.tasksSignal.update((all) => {
-            const byId = new Map(all.map((t) => [t.id, t]));
-            for (const row of rows) {
-              byId.set(row.id, row);
-            }
-            return Array.from(byId.values());
-          });
-        }),
+        tap((rows) => this.mergeTasks(rows)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /** GET /tasks/due-soon — งานใกล้ครบกำหนด (รวมครบวันนี้ ไม่รวมเกินกำหนด) */
+  listDueSoonTasks(params: TaskDueListParams = {}): Observable<TaskItem[]> {
+    return this.http
+      .get<ApiTask[] | { items: ApiTask[] }>(`${this.tasksBase}/due-soon`, {
+        params: toHttpParams({ withinDays: 7, limit: 100, ...params }),
+      })
+      .pipe(
+        map((body) => asList(body).map((t) => this.normalizeTask(t, t.projectId))),
+        tap((rows) => this.mergeTasks(rows)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /tasks/summary — ตัวเลขภาพรวมงานทั้งบริษัท / ต่อโครงการ */
+  getTaskSummary(projectId?: number): Observable<TaskSummary> {
+    return this.http
+      .get<TaskSummary>(`${this.tasksBase}/summary`, {
+        params: toHttpParams({ projectId }),
+      })
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  /** GET /tasks — รายการงานแบบแบนทั้งบริษัท (มี project ย่อ) */
+  listAllTasks(params: TaskListParams = {}): Observable<TaskItem[]> {
+    const query = { ...params } as TaskListParams & { assignedUserId?: number | string | null };
+    if (params.assignedUserId === null) {
+      // backend อาจรับ null ต่างกัน — ส่งเป็น empty ไม่ได้ ให้ FE กรองหลังโหลดถ้าจำเป็น
+      delete query.assignedUserId;
+    }
+    return this.http
+      .get<ApiTask[] | { items: ApiTask[] }>(this.tasksBase, {
+        params: toHttpParams({ limit: 100, ...query }),
+      })
+      .pipe(
+        map((body) => {
+          let rows = asList(body).map((t) => this.normalizeTask(t, t.projectId));
+          if (params.assignedUserId === null) {
+            rows = rows.filter((t) => t.assignedUserId == null);
+          }
+          return rows;
+        }),
+        tap((rows) => this.mergeTasks(rows)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  private mergeTasks(rows: TaskItem[]): void {
+    this.tasksSignal.update((all) => {
+      const byId = new Map(all.map((t) => [t.id, t]));
+      for (const row of rows) {
+        byId.set(row.id, row);
+      }
+      return Array.from(byId.values());
+    });
   }
 
   /* ——— Deliveries ——— */
@@ -373,6 +437,7 @@ export class ProjectService {
       actualHours: toNumber(row.actualHours),
       sortOrder: row.sortOrder ?? 0,
       isOverdue: row.isOverdue ?? false,
+      project: row.project ?? null,
     };
   }
 

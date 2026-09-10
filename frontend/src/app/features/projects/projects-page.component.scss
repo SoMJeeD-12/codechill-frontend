@@ -1,5 +1,14 @@
 .page { max-width: none; width: 100%; }
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
 a {
   color: #0f766e;
   text-decoration: none;

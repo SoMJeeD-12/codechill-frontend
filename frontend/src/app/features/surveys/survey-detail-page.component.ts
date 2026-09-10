@@ -26,6 +26,7 @@ import {
   SurveyAssignment,
   SurveyQuestion,
   SurveyResponseDetail,
+  SurveyScoreBreakdown,
   SurveySummary,
 } from '../../core/models/survey.model';
 import { Contact, Customer } from '../../core/models/customer.model';
@@ -69,6 +70,8 @@ export class SurveyDetailPageComponent implements OnInit {
   readonly responses = signal<SurveyResponseDetail[]>([]);
   readonly assignments = signal<SurveyAssignment[]>([]);
   readonly summary = signal<SurveySummary | null>(null);
+  readonly breakdown = signal<SurveyScoreBreakdown | null>(null);
+  readonly breakdownLoading = signal(false);
   readonly notFound = signal(false);
   readonly statusLabels = SURVEY_STATUS_LABELS;
   readonly typeLabels = QUESTION_TYPE_LABELS;
@@ -90,6 +93,11 @@ export class SurveyDetailPageComponent implements OnInit {
   readonly answerForm = this.fb.group({
     assignmentId: [0, Validators.min(1)],
     comment: [''],
+  });
+
+  readonly breakdownRange = this.fb.nonNullable.group({
+    dateFrom: [defaultBreakdownFrom()],
+    dateTo: [defaultBreakdownTo()],
   });
 
   /** answer controls keyed by question id */
@@ -163,10 +171,45 @@ export class SurveyDetailPageComponent implements OnInit {
           this.responses.set(responses);
           const firstSent = assignments.find((a) => a.status === 'SENT');
           this.answerForm.patchValue({ assignmentId: firstSent?.id ?? 0, comment: '' });
+          this.loadBreakdown(surveyId);
         });
       },
       error: () => this.notFound.set(true),
     });
+  }
+
+  loadBreakdown(surveyId?: number): void {
+    const id = surveyId ?? this.survey()?.id;
+    if (!id) {
+      return;
+    }
+    const { dateFrom, dateTo } = this.breakdownRange.getRawValue();
+    this.breakdownLoading.set(true);
+    this.api.getScoreBreakdown(id, { dateFrom, dateTo }).subscribe({
+      next: (row) => {
+        this.breakdown.set(row);
+        this.breakdownLoading.set(false);
+      },
+      error: (err: Error) => {
+        this.breakdown.set(null);
+        this.breakdownLoading.set(false);
+        this.snack.open(err.message, 'ปิด', { duration: 3500 });
+      },
+    });
+  }
+
+  monthBarPercent(score: number | null): number {
+    if (score == null) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, Math.round((score / 5) * 100)));
+  }
+
+  scoreWithCount(avg: number | null, scoredCount: number): string {
+    if (avg == null) {
+      return '—';
+    }
+    return `${Number(avg).toFixed(2)} (จาก ${scoredCount} คำตอบ)`;
   }
 
   onCustomerChange(customerId: number): void {
@@ -319,7 +362,7 @@ export class SurveyDetailPageComponent implements OnInit {
       if (q.questionType === 'CHOICE') {
         return {
           questionId: q.id,
-          answerChoices: raw ? [String(raw)] : [],
+          answerText: raw ? String(raw) : '',
         };
       }
       if (q.questionType === 'MULTI_CHOICE') {
@@ -328,6 +371,7 @@ export class SurveyDetailPageComponent implements OnInit {
           answerChoices: Array.isArray(raw) ? raw : [],
         };
       }
+      // TEXT
       return {
         questionId: q.id,
         answerText: String(raw ?? ''),
@@ -361,4 +405,16 @@ export class SurveyDetailPageComponent implements OnInit {
     }
     return value == null || String(value).trim() === '';
   }
+}
+
+function defaultBreakdownTo(): string {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+function defaultBreakdownFrom(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 5);
+  d.setDate(1);
+  return d.toISOString().slice(0, 10);
 }

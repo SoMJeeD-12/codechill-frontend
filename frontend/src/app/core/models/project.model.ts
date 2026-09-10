@@ -70,6 +70,36 @@ export interface TaskItem {
   actualHours: number | null;
   sortOrder: number;
   isOverdue: boolean;
+  /** มีตอน GET /tasks ทั้งบริษัท */
+  project?: TaskProjectRef | null;
+}
+
+/** โครงการย่อที่พ่วงในรายการงานทั้งบริษัท */
+export interface TaskProjectRef {
+  id: number;
+  code: string | null;
+  name: string;
+  status: ProjectStatus;
+}
+
+export type TaskStatusCounts = Record<TaskStatus, number>;
+
+export interface TaskAssigneeSummary {
+  assignedUserId: number | null;
+  fullName: string | null;
+  openTasks: number;
+  overdueTasks: number;
+  byStatus: Partial<Record<TaskStatus, number>>;
+}
+
+/** GET /tasks/summary */
+export interface TaskSummary {
+  totalTasks: number;
+  openTasks: number;
+  overdueTasks: number;
+  byStatus: TaskStatusCounts;
+  overdueByStatus: Partial<Record<Exclude<TaskStatus, 'DONE'>, number>>;
+  byAssignee: TaskAssigneeSummary[];
 }
 
 /** DeliveryResponseDto */

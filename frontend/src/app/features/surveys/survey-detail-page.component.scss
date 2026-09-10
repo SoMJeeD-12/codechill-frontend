@@ -78,6 +78,60 @@
   }
 }
 
+.breakdown-card {
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  h3 {
+    margin: 0 0 0.65rem;
+    font-size: 0.95rem;
+  }
+}
+
+.breakdown-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.breakdown-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.overall {
+  margin: 0 0 0.85rem;
+  color: #1c2b28;
+  font-weight: 600;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  .bar-row {
+    grid-template-columns: 4.5rem 1fr minmax(5rem, auto);
+  }
+}
+
+@media (max-width: 900px) {
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .q-label {
   overflow: hidden;
   text-overflow: ellipsis;
