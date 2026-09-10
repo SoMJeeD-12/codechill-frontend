@@ -26,6 +26,19 @@
             ({{ t.extraCharge | baht }})
           }
         </p>
+        @if (t.billingType === 'MA_QUOTA') {
+          @if (t.maContractId) {
+            <p class="ma-link">
+              ผูกสัญญา MA
+              <a [routerLink]="['/app/ma', t.maContractId]">#{{ t.maContractId }}</a>
+            </p>
+          } @else {
+            <p class="warn-banner">
+              ใบนี้ตั้งเป็น「ใช้โควตา MA」แต่ยังไม่ผูกสัญญา
+              — ตรวจว่ามีสัญญาสถานะ「ใช้งาน」ของลูกค้า/โครงการนี้ หรือเปลี่ยนสถานะสัญญาจากแบบร่างก่อน
+            </p>
+          }
+        }
         <p class="description">{{ t.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
       </div>
       <div class="actions">

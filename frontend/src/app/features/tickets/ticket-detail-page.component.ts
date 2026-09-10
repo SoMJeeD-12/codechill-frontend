@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import {
@@ -42,6 +42,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
   imports: [
     ThaiDatePipe,
     BahtPipe,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

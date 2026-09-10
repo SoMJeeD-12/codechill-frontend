@@ -88,6 +88,16 @@ export class MaDetailPageComponent implements OnInit {
       this.auth.hasPermissionCode('ma.renew') || this.auth.hasPermissionCode('ma.update')
   );
 
+  readonly planQuota = computed(
+    () => this.contract()?.plan?.bugQuotaPerMonth ?? 0
+  );
+
+  readonly addonQuota = computed(() =>
+    this.addons()
+      .filter((a) => a.addonType === 'EXTRA_QUOTA')
+      .reduce((sum, a) => sum + (Number(a.extraQuota) || 0), 0)
+  );
+
   statusLabel(status: MaContract['status']): string {
     return this.statusLabels[status];
   }
@@ -116,13 +126,10 @@ export class MaDetailPageComponent implements OnInit {
       next: (row) => {
         this.notFound.set(false);
         this.contract.set(row);
-        this.quota.set(row.quota ?? null);
-        if (!row.quota) {
-          this.api.getQuota(contractId).subscribe({
-            next: (q) => this.quota.set(q),
-            error: () => undefined,
-          });
-        }
+        this.api.getQuota(contractId).subscribe({
+          next: (q) => this.quota.set(q),
+          error: () => this.quota.set(row.quota ?? null),
+        });
         this.api.listAddons(contractId).subscribe({
           next: (addons) => this.addons.set(addons),
           error: () => this.addons.set(row.addons ?? []),

@@ -75,15 +75,35 @@
             รอบ {{ q.periodStart | thaiDate: 'date' }} – {{ q.periodEnd | thaiDate: 'date' }}
           </p>
           <p class="quota-big" [class.low]="q.remaining <= 2 && c.isCurrentlyActive">
-            ใช้แล้ว {{ q.used }} / {{ q.quota }}
+            ใช้แล้ว {{ q.used }} จากทั้งหมด {{ q.quota }}
             <span>เหลือ {{ q.remaining }} เคส{{ q.isExhausted ? ' (หมดแล้ว)' : '' }}</span>
           </p>
+          <ul class="quota-breakdown">
+            <li>จากแผน {{ planQuota() }} เคส/รอบ</li>
+            <li>
+              จาก Add-on +{{ addonQuota() }}
+              @if (addonQuota() > 0) {
+                <span class="muted">(เพิ่มสิทธิ์ใช้ ไม่ใช่จำนวนที่ใช้ไป)</span>
+              }
+            </li>
+          </ul>
         } @else {
           <p class="hint">กำลังโหลดโควตา…</p>
         }
         <p class="hint">
-          โควตานับจากวันเริ่มสัญญา ไม่ยกยอดไปรอบหน้า · หักครั้งเดียวต่อใบเมื่อปิดแบบใช้โควตา MA
+          ตัวเลข “ใช้แล้ว” เพิ่มเมื่อปิดใบปัญหาแบบใช้โควตา MA เท่านั้น ·
+          บันทึก Add-on จะเพิ่มโควตาทั้งหมด (ตัวหลัง) ไม่เพิ่มจำนวนที่ใช้
         </p>
+        @if (c.status === 'DRAFT') {
+          <p class="warn-banner">
+            สัญญานี้ยังเป็น「แบบร่าง」— ระบบจะไม่หักโควตาจากใบปัญหา
+            จนกว่าจะเปลี่ยนสถานะเป็น「ใช้งาน」
+          </p>
+        } @else if (!c.isCurrentlyActive) {
+          <p class="warn-banner">
+            สัญญานี้ยังไม่ถือว่าใช้งานอยู่ตอนนี้ — การหักโควตาอาจไม่เกิดขึ้น
+          </p>
+        }
         @if (c.note) {
           <p class="note">{{ c.note }}</p>
         }
