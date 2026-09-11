@@ -1,50 +1,156 @@
-<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขโครงการ' : 'สร้างโครงการ' }}</h2>
+<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขโปรเจค' : 'สร้างโปรเจค' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อโครงการ</mat-label>
-      <input matInput formControlName="name" />
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ประเภทโครงการ</mat-label>
-      <input matInput formControlName="projectType" />
-    </mat-form-field>
-    <div class="customer-picker">
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>ลูกค้า</mat-label>
-        <input
-          matInput
-          [formControl]="customerSearchControl"
-          [matAutocomplete]="customerAuto"
-          [readonly]="customerLocked"
-          placeholder="ค้นหาชื่อ เบอร์ หรือเลขผู้เสียภาษี"
-        />
-        <mat-autocomplete
-          #customerAuto="matAutocomplete"
-          [displayWith]="displayCustomer"
-          (optionSelected)="onCustomerSelected($event)"
-        >
-          @for (c of customers(); track c.id) {
-            <mat-option [value]="c">{{ c.name }}</mat-option>
-          }
-        </mat-autocomplete>
-        @if (form.controls.customerId.invalid && form.controls.customerId.touched) {
-          <mat-error>เลือกลูกค้า</mat-error>
-        }
-      </mat-form-field>
-      @if (!isEdit && !customerLocked) {
-        <button mat-stroked-button type="button" class="add-customer-btn" (click)="openCreateCustomer()">
-          เพิ่มลูกค้าใหม่
-        </button>
-      }
-    </div>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>มูลค่าสัญญา</mat-label>
-      <input matInput appMoneyInput formControlName="contractValue" inputmode="decimal" />
-    </mat-form-field>
     <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>วันเริ่มโครงการ</mat-label>
+        <mat-label>ชื่อโปรเจค</mat-label>
+        <input matInput formControlName="name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>รหัสโปรเจค</mat-label>
+        <input matInput formControlName="code" placeholder="ไม่บังคับ" />
+      </mat-form-field>
+    </div>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>ประเภทโปรเจค</mat-label>
+        <input matInput formControlName="projectType" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>มูลค่าสัญญา</mat-label>
+        <input matInput appMoneyInput formControlName="contractValue" inputmode="decimal" />
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ลูกค้า</mat-label>
+      <input
+        matInput
+        [formControl]="customerSearchControl"
+        [matAutocomplete]="customerAuto"
+        [readonly]="isEdit || customerLocked"
+        [placeholder]="
+          canViewCustomer() ? 'พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา' : 'ไม่มีสิทธิ์ค้นหาลูกค้า'
+        "
+      />
+      <mat-autocomplete
+        #customerAuto="matAutocomplete"
+        [displayWith]="displayCustomer"
+        (optionSelected)="onCustomerSelected($event)"
+      >
+        @if (!isEdit && !customerLocked && canViewCustomer() && customerQueryReady()) {
+          @for (c of customerSuggestions(); track c.id) {
+            <mat-option [value]="c">{{ c.name }}</mat-option>
+          }
+          @if (canCreateCustomer()) {
+            <mat-option [value]="newCustomerToken">+ ลูกค้าใหม่</mat-option>
+          }
+        }
+      </mat-autocomplete>
+      @if (!isEdit && customerMode() === 'none') {
+        <mat-hint>เลือกลูกค้าที่มีอยู่ หรือสร้างลูกค้าใหม่ในฟอร์มนี้</mat-hint>
+      }
+      @if (customerMode() === 'new') {
+        <mat-hint>โหมดลูกค้าใหม่ — จะสร้างพร้อมโปรเจค</mat-hint>
+      }
+    </mat-form-field>
+
+    @if (!isEdit && (customerMode() === 'existing' || customerMode() === 'new')) {
+      <fieldset class="section" formGroupName="customer">
+        <legend>{{ customerMode() === 'new' ? 'ข้อมูลลูกค้าใหม่' : 'ข้อมูลลูกค้า' }}</legend>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>ชื่อลูกค้า</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>เลขผู้เสียภาษี</mat-label>
+            <input matInput formControlName="taxId" />
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ที่อยู่</mat-label>
+          <textarea matInput rows="2" formControlName="address"></textarea>
+        </mat-form-field>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>โทรศัพท์</mat-label>
+            <input
+              matInput
+              appPhoneInput
+              formControlName="phone"
+              type="tel"
+              inputmode="numeric"
+              maxlength="10"
+            />
+            @if (form.controls.customer.controls.phone.hasError('thaiPhone')) {
+              <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>อีเมล</mat-label>
+            <input matInput formControlName="email" />
+          </mat-form-field>
+        </div>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>LINE Official</mat-label>
+            <input matInput formControlName="lineOfficialId" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Facebook</mat-label>
+            <input matInput formControlName="facebookUrl" placeholder="URL" />
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+      </fieldset>
+
+      <fieldset class="section" formGroupName="contact">
+        <legend>ผู้ติดต่อหลัก (ไม่บังคับ)</legend>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>ชื่อผู้ติดต่อ</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>ตำแหน่ง</mat-label>
+            <input matInput formControlName="position" />
+          </mat-form-field>
+        </div>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>เบอร์ผู้ติดต่อ</mat-label>
+            <input
+              matInput
+              appPhoneInput
+              formControlName="phone"
+              type="tel"
+              inputmode="numeric"
+              maxlength="10"
+            />
+            @if (form.controls.contact.controls.phone.hasError('thaiPhone')) {
+              <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>อีเมลผู้ติดต่อ</mat-label>
+            <input matInput formControlName="email" />
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>LINE ID</mat-label>
+          <input matInput formControlName="lineId" />
+        </mat-form-field>
+      </fieldset>
+    }
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>วันเริ่มโปรเจค</mat-label>
         <input
           matInput
           [matDatepicker]="startPicker"
@@ -68,6 +174,7 @@
         <mat-datepicker #duePicker></mat-datepicker>
       </mat-form-field>
     </div>
+
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>สถานะ</mat-label>
@@ -88,8 +195,9 @@
         </mat-select>
       </mat-form-field>
     </div>
+
     <mat-form-field appearance="outline" class="full">
-      <mat-label>ผู้จัดการโครงการ</mat-label>
+      <mat-label>ผู้จัดการโปรเจค</mat-label>
       <mat-select formControlName="managerUserId">
         <mat-option [value]="null">—</mat-option>
         @for (u of users(); track u.id) {
@@ -97,10 +205,12 @@
         }
       </mat-select>
     </mat-form-field>
+
     <mat-form-field appearance="outline" class="full">
       <mat-label>รายละเอียด</mat-label>
       <textarea matInput rows="3" formControlName="description"></textarea>
     </mat-form-field>
+
     <details class="more" [open]="showMore()">
       <summary (click)="toggleMore($event)">ข้อมูลเพิ่มเติม</summary>
       <div class="more-body">
@@ -117,5 +227,7 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
   <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">บันทึก</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+    บันทึก
+  </button>
 </mat-dialog-actions>

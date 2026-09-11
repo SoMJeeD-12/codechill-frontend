@@ -85,6 +85,7 @@ const BILLING_TYPE_ORDER: BillingType[] = [
 export class TicketsPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
+  private readonly projectsApi = inject(ProjectService);
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
@@ -122,16 +123,16 @@ export class TicketsPageComponent implements OnInit {
     const q = this.search().trim().toLowerCase();
     if (q) {
       list = list.filter((t) => {
-        const customer = this.customerName(t.customerId).toLowerCase();
+        const customer = this.customersApi.getCustomer(t.customerId);
+        const project = t.projectId != null ? this.projectsApi.getProject(t.projectId) : null;
         return (
           String(t.id).includes(q) ||
           (t.ticketNo ?? '').toLowerCase().includes(q) ||
           t.title.toLowerCase().includes(q) ||
-          (t.description ?? '').toLowerCase().includes(q) ||
-          customer.includes(q) ||
-          this.statusLabels[t.status].toLowerCase().includes(q) ||
-          this.priorityLabels[t.priority].toLowerCase().includes(q) ||
-          BILLING_TYPE_LABELS[t.billingType].toLowerCase().includes(q)
+          (customer?.name ?? '').toLowerCase().includes(q) ||
+          (customer?.code ?? '').toLowerCase().includes(q) ||
+          (project?.name ?? '').toLowerCase().includes(q) ||
+          (project?.code ?? '').toLowerCase().includes(q)
         );
       });
     }
@@ -155,6 +156,7 @@ export class TicketsPageComponent implements OnInit {
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
+    this.projectsApi.listProjects().subscribe({ error: () => undefined });
     this.reload();
   }
 
@@ -304,17 +306,17 @@ export class TicketFormDialogComponent {
     const hasM = this.hasActiveMa();
 
     if (!projectId) {
-      return 'เลือกโครงการก่อนจึงจะเลือก「ในประกัน」หรือ「ใช้โควตา MA / Add-on」ได้';
+      return 'เลือกโปรเจคก่อนจึงจะเลือก「ในประกัน」หรือ「ใช้โควตา MA / Add-on」ได้';
     }
     if (current === 'WARRANTY' && !hasW) {
-      return 'ค่าปัจจุบันเป็น「ในประกัน」แต่ไม่มีประกันใช้งานของโครงการนี้แล้ว — ควรเปลี่ยนประเภท';
+      return 'ค่าปัจจุบันเป็น「ในประกัน」แต่ไม่มีประกันใช้งานของโปรเจคนี้แล้ว — ควรเปลี่ยนประเภท';
     }
     if ((current === 'MA_QUOTA' || current === 'ADDON') && !hasM) {
       return 'ค่าปัจจุบันอิงสัญญา MA แต่ไม่มีสัญญาสถานะใช้งานแล้ว (ต้องไม่ใช่แบบร่าง) — ควรเปลี่ยนประเภท';
     }
     const parts: string[] = [];
     if (!hasW) {
-      parts.push('ไม่มีประกันใช้งานของโครงการนี้');
+      parts.push('ไม่มีประกันใช้งานของโปรเจคนี้');
     }
     if (!hasM) {
       parts.push('ไม่มีสัญญา MA สถานะใช้งาน (ต้องไม่ใช่แบบร่าง)');

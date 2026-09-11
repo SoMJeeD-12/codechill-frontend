@@ -52,7 +52,8 @@ export class UserFormDialogComponent {
     email: ['', Validators.email],
     phone: ['', thaiPhoneValidator],
     accountType: ['USER' as AccountType, Validators.required],
-    roleIds: [[] as number[]],
+    /** Single role in UI; mapped to roleIds[] for API (0 or 1 id). */
+    roleId: [null as number | null],
   });
 
   constructor() {
@@ -65,7 +66,8 @@ export class UserFormDialogComponent {
         email: user.email ?? '',
         phone: sanitizePhoneDigits(user.phone),
         accountType: user.accountType === 'SUPER_ADMIN' ? 'USER' : user.accountType,
-        roleIds: (user.roles ?? []).map((r) => r.id),
+        // Legacy users may still have multiple roles — show the first only.
+        roleId: (user.roles ?? [])[0]?.id ?? null,
       });
       if (this.isSuper) {
         this.form.disable();
@@ -90,7 +92,8 @@ export class UserFormDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
-    const roleIds = raw.accountType === 'USER' ? raw.roleIds : [];
+    const roleIds =
+      raw.accountType === 'USER' && raw.roleId != null ? [raw.roleId] : [];
     const profile = {
       fullName: raw.fullName.trim(),
       email: optional(raw.email),

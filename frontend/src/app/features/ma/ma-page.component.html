@@ -21,7 +21,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="เลขที่สัญญา / แผน / ลูกค้า / โครงการ"
+            placeholder="เลขที่สัญญา / แผน / ลูกค้า / โปรเจค"
             aria-label="ค้นหาสัญญา MA"
           />
         </label>
@@ -49,7 +49,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="project">
-          <th mat-header-cell *matHeaderCellDef>โครงการ / ลูกค้า</th>
+          <th mat-header-cell *matHeaderCellDef>โปรเจค / ลูกค้า</th>
           <td mat-cell *matCellDef="let row">
             <a class="project-link" [routerLink]="['/app/ma', row.id]">{{ projectName(row) }}</a>
             <div class="customer-sub">{{ customerName(row) }}</div>

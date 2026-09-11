@@ -421,7 +421,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:to
   </div>
 </div>
 
-<p>โครงการ: ${escapeHtml(project.name)}<br>
+<p>โปรเจค: ${escapeHtml(project.name)}<br>
 แผน: ${escapeHtml(plan.code ? `${plan.code} · ${plan.name}` : plan.name)} · โควตา ${plan.bugQuotaPerMonth} เคส/เดือน<br>
 ค่าบริการ: ${formatMoneyDisplay(contract.price)} บาท (${escapeHtml(this.billingLabels[contract.billingCycle])})</p>
 

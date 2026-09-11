@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -51,8 +51,10 @@ export class TasksOverviewPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
 
-  readonly view = signal<BoardView>('summary');
+  readonly view = signal<BoardView>('board');
+  readonly filterProjectId = signal<number | null>(null);
   readonly loading = signal(true);
   readonly summary = signal<TaskSummary | null>(null);
   readonly overdue = signal<TaskItem[]>([]);
@@ -115,16 +117,24 @@ export class TasksOverviewPageComponent implements OnInit {
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.usersApi.loadForPicker().subscribe({ error: () => undefined });
+    const qProject = Number(this.route.snapshot.queryParamMap.get('projectId'));
+    if (Number.isFinite(qProject) && qProject > 0) {
+      this.filterProjectId.set(qProject);
+      this.view.set('board');
+    }
     this.reload();
   }
 
   reload(): void {
     this.loading.set(true);
+    const projectId = this.filterProjectId() ?? undefined;
     forkJoin({
-      summary: this.projectsApi.getTaskSummary().pipe(catchError(() => of(null))),
-      overdue: this.projectsApi.listOverdueTasks({ limit: 100 }).pipe(catchError(() => of([]))),
+      summary: this.projectsApi.getTaskSummary(projectId).pipe(catchError(() => of(null))),
+      overdue: this.projectsApi
+        .listOverdueTasks({ limit: 100, projectId })
+        .pipe(catchError(() => of([]))),
       dueSoon: this.projectsApi
-        .listDueSoonTasks({ withinDays: this.withinDays(), limit: 100 })
+        .listDueSoonTasks({ withinDays: this.withinDays(), limit: 100, projectId })
         .pipe(catchError(() => of([]))),
     }).subscribe({
       next: ({ summary, overdue, dueSoon }) => {
@@ -166,6 +176,7 @@ export class TasksOverviewPageComponent implements OnInit {
     this.projectsApi
       .listAllTasks({
         limit: 100,
+        projectId: this.filterProjectId() ?? undefined,
         status: status === 'ALL' ? undefined : status,
         assignedUserId: typeof assignee === 'number' ? assignee : undefined,
         search: q || undefined,

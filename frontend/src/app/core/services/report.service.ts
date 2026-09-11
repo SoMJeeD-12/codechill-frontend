@@ -178,10 +178,10 @@ export class ReportService {
     const contractValue: ReportRow[] = byType
       ? [
           {
-            label: 'มูลค่าตามสัญญาจากโครงการ',
+            label: 'มูลค่าตามสัญญาจากโปรเจค',
             value: Number(byType.projectContractValue) || 0,
             display: this.thb(byType.projectContractValue),
-            note: `${byType.projectCount} โครงการ`,
+            note: `${byType.projectCount} โปรเจค`,
           },
           {
             label: 'มูลค่าตามสัญญา MA',
@@ -218,7 +218,7 @@ export class ReportService {
           icon: 'business',
         },
         {
-          label: 'โครงการเปิดอยู่',
+          label: 'โปรเจคเปิดอยู่',
           value: String(openProjects.length),
           hint: `จากทั้งหมด ${projectList.length}`,
           icon: 'folder_special',

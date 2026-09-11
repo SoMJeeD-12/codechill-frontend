@@ -277,10 +277,10 @@ export class DashboardComponent implements OnInit {
           tone: 'neutral',
         },
         {
-          label: 'โครงการเปิดอยู่',
+          label: 'โปรเจคเปิดอยู่',
           value: String(openProjects),
           icon: 'folder_special',
-          hint: `จาก ${data.projects.length} โครงการ`,
+          hint: `จาก ${data.projects.length} โปรเจค`,
           route: '/app/projects',
           tone: 'neutral',
         },
@@ -334,7 +334,7 @@ export class DashboardComponent implements OnInit {
     }
     if (overdueTaskCount > 0) {
       risks.push({
-        text: `งานโครงการเกินกำหนด ${overdueTaskCount} รายการ`,
+        text: `งานโปรเจคเกินกำหนด ${overdueTaskCount} รายการ`,
         tone: 'urgent',
         route: '/app/projects/board',
       });

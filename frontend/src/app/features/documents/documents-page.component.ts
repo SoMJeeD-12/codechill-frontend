@@ -423,7 +423,7 @@ export class DocumentUploadDialogComponent {
     const raw = this.form.getRawValue();
     const project = this.projectsApi.getProject(Number(raw.projectId));
     if (!project) {
-      this.error.set('ไม่พบโครงการ');
+      this.error.set('ไม่พบโปรเจค');
       return;
     }
     this.saving.set(true);

@@ -59,7 +59,7 @@ export function buildMockNotifications(userId: number): AppNotification[] {
       id: 1,
       userId,
       title: 'ประกันใกล้หมดอายุ',
-      body: 'โครงการคลังสินค้า — ประกันเหลือประมาณ 25 วัน',
+      body: 'โปรเจคคลังสินค้า — ประกันเหลือประมาณ 25 วัน',
       trigger: 'WARRANTY_EXPIRY',
       link: '/app/warranties',
       createdAt: new Date(now - 2 * 3600_000).toISOString(),

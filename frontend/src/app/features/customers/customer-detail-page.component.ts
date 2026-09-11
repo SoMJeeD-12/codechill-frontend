@@ -99,6 +99,9 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
 
+  /** จากเมนูมุมมอง 360° — โหมดข้อมูลลูกค้าธรรมดาจะเน้นภาษี/ผู้ติดต่อ/โซเชียล */
+  readonly is360Mode = this.route.snapshot.data['mode'] === '360';
+
   readonly customer = signal<Customer | null>(null);
   readonly overview = signal<CustomerOverview | null>(null);
   readonly contacts = signal<Contact[]>([]);

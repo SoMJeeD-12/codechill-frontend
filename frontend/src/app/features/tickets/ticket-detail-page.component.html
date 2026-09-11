@@ -17,7 +17,9 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">ใบแจ้งปัญหา #{{ t.id }} · {{ ticketStatusLabel(t.status) }}</p>
+        <p class="eyebrow">
+          {{ t.ticketNo || 'ใบ #' + t.id }} · {{ ticketStatusLabel(t.status) }}
+        </p>
         <h1>{{ t.title }}</h1>
         <p class="subtitle">
           {{ customerName() }} · {{ projectName() }} ·
@@ -39,7 +41,7 @@
           } @else {
             <p class="warn-banner">
               ใบนี้ตั้งเป็น「ใช้โควตา MA」แต่ยังไม่ผูกสัญญา
-              — ตรวจว่ามีสัญญาสถานะ「ใช้งาน」ของลูกค้า/โครงการนี้ หรือเปลี่ยนสถานะสัญญาจากแบบร่างก่อน
+              — ตรวจว่ามีสัญญาสถานะ「ใช้งาน」ของลูกค้า/โปรเจคนี้ หรือเปลี่ยนสถานะสัญญาจากแบบร่างก่อน
             </p>
           }
         }
@@ -142,16 +144,7 @@
     <div class="data-card">
       <div class="data-card__head">
         <div class="data-card__row tab-toolbar">
-          <h3 class="tab-heading">ประวัติการแก้ไข</h3>
-          <label class="ui-search">
-            <mat-icon>search</mat-icon>
-            <input
-              type="search"
-              [formControl]="resolutionSearchControl"
-              placeholder="ค้นหาสาเหตุ / วิธีแก้ / ผลลัพธ์ / ผู้แก้"
-              aria-label="ค้นหาประวัติการแก้ไข"
-            />
-          </label>
+          <h3 class="tab-heading">รายการรอบการแก้ไข</h3>
           @if (canResolve() && t.status !== 'CLOSED' && t.status !== 'RESOLVED') {
             <button
               mat-flat-button
@@ -167,61 +160,33 @@
         </div>
       </div>
       <div class="data-card__body">
-        <table mat-table [dataSource]="resolutionsPager.paged()" class="data-table">
-          <ng-container matColumnDef="round">
-            <th mat-header-cell *matHeaderCellDef>รอบ</th>
-            <td mat-cell *matCellDef="let row">{{ row.round }}</td>
-          </ng-container>
-          <ng-container matColumnDef="rootCause">
-            <th mat-header-cell *matHeaderCellDef>สาเหตุ</th>
-            <td mat-cell *matCellDef="let row">{{ shortText(row.rootCause) }}</td>
-          </ng-container>
-          <ng-container matColumnDef="detail">
-            <th mat-header-cell *matHeaderCellDef>วิธีแก้ไข</th>
-            <td mat-cell *matCellDef="let row">{{ shortText(row.detail) }}</td>
-          </ng-container>
-          <ng-container matColumnDef="result">
-            <th mat-header-cell *matHeaderCellDef>ผลลัพธ์</th>
-            <td mat-cell *matCellDef="let row">{{ resultLabel(row.result) }}</td>
-          </ng-container>
-          <ng-container matColumnDef="hoursSpent">
-            <th mat-header-cell *matHeaderCellDef>เวลา (ชม.)</th>
-            <td mat-cell *matCellDef="let row">{{ row.hoursSpent ?? 0 }}</td>
-          </ng-container>
-          <ng-container matColumnDef="resolver">
-            <th mat-header-cell *matHeaderCellDef>ผู้แก้ไข</th>
-            <td mat-cell *matCellDef="let row">{{ userName(row.resolvedByUserId) }}</td>
-          </ng-container>
-          <ng-container matColumnDef="resolvedAt">
-            <th mat-header-cell *matHeaderCellDef>วันเวลา</th>
-            <td mat-cell *matCellDef="let row">{{ row.resolvedAt | thaiDate }}</td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let row" class="row-actions">
-              <button mat-button type="button" color="primary" (click)="openResolutionDetail(row)">
-                รายละเอียด
-              </button>
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="resolutionColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: resolutionColumns"></tr>
-        </table>
-        <app-table-paginator
-          [length]="resolutionsPager.length()"
-          [pageIndex]="resolutionsPager.pageIndex()"
-          [pageSize]="resolutionsPager.pageSize()"
-          [pageSizeOptions]="resolutionsPager.pageSizeOptions"
-          (page)="resolutionsPager.onPage($event)"
-        />
-        @if (filteredResolutions().length === 0) {
-          <p class="data-empty">
-            {{
-              resolutionSearch().trim()
-                ? 'ไม่พบรอบแก้ไขตามคำค้นหา'
-                : 'ยังไม่มีการบันทึกรอบแก้ไข'
-            }}
-          </p>
+        @if (!filteredResolutions().length) {
+          <p class="data-empty">ยังไม่มีรอบการแก้ไข</p>
+        } @else {
+          <ul class="round-list">
+            @for (row of filteredResolutions(); track row.id) {
+              <li>
+                <button type="button" class="round-row" (click)="openResolutionDetail(row)">
+                  <div class="round-row__main">
+                    <strong>รอบที่ {{ row.round }}</strong>
+                    <span class="meta">
+                      {{ resultLabel(row.result) }}
+                      @if (row.resolvedAt) {
+                        · แก้เสร็จ {{ row.resolvedAt | thaiDate }}
+                      }
+                    </span>
+                  </div>
+                  <div class="round-row__side">
+                    <span class="muted">{{ userName(row.resolvedByUserId) }}</span>
+                    @if (row.hoursSpent != null) {
+                      <span class="pill">{{ row.hoursSpent }} ชม.</span>
+                    }
+                    <mat-icon>chevron_right</mat-icon>
+                  </div>
+                </button>
+              </li>
+            }
+          </ul>
         }
       </div>
     </div>

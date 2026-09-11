@@ -1,7 +1,7 @@
 import { Injector, Signal, computed, effect, inject, runInInjectionContext, signal } from '@angular/core';
 import { PageEvent } from '@angular/material/paginator';
 
-export const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+export const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 /**
  * Client-side table pager for signal-backed lists.

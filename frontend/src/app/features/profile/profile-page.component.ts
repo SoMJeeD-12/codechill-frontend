@@ -18,7 +18,7 @@ const MODULE_LABELS: Record<string, string> = {
   contact: 'ผู้ติดต่อ',
   communication: 'ประวัติการติดต่อ',
   communication_log: 'ประวัติการติดต่อ',
-  project: 'โครงการ',
+  project: 'โปรเจค',
   task: 'งานย่อย',
   delivery: 'การส่งมอบ',
   ticket: 'ปัญหา / ซัพพอร์ต',

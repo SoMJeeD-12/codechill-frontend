@@ -208,7 +208,7 @@ export class MaPageComponent implements OnInit {
     if (project) {
       return project.name;
     }
-    return c.projectId ? `โครงการ #${c.projectId}` : '—';
+    return c.projectId ? `โปรเจค #${c.projectId}` : '—';
   }
 
   /** โชว์เลขที่สัญญา ถ้าไม่มีใช้ #id */

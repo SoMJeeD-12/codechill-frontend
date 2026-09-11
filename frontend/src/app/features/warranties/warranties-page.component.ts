@@ -131,7 +131,7 @@ export class WarrantiesPageComponent implements OnInit {
     if (project?.name) {
       return project.name;
     }
-    return w.projectId ? `โครงการ #${w.projectId}` : '—';
+    return w.projectId ? `โปรเจค #${w.projectId}` : '—';
   }
 
   customerName(w: Warranty): string {
@@ -187,7 +187,7 @@ export class WarrantiesPageComponent implements OnInit {
   remove(row: Warranty): void {
     openConfirmDialog(this.dialog, {
       title: 'ลบประกัน',
-      message: `ต้องการลบประกันของ「${row.project?.name || 'โครงการ'}」หรือไม่?`,
+      message: `ต้องการลบประกันของ「${row.project?.name || 'โปรเจค'}」หรือไม่?`,
       confirmLabel: 'ลบประกัน',
     }).subscribe((ok) => {
       if (!ok) {

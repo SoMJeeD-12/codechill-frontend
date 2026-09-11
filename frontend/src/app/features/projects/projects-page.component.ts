@@ -28,23 +28,36 @@ import {
   ProjectStatus,
 } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
-import { CustomerService } from '../../core/services/customer.service';
-import { ProjectInput, ProjectService } from '../../core/services/project.service';
+import {
+  ContactInput,
+  CustomerInput,
+  CustomerService,
+} from '../../core/services/customer.service';
+import {
+  ProjectInput,
+  ProjectNewCustomerInput,
+  ProjectService,
+} from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { Router } from '@angular/router';
+import { Customer } from '../../core/models/customer.model';
+import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { Observable, of, switchMap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-projects-page',
   standalone: true,
   imports: [
     ThaiDatePipe,
-    BahtPipe,
     RouterLink,
     ReactiveFormsModule,
     MatCardModule,
@@ -86,7 +99,6 @@ export class ProjectsPageComponent implements OnInit {
     'targetEndDate',
     'progress',
     'status',
-    'value',
     'actions',
   ];
 
@@ -184,20 +196,20 @@ export class ProjectsPageComponent implements OnInit {
 
   remove(project: Project): void {
     if (!this.canDelete()) {
-      this.snack.open('ไม่มีสิทธิ์ลบโครงการ', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์ลบโปรเจค', 'ปิด', { duration: 3000 });
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ลบโครงการ',
-      message: `ต้องการลบโครงการ「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
-      confirmLabel: 'ลบโครงการ',
+      title: 'ลบโปรเจค',
+      message: `ต้องการลบโปรเจค「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
+      confirmLabel: 'ลบโปรเจค',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
       this.projectsApi.deleteProject(project.id).subscribe({
         next: () => {
-          this.snack.open('ลบโครงการแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('ลบโปรเจคแล้ว', 'ปิด', { duration: 2500 });
           this.reload();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
@@ -207,7 +219,7 @@ export class ProjectsPageComponent implements OnInit {
 
   private openForm(project?: Project): void {
     const ref = this.dialog.open(ProjectFormDialogComponent, {
-      width: '560px',
+      width: '720px',
       maxWidth: '95vw',
       data: { project: project ?? null },
     });
@@ -219,11 +231,7 @@ export class ProjectsPageComponent implements OnInit {
   }
 }
 
-import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
-import { Customer } from '../../core/models/customer.model';
-import { CustomerFormDialogComponent } from '../customers/customer-form-dialog.component';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+const NEW_CUSTOMER_TOKEN = '__NEW_CUSTOMER__';
 
 @Component({
   selector: 'app-project-form-dialog',
@@ -239,6 +247,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
     MatDatepickerModule,
     MatAutocompleteModule,
     MoneyInputDirective,
+    PhoneInputDirective,
   ],
   templateUrl: './project-form-dialog.component.html',
   styleUrl: './project-form-dialog.component.scss',
@@ -248,12 +257,11 @@ export class ProjectFormDialogComponent {
   private readonly api = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
   private readonly usersApi = inject(UserService);
+  private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
-  private readonly dialog = inject(MatDialog);
   private readonly ref = inject(MatDialogRef<ProjectFormDialogComponent, boolean>);
   readonly data = inject<{ project: Project | null; customerId?: number }>(MAT_DIALOG_DATA);
 
-  readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
   readonly statuses = PROJECT_STATUSES;
   readonly statusLabels = PROJECT_STATUS_LABELS;
@@ -263,13 +271,33 @@ export class ProjectFormDialogComponent {
   readonly error = signal<string | null>(null);
   readonly showMore = signal(false);
   readonly isEdit = !!this.data.project;
+  /** สร้างจากหน้าลูกค้า — ล็อกเลือกลูกค้า */
   readonly customerLocked = !this.data.project && !!this.data.customerId;
 
-  readonly customerSearchControl = this.fb.control<string | Customer>('');
+  /** none | existing | new */
+  readonly customerMode = signal<'none' | 'existing' | 'new'>('none');
+  readonly customerSuggestions = signal<Customer[]>([]);
+  /** true เมื่อพิมพ์ค้นหา ≥2 ตัว — ถึงจะโชว์ตัวเลือก autocomplete */
+  readonly customerQueryReady = signal(false);
+  readonly newCustomerToken = NEW_CUSTOMER_TOKEN;
+
+  readonly canViewCustomer = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('customer.view');
+  });
+  readonly canCreateCustomer = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('customer.create');
+  });
+
+  readonly customerSearchControl = this.fb.control<string | Customer | typeof NEW_CUSTOMER_TOKEN>(
+    ''
+  );
 
   readonly form = this.fb.group({
     name: ['', Validators.required],
-    customerId: [0, Validators.min(1)],
+    code: [''],
+    customerId: [0],
     projectType: [''],
     contractValue: [null as number | null, Validators.min(0)],
     functionCount: [null as number | null, Validators.min(0)],
@@ -279,94 +307,66 @@ export class ProjectFormDialogComponent {
     priority: ['NORMAL' as ProjectPriority, Validators.required],
     managerUserId: [null as number | null],
     description: [''],
+    customer: this.fb.group({
+      name: [''],
+      taxId: [''],
+      address: [''],
+      phone: ['', thaiPhoneValidator],
+      email: ['', Validators.email],
+      lineOfficialId: [''],
+      facebookUrl: [''],
+      note: [''],
+    }),
+    contact: this.fb.group({
+      name: [''],
+      phone: ['', thaiPhoneValidator],
+      email: ['', Validators.email],
+      lineId: [''],
+      position: [''],
+    }),
   });
+
+  /** snapshot ของลูกค้าที่เลือก — ใช้เช็คว่าแก้ฟิลด์ลูกค้าหรือไม่ */
+  private selectedCustomerSnapshot: Customer | null = null;
 
   constructor() {
     this.usersApi.loadForPicker().subscribe({ error: () => undefined });
-    this.customersApi.listCustomers().subscribe({
-      next: () => this.applyPreferredCustomer(),
-      error: () => undefined,
-    });
 
-    this.customerSearchControl.valueChanges
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged((a, b) => this.customerSearchKey(a) === this.customerSearchKey(b))
-      )
-      .subscribe((value) => {
-        if (this.customerLocked || typeof value !== 'string') {
-          return;
-        }
-        const search = value.trim();
-        this.customersApi.listCustomers(search ? { search } : undefined).subscribe({
-          error: () => undefined,
-        });
-        // Typing clears a prior selection until an option is chosen again.
-        if (this.form.controls.customerId.value) {
-          const selected = this.customersApi.getCustomer(this.form.controls.customerId.value);
-          if (!selected || selected.name !== search) {
-            this.form.patchValue({ customerId: 0 });
-          }
-        }
-      });
+    if (!this.isEdit && this.canViewCustomer()) {
+      this.customerSearchControl.valueChanges
+        .pipe(
+          debounceTime(300),
+          distinctUntilChanged((a, b) => this.customerSearchKey(a) === this.customerSearchKey(b))
+        )
+        .subscribe((value) => this.onCustomerSearchChanged(value));
+    }
 
     if (this.data.project) {
-      const p = this.data.project;
-      this.form.patchValue({
-        name: p.name,
-        customerId: p.customerId,
-        projectType: p.projectType ?? '',
-        contractValue: p.contractValue,
-        functionCount: p.functionCount,
-        startDate: parseDateOnly(p.startDate),
-        targetEndDate: parseDateOnly(p.targetEndDate),
-        status: p.status,
-        priority: p.priority,
-        managerUserId: p.managerUserId,
-        description: p.description ?? '',
-      });
-      if (p.functionCount != null) {
-        this.showMore.set(true);
-      }
-      const existing = this.customersApi.getCustomer(p.customerId);
-      if (existing) {
-        this.customerSearchControl.setValue(existing, { emitEvent: false });
-      } else {
-        this.customersApi.fetchCustomer(p.customerId).subscribe({
-          next: (c) => this.customerSearchControl.setValue(c, { emitEvent: false }),
-          error: () => this.customerSearchControl.setValue(`#${p.customerId}`, { emitEvent: false }),
-        });
-      }
+      this.patchEditProject(this.data.project);
+    } else if (this.data.customerId) {
+      this.applyPreferredCustomer(this.data.customerId);
     }
   }
 
-  readonly displayCustomer = (value: string | Customer | null): string => {
+  readonly displayCustomer = (
+    value: string | Customer | typeof NEW_CUSTOMER_TOKEN | null
+  ): string => {
     if (!value) {
       return '';
+    }
+    if (value === NEW_CUSTOMER_TOKEN) {
+      return 'ลูกค้าใหม่';
     }
     return typeof value === 'string' ? value : value.name;
   };
 
   onCustomerSelected(event: MatAutocompleteSelectedEvent): void {
-    const customer = event.option.value as Customer;
-    this.form.patchValue({ customerId: customer.id });
-    this.form.controls.customerId.markAsTouched();
-  }
-
-  openCreateCustomer(): void {
-    const ref = this.dialog.open(CustomerFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
-      data: { customer: null, returnCustomer: true },
-    });
-    ref.afterClosed().subscribe((result) => {
-      if (result && typeof result === 'object' && 'id' in result) {
-        const customer = result as Customer;
-        this.form.patchValue({ customerId: customer.id });
-        this.customerSearchControl.setValue(customer, { emitEvent: false });
-        this.form.controls.customerId.markAsTouched();
-      }
-    });
+    const value = event.option.value as Customer | typeof NEW_CUSTOMER_TOKEN;
+    if (value === NEW_CUSTOMER_TOKEN) {
+      this.selectNewCustomer();
+      return;
+    }
+    this.selectExistingCustomer(value);
   }
 
   toggleMore(event: Event): void {
@@ -375,14 +375,124 @@ export class ProjectFormDialogComponent {
   }
 
   save(): void {
+    this.syncCustomerValidators();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
+
+    if (this.isEdit && this.data.project) {
+      this.saveEdit(this.data.project.id);
+      return;
+    }
+    this.saveCreate();
+  }
+
+  private saveEdit(projectId: number): void {
+    const payload = this.buildProjectPayload();
+    payload.customerId = Number(this.form.controls.customerId.value) || this.data.project?.customerId;
+    this.saving.set(true);
+    this.error.set(null);
+    this.api.updateProject(projectId, payload).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.snack.open('บันทึกโปรเจคแล้ว', 'ปิด', { duration: 2500 });
+        this.ref.close(true);
+      },
+      error: (err: Error) => {
+        this.saving.set(false);
+        this.error.set(err.message);
+      },
+    });
+  }
+
+  private saveCreate(): void {
+    const mode = this.customerMode();
+    if (mode === 'none') {
+      this.error.set('เลือกลูกค้าหรือสร้างลูกค้าใหม่');
+      this.customerSearchControl.markAsTouched();
+      return;
+    }
+
+    const contactRaw = this.form.controls.contact.getRawValue();
+    const contactPartial =
+      !!(contactRaw.name ?? '').trim() ||
+      !!sanitizePhoneDigits(contactRaw.phone) ||
+      !!(contactRaw.email ?? '').trim() ||
+      !!(contactRaw.lineId ?? '').trim() ||
+      !!(contactRaw.position ?? '').trim();
+    if (contactPartial && !(contactRaw.name ?? '').trim()) {
+      this.error.set('กรุณาระบุชื่อผู้ติดต่อเมื่อกรอกข้อมูลผู้ติดต่อ');
+      this.form.controls.contact.controls.name.markAsTouched();
+      return;
+    }
+
+    const payload = this.buildProjectPayload();
+    if (mode === 'existing') {
+      payload.customerId = Number(this.form.controls.customerId.value);
+      delete payload.newCustomer;
+    } else {
+      payload.newCustomer = this.buildNewCustomerPayload();
+      delete payload.customerId;
+    }
+
+    this.saving.set(true);
+    this.error.set(null);
+
+    this.api
+      .createProject(payload)
+      .pipe(
+        switchMap(({ project, message }) =>
+          this.afterCreateSideEffects(project).pipe(map(() => ({ project, message })))
+        )
+      )
+      .subscribe({
+        next: ({ message }) => {
+          this.saving.set(false);
+          const text = message?.trim() || 'บันทึกโปรเจคแล้ว';
+          this.snack.open(text, 'ปิด', { duration: message ? 6000 : 2500 });
+          this.ref.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+        },
+      });
+  }
+
+  /** หลังสร้างโปรเจค: อัปเดตลูกค้าถ้าแก้ฟิลด์ / สร้างผู้ติดต่อถ้ากรอก */
+  private afterCreateSideEffects(project: Project): Observable<unknown> {
+    const customerId = project.customerId;
+    let chain$: Observable<unknown> = of(null);
+
+    if (this.customerMode() === 'existing' && this.isCustomerDirty()) {
+      chain$ = chain$.pipe(
+        switchMap(() => this.customersApi.updateCustomer(customerId, this.buildCustomerUpdateInput()))
+      );
+    }
+
+    const contact = this.buildContactInput();
+    if (contact) {
+      chain$ = chain$.pipe(
+        switchMap(() => this.customersApi.saveContact(customerId, contact))
+      );
+    }
+
+    return chain$.pipe(
+      catchError((err: Error) => {
+        this.snack.open(err.message || 'บันทึกข้อมูลลูกค้า/ผู้ติดต่อไม่สำเร็จ', 'ปิด', {
+          duration: 4000,
+        });
+        return of(null);
+      })
+    );
+  }
+
+  private buildProjectPayload(): ProjectInput {
     const raw = this.form.getRawValue();
-    const payload: ProjectInput = {
+    return {
       name: (raw.name ?? '').trim(),
-      customerId: Number(raw.customerId),
+      code: (raw.code ?? '').trim() || undefined,
       projectType: (raw.projectType ?? '').trim() || undefined,
       contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
       functionCount: raw.functionCount ?? undefined,
@@ -393,41 +503,246 @@ export class ProjectFormDialogComponent {
       managerUserId: raw.managerUserId ?? undefined,
       description: (raw.description ?? '').trim() || undefined,
     };
-    this.saving.set(true);
-    this.error.set(null);
-    const req$ = this.data.project
-      ? this.api.updateProject(this.data.project.id, payload)
-      : this.api.createProject(payload);
-    req$.subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.snack.open('บันทึกโครงการแล้ว', 'ปิด', { duration: 2500 });
-        this.ref.close(true);
-      },
-      error: (err: Error) => {
-        this.saving.set(false);
-        this.error.set(err.message);
-      },
+  }
+
+  private buildNewCustomerPayload(): ProjectNewCustomerInput {
+    const c = this.form.controls.customer.getRawValue();
+    return {
+      name: (c.name ?? '').trim(),
+      taxId: (c.taxId ?? '').trim() || undefined,
+      address: (c.address ?? '').trim() || undefined,
+      phone: sanitizePhoneDigits(c.phone) || undefined,
+      email: (c.email ?? '').trim() || undefined,
+      lineOfficialId: (c.lineOfficialId ?? '').trim() || undefined,
+      facebookUrl: (c.facebookUrl ?? '').trim() || undefined,
+      note: (c.note ?? '').trim() || undefined,
+    };
+  }
+
+  private buildCustomerUpdateInput(): CustomerInput {
+    const c = this.form.controls.customer.getRawValue();
+    return {
+      name: (c.name ?? '').trim(),
+      taxId: (c.taxId ?? '').trim() || undefined,
+      address: (c.address ?? '').trim() || undefined,
+      phone: sanitizePhoneDigits(c.phone) || undefined,
+      email: (c.email ?? '').trim() || undefined,
+      lineOfficialId: (c.lineOfficialId ?? '').trim() || undefined,
+      facebookUrl: (c.facebookUrl ?? '').trim() || undefined,
+      note: (c.note ?? '').trim() || undefined,
+    };
+  }
+
+  private buildContactInput(): ContactInput | null {
+    const c = this.form.controls.contact.getRawValue();
+    const name = (c.name ?? '').trim();
+    const phone = sanitizePhoneDigits(c.phone);
+    const email = (c.email ?? '').trim();
+    const lineId = (c.lineId ?? '').trim();
+    const position = (c.position ?? '').trim();
+    if (!name && !phone && !email && !lineId && !position) {
+      return null;
+    }
+    if (!name) {
+      return null;
+    }
+    return {
+      name,
+      phone: phone || undefined,
+      email: email || undefined,
+      lineId: lineId || undefined,
+      position: position || undefined,
+      isPrimary: true,
+    };
+  }
+
+  private isCustomerDirty(): boolean {
+    const snap = this.selectedCustomerSnapshot;
+    if (!snap) {
+      return false;
+    }
+    const c = this.form.controls.customer.getRawValue();
+    const norm = (v: string | null | undefined) => (v ?? '').trim();
+    return (
+      norm(c.name) !== norm(snap.name) ||
+      norm(c.taxId) !== norm(snap.taxId) ||
+      norm(c.address) !== norm(snap.address) ||
+      sanitizePhoneDigits(c.phone) !== sanitizePhoneDigits(snap.phone) ||
+      norm(c.email) !== norm(snap.email) ||
+      norm(c.lineOfficialId) !== norm(snap.lineOfficialId) ||
+      norm(c.facebookUrl) !== norm(snap.facebookUrl) ||
+      norm(c.note) !== norm(snap.note)
+    );
+  }
+
+  private syncCustomerValidators(): void {
+    const nameCtrl = this.form.controls.customer.controls.name;
+    if (!this.isEdit && this.customerMode() === 'new') {
+      nameCtrl.setValidators([Validators.required]);
+    } else if (!this.isEdit && this.customerMode() === 'existing') {
+      nameCtrl.setValidators([Validators.required]);
+    } else {
+      nameCtrl.clearValidators();
+    }
+    nameCtrl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private onCustomerSearchChanged(
+    value: string | Customer | typeof NEW_CUSTOMER_TOKEN | null
+  ): void {
+    if (this.customerLocked || this.isEdit || typeof value !== 'string') {
+      return;
+    }
+    const search = value.trim();
+    if (this.customerMode() === 'existing' && this.form.controls.customerId.value) {
+      const selected = this.selectedCustomerSnapshot;
+      if (!selected || selected.name !== search) {
+        this.clearCustomerSelection(false);
+      }
+    }
+    if (this.customerMode() === 'new' && search !== 'ลูกค้าใหม่') {
+      // ยังอยู่โหมดใหม่ แต่พิมพ์ค้นหา — เคลียร์โหมดใหม่ถ้าเริ่มค้น
+      if (search.length >= 2) {
+        this.customerMode.set('none');
+        this.clearCustomerFields();
+      }
+    }
+
+    if (search.length < 2 || !this.canViewCustomer()) {
+      this.customerQueryReady.set(false);
+      this.customerSuggestions.set([]);
+      return;
+    }
+
+    this.customerQueryReady.set(true);
+    this.customersApi.listCustomers({ search, limit: 10 }).subscribe({
+      next: (list) => this.customerSuggestions.set(list),
+      error: () => this.customerSuggestions.set([]),
     });
   }
 
-  private applyPreferredCustomer(): void {
-    if (this.data.project || !this.data.customerId) {
-      return;
-    }
-    if ((this.form.value.customerId ?? 0) > 0) {
-      return;
-    }
-    this.form.patchValue({ customerId: this.data.customerId });
-    const customer = this.customersApi.getCustomer(this.data.customerId);
-    if (customer) {
-      this.customerSearchControl.setValue(customer, { emitEvent: false });
+  private selectExistingCustomer(customer: Customer): void {
+    this.customerMode.set('existing');
+    this.selectedCustomerSnapshot = customer;
+    this.form.patchValue({ customerId: customer.id });
+    this.patchCustomerFields(customer);
+    this.customerSearchControl.setValue(customer, { emitEvent: false });
+    this.customerSuggestions.set([]);
+    this.customerQueryReady.set(false);
+    this.error.set(null);
+  }
+
+  private selectNewCustomer(): void {
+    this.customerMode.set('new');
+    this.selectedCustomerSnapshot = null;
+    this.form.patchValue({ customerId: 0 });
+    this.clearCustomerFields();
+    this.customerSearchControl.setValue(NEW_CUSTOMER_TOKEN, { emitEvent: false });
+    this.customerSuggestions.set([]);
+    this.customerQueryReady.set(false);
+    this.error.set(null);
+  }
+
+  private clearCustomerSelection(clearSearch: boolean): void {
+    this.customerMode.set('none');
+    this.selectedCustomerSnapshot = null;
+    this.form.patchValue({ customerId: 0 });
+    this.clearCustomerFields();
+    if (clearSearch) {
+      this.customerSearchControl.setValue('', { emitEvent: false });
     }
   }
 
-  private customerSearchKey(value: string | Customer | null): string {
+  private clearCustomerFields(): void {
+    this.form.controls.customer.reset({
+      name: '',
+      taxId: '',
+      address: '',
+      phone: '',
+      email: '',
+      lineOfficialId: '',
+      facebookUrl: '',
+      note: '',
+    });
+  }
+
+  private patchCustomerFields(c: Customer): void {
+    this.form.controls.customer.patchValue({
+      name: c.name ?? '',
+      taxId: c.taxId ?? '',
+      address: c.address ?? '',
+      phone: sanitizePhoneDigits(c.phone),
+      email: c.email ?? '',
+      lineOfficialId: c.lineOfficialId ?? '',
+      facebookUrl: c.facebookUrl ?? '',
+      note: c.note ?? '',
+    });
+  }
+
+  private patchEditProject(p: Project): void {
+    this.form.patchValue({
+      name: p.name,
+      code: p.code ?? '',
+      customerId: p.customerId,
+      projectType: p.projectType ?? '',
+      contractValue: p.contractValue,
+      functionCount: p.functionCount,
+      startDate: parseDateOnly(p.startDate),
+      targetEndDate: parseDateOnly(p.targetEndDate),
+      status: p.status,
+      priority: p.priority,
+      managerUserId: p.managerUserId,
+      description: p.description ?? '',
+    });
+    if (p.functionCount != null) {
+      this.showMore.set(true);
+    }
+    this.customerMode.set('existing');
+    this.customerSearchControl.disable({ emitEvent: false });
+    const existing = this.customersApi.getCustomer(p.customerId);
+    if (existing) {
+      this.customerSearchControl.setValue(existing, { emitEvent: false });
+      this.selectedCustomerSnapshot = existing;
+      this.patchCustomerFields(existing);
+    } else {
+      this.customersApi.fetchCustomer(p.customerId).subscribe({
+        next: (c) => {
+          this.customerSearchControl.setValue(c, { emitEvent: false });
+          this.selectedCustomerSnapshot = c;
+          this.patchCustomerFields(c);
+        },
+        error: () =>
+          this.customerSearchControl.setValue(`#${p.customerId}`, { emitEvent: false }),
+      });
+    }
+    this.form.controls.customer.disable({ emitEvent: false });
+  }
+
+  private applyPreferredCustomer(customerId: number): void {
+    this.form.patchValue({ customerId });
+    const apply = (c: Customer) => {
+      this.selectExistingCustomer(c);
+      this.customerSearchControl.disable({ emitEvent: false });
+    };
+    const cached = this.customersApi.getCustomer(customerId);
+    if (cached) {
+      apply(cached);
+      return;
+    }
+    this.customersApi.fetchCustomer(customerId).subscribe({
+      next: apply,
+      error: () => undefined,
+    });
+  }
+
+  private customerSearchKey(
+    value: string | Customer | typeof NEW_CUSTOMER_TOKEN | null
+  ): string {
     if (!value) {
       return '';
+    }
+    if (value === NEW_CUSTOMER_TOKEN) {
+      return NEW_CUSTOMER_TOKEN;
     }
     return typeof value === 'string' ? value : `id:${value.id}`;
   }

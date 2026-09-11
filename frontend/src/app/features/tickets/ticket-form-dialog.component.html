@@ -13,7 +13,7 @@
       }
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>โครงการ (ถ้ามี)</mat-label>
+      <mat-label>โปรเจค (ถ้ามี)</mat-label>
       <mat-select formControlName="projectId">
         <mat-option [value]="null">—</mat-option>
         @for (p of filteredProjects(); track p.id) {

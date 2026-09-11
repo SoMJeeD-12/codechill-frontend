@@ -1,6 +1,6 @@
 @if (notFound()) {
   <mat-card class="missing">
-    <h1>ไม่พบโครงการ</h1>
+    <h1>ไม่พบโปรเจค</h1>
     <button mat-stroked-button type="button" class="back" (click)="goBack()">
       <mat-icon>arrow_back</mat-icon>
       กลับหน้ารายการ
@@ -22,7 +22,7 @@
               class="cell-badge status-badge project-status-badge is-editable"
               [attr.data-project-status]="p.status"
               [matMenuTriggerFor]="projectStatusMenu"
-              matTooltip="เปลี่ยนสถานะโครงการ"
+              matTooltip="เปลี่ยนสถานะโปรเจค"
             >
               {{ projectStatusLabel(p.status) }}
               <mat-icon>expand_more</mat-icon>
@@ -45,6 +45,7 @@
         </div>
         <h1>{{ p.name }}</h1>
         <p class="subtitle">
+          รหัส {{ p.code || '—' }} ·
           {{ customerName() }} ·
           ประเภท {{ p.projectType || '—' }} ·
           ความสำคัญ
@@ -94,13 +95,13 @@
             @if (canUpdateProject()) {
               <button mat-menu-item type="button" (click)="openEditProject()">
                 <mat-icon>edit</mat-icon>
-                <span>แก้ไขโครงการ</span>
+                <span>แก้ไขโปรเจค</span>
               </button>
             }
             @if (canDeleteProject()) {
               <button mat-menu-item type="button" class="menu-danger" (click)="removeProject()">
                 <mat-icon>delete</mat-icon>
-                <span>ลบโครงการ</span>
+                <span>ลบโปรเจค</span>
               </button>
             }
           </mat-menu>
@@ -109,241 +110,18 @@
     </header>
 
     <mat-tab-group animationDuration="150ms">
-      @if (canViewTasks()) {
-      <mat-tab label="งานย่อย">
-        <div class="tasks-panel">
-          @if (tasksDenied()) {
-            <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
-          } @else {
-          <div class="tasks-view-chips ui-chips" role="tablist" aria-label="มุมมองงาน">
-            <button
-              type="button"
-              class="ui-chip"
-              [class.is-active]="tasksView() === 'table'"
-              (click)="tasksView.set('table')"
-            >
-              ตาราง
-            </button>
-            <button
-              type="button"
-              class="ui-chip"
-              [class.is-active]="tasksView() === 'board'"
-              (click)="tasksView.set('board')"
-            >
-              กระดาน
-            </button>
-          </div>
-
-          @if (tasksView() === 'board') {
-            <app-task-kanban-board
-              [projectId]="currentProjectId"
-              [showProjectFilter]="false"
-            />
-          } @else {
+            <mat-tab label="งาน">
+        <div class="tab-panel">
           <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row">
-                <label class="ui-search">
-                  <mat-icon>search</mat-icon>
-                  <input
-                    type="search"
-                    [formControl]="taskSearchControl"
-                    placeholder="ค้นหาชื่อ รายละเอียด หรือผู้รับผิดชอบ"
-                    aria-label="ค้นหางานย่อย"
-                  />
-                </label>
-                <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  class="ui-add-btn"
-                  (click)="openCreateTask()"
-                >
-                  <mat-icon>add</mat-icon>
-                  เพิ่มงานย่อย
-                </button>
-              </div>
-
-              <div class="ui-chips" role="tablist" aria-label="กรองสถานะงาน">
-                <button
-                  type="button"
-                  class="ui-chip"
-                  [class.is-active]="statusFilter() === 'ALL'"
-                  (click)="setStatusFilter('ALL')"
-                >
-                  ทั้งหมด
-                  <span class="ui-chip__count">{{ statusCounts().ALL }}</span>
-                </button>
-                @for (status of taskStatuses; track status) {
-                  <button
-                    type="button"
-                    class="ui-chip"
-                    [class.is-active]="statusFilter() === status"
-                    (click)="setStatusFilter(status)"
-                  >
-                    {{ taskStatusLabels[status] }}
-                    <span class="ui-chip__count">{{ statusCounts()[status] }}</span>
-                  </button>
-                }
-              </div>
-            </div>
-
             <div class="data-card__body">
-              <table mat-table [dataSource]="tasksPager.paged()" class="data-table tasks-table">
-                <ng-container matColumnDef="title">
-                  <th mat-header-cell *matHeaderCellDef>งาน</th>
-                  <td mat-cell *matCellDef="let row">
-                    <button type="button" class="task-link" (click)="openEditTask(row)">
-                      {{ row.title }}
-                    </button>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="priority">
-                  <th mat-header-cell *matHeaderCellDef>ความสำคัญ</th>
-                  <td mat-cell *matCellDef="let row">
-                    <button
-                      type="button"
-                      class="priority-badge is-editable"
-                      [attr.data-priority]="row.priority"
-                      [matMenuTriggerFor]="priorityMenu"
-                      matTooltip="เปลี่ยนความสำคัญ"
-                    >
-                      {{ priorityLabel(row.priority) }}
-                      <mat-icon>expand_more</mat-icon>
-                    </button>
-                    <mat-menu #priorityMenu="matMenu">
-                      @for (pr of priorities; track pr) {
-                        <button mat-menu-item type="button" (click)="changePriority(row, pr)">
-                          @if (row.priority === pr) {
-                            <mat-icon>check</mat-icon>
-                          }
-                          <span class="priority-badge" [attr.data-priority]="pr">{{ priorityLabels[pr] }}</span>
-                        </button>
-                      }
-                    </mat-menu>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="assignee">
-                  <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
-                  <td mat-cell *matCellDef="let row">
-                    <button
-                      type="button"
-                      class="cell-badge assignee-badge is-editable"
-                      [matMenuTriggerFor]="assigneeMenu"
-                      matTooltip="เปลี่ยนผู้รับผิดชอบ"
-                    >
-                      <span class="assignee-name">{{ userName(row.assignedUserId) }}</span>
-                      <mat-icon>expand_more</mat-icon>
-                    </button>
-                    <mat-menu #assigneeMenu="matMenu" class="assignee-menu">
-                      <button mat-menu-item type="button" (click)="changeAssignee(row, null)">
-                        @if (row.assignedUserId == null) {
-                          <mat-icon>check</mat-icon>
-                        }
-                        <span>—</span>
-                      </button>
-                      @for (u of users(); track u.id) {
-                        <button mat-menu-item type="button" (click)="changeAssignee(row, u.id)">
-                          @if (row.assignedUserId === u.id) {
-                            <mat-icon>check</mat-icon>
-                          }
-                          <span>{{ u.fullName }}</span>
-                        </button>
-                      }
-                    </mat-menu>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="dueDate">
-                  <th mat-header-cell *matHeaderCellDef>ครบกำหนด</th>
-                  <td mat-cell *matCellDef="let row" class="due-cell">{{ row.dueDate || '—' }}</td>
-                </ng-container>
-                <ng-container matColumnDef="status">
-                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
-                  <td mat-cell *matCellDef="let row">
-                    <button
-                      type="button"
-                      class="cell-badge status-badge is-editable"
-                      [attr.data-status]="row.status"
-                      [matMenuTriggerFor]="statusMenu"
-                      matTooltip="เปลี่ยนสถานะ"
-                    >
-                      {{ taskStatusLabel(row.status) }}
-                      <mat-icon>expand_more</mat-icon>
-                    </button>
-                    <mat-menu #statusMenu="matMenu">
-                      @for (s of taskStatuses; track s) {
-                        <button mat-menu-item type="button" (click)="changeStatus(row, s)">
-                          @if (row.status === s) {
-                            <mat-icon>check</mat-icon>
-                          }
-                          <span>{{ taskStatusLabels[s] }}</span>
-                        </button>
-                      }
-                    </mat-menu>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef></th>
-                  <td mat-cell *matCellDef="let row" class="actions">
-                    @if (row.status !== 'DONE') {
-                      <button
-                        mat-stroked-button
-                        type="button"
-                        class="next-btn"
-                        (click)="advanceStatus(row)"
-                        matTooltip="เลื่อนไปสถานะถัดไป"
-                      >
-                        ขั้นถัดไป
-                      </button>
-                    } @else {
-                      <span class="done-tag">เสร็จแล้ว</span>
-                    }
-                    <button
-                      mat-icon-button
-                      type="button"
-                      [matMenuTriggerFor]="taskManageMenu"
-                      matTooltip="จัดการ"
-                      aria-label="จัดการงานย่อย"
-                    >
-                      <mat-icon>more_vert</mat-icon>
-                    </button>
-                    <mat-menu #taskManageMenu="matMenu">
-                      <button mat-menu-item type="button" (click)="openEditTask(row)">
-                        <mat-icon>edit</mat-icon>
-                        <span>ดู / แก้ไข</span>
-                      </button>
-                      @if (canDeleteTask()) {
-                        <button mat-menu-item type="button" class="menu-danger" (click)="removeTask(row)">
-                          <mat-icon>delete</mat-icon>
-                          <span>ลบงานย่อย</span>
-                        </button>
-                      }
-                    </mat-menu>
-                  </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="taskColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: taskColumns"></tr>
-              </table>
-              <app-table-paginator
-                [length]="tasksPager.length()"
-                [pageIndex]="tasksPager.pageIndex()"
-                [pageSize]="tasksPager.pageSize()"
-                [pageSizeOptions]="tasksPager.pageSizeOptions"
-                (page)="tasksPager.onPage($event)"
-              />
-
-              @if (filteredTasks().length === 0) {
-                <p class="data-empty">
-                  {{ taskSearch().trim() ? 'ไม่พบงานย่อยตามคำค้นหา/ตัวกรอง' : 'ไม่มีงานในสถานะนี้' }}
-                </p>
-              }
+              <p class="data-empty">
+                งานย่อยย้ายไปเมนู「งาน」แล้ว —
+                <a routerLink="/app/tasks" [queryParams]="{ projectId: p.id }">เปิดกระดานงานของโปรเจคนี้</a>
+              </p>
             </div>
           </div>
-          }
-          }
         </div>
       </mat-tab>
-      }
 
       @if (canViewDeliveries()) {
       <mat-tab label="การส่งมอบ">
@@ -495,6 +273,212 @@
         }
       </mat-tab>
       }
+
+      @if (canViewDocuments()) {
+      <mat-tab label="เอกสาร">
+        @if (documentsDenied()) {
+          <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
+        } @else {
+          <div class="tab-panel">
+            <div class="data-card">
+              <div class="data-card__head">
+                <div class="data-card__row tab-toolbar">
+                  <h3 class="tab-heading">เอกสาร</h3>
+                  <label class="ui-search">
+                    <mat-icon>search</mat-icon>
+                    <input
+                      type="search"
+                      [formControl]="documentSearchControl"
+                      placeholder="ค้นหาชื่อเอกสาร / ชื่อไฟล์"
+                      aria-label="ค้นหาเอกสาร"
+                    />
+                  </label>
+                  @if (canCreateDocument()) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      class="ui-add-btn"
+                      (click)="openUploadDocument()"
+                    >
+                      <mat-icon>add</mat-icon>
+                      อัปโหลดเอกสาร
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="data-card__body">
+                <table mat-table [dataSource]="documents()" class="data-table">
+                  <ng-container matColumnDef="title">
+                    <th mat-header-cell *matHeaderCellDef>ชื่อเอกสาร</th>
+                    <td mat-cell *matCellDef="let row">
+                      <strong>{{ row.title || row.fileName }}</strong>
+                      @if (row.note) {
+                        <div class="muted">{{ row.note }}</div>
+                      }
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="fileName">
+                    <th mat-header-cell *matHeaderCellDef>ชื่อไฟล์</th>
+                    <td mat-cell *matCellDef="let row">{{ row.fileName }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="fileSize">
+                    <th mat-header-cell *matHeaderCellDef>ขนาด</th>
+                    <td mat-cell *matCellDef="let row">{{ formatDocSize(row.fileSize) }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="uploadedBy">
+                    <th mat-header-cell *matHeaderCellDef>ผู้อัปโหลด</th>
+                    <td mat-cell *matCellDef="let row">
+                      {{ row.uploadedBy?.fullName || '—' }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="createdAt">
+                    <th mat-header-cell *matHeaderCellDef>วันที่</th>
+                    <td mat-cell *matCellDef="let row">{{ row.createdAt | thaiDate }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let row" class="row-actions">
+                      <button
+                        mat-button
+                        type="button"
+                        color="primary"
+                        (click)="downloadDocument(row)"
+                      >
+                        ดาวน์โหลด
+                      </button>
+                      @if (canUpdateDocument()) {
+                        <button mat-button type="button" (click)="openEditDocument(row)">
+                          แก้ไข
+                        </button>
+                      }
+                      @if (canDeleteDocument()) {
+                        <button
+                          mat-button
+                          type="button"
+                          color="warn"
+                          (click)="removeDocument(row)"
+                        >
+                          ลบ
+                        </button>
+                      }
+                    </td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="documentColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: documentColumns"></tr>
+                </table>
+                <app-table-paginator
+                  [length]="documentsTotal()"
+                  [pageIndex]="documentPageIndex()"
+                  [pageSize]="documentPageSize()"
+                  [pageSizeOptions]="documentPageSizeOptions"
+                  (page)="onDocumentsPage($event)"
+                />
+                @if (documents().length === 0) {
+                  <p class="data-empty">
+                    @if (documentsLoading()) {
+                      กำลังโหลด…
+                    } @else if (documentSearch().trim()) {
+                      ไม่พบเอกสารตามคำค้นหา
+                    } @else {
+                      ยังไม่มีเอกสารของโปรเจคนี้
+                    }
+                  </p>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </mat-tab>
+      }
+
+      <mat-tab label="งานติดตาม">
+        <div class="tab-panel">
+          <div class="data-card">
+            <div class="data-card__head">
+              <div class="data-card__row tab-toolbar">
+                <h3 class="tab-heading">งานติดตาม</h3>
+                <label class="ui-search">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    type="search"
+                    [formControl]="followUpSearchControl"
+                    placeholder="ค้นหาหัวข้อ / สถานะ / ผู้รับผิดชอบ"
+                    aria-label="ค้นหางานติดตาม"
+                  />
+                </label>
+                @if (canCreateFollowUp()) {
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    class="ui-add-btn"
+                    (click)="openCreateFollowUp()"
+                  >
+                    <mat-icon>add</mat-icon>
+                    สร้างงานติดตาม
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="data-card__body">
+              <table mat-table [dataSource]="followUpsPager.paged()" class="data-table">
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
+                  <td mat-cell *matCellDef="let row">{{ row.title }}</td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                  <td mat-cell *matCellDef="let row">
+                    {{ followUpStatusLabel(row) }}
+                    @if (isFollowUpOverdue(row)) {
+                      <span class="overdue-tag">เลยกำหนด</span>
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="dueDate">
+                  <th mat-header-cell *matHeaderCellDef>ครบกำหนด</th>
+                  <td mat-cell *matCellDef="let row">{{ row.dueDate | thaiDate: 'date' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="assignee">
+                  <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
+                  <td mat-cell *matCellDef="let row">
+                    {{ row.assignedUser?.fullName || userName(row.assignedUserId) }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row">
+                    <button mat-button type="button" color="primary" (click)="openFollowUpDetail(row)">
+                      รายละเอียด
+                    </button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="followUpColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: followUpColumns"></tr>
+              </table>
+              <app-table-paginator
+                [length]="followUpsPager.length()"
+                [pageIndex]="followUpsPager.pageIndex()"
+                [pageSize]="followUpsPager.pageSize()"
+                [pageSizeOptions]="followUpsPager.pageSizeOptions"
+                (page)="followUpsPager.onPage($event)"
+              />
+              @if (filteredFollowUps().length === 0) {
+                <p class="data-empty">
+                  @if (followUpsLoading()) {
+                    กำลังโหลด…
+                  } @else if (followUpSearch().trim()) {
+                    ไม่พบงานติดตามตามคำค้นหา
+                  } @else {
+                    ยังไม่มีงานติดตามของโปรเจคนี้
+                  }
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+      </mat-tab>
     </mat-tab-group>
   </section>
   }

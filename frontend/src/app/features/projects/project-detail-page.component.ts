@@ -1,7 +1,8 @@
 import { Location } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,6 +22,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { PageEvent } from '@angular/material/paginator';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
@@ -38,10 +41,19 @@ import {
   TaskPriority,
   TaskStatus,
 } from '../../core/models/project.model';
+import {
+  ApiProjectDocument,
+  DOCUMENT_ACCEPT,
+  DOCUMENT_MAX_BYTES,
+  formatDocumentFileSize,
+} from '../../core/models/document.model';
 import { Contact } from '../../core/models/customer.model';
 import { User } from '../../core/models/user.model';
+import { FollowUp, followUpDisplayStatus } from '../../core/models/follow-up.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { DocumentService } from '../../core/services/document.service';
+import { FollowUpService } from '../../core/services/follow-up.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import {
@@ -55,11 +67,14 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
-import { TaskKanbanBoardComponent } from './task-kanban-board.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { createClientPager } from '../../shared/utils/client-pager';
+import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils/client-pager';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
 import { ProjectFormDialogComponent } from './projects-page.component';
+import {
+  FollowUpFormDialogComponent,
+  FollowUpFormPreset,
+} from '../follow-ups/follow-ups-page.component';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -67,6 +82,7 @@ import { ProjectFormDialogComponent } from './projects-page.component';
   imports: [
     ThaiDatePipe,
     BahtPipe,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -80,7 +96,6 @@ import { ProjectFormDialogComponent } from './projects-page.component';
     MatTooltipModule,
     MatDialogModule,
     MatMenuModule,
-    TaskKanbanBoardComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './project-detail-page.component.html',
@@ -92,11 +107,14 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly location = inject(Location);
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
+  private readonly documentsApi = inject(DocumentService);
+  private readonly followUpsApi = inject(FollowUpService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly project = signal<Project | null>(null);
   readonly notFound = signal(false);
@@ -109,6 +127,19 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly deliveries = signal<Delivery[]>([]);
   readonly deliverySearch = signal('');
   readonly deliverySearchControl = this.fb.nonNullable.control('');
+  readonly documents = signal<ApiProjectDocument[]>([]);
+  readonly documentsTotal = signal(0);
+  readonly documentsLoading = signal(false);
+  readonly documentsDenied = signal(false);
+  readonly documentSearch = signal('');
+  readonly documentSearchControl = this.fb.nonNullable.control('');
+  readonly documentPageIndex = signal(0);
+  readonly documentPageSize = signal(10);
+  readonly documentPageSizeOptions = [...DEFAULT_PAGE_SIZE_OPTIONS];
+  readonly followUps = signal<FollowUp[]>([]);
+  readonly followUpsLoading = signal(false);
+  readonly followUpSearch = signal('');
+  readonly followUpSearchControl = this.fb.nonNullable.control('');
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly projectStatuses = PROJECT_STATUSES;
   readonly projectPriorityLabels = PRIORITY_LABELS;
@@ -129,6 +160,15 @@ export class ProjectDetailPageComponent implements OnInit {
     'acceptance',
     'actions',
   ];
+  readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
+  readonly documentColumns = [
+    'title',
+    'fileName',
+    'fileSize',
+    'uploadedBy',
+    'createdAt',
+    'actions',
+  ];
 
   /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
   readonly canViewTasks = computed(() => {
@@ -146,6 +186,22 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canAcceptDelivery = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('delivery.accept');
+  });
+  readonly canViewDocuments = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.view');
+  });
+  readonly canCreateDocument = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.create');
+  });
+  readonly canUpdateDocument = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.update');
+  });
+  readonly canDeleteDocument = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.delete');
   });
   readonly canUpdateProject = computed(() => {
     this.auth.session();
@@ -169,6 +225,10 @@ export class ProjectDetailPageComponent implements OnInit {
       this.auth.hasPermissionCode('task.update') ||
       this.canUpdateProject()
     );
+  });
+  readonly canCreateFollowUp = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermission('follow-ups', 'create');
   });
   readonly nextProjectStatus = computed((): ProjectStatus | null => {
     const status = this.project()?.status;
@@ -263,8 +323,29 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   });
 
+  readonly filteredFollowUps = computed(() => {
+    const q = this.followUpSearch().trim().toLowerCase();
+    const list = this.followUps();
+    if (!q) {
+      return list;
+    }
+    return list.filter((f) =>
+      [
+        f.title,
+        followUpDisplayStatus(f),
+        f.dueDate,
+        f.detail,
+        f.assignedUser?.fullName,
+        this.userName(f.assignedUserId),
+      ]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q))
+    );
+  });
+
   readonly tasksPager = createClientPager(this.filteredTasks);
   readonly deliveriesPager = createClientPager(this.filteredDeliveries);
+  readonly followUpsPager = createClientPager(this.filteredFollowUps);
 
   private projectId = 0;
 
@@ -292,6 +373,14 @@ export class ProjectDetailPageComponent implements OnInit {
     });
     this.taskSearchControl.valueChanges.subscribe((v) => this.taskSearch.set(v));
     this.deliverySearchControl.valueChanges.subscribe((v) => this.deliverySearch.set(v));
+    this.followUpSearchControl.valueChanges.subscribe((v) => this.followUpSearch.set(v));
+    this.documentSearchControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((v) => {
+        this.documentSearch.set(v);
+        this.documentPageIndex.set(0);
+        this.loadDocuments();
+      });
   }
 
   customerName(): string {
@@ -330,6 +419,45 @@ export class ProjectDetailPageComponent implements OnInit {
     return this.acceptanceLabels[status];
   }
 
+  followUpStatusLabel(f: FollowUp): string {
+    return followUpDisplayStatus(f);
+  }
+
+  isFollowUpOverdue(f: FollowUp): boolean {
+    return this.followUpsApi.isOverdue(f);
+  }
+
+  openCreateFollowUp(): void {
+    if (!this.canCreateFollowUp()) {
+      this.snack.open('คุณไม่มีสิทธิ์สร้างงานติดตาม', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    const preset: FollowUpFormPreset = {
+      projectId: project.id,
+      project: { id: project.id, code: project.code, name: project.name },
+    };
+    const ref = this.dialog.open(FollowUpFormDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      data: preset,
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.refresh();
+      }
+    });
+  }
+
+  openFollowUpDetail(followUp: FollowUp): void {
+    void this.router.navigate(['/app/follow-ups'], {
+      queryParams: { highlight: followUp.id },
+    });
+  }
+
   projectStatusLabel(status: Project['status']): string {
     return this.statusLabels[status];
   }
@@ -337,11 +465,11 @@ export class ProjectDetailPageComponent implements OnInit {
   openEditProject(): void {
     const project = this.project();
     if (!project || !this.canUpdateProject()) {
-      this.snack.open('ไม่มีสิทธิ์แก้ไขโครงการ', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์แก้ไขโปรเจค', 'ปิด', { duration: 3000 });
       return;
     }
     const ref = this.dialog.open(ProjectFormDialogComponent, {
-      width: '560px',
+      width: '720px',
       maxWidth: '95vw',
       data: { project },
     });
@@ -383,20 +511,20 @@ export class ProjectDetailPageComponent implements OnInit {
   removeProject(): void {
     const project = this.project();
     if (!project || !this.canDeleteProject()) {
-      this.snack.open('ไม่มีสิทธิ์ลบโครงการ', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์ลบโปรเจค', 'ปิด', { duration: 3000 });
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ลบโครงการ',
-      message: `ต้องการลบโครงการ「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
-      confirmLabel: 'ลบโครงการ',
+      title: 'ลบโปรเจค',
+      message: `ต้องการลบโปรเจค「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
+      confirmLabel: 'ลบโปรเจค',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
       this.projectsApi.deleteProject(project.id).subscribe({
         next: () => {
-          this.snack.open('ลบโครงการแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('ลบโปรเจคแล้ว', 'ปิด', { duration: 2500 });
           void this.router.navigate(['/app/projects']);
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
@@ -470,6 +598,130 @@ export class ProjectDetailPageComponent implements OnInit {
       this.deliveries.set([]);
       this.deliveriesDenied.set(false);
     }
+
+    this.loadDocuments();
+
+    this.followUpsLoading.set(true);
+    this.followUpsApi.list({ projectId: this.projectId, limit: 100 }).subscribe({
+      next: (rows) => {
+        this.followUps.set(rows);
+        this.followUpsLoading.set(false);
+      },
+      error: () => {
+        this.followUps.set([]);
+        this.followUpsLoading.set(false);
+      },
+    });
+  }
+
+  loadDocuments(): void {
+    if (!this.canViewDocuments()) {
+      this.documents.set([]);
+      this.documentsTotal.set(0);
+      this.documentsDenied.set(false);
+      this.documentsLoading.set(false);
+      return;
+    }
+    this.documentsLoading.set(true);
+    this.documentsDenied.set(false);
+    this.documentsApi
+      .listByProject(this.projectId, {
+        search: this.documentSearch().trim() || undefined,
+        page: this.documentPageIndex() + 1,
+        limit: this.documentPageSize(),
+      })
+      .subscribe({
+        next: ({ items, total }) => {
+          this.documents.set(items);
+          this.documentsTotal.set(total);
+          this.documentsLoading.set(false);
+        },
+        error: (err: Error) => {
+          this.documents.set([]);
+          this.documentsTotal.set(0);
+          this.documentsLoading.set(false);
+          this.snack.open(err.message, 'ปิด', { duration: 5000 });
+        },
+      });
+  }
+
+  onDocumentsPage(event: PageEvent): void {
+    this.documentPageIndex.set(event.pageIndex);
+    this.documentPageSize.set(event.pageSize);
+    this.loadDocuments();
+  }
+
+  formatDocSize(bytes: number): string {
+    return formatDocumentFileSize(bytes);
+  }
+
+  openUploadDocument(): void {
+    if (!this.canCreateDocument()) {
+      this.snack.open('ไม่มีสิทธิ์อัปโหลดเอกสาร', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(ProjectDocumentUploadDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: { projectId: this.projectId },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.documentPageIndex.set(0);
+        this.loadDocuments();
+      }
+    });
+  }
+
+  openEditDocument(doc: ApiProjectDocument): void {
+    if (!this.canUpdateDocument()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขเอกสาร', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(ProjectDocumentEditDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      data: { document: doc },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.loadDocuments();
+      }
+    });
+  }
+
+  downloadDocument(doc: ApiProjectDocument): void {
+    if (!this.canViewDocuments()) {
+      this.snack.open('ไม่มีสิทธิ์ดาวน์โหลดเอกสาร', 'ปิด', { duration: 3000 });
+      return;
+    }
+    this.documentsApi.download(doc).subscribe({
+      next: () => undefined,
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+    });
+  }
+
+  removeDocument(doc: ApiProjectDocument): void {
+    if (!this.canDeleteDocument()) {
+      this.snack.open('ไม่มีสิทธิ์ลบเอกสาร', 'ปิด', { duration: 3000 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบเอกสาร',
+      message: `ต้องการลบเอกสาร「${doc.title || doc.fileName}」หรือไม่?`,
+      confirmLabel: 'ลบเอกสาร',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.documentsApi.remove(doc.id).subscribe({
+        next: () => {
+          this.snack.open('ลบเอกสารแล้ว', 'ปิด', { duration: 2500 });
+          this.loadDocuments();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+      });
+    });
   }
 
   setStatusFilter(filter: TaskStatus | 'ALL'): void {
@@ -891,7 +1143,7 @@ export interface DeliveryAcceptResult {
         <label class="final-check">
           <mat-checkbox formControlName="isFinal"></mat-checkbox>
           <span>
-            นี่คือการส่งมอบครั้งสุดท้ายของโครงการ
+            นี่คือการส่งมอบครั้งสุดท้ายของโปรเจค
             <span class="final-hint">ติ๊กเฉพาะเมื่อปิดงานจริง — เฟส/เวอร์ชันทดลองไม่ต้องติ๊ก</span>
           </span>
         </label>
@@ -967,5 +1219,269 @@ export class DeliveryAcceptDialogComponent {
       evidenceNote: (raw.evidenceNote ?? '').trim() || null,
       isFinal: !!raw.isFinal,
     });
+  }
+}
+
+/* ——— Project document upload (B3) ——— */
+
+export interface ProjectDocumentUploadDialogData {
+  projectId: number;
+}
+
+@Component({
+  selector: 'app-project-document-upload-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatSnackBarModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>อัปโหลดเอกสาร</h2>
+    <mat-dialog-content>
+      <form [formGroup]="form" class="dlg-form" id="project-doc-upload-form" (ngSubmit)="save()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ชื่อเอกสาร</mat-label>
+          <input matInput formControlName="title" placeholder="ว่างไว้จะใช้ชื่อไฟล์" />
+        </mat-form-field>
+
+        <label class="file-pick">
+          <span>แนบไฟล์ (บังคับ · ไม่เกิน 20 MB)</span>
+          <input
+            type="file"
+            [accept]="accept"
+            (change)="onFilePicked($event)"
+          />
+        </label>
+        @if (selectedFileName()) {
+          <p class="file-name">{{ selectedFileName() }}</p>
+        }
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>รายละเอียด</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="project-doc-upload-form"
+        [disabled]="saving()"
+      >
+        อัปโหลด
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .dlg-form {
+      display: grid;
+      gap: 0.45rem;
+      padding-top: 0.25rem;
+      min-width: min(100%, 26rem);
+    }
+    .full {
+      width: 100%;
+    }
+    .file-pick {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+    .file-name {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #0f766e;
+      word-break: break-all;
+    }
+    .error {
+      margin: 0;
+      color: #b91c1c;
+      font-size: 0.88rem;
+    }
+  `,
+})
+export class ProjectDocumentUploadDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(DocumentService);
+  private readonly snack = inject(MatSnackBar);
+  private readonly dialogRef = inject(MatDialogRef<ProjectDocumentUploadDialogComponent, boolean>);
+  readonly data = inject<ProjectDocumentUploadDialogData>(MAT_DIALOG_DATA);
+
+  readonly accept = DOCUMENT_ACCEPT;
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly selectedFileName = signal('');
+  private file: File | null = null;
+
+  readonly form = this.fb.group({
+    title: [''],
+    note: [''],
+  });
+
+  onFilePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.file = file;
+    this.selectedFileName.set(file?.name ?? '');
+    this.error.set(null);
+    if (file && file.size > DOCUMENT_MAX_BYTES) {
+      this.file = null;
+      this.selectedFileName.set('');
+      this.error.set('ไฟล์ใหญ่เกิน 20 MB');
+      input.value = '';
+    }
+  }
+
+  save(): void {
+    if (!this.file) {
+      this.error.set('กรุณาเลือกไฟล์');
+      return;
+    }
+    if (this.file.size > DOCUMENT_MAX_BYTES) {
+      this.error.set('ไฟล์ใหญ่เกิน 20 MB');
+      return;
+    }
+    const raw = this.form.getRawValue();
+    this.saving.set(true);
+    this.error.set(null);
+    this.api
+      .uploadToProject(this.data.projectId, {
+        file: this.file,
+        title: (raw.title ?? '').trim() || undefined,
+        note: (raw.note ?? '').trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.snack.open('อัปโหลดเอกสารแล้ว', 'ปิด', { duration: 2500 });
+          this.dialogRef.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+          this.snack.open(err.message, 'ปิด', { duration: 5000 });
+        },
+      });
+  }
+}
+
+/* ——— Project document edit title/note ——— */
+
+export interface ProjectDocumentEditDialogData {
+  document: ApiProjectDocument;
+}
+
+@Component({
+  selector: 'app-project-document-edit-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatSnackBarModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>แก้ไขเอกสาร</h2>
+    <mat-dialog-content>
+      <p class="file-hint">{{ data.document.fileName }}</p>
+      <form [formGroup]="form" class="dlg-form" id="project-doc-edit-form" (ngSubmit)="save()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ชื่อเอกสาร</mat-label>
+          <input matInput formControlName="title" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>รายละเอียด</mat-label>
+          <textarea matInput rows="3" formControlName="note"></textarea>
+        </mat-form-field>
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="project-doc-edit-form"
+        [disabled]="saving()"
+      >
+        บันทึก
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .file-hint {
+      margin: 0 0 0.65rem;
+      color: #64748b;
+      font-size: 0.88rem;
+      word-break: break-all;
+    }
+    .dlg-form {
+      display: grid;
+      gap: 0.35rem;
+      min-width: min(100%, 24rem);
+    }
+    .full {
+      width: 100%;
+    }
+    .error {
+      margin: 0;
+      color: #b91c1c;
+      font-size: 0.88rem;
+    }
+  `,
+})
+export class ProjectDocumentEditDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(DocumentService);
+  private readonly snack = inject(MatSnackBar);
+  private readonly dialogRef = inject(MatDialogRef<ProjectDocumentEditDialogComponent, boolean>);
+  readonly data = inject<ProjectDocumentEditDialogData>(MAT_DIALOG_DATA);
+
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+
+  readonly form = this.fb.group({
+    title: [this.data.document.title ?? ''],
+    note: [this.data.document.note ?? ''],
+  });
+
+  save(): void {
+    const raw = this.form.getRawValue();
+    this.saving.set(true);
+    this.error.set(null);
+    this.api
+      .update(this.data.document.id, {
+        title: (raw.title ?? '').trim(),
+        note: (raw.note ?? '').trim() || null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.snack.open('บันทึกเอกสารแล้ว', 'ปิด', { duration: 2500 });
+          this.dialogRef.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+          this.snack.open(err.message, 'ปิด', { duration: 5000 });
+        },
+      });
   }
 }

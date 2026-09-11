@@ -4,6 +4,7 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
+import { ApiEnvelopeService } from '../http/api-envelope.service';
 import { optionalResourceOptions } from '../http/http-context';
 import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
@@ -19,9 +20,24 @@ import {
   TaskSummary,
 } from '../models/project.model';
 
+/** newCustomer บน CreateProjectDto — สร้างลูกค้าพร้อมโปรเจค (ไม่มี customerId) */
+export interface ProjectNewCustomerInput {
+  name: string;
+  taxId?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  lineOfficialId?: string;
+  facebookUrl?: string;
+  note?: string;
+}
+
 /** CreateProjectDto / UpdateProjectDto */
 export interface ProjectInput {
+  /** เลือกลูกค้าที่มีอยู่ — อย่าส่งพร้อม newCustomer */
   customerId?: number;
+  /** ลูกค้าใหม่ — ส่งแทน customerId */
+  newCustomer?: ProjectNewCustomerInput;
   name?: string;
   code?: string;
   description?: string;
@@ -115,6 +131,7 @@ function toNumber(value: string | number | null | undefined): number | null {
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
   private readonly http = inject(HttpClient);
+  private readonly envelope = inject(ApiEnvelopeService);
   private readonly base = `${environment.apiBaseUrl}/projects`;
   private readonly tasksBase = `${environment.apiBaseUrl}/tasks`;
 
@@ -153,10 +170,14 @@ export class ProjectService {
     return this.projectsSignal().filter((p) => p.customerId === customerId);
   }
 
-  createProject(input: ProjectInput): Observable<Project> {
+  createProject(input: ProjectInput): Observable<{ project: Project; message: string | null }> {
+    this.envelope.takeMessage();
     return this.http.post<ApiProject>(this.base, pruneUndefined(input)).pipe(
-      map((row) => this.normalizeProject(row)),
-      tap((project) => this.projectsSignal.update((list) => upsertById(list, project))),
+      map((row) => {
+        const project = this.normalizeProject(row);
+        this.projectsSignal.update((list) => upsertById(list, project));
+        return { project, message: this.envelope.takeMessage() };
+      }),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
   }

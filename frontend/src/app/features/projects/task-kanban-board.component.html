@@ -4,7 +4,7 @@
       <div class="data-card__row filters-row">
         @if (showProjectFilter) {
           <mat-form-field appearance="outline" class="ui-filter wide">
-            <mat-label>โครงการ</mat-label>
+            <mat-label>โปรเจค</mat-label>
             <mat-select
               [value]="projectFilter()"
               (selectionChange)="projectFilter.set($event.value); applyFilters()"

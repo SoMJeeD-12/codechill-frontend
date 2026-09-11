@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,6 +22,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import {
   FOLLOW_UP_STATUS_LABELS,
   FollowUp,
+  FollowUpProjectSummary,
   FollowUpWritableStatus,
   followUpDisplayStatus,
 } from '../../core/models/follow-up.model';
@@ -28,6 +30,7 @@ import {
   CHANNEL_LABELS,
   CommunicationChannel,
 } from '../../core/models/customer.model';
+import { Project } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import {
@@ -35,12 +38,27 @@ import {
   FollowUpService,
   FollowUpUpdateInput,
 } from '../../core/services/follow-up.service';
+import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+
+/** preset เมื่อสร้างจากหน้าโปรเจค/ลูกค้า */
+export type FollowUpFormPreset = {
+  customerId?: number;
+  projectId?: number;
+  project?: FollowUpProjectSummary | null;
+};
+
+export type FollowUpFormDialogData = FollowUp | FollowUpFormPreset | null;
+
+function isFollowUpRow(data: FollowUpFormDialogData): data is FollowUp {
+  return !!data && typeof (data as FollowUp).id === 'number' && (data as FollowUp).id > 0;
+}
 
 @Component({
   selector: 'app-follow-ups-page',
@@ -77,6 +95,7 @@ export class FollowUpsPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly columns = [
     'title',
+    'project',
     'customer',
     'dueDate',
     'daysLeft',
@@ -103,12 +122,14 @@ export class FollowUpsPageComponent implements OnInit {
     }
     return list.filter((f) => {
       const customer = this.customerName(f).toLowerCase();
+      const project = this.projectLabel(f).toLowerCase();
       const assignee = this.userName(f).toLowerCase();
       return (
         f.title.toLowerCase().includes(q) ||
         (f.detail ?? '').toLowerCase().includes(q) ||
         (f.resultNote ?? '').toLowerCase().includes(q) ||
         customer.includes(q) ||
+        project.includes(q) ||
         assignee.includes(q) ||
         this.statusLabel(f).toLowerCase().includes(q) ||
         f.dueDate.toLowerCase().includes(q)
@@ -159,6 +180,16 @@ export class FollowUpsPageComponent implements OnInit {
     return f.customer?.name ?? this.customersApi.getCustomer(f.customerId)?.name ?? `#${f.customerId}`;
   }
 
+  projectLabel(f: FollowUp): string {
+    if (f.project?.name) {
+      return f.project.code ? `${f.project.code} · ${f.project.name}` : f.project.name;
+    }
+    if (f.projectId == null) {
+      return '—';
+    }
+    return `#${f.projectId}`;
+  }
+
   userName(f: FollowUp): string {
     if (f.assignedUser?.fullName) {
       return f.assignedUser.fullName;
@@ -201,7 +232,7 @@ export class FollowUpsPageComponent implements OnInit {
     return '';
   }
 
-  openCreate(row?: FollowUp): void {
+  openCreate(row?: FollowUp, preset?: FollowUpFormPreset): void {
     if (row ? !this.canUpdate() : !this.canCreate()) {
       this.snack.open('คุณไม่มีสิทธิ์ดำเนินการนี้', 'ปิด', { duration: 3000 });
       return;
@@ -209,7 +240,7 @@ export class FollowUpsPageComponent implements OnInit {
     const ref = this.dialog.open(FollowUpFormDialogComponent, {
       width: '560px',
       maxWidth: '95vw',
-      data: row ?? null,
+      data: row ?? preset ?? null,
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
@@ -270,6 +301,8 @@ export class FollowUpsPageComponent implements OnInit {
     MatButtonModule,
     MatSnackBarModule,
     MatDatepickerModule,
+    MatCheckboxModule,
+    MatAutocompleteModule,
   ],
   templateUrl: './follow-up-form-dialog.component.html',
   styleUrl: './follow-up-form-dialog.component.scss',
@@ -278,11 +311,12 @@ export class FollowUpFormDialogComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(FollowUpService);
   private readonly customersApi = inject(CustomerService);
+  private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<FollowUpFormDialogComponent, boolean>);
-  readonly data = inject<FollowUp | null>(MAT_DIALOG_DATA);
+  readonly data = inject<FollowUpFormDialogData>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
   readonly users = this.usersApi.users;
@@ -290,19 +324,53 @@ export class FollowUpFormDialogComponent {
   readonly statusLabels = FOLLOW_UP_STATUS_LABELS;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data?.id;
+  private readonly editRow: FollowUp | null = isFollowUpRow(this.data) ? this.data : null;
+  readonly isEdit = !!this.editRow;
+  readonly projectLocked = !this.isEdit && !!this.presetProjectId();
+
+  readonly withoutProject = signal(this.initialWithoutProject());
+  readonly projectSuggestions = signal<Project[]>([]);
+  readonly projectQueryReady = signal(false);
+  readonly selectedProject = signal<Project | FollowUpProjectSummary | null>(
+    this.initialSelectedProject()
+  );
+
+  readonly projectSearchControl = this.fb.control<string | Project | FollowUpProjectSummary>('');
+
+  readonly selectedProjectCustomer = computed(() => {
+    const p = this.selectedProject();
+    if (!p) {
+      return null;
+    }
+    if ('customer' in p && p.customer?.name) {
+      return p.customer.name;
+    }
+    const project = p as Project;
+    if (project.customerId) {
+      return this.customersApi.getCustomer(project.customerId)?.name ?? null;
+    }
+    return null;
+  });
 
   readonly form = this.fb.group({
     customerId: [
-      { value: this.data?.customerId ?? 0, disabled: this.isEdit },
+      {
+        value: this.initialCustomerId(),
+        disabled: this.isEdit,
+      },
       Validators.min(1),
     ],
-    title: [this.data?.title ?? '', Validators.required],
-    dueDate: [parseDateOnly(this.data?.dueDate) as Date | null, Validators.required],
-    assignedUserId: [this.data?.assignedUserId ?? (null as number | null)],
-    status: [(this.data?.status === 'OVERDUE' ? 'PLANNED' : this.data?.status ?? 'PLANNED') as FollowUpWritableStatus],
-    detail: [this.data?.detail ?? ''],
-    resultNote: [this.data?.resultNote ?? ''],
+    projectId: [this.initialProjectId() as number | null],
+    title: [this.editRow?.title ?? '', Validators.required],
+    dueDate: [parseDateOnly(this.editRow?.dueDate) as Date | null, Validators.required],
+    assignedUserId: [this.editRow?.assignedUserId ?? (null as number | null)],
+    status: [
+      (this.editRow?.status === 'OVERDUE'
+        ? 'PLANNED'
+        : (this.editRow?.status ?? 'PLANNED')) as FollowUpWritableStatus,
+    ],
+    detail: [this.editRow?.detail ?? ''],
+    resultNote: [this.editRow?.resultNote ?? ''],
   });
 
   overdueHint(): string | null {
@@ -320,30 +388,98 @@ export class FollowUpFormDialogComponent {
 
   constructor() {
     if (!this.isEdit) {
-      const preset = this.data?.customerId;
-      const first = this.customers()[0];
       const me = this.auth.currentUser();
       this.form.patchValue({
-        customerId: preset ?? first?.id ?? 0,
         assignedUserId: me?.id ?? null,
         dueDate: new Date(),
       });
-      if (preset) {
-        this.form.controls.customerId.disable({ emitEvent: false });
+      if (this.withoutProject()) {
+        const presetCustomer = this.presetCustomerId();
+        const first = this.customers()[0];
+        this.form.patchValue({ customerId: presetCustomer ?? first?.id ?? 0 });
+        if (presetCustomer) {
+          this.form.controls.customerId.disable({ emitEvent: false });
+        }
       }
     }
+
+    const selected = this.selectedProject();
+    if (selected) {
+      this.projectSearchControl.setValue(selected, { emitEvent: false });
+    }
+    if (this.projectLocked) {
+      this.projectSearchControl.disable({ emitEvent: false });
+    } else {
+      this.projectSearchControl.valueChanges
+        .pipe(
+          debounceTime(300),
+          distinctUntilChanged((a, b) => this.projectSearchKey(a) === this.projectSearchKey(b))
+        )
+        .subscribe((value) => {
+          if (this.withoutProject()) {
+            return;
+          }
+          this.onProjectSearchChanged(value);
+        });
+    }
+
+    this.syncTargetValidators();
+  }
+
+  readonly displayProject = (
+    value: string | Project | FollowUpProjectSummary | null
+  ): string => {
+    if (!value) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    return value.code ? `${value.code} · ${value.name}` : value.name;
+  };
+
+  setWithoutProject(checked: boolean): void {
+    if (this.projectLocked) {
+      return;
+    }
+    this.withoutProject.set(checked);
+    if (checked) {
+      this.selectedProject.set(null);
+      this.form.patchValue({ projectId: null });
+      this.projectSearchControl.setValue('', { emitEvent: false });
+      this.projectSuggestions.set([]);
+      this.projectQueryReady.set(false);
+      if (!this.isEdit && !this.form.controls.customerId.value) {
+        const first = this.customers()[0];
+        this.form.patchValue({ customerId: first?.id ?? 0 });
+      }
+    } else {
+      this.form.patchValue({ customerId: 0 });
+    }
+    this.syncTargetValidators();
+    this.error.set(null);
+  }
+
+  onProjectSelected(event: MatAutocompleteSelectedEvent): void {
+    const project = event.option.value as Project;
+    this.selectProject(project);
   }
 
   save(): void {
+    this.syncTargetValidators();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      if (!this.withoutProject() && !this.form.getRawValue().projectId) {
+        this.error.set('กรุณาเลือกโปรเจค');
+        this.projectSearchControl.markAsTouched();
+      }
       return;
     }
     const raw = this.form.getRawValue();
     this.saving.set(true);
     this.error.set(null);
 
-    if (this.isEdit && this.data) {
+    if (this.isEdit && this.editRow) {
       const payload: FollowUpUpdateInput = {
         title: raw.title ?? '',
         dueDate: toDateOnlyString(raw.dueDate),
@@ -351,21 +487,30 @@ export class FollowUpFormDialogComponent {
         status: (raw.status as FollowUpWritableStatus) ?? 'PLANNED',
         detail: raw.detail ?? '',
         resultNote: raw.resultNote ?? '',
+        projectId: this.withoutProject() ? null : Number(raw.projectId) || null,
       };
-      this.api.update(this.data.id, payload).subscribe({
+      this.api.update(this.editRow.id, payload).subscribe({
         next: (row) => this.onSaved(row, true),
         error: (err: Error) => this.onError(err),
       });
       return;
     }
 
-    const payload: FollowUpCreateInput = {
-      customerId: Number(raw.customerId),
-      title: raw.title ?? '',
-      dueDate: toDateOnlyString(raw.dueDate),
-      assignedUserId: raw.assignedUserId,
-      detail: raw.detail ?? '',
-    };
+    const payload: FollowUpCreateInput = this.withoutProject()
+      ? {
+          customerId: Number(raw.customerId),
+          title: raw.title ?? '',
+          dueDate: toDateOnlyString(raw.dueDate),
+          assignedUserId: raw.assignedUserId,
+          detail: raw.detail ?? '',
+        }
+      : {
+          projectId: Number(raw.projectId),
+          title: raw.title ?? '',
+          dueDate: toDateOnlyString(raw.dueDate),
+          assignedUserId: raw.assignedUserId,
+          detail: raw.detail ?? '',
+        };
     this.api.create(payload).subscribe({
       next: (row) => this.onSaved(row, false),
       error: (err: Error) => this.onError(err),
@@ -389,6 +534,127 @@ export class FollowUpFormDialogComponent {
   private onError(err: Error): void {
     this.saving.set(false);
     this.error.set(err.message);
+  }
+
+  private selectProject(project: Project | FollowUpProjectSummary): void {
+    this.selectedProject.set(project);
+    this.form.patchValue({ projectId: project.id });
+    this.projectSearchControl.setValue(project, { emitEvent: false });
+    this.projectSuggestions.set([]);
+    this.projectQueryReady.set(false);
+    this.error.set(null);
+    this.syncTargetValidators();
+  }
+
+  private onProjectSearchChanged(
+    value: string | Project | FollowUpProjectSummary | null
+  ): void {
+    if (typeof value !== 'string') {
+      return;
+    }
+    const search = value.trim();
+    const selected = this.selectedProject();
+    if (selected && this.displayProject(selected) !== search) {
+      this.selectedProject.set(null);
+      this.form.patchValue({ projectId: null });
+    }
+    if (search.length < 2) {
+      this.projectQueryReady.set(false);
+      this.projectSuggestions.set([]);
+      return;
+    }
+    this.projectQueryReady.set(true);
+    this.projectsApi.listProjects({ search, limit: 10 }).subscribe({
+      next: (list) => this.projectSuggestions.set(list),
+      error: () => this.projectSuggestions.set([]),
+    });
+  }
+
+  private projectSearchKey(
+    value: string | Project | FollowUpProjectSummary | null
+  ): string {
+    if (!value) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value.trim().toLowerCase();
+    }
+    return `id:${value.id}`;
+  }
+
+  private syncTargetValidators(): void {
+    const customerCtrl = this.form.controls.customerId;
+    const projectCtrl = this.form.controls.projectId;
+    if (this.withoutProject()) {
+      customerCtrl.setValidators([Validators.required, Validators.min(1)]);
+      projectCtrl.clearValidators();
+    } else {
+      projectCtrl.setValidators([Validators.required, Validators.min(1)]);
+      customerCtrl.clearValidators();
+    }
+    customerCtrl.updateValueAndValidity({ emitEvent: false });
+    projectCtrl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private initialWithoutProject(): boolean {
+    if (this.editRow) {
+      return this.editRow.projectId == null;
+    }
+    if (this.presetProjectId()) {
+      return false;
+    }
+    if (this.presetCustomerId() && !this.presetProjectId()) {
+      return true;
+    }
+    return false;
+  }
+
+  private initialSelectedProject(): Project | FollowUpProjectSummary | null {
+    if (this.editRow?.projectId != null) {
+      return (
+        this.editRow.project ?? {
+          id: this.editRow.projectId,
+          code: null,
+          name: `#${this.editRow.projectId}`,
+        }
+      );
+    }
+    const preset = this.data && !isFollowUpRow(this.data) ? this.data : null;
+    if (preset?.projectId) {
+      return (
+        preset.project ?? {
+          id: preset.projectId,
+          code: null,
+          name: `#${preset.projectId}`,
+        }
+      );
+    }
+    return null;
+  }
+
+  private initialProjectId(): number | null {
+    return this.initialSelectedProject()?.id ?? null;
+  }
+
+  private initialCustomerId(): number {
+    if (this.editRow) {
+      return this.editRow.customerId;
+    }
+    return this.presetCustomerId() ?? 0;
+  }
+
+  private presetCustomerId(): number | undefined {
+    if (!this.data || isFollowUpRow(this.data)) {
+      return undefined;
+    }
+    return this.data.customerId;
+  }
+
+  private presetProjectId(): number | undefined {
+    if (!this.data || isFollowUpRow(this.data)) {
+      return undefined;
+    }
+    return this.data.projectId;
   }
 }
 

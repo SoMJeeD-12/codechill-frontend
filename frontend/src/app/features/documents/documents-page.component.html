@@ -2,7 +2,7 @@
   <header class="page-header">
     <div>
       <p class="eyebrow">M9 · เอกสาร</p>
-      <h1>เอกสารโครงการ</h1>
+      <h1>เอกสารโปรเจค</h1>
       <p class="subtitle">อัปโหลดและควบคุมเวอร์ชัน — โครงรอ /api/files (Phase 9) + mock เปิดดูได้</p>
     </div>
   </header>
@@ -15,20 +15,20 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ชื่อเอกสาร / ชื่อไฟล์ / ลูกค้า / โครงการ"
+            placeholder="ชื่อเอกสาร / ชื่อไฟล์ / ลูกค้า / โปรเจค"
             aria-label="ค้นหาเอกสาร"
           />
         </label>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
-          <mat-label>กรองโครงการ</mat-label>
+          <mat-label>กรองโปรเจค</mat-label>
           <input
             matInput
             [formControl]="projectFilterControl"
             [matAutocomplete]="projectFilterAuto"
             (focus)="onProjectFilterFocus()"
             (blur)="onProjectFilterBlur()"
-            placeholder="ค้นหาโค้ด / ชื่อโครงการ"
-            aria-label="กรองโครงการ"
+            placeholder="ค้นหาโค้ด / ชื่อโปรเจค"
+            aria-label="กรองโปรเจค"
           />
           <mat-autocomplete
             #projectFilterAuto="matAutocomplete"
@@ -41,7 +41,7 @@
               <mat-option [value]="p.id">{{ p.name }}</mat-option>
             }
             @if (filteredProjects().length === 0) {
-              <mat-option disabled>ไม่พบโครงการ</mat-option>
+              <mat-option disabled>ไม่พบโปรเจค</mat-option>
             }
           </mat-autocomplete>
         </mat-form-field>
@@ -62,7 +62,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="project">
-          <th mat-header-cell *matHeaderCellDef>โครงการ</th>
+          <th mat-header-cell *matHeaderCellDef>โปรเจค</th>
           <td mat-cell *matCellDef="let row">
             <a [routerLink]="['/app/projects', row.projectId]">{{ projectLabel(row.projectId) }}</a>
           </td>

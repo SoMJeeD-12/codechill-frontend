@@ -126,7 +126,7 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   DRAFT: 'ร่าง',
   IN_PROGRESS: 'กำลังดำเนินการ',
   DELIVERED: 'ส่งมอบแล้ว',
-  CLOSED: 'ปิดโครงการ',
+  CLOSED: 'ปิดโปรเจค',
   CANCELLED: 'ยกเลิก',
 };
 

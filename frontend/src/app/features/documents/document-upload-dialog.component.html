@@ -2,7 +2,7 @@
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="doc-upload-form" (ngSubmit)="save()">
     <mat-form-field appearance="outline" class="full">
-      <mat-label>โครงการ</mat-label>
+      <mat-label>โปรเจค</mat-label>
       <mat-select formControlName="projectId">
         @for (p of projects(); track p.id) {
           <mat-option [value]="p.id">{{ p.name }}</mat-option>

@@ -51,8 +51,9 @@
 
     @if (showRoles) {
       <mat-form-field appearance="outline" class="full">
-        <mat-label>บทบาท (เลือกได้หลายอัน)</mat-label>
-        <mat-select formControlName="roleIds" multiple>
+        <mat-label>บทบาท</mat-label>
+        <mat-select formControlName="roleId">
+          <mat-option [value]="null">— ไม่ระบุ —</mat-option>
           @for (role of data.roles; track role.id) {
             <mat-option [value]="role.id">{{ role.name }}</mat-option>
           }

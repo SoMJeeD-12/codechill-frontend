@@ -9,6 +9,12 @@ export interface FollowUpCustomerSummary {
   code: string | null;
 }
 
+export interface FollowUpProjectSummary {
+  id: number;
+  code: string | null;
+  name: string;
+}
+
 /**
  * งานติดตามลูกค้า (M7) — FollowUpResponseDto
  * หน้าจอต้องอ่าน isOverdue ไม่ใช่ status === 'OVERDUE'
@@ -17,6 +23,8 @@ export interface FollowUp {
   id: number;
   customerId: number;
   customer: FollowUpCustomerSummary | null;
+  projectId: number | null;
+  project?: FollowUpProjectSummary | null;
   title: string;
   detail: string | null;
   dueDate: string;

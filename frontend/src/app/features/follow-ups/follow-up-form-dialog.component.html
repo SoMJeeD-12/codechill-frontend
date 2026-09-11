@@ -1,17 +1,59 @@
-<h2 mat-dialog-title>{{ data ? 'แก้ไขงานติดตาม' : 'สร้างงานติดตาม' }}</h2>
+<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขงานติดตาม' : 'สร้างงานติดตาม' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ลูกค้า</mat-label>
-      <mat-select formControlName="customerId">
-        @for (c of customers(); track c.id) {
-          <mat-option [value]="c.id">{{ c.name }}</mat-option>
+    <mat-checkbox
+      [checked]="withoutProject()"
+      (change)="setWithoutProject($event.checked)"
+      [disabled]="projectLocked"
+    >
+      ติดตามลูกค้าโดยไม่ระบุโปรเจค
+    </mat-checkbox>
+
+    @if (!withoutProject()) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>โปรเจค</mat-label>
+        <input
+          matInput
+          [formControl]="projectSearchControl"
+          [matAutocomplete]="projectAuto"
+          [readonly]="projectLocked"
+          placeholder="พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา"
+        />
+        <mat-autocomplete
+          #projectAuto="matAutocomplete"
+          [displayWith]="displayProject"
+          (optionSelected)="onProjectSelected($event)"
+        >
+          @if (projectQueryReady()) {
+            @for (p of projectSuggestions(); track p.id) {
+              <mat-option [value]="p">
+                {{ p.code ? p.code + ' · ' : '' }}{{ p.name }}
+                @if (p.customer?.name; as customerName) {
+                  <span class="option-muted"> — {{ customerName }}</span>
+                }
+              </mat-option>
+            }
+          }
+        </mat-autocomplete>
+        @if (selectedProjectCustomer(); as customerName) {
+          <mat-hint>ลูกค้า: {{ customerName }}</mat-hint>
+        } @else if (!projectLocked) {
+          <mat-hint>เลือกโปรเจคที่ต้องการติดตาม</mat-hint>
         }
-      </mat-select>
-      @if (isEdit) {
-        <mat-hint>ย้ายลูกค้าไม่ได้ — ถ้าผิดรายให้ยกเลิกแล้วสร้างใหม่</mat-hint>
-      }
-    </mat-form-field>
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ลูกค้า</mat-label>
+        <mat-select formControlName="customerId">
+          @for (c of customers(); track c.id) {
+            <mat-option [value]="c.id">{{ c.name }}</mat-option>
+          }
+        </mat-select>
+        @if (isEdit) {
+          <mat-hint>ย้ายลูกค้าไม่ได้ — ถ้าผิดรายให้ยกเลิกแล้วสร้างใหม่</mat-hint>
+        }
+      </mat-form-field>
+    }
 
     <mat-form-field appearance="outline" class="full">
       <mat-label>หัวข้อ</mat-label>

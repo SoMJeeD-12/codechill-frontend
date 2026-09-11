@@ -61,6 +61,22 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'customer-360',
+        canActivate: [permissionGuard('customer-360')],
+        loadComponent: () =>
+          import('./features/customers/customers-page.component').then((m) => m.CustomersPageComponent),
+        data: { mode: '360' },
+      },
+      {
+        path: 'customer-360/:id',
+        canActivate: [permissionGuard('customer-360')],
+        loadComponent: () =>
+          import('./features/customers/customer-detail-page.component').then(
+            (m) => m.CustomerDetailPageComponent
+          ),
+        data: { mode: '360' },
+      },
+      {
         path: 'projects',
         canActivate: [permissionGuard('projects')],
         loadComponent: () =>
@@ -68,7 +84,12 @@ export const routes: Routes = [
       },
       {
         path: 'projects/board',
-        canActivate: [permissionGuard('projects')],
+        redirectTo: '/app/tasks',
+        pathMatch: 'full',
+      },
+      {
+        path: 'tasks',
+        canActivate: [permissionGuard('tasks')],
         loadComponent: () =>
           import('./features/projects/tasks-overview-page.component').then(
             (m) => m.TasksOverviewPageComponent
@@ -112,7 +133,7 @@ export const routes: Routes = [
       },
       {
         path: 'ma/plans',
-        canActivate: [permissionGuard('ma')],
+        canActivate: [permissionGuard('ma-plans')],
         loadComponent: () =>
           import('./features/ma/ma-plans-page.component').then((m) => m.MaPlansPageComponent),
       },

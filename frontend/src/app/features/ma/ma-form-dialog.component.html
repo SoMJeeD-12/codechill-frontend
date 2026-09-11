@@ -9,19 +9,19 @@
             <mat-option [value]="c.id">{{ c.name }}</mat-option>
           }
         </mat-select>
-        <mat-hint>ใช้กรองโครงการ — ระบบดึง customerId จากโครงการให้อัตโนมัติ</mat-hint>
+        <mat-hint>ใช้กรองโปรเจค — ระบบดึง customerId จากโปรเจคให้อัตโนมัติ</mat-hint>
       </mat-form-field>
     }
 
     <mat-form-field appearance="outline" class="full">
-      <mat-label>โครงการ *</mat-label>
+      <mat-label>โปรเจค *</mat-label>
       <mat-select formControlName="projectId">
         @for (p of filteredProjects(); track p.id) {
           <mat-option [value]="p.id">#{{ p.id }} · {{ p.name }}</mat-option>
         }
       </mat-select>
       @if (isEdit) {
-        <mat-hint>ย้ายโครงการทีหลังไม่ได้</mat-hint>
+        <mat-hint>ย้ายโปรเจคทีหลังไม่ได้</mat-hint>
       }
     </mat-form-field>
 

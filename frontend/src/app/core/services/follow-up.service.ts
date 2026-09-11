@@ -11,9 +11,10 @@ import {
   FollowUpWritableStatus,
 } from '../models/follow-up.model';
 
-/** CreateFollowUpDto */
+/** CreateFollowUpDto — ส่ง projectId หรือ customerId อย่างใดอย่างหนึ่ง */
 export interface FollowUpCreateInput {
-  customerId: number;
+  projectId?: number;
+  customerId?: number;
   title: string;
   dueDate: string;
   detail?: string | null;
@@ -28,6 +29,7 @@ export interface FollowUpUpdateInput {
   status?: FollowUpWritableStatus;
   assignedUserId?: number | null;
   resultNote?: string | null;
+  projectId?: number | null;
 }
 
 export interface FollowUpCompleteInput {
@@ -41,6 +43,7 @@ export interface FollowUpListParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   customerId?: number;
+  projectId?: number;
   assignedUserId?: number;
   status?: FollowUpStatus;
   /** ใช้ query ?overdue=true ตาม API */
@@ -76,6 +79,11 @@ export class FollowUpService {
           if (params.customerId != null) {
             this.items.update((all) => [
               ...all.filter((f) => f.customerId !== params.customerId),
+              ...rows,
+            ]);
+          } else if (params.projectId != null) {
+            this.items.update((all) => [
+              ...all.filter((f) => f.projectId !== params.projectId),
               ...rows,
             ]);
           } else {
@@ -120,14 +128,17 @@ export class FollowUpService {
   }
 
   create(input: FollowUpCreateInput): Observable<FollowUp> {
-    if (!input.title.trim() || !input.customerId || !input.dueDate) {
-      return throwError(() => new Error('กรุณากรอกหัวข้อ ลูกค้า และวันครบกำหนด'));
+    const hasProject = input.projectId != null && input.projectId > 0;
+    const hasCustomer = input.customerId != null && input.customerId > 0;
+    if (!input.title.trim() || !input.dueDate || (!hasProject && !hasCustomer)) {
+      return throwError(() => new Error('กรุณากรอกหัวข้อ โปรเจคหรือลูกค้า และวันครบกำหนด'));
     }
     return this.http
       .post<FollowUp>(
         this.base,
         pruneUndefined({
-          customerId: input.customerId,
+          projectId: hasProject ? input.projectId : undefined,
+          customerId: hasProject ? undefined : input.customerId,
           title: input.title.trim(),
           dueDate: input.dueDate,
           detail: input.detail?.trim() || undefined,
@@ -152,6 +163,7 @@ export class FollowUpService {
           assignedUserId: input.assignedUserId,
           resultNote:
             input.resultNote === undefined ? undefined : input.resultNote?.trim() || null,
+          projectId: input.projectId,
         })
       )
       .pipe(

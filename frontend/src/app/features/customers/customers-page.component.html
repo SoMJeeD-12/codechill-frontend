@@ -1,9 +1,15 @@
 <section class="page">
   <header class="page-header">
     <div>
-      <p class="eyebrow">M1 · ลูกค้า</p>
-      <h1>ลูกค้า</h1>
-      <p class="subtitle">ค้นหา กรองสถานะ และเปิดมุมมอง 360 องศา</p>
+      <p class="eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'M1 · ลูกค้า' }}</p>
+      <h1>{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ลูกค้า' }}</h1>
+      <p class="subtitle">
+        {{
+          is360Mode
+            ? 'เลือกลูกค้าเพื่อดูภาพรวมโปรเจค ประกัน สัญญา ปัญหา และการติดตาม'
+            : 'ข้อมูลลูกค้า · ภาษี · ผู้ติดต่อ · ช่องทางโซเชียล'
+        }}
+      </p>
     </div>
   </header>
 
@@ -51,7 +57,10 @@
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อลูกค้า</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/customers', row.id]">{{ row.name }}</a>
+            <a
+              [routerLink]="[is360Mode ? '/app/customer-360' : '/app/customers', row.id]"
+            >{{ row.name }}</a>
+            <div class="muted">รหัส {{ row.code || '—' }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="phone">

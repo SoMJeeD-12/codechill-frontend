@@ -280,13 +280,14 @@ export class TicketDetailPageComponent implements OnInit {
 
   openResolutionDetail(r: TicketResolution): void {
     openConfirmDialog(this.dialog, {
-      title: `รอบแก้ไข · ${this.resultLabels[r.result]}`,
+      title: `รอบที่ ${r.round}`,
       message: [
+        `ผลลัพธ์: ${this.resultLabels[r.result]}`,
         `สาเหตุ: ${r.rootCause || '—'}`,
         `วิธีแก้ไข: ${r.detail || '—'}`,
-        `เวลาที่ใช้: ${r.hoursSpent ?? 0} ชม.`,
         `ผู้แก้ไข: ${this.userName(r.resolvedByUserId)}`,
-        `วันเวลา: ${r.resolvedAt}`,
+        `เวลาที่ใช้: ${r.hoursSpent != null ? r.hoursSpent + ' ชม.' : '—'}`,
+        `เวลาที่แก้เสร็จ: ${r.resolvedAt || '—'}`,
       ].join('\n'),
       confirmLabel: 'ปิด',
       hideCancel: true,

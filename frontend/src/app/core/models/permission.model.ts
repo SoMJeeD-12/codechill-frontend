@@ -2,13 +2,16 @@
 export type MenuCode =
   | 'dashboard'
   | 'my-work'
+  | 'tasks'
   | 'users'
   | 'roles'
   | 'customers'
+  | 'customer-360'
   | 'projects'
   | 'tickets'
   | 'warranties'
   | 'ma'
+  | 'ma-plans'
   | 'follow-ups'
   | 'surveys'
   | 'documents'
@@ -52,6 +55,6 @@ export interface MenuItem {
   label: string;
   icon: string;
   route: string;
-  /** กลุ่มใน sidebar */
-  group: 'main' | 'ops' | 'revenue' | 'system';
+  /** กลุ่มใน sidebar — งานหลัก / ข้อมูลรอง / ตั้งค่า */
+  group: 'main' | 'support' | 'settings';
 }

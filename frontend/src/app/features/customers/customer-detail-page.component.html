@@ -15,9 +15,10 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">M1 · Customer 360</p>
+        <p class="eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูลลูกค้า' }}</p>
         <h1>{{ c.name }}</h1>
         <p class="subtitle">
+          รหัส {{ c.code || '—' }} ·
           {{ statusLabel(c.status) }} ·
           ผู้ดูแล {{ c.owner?.fullName || '—' }}
         </p>
@@ -30,17 +31,26 @@
         <span>{{ c.taxId || '—' }}</span>
       </mat-card>
       <mat-card>
-        <strong>โทรศัพท์</strong>
-        <span>{{ c.phone || '—' }}</span>
-      </mat-card>
-      <mat-card>
         <strong>ที่อยู่</strong>
         <span>{{ c.address || '—' }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>หมายเหตุ</strong>
+        <span>{{ c.note || '—' }}</span>
       </mat-card>
       <mat-card>
         <strong>ผู้ติดต่อ</strong>
         <span>{{ contacts().length }} คน</span>
       </mat-card>
+      <mat-card>
+        <strong>LINE Official</strong>
+        <span>{{ c.lineOfficialId || '—' }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>Facebook</strong>
+        <span>{{ c.facebookUrl || '—' }}</span>
+      </mat-card>
+      @if (is360Mode) {
       <mat-card>
         <strong>ติดต่อล่าสุด</strong>
         <span>
@@ -79,6 +89,7 @@
             <small class="muted">{{ oneTimeLabel }}</small>
           }
         </mat-card>
+      }
       }
     </div>
 
@@ -192,6 +203,7 @@
         </div>
       </mat-tab>
 
+      @if (is360Mode) {
       <mat-tab label="ประวัติการติดต่อ">
         <div class="tab-panel">
           <div class="data-card">
@@ -283,19 +295,19 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="โครงการ">
+      <mat-tab label="โปรเจค">
         <div class="tab-panel">
           <div class="data-card">
             <div class="data-card__head">
               <div class="data-card__row tab-toolbar">
-                <h3 class="tab-heading">โครงการ</h3>
+                <h3 class="tab-heading">โปรเจค</h3>
                 <label class="ui-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
                     [formControl]="projectSearchControl"
-                    placeholder="ค้นหาชื่อโครงการ / สถานะ"
-                    aria-label="ค้นหาโครงการ"
+                    placeholder="ค้นหาชื่อโปรเจค / สถานะ"
+                    aria-label="ค้นหาโปรเจค"
                   />
                 </label>
               </div>
@@ -303,7 +315,7 @@
             <div class="data-card__body">
               <table mat-table [dataSource]="projectsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef>ชื่อโครงการ</th>
+                  <th mat-header-cell *matHeaderCellDef>ชื่อโปรเจค</th>
                   <td mat-cell *matCellDef="let row">{{ row.name }}</td>
                 </ng-container>
                 <ng-container matColumnDef="status">
@@ -332,7 +344,7 @@
               />
               @if (filteredProjects().length === 0) {
                 <p class="data-empty">
-                  {{ projectSearch().trim() ? 'ไม่พบโครงการตามคำค้นหา' : 'ยังไม่มีโครงการของลูกค้ารายนี้' }}
+                  {{ projectSearch().trim() ? 'ไม่พบโปรเจคตามคำค้นหา' : 'ยังไม่มีโปรเจคของลูกค้ารายนี้' }}
                 </p>
               }
             </div>
@@ -586,6 +598,7 @@
           </div>
         </div>
       </mat-tab>
+    }
     </mat-tab-group>
   </section>
   }

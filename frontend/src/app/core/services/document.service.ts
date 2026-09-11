@@ -1,8 +1,13 @@
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Observable, delay, from, of, throwError } from 'rxjs';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { apiErrorMessage } from '../http/api-error';
+import { asPage, pruneUndefined, toHttpParams } from '../http/api.util';
 import { buildMockDocuments } from '../mock/file.mock';
 import {
+  ApiProjectDocument,
   DocumentCategory,
   DocumentVersion,
   ProjectDocument,
@@ -43,12 +48,32 @@ export interface DocumentListParams {
   search?: string;
 }
 
+/** พารามิเตอร์รายการเอกสารโปรเจคจาก API จริง */
+export interface ProjectDocumentListParams {
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ProjectDocumentUploadInput {
+  file: File;
+  title?: string;
+  note?: string;
+}
+
+export interface ProjectDocumentUpdateInput {
+  title?: string;
+  note?: string | null;
+}
+
 /**
- * เอกสารโครงการ (M9) — mock จนกว่า Phase 9 /api/files พร้อม
- * อัปโหลดจริงจะวิ่งผ่าน FileService → POST /api/files แล้วผูก fileId
+ * เอกสารโครงการ (M9)
+ * — API จริงใต้โปรเจค: listByProject / uploadToProject / update / remove / download
+ * — mock methods เดิมยังอยู่สำหรับ documents-page
  */
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
+  private readonly http = inject(HttpClient);
   private readonly filesApi = inject(FileService);
   private readonly docsSignal = signal<ProjectDocument[]>([]);
   private readonly versionsSignal = signal<DocumentVersion[]>([]);
@@ -57,6 +82,136 @@ export class DocumentService {
   private demoSeeded = false;
 
   readonly documents = this.docsSignal.asReadonly();
+
+  /* ——— Real API (B3) ——— */
+
+  listByProject(
+    projectId: number,
+    params: ProjectDocumentListParams = {}
+  ): Observable<{ items: ApiProjectDocument[]; total: number }> {
+    return this.http
+      .get<ApiProjectDocument[] | { items: ApiProjectDocument[]; total?: number }>(
+        `${environment.apiBaseUrl}/projects/${projectId}/documents`,
+        {
+          params: toHttpParams({
+            search: params.search,
+            page: params.page,
+            limit: params.limit ?? 10,
+          }),
+        }
+      )
+      .pipe(
+        map((body) => asPage<ApiProjectDocument>(body)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  uploadToProject(
+    projectId: number,
+    input: ProjectDocumentUploadInput
+  ): Observable<ApiProjectDocument> {
+    const form = new FormData();
+    form.append('file', input.file, input.file.name);
+    const title = input.title?.trim();
+    if (title) {
+      form.append('title', title);
+    }
+    const note = input.note?.trim();
+    if (note) {
+      form.append('note', note);
+    }
+    return this.http
+      .post<ApiProjectDocument>(
+        `${environment.apiBaseUrl}/projects/${projectId}/documents`,
+        form
+      )
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  update(
+    id: number,
+    input: ProjectDocumentUpdateInput
+  ): Observable<ApiProjectDocument> {
+    return this.http
+      .patch<ApiProjectDocument>(
+        `${environment.apiBaseUrl}/documents/${id}`,
+        pruneUndefined({
+          title: input.title !== undefined ? input.title.trim() : undefined,
+          note:
+            input.note === undefined
+              ? undefined
+              : input.note == null
+                ? null
+                : input.note.trim() || null,
+        })
+      )
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  remove(id: number): Observable<void> {
+    return this.http
+      .delete<void>(`${environment.apiBaseUrl}/documents/${id}`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  /** ดาวน์โหลดผ่าน blob + Authorization (interceptor) */
+  download(doc: ApiProjectDocument): Observable<void> {
+    const url = this.resolveDownloadUrl(doc.downloadUrl);
+    return this.http.get(url, { responseType: 'blob' }).pipe(
+      tap((blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = doc.fileName || 'download';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+      }),
+      map(() => void 0),
+      catchError((err) => this.blobToError(err))
+    );
+  }
+
+  private resolveDownloadUrl(downloadUrl: string): string {
+    const raw = (downloadUrl || '').trim();
+    if (!raw) {
+      return `${environment.apiBaseUrl}/documents/0/download`;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/api/')) {
+      const origin = environment.apiBaseUrl.replace(/\/api\/?$/, '');
+      return `${origin}${raw}`;
+    }
+    if (raw.startsWith('/')) {
+      return `${environment.apiBaseUrl}${raw}`;
+    }
+    return `${environment.apiBaseUrl}/${raw}`;
+  }
+
+  private blobToError(err: unknown): Observable<never> {
+    if (err instanceof HttpErrorResponse && err.error instanceof Blob) {
+      return from(err.error.text()).pipe(
+        switchMap((text) => {
+          try {
+            const json = JSON.parse(text) as { message?: string };
+            if (typeof json.message === 'string' && json.message.trim()) {
+              return throwError(() => new Error(json.message));
+            }
+          } catch {
+            /* fall through */
+          }
+          return throwError(() => new Error(apiErrorMessage(err)));
+        })
+      );
+    }
+    return throwError(() => new Error(apiErrorMessage(err)));
+  }
+
+  /* ——— Mock (documents-page) ——— */
 
   list(params: DocumentListParams = {}): Observable<ProjectDocument[]> {
     let rows = this.docsSignal();
@@ -117,7 +272,7 @@ export class DocumentService {
 
   create(input: DocumentCreateInput): Observable<ProjectDocument> {
     if (!input.title.trim() || !input.projectId || !input.fileName.trim()) {
-      return throwError(() => new Error('กรุณาระบุชื่อเอกสาร โครงการ และชื่อไฟล์'));
+      return throwError(() => new Error('กรุณาระบุชื่อเอกสาร โปรเจค และชื่อไฟล์'));
     }
     const version = (input.version || 'v1.0').trim();
     const fileName = input.fileName.trim();

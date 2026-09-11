@@ -20,7 +20,7 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full">
-        <mat-label>โครงการ</mat-label>
+        <mat-label>โปรเจค</mat-label>
         <mat-select formControlName="projectId">
           @for (p of filteredProjects(); track p.id) {
             <mat-option [value]="p.id">{{ p.name }}</mat-option>
@@ -38,7 +38,7 @@
           }
         </mat-select>
         @if (!isEdit && !deliveries().length && form.controls.projectId.value) {
-          <mat-hint>ยังไม่มีการส่งมอบในโครงการนี้ — สร้างที่หน้ารายละเอียดโครงการก่อน</mat-hint>
+          <mat-hint>ยังไม่มีการส่งมอบในโปรเจคนี้ — สร้างที่หน้ารายละเอียดโปรเจคก่อน</mat-hint>
         }
       </mat-form-field>
     }

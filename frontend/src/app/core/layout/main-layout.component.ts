@@ -64,10 +64,9 @@ export class MainLayoutComponent implements OnInit {
 
   readonly menuGroups = computed(() => {
     const groups: { key: string; label: string; items: typeof MENU_ITEMS }[] = [
-      { key: 'main', label: 'หลัก', items: [] },
-      { key: 'ops', label: 'ปฏิบัติการ', items: [] },
-      { key: 'revenue', label: 'รายได้ต่อเนื่อง', items: [] },
-      { key: 'system', label: 'ระบบ', items: [] },
+      { key: 'main', label: 'งานหลัก', items: [] },
+      { key: 'support', label: 'ข้อมูลรอง', items: [] },
+      { key: 'settings', label: 'ตั้งค่า', items: [] },
     ];
 
     for (const item of this.visibleMenus()) {
