@@ -240,11 +240,18 @@ export class MaService {
     );
   }
 
-  update(id: number, input: MaContractUpdateInput): Observable<MaContract> {
+  update(
+    id: number,
+    input: MaContractUpdateInput
+  ): Observable<{ contract: MaContract; message: string | null }> {
+    this.envelope.takeMessage();
     return this.http
       .patch<MaContract>(`${this.contractsBase}/${id}`, pruneUndefined(input))
       .pipe(
-        tap((row) => this.contractsSignal.update((list) => upsertById(list, row))),
+        map((contract) => {
+          this.contractsSignal.update((list) => upsertById(list, contract));
+          return { contract, message: this.envelope.takeMessage() };
+        }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }
@@ -256,6 +263,14 @@ export class MaService {
         tap((row) => this.contractsSignal.update((list) => upsertById(list, row))),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /** ลบสัญญา — ใช้เทส/ล้างข้อมูล (ถ้า backend ยังไม่มีจะได้ error จาก API) */
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.contractsBase}/${id}`).pipe(
+      tap(() => this.contractsSignal.update((list) => list.filter((c) => c.id !== id))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   addAddon(contractId: number, input: MaAddonInput): Observable<MaAddon> {

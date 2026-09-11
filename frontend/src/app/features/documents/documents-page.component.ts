@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import {
   DOCUMENT_CATEGORY_LABELS,
@@ -120,6 +121,7 @@ function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: str
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './documents-page.component.html',

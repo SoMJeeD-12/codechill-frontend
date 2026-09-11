@@ -19,6 +19,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   CHANNEL_LABELS,
   CUSTOMER_STATUS_LABELS,
@@ -78,6 +79,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatSnackBarModule,
     MatTableModule,
     MatDialogModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './customer-detail-page.component.html',

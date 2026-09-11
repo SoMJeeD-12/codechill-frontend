@@ -169,6 +169,17 @@ export class ProjectService {
     );
   }
 
+  deleteProject(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`).pipe(
+      tap(() => {
+        this.projectsSignal.update((list) => list.filter((p) => p.id !== id));
+        this.tasksSignal.update((list) => list.filter((t) => t.projectId !== id));
+        this.deliveriesSignal.update((list) => list.filter((d) => d.projectId !== id));
+      }),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
   /* ——— งานย่อย ——— */
 
   getTasks(projectId: number): TaskItem[] {

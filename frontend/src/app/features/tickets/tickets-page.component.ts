@@ -18,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -48,6 +49,7 @@ import {
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { EMPTY, forkJoin, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
@@ -74,6 +76,7 @@ const BILLING_TYPE_ORDER: BillingType[] = [
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './tickets-page.component.html',
@@ -192,6 +195,25 @@ export class TicketsPageComponent implements OnInit {
       return;
     }
     this.openForm(ticket);
+  }
+
+  remove(row: Ticket): void {
+    openConfirmDialog(this.dialog, {
+      title: 'ลบใบปัญหา',
+      message: `ต้องการลบ「${row.title}」หรือไม่? (ใช้สำหรับเทส)`,
+      confirmLabel: 'ลบ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.ticketsApi.remove(row.id).subscribe({
+        next: () => {
+          this.snack.open('ลบใบปัญหาแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
   }
 
   private openForm(ticket: Ticket | null): void {

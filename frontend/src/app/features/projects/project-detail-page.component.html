@@ -15,7 +15,34 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">{{ projectStatusLabel(p.status) }}</p>
+        <div class="status-row">
+          @if (canUpdateProject()) {
+            <button
+              type="button"
+              class="cell-badge status-badge project-status-badge is-editable"
+              [attr.data-project-status]="p.status"
+              [matMenuTriggerFor]="projectStatusMenu"
+              matTooltip="เปลี่ยนสถานะโครงการ"
+            >
+              {{ projectStatusLabel(p.status) }}
+              <mat-icon>expand_more</mat-icon>
+            </button>
+            <mat-menu #projectStatusMenu="matMenu">
+              @for (s of projectStatuses; track s) {
+                <button mat-menu-item type="button" (click)="changeProjectStatus(s)">
+                  @if (p.status === s) {
+                    <mat-icon>check</mat-icon>
+                  }
+                  <span>{{ statusLabels[s] }}</span>
+                </button>
+              }
+            </mat-menu>
+          } @else {
+            <span class="cell-badge status-badge project-status-badge" [attr.data-project-status]="p.status">
+              {{ projectStatusLabel(p.status) }}
+            </span>
+          }
+        </div>
         <h1>{{ p.name }}</h1>
         <p class="subtitle">
           {{ customerName() }} ·
@@ -35,10 +62,50 @@
           @if (p.functionCount != null) {
             · ฟังก์ชัน {{ p.functionCount }}
           }
+          @if (p.actualEndDate) {
+            · ปิดจริง {{ p.actualEndDate }}
+          }
         </p>
         <p class="description">{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
         <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | thaiDate }}</p>
       </div>
+      @if (canUpdateProject() || canDeleteProject()) {
+        <div class="header-actions">
+          @if (nextProjectStatus(); as nextStatus) {
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="advanceProjectStatus()"
+            >
+              <mat-icon>trending_flat</mat-icon>
+              ขั้นถัดไป · {{ statusLabels[nextStatus] }}
+            </button>
+          }
+          <button
+            mat-stroked-button
+            type="button"
+            [matMenuTriggerFor]="projectManageMenu"
+          >
+            จัดการ
+            <mat-icon iconPositionEnd>expand_more</mat-icon>
+          </button>
+          <mat-menu #projectManageMenu="matMenu">
+            @if (canUpdateProject()) {
+              <button mat-menu-item type="button" (click)="openEditProject()">
+                <mat-icon>edit</mat-icon>
+                <span>แก้ไขโครงการ</span>
+              </button>
+            }
+            @if (canDeleteProject()) {
+              <button mat-menu-item type="button" class="menu-danger" (click)="removeProject()">
+                <mat-icon>delete</mat-icon>
+                <span>ลบโครงการ</span>
+              </button>
+            }
+          </mat-menu>
+        </div>
+      }
     </header>
 
     <mat-tab-group animationDuration="150ms">
@@ -218,14 +285,6 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let row" class="actions">
-                    <button
-                      mat-icon-button
-                      type="button"
-                      (click)="openEditTask(row)"
-                      matTooltip="ดู / แก้ไขรายละเอียด"
-                    >
-                      <mat-icon>open_in_new</mat-icon>
-                    </button>
                     @if (row.status !== 'DONE') {
                       <button
                         mat-stroked-button
@@ -239,6 +298,27 @@
                     } @else {
                       <span class="done-tag">เสร็จแล้ว</span>
                     }
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [matMenuTriggerFor]="taskManageMenu"
+                      matTooltip="จัดการ"
+                      aria-label="จัดการงานย่อย"
+                    >
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #taskManageMenu="matMenu">
+                      <button mat-menu-item type="button" (click)="openEditTask(row)">
+                        <mat-icon>edit</mat-icon>
+                        <span>ดู / แก้ไข</span>
+                      </button>
+                      @if (canDeleteTask()) {
+                        <button mat-menu-item type="button" class="menu-danger" (click)="removeTask(row)">
+                          <mat-icon>delete</mat-icon>
+                          <span>ลบงานย่อย</span>
+                        </button>
+                      }
+                    </mat-menu>
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="taskColumns"></tr>
@@ -341,7 +421,11 @@
                         </button>
                         <mat-menu #acceptMenu="matMenu">
                           @for (a of acceptances; track a) {
-                            <button mat-menu-item type="button" (click)="setAcceptance(row, a)">
+                            <button
+                              mat-menu-item
+                              type="button"
+                              (click)="a === 'ACCEPTED' ? openAcceptDelivery(row) : setAcceptance(row, a)"
+                            >
                               @if (row.acceptanceStatus === a) {
                                 <mat-icon>check</mat-icon>
                               }

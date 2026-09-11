@@ -42,6 +42,18 @@
           <mat-icon>print</mat-icon>
           พิมพ์ใบแจ้งค่าบริการ
         </button>
+        @if (canActivate()) {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="activateContract()"
+            [disabled]="activating()"
+          >
+            <mat-icon>play_circle</mat-icon>
+            เริ่มใช้งาน
+          </button>
+        }
         @if (canRenew()) {
           <button
             mat-flat-button
@@ -107,6 +119,18 @@
           <p class="warn-banner">
             สัญญานี้ยังเป็น「แบบร่าง」— ระบบจะไม่หักโควตาจากใบปัญหา
             จนกว่าจะเปลี่ยนสถานะเป็น「ใช้งาน」
+            @if (canActivate()) {
+              <button
+                mat-button
+                type="button"
+                color="primary"
+                class="warn-banner__action"
+                (click)="activateContract()"
+                [disabled]="activating()"
+              >
+                เริ่มใช้งาน
+              </button>
+            }
           </p>
         } @else if (!c.isCurrentlyActive) {
           <p class="warn-banner">

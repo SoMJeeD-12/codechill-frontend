@@ -99,6 +99,15 @@ button.back.mat-mdc-outlined-button {
   }
 }
 
+/* รายการลบในเมนูจัดการ */
+.mat-mdc-menu-item.menu-danger {
+  color: #b91c1c;
+
+  .mat-icon {
+    color: #b91c1c;
+  }
+}
+
 /* กรองโครงการ — ซ่อนสกอลล์บาร์ของแผง autocomplete */
 .mat-mdc-autocomplete-panel.project-filter-auto-panel {
   scrollbar-width: none !important;

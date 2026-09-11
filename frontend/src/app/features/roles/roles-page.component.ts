@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { Role } from '../../core/models/permission.model';
 import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../core/services/role.service';
@@ -27,6 +28,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatSnackBarModule,
     MatDialogModule,
     MatTooltipModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './roles-page.component.html',

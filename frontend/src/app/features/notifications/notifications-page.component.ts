@@ -9,6 +9,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   NOTIFICATION_CHANNEL_LABELS,
   NOTIFICATION_TRIGGER_LABELS,
@@ -36,6 +37,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatButtonToggleModule,
     MatSlideToggleModule,
     MatSnackBarModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './notifications-page.component.html',

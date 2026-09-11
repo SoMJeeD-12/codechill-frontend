@@ -15,6 +15,12 @@ export interface ConfirmDialogData {
   cancelLabel?: string;
   /** ซ่อนปุ่มยกเลิก — ใช้โหมดดูรายละเอียด */
   hideCancel?: boolean;
+  /**
+   * true = ปุ่มแดง (ลบ/ทำลาย)
+   * false = ปุ่ม primary ปกติ (เริ่มใช้งาน / ต่ออายุ ฯลฯ)
+   * ค่าเริ่มต้น true เมื่อมีปุ่มยกเลิก — คงพฤติกรรมเดิมของ dialog ลบ
+   */
+  danger?: boolean;
 }
 
 @Component({
@@ -35,7 +41,8 @@ export interface ConfirmDialogData {
       <button
         mat-flat-button
         type="button"
-        [class.confirm-danger]="!data.hideCancel"
+        [color]="isDanger ? undefined : 'primary'"
+        [class.confirm-danger]="isDanger"
         [mat-dialog-close]="true"
       >
         {{ data.confirmLabel || (data.hideCancel ? 'ปิด' : 'ลบ') }}
@@ -64,6 +71,7 @@ export interface ConfirmDialogData {
 })
 export class ConfirmDialogComponent {
   readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
+  readonly isDanger = !this.data.hideCancel && this.data.danger !== false;
 }
 
 /** เปิดป๊อปอัปยืนยัน — คืน true เมื่อกดยืนยัน */

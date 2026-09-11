@@ -1,6 +1,22 @@
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
   margin-bottom: 1rem;
   h1 { margin: 0.15rem 0; font-size: 1.6rem; }
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.status-row {
+  margin: 0.35rem 0 0;
 }
 
 .eyebrow {
@@ -146,6 +162,33 @@
   &[data-status='DONE'] {
     background: #ecfdf5;
     color: #0f766e;
+  }
+}
+
+.project-status-badge {
+  &[data-project-status='DRAFT'] {
+    background: #f1f5f4;
+    color: #5b6762;
+  }
+
+  &[data-project-status='IN_PROGRESS'] {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  &[data-project-status='DELIVERED'] {
+    background: #ecfdf5;
+    color: #0f766e;
+  }
+
+  &[data-project-status='CLOSED'] {
+    background: #eef2ff;
+    color: #4338ca;
+  }
+
+  &[data-project-status='CANCELLED'] {
+    background: #fef2f2;
+    color: #b91c1c;
   }
 }
 

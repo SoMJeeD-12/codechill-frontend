@@ -14,6 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -26,6 +27,7 @@ import {
   ProjectPriority,
   ProjectStatus,
 } from '../../core/models/project.model';
+import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectInput, ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
@@ -34,6 +36,8 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-projects-page',
@@ -41,7 +45,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
   imports: [
     ThaiDatePipe,
     BahtPipe,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -53,6 +57,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './projects-page.component.html',
@@ -61,7 +66,10 @@ import { createClientPager } from '../../shared/utils/client-pager';
 export class ProjectsPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
+  private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
   readonly projects = signal<Project[]>([]);
@@ -81,6 +89,22 @@ export class ProjectsPageComponent implements OnInit {
     'value',
     'actions',
   ];
+
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('project.update') ||
+      this.auth.hasPermission('projects', 'update')
+    );
+  });
+  readonly canDelete = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('project.delete') ||
+      this.auth.hasPermission('projects', 'delete') ||
+      this.canUpdate()
+    );
+  });
 
   readonly filtered = computed(() => {
     const status = this.statusFilter();
@@ -152,6 +176,33 @@ export class ProjectsPageComponent implements OnInit {
 
   openEdit(project: Project): void {
     this.openForm(project);
+  }
+
+  openDetail(project: Project): void {
+    void this.router.navigate(['/app/projects', project.id]);
+  }
+
+  remove(project: Project): void {
+    if (!this.canDelete()) {
+      this.snack.open('ไม่มีสิทธิ์ลบโครงการ', 'ปิด', { duration: 3000 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบโครงการ',
+      message: `ต้องการลบโครงการ「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
+      confirmLabel: 'ลบโครงการ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.projectsApi.deleteProject(project.id).subscribe({
+        next: () => {
+          this.snack.open('ลบโครงการแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
   }
 
   private openForm(project?: Project): void {

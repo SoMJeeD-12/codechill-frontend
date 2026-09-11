@@ -93,6 +93,30 @@ export function contractMonthCount(
   return Math.max(0, months);
 }
 
+/** บวกเดือนแบบหนีบวันสิ้นเดือน (เช่น 31 ม.ค. + 1 เดือน → 28/29 ก.พ.) */
+export function addMonthsClamped(start: Date, months: number): Date {
+  const targetMonthIndex = start.getMonth() + months;
+  const y = start.getFullYear() + Math.floor(targetMonthIndex / 12);
+  const m = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const day = Math.min(start.getDate(), lastDay);
+  return new Date(y, m, day);
+}
+
+/**
+ * วันสิ้นสุดสัญญา = วันเริ่ม + N เดือน − 1 วัน
+ * เช่น 1 ต.ค. 2026 + 12 เดือน → 30 ก.ย. 2027
+ */
+export function contractEndFromDuration(start: Date, months: number): Date {
+  const exclusive = addMonthsClamped(start, months);
+  return new Date(exclusive.getFullYear(), exclusive.getMonth(), exclusive.getDate() - 1);
+}
+
+/** วันถัดไป (ใช้เป็น min ของวันสิ้นสุด) */
+export function addDays(start: Date, days: number): Date {
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + days);
+}
+
 /** pattern สำหรับช่องกรอกเวลาไทย */
 export const THAI_TIME_PATTERN = /^\d{1,2}[.:]\d{2}$/;
 

@@ -7,8 +7,9 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
@@ -16,10 +17,13 @@ import {
   Customer,
   CustomerStatus,
 } from '../../core/models/customer.model';
+import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { CustomerFormDialogComponent } from './customer-form-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-customers-page',
@@ -37,6 +41,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './customers-page.component.html',
@@ -44,7 +49,10 @@ import { createClientPager } from '../../shared/utils/client-pager';
 })
 export class CustomersPageComponent implements OnInit {
   private readonly api = inject(CustomerService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
+  private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
   readonly customers = signal<Customer[]>([]);
@@ -54,6 +62,22 @@ export class CustomersPageComponent implements OnInit {
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
   readonly columns = ['name', 'phone', 'owner', 'status', 'actions'];
   readonly searchControl = this.fb.nonNullable.control('');
+
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('customer.update') ||
+      this.auth.hasPermission('customers', 'update')
+    );
+  });
+  readonly canDelete = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('customer.delete') ||
+      this.auth.hasPermission('customers', 'delete') ||
+      this.canUpdate()
+    );
+  });
 
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -88,6 +112,33 @@ export class CustomersPageComponent implements OnInit {
 
   openEdit(customer: Customer): void {
     this.openForm(customer);
+  }
+
+  openDetail(customer: Customer): void {
+    void this.router.navigate(['/app/customers', customer.id]);
+  }
+
+  remove(customer: Customer): void {
+    if (!this.canDelete()) {
+      this.snack.open('ไม่มีสิทธิ์ลบลูกค้า', 'ปิด', { duration: 3000 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบลูกค้า',
+      message: `ต้องการลบ「${customer.name}」หรือไม่?\nข้อมูลที่เกี่ยวข้องอาจถูกลบหรือใช้งานไม่ได้`,
+      confirmLabel: 'ลบลูกค้า',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.removeCustomer(customer.id).subscribe({
+        next: () => {
+          this.snack.open('ลบลูกค้าแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
   }
 
   statusLabel(status: CustomerStatus): string {

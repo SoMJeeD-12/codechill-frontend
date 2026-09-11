@@ -1,5 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -17,6 +23,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   MA_BILLING_CYCLE_LABELS,
   MA_STATUS_LABELS,
@@ -34,6 +41,8 @@ import {
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
+  addDays,
+  contractEndFromDuration,
   contractMonthCount,
   parseDateOnly,
   toDateOnlyString,
@@ -43,9 +52,12 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+
+type MaDurationPreset = 6 | 12 | 24 | 'CUSTOM';
 
 @Component({
   selector: 'app-ma-page',
@@ -62,6 +74,7 @@ import { catchError, map } from 'rxjs/operators';
     MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './ma-page.component.html',
@@ -72,6 +85,7 @@ export class MaPageComponent implements OnInit {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
   readonly contracts = signal<MaContract[]>([]);
@@ -242,6 +256,29 @@ export class MaPageComponent implements OnInit {
       }
     });
   }
+
+  remove(row: MaContract): void {
+    const label =
+      row.contractNo?.trim() ||
+      this.projectName(row) ||
+      `สัญญา #${row.id}`;
+    openConfirmDialog(this.dialog, {
+      title: 'ลบสัญญา MA',
+      message: `ต้องการลบ「${label}」หรือไม่? (ใช้สำหรับเทส)`,
+      confirmLabel: 'ลบ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.remove(row.id).subscribe({
+        next: () => {
+          this.snack.open('ลบสัญญาแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
+  }
 }
 
 @Component({
@@ -280,36 +317,67 @@ export class MaFormDialogComponent {
     (s) => s !== 'RENEWED'
   );
   readonly billingCycles = Object.keys(MA_BILLING_CYCLE_LABELS) as MaBillingCycle[];
+  readonly durationOptions: Array<{ value: MaDurationPreset; label: string }> = [
+    { value: 6, label: '6 เดือน' },
+    { value: 12, label: '12 เดือน' },
+    { value: 24, label: '24 เดือน' },
+    { value: 'CUSTOM', label: 'กำหนดเอง' },
+  ];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.data?.id;
+  readonly status = signal<Exclude<MaContractStatus, 'RENEWED'>>(
+    (this.data?.status === 'RENEWED' ? 'ACTIVE' : this.data?.status ?? 'DRAFT') as Exclude<
+      MaContractStatus,
+      'RENEWED'
+    >
+  );
+  readonly billingCycle = signal<MaBillingCycle>(this.data?.billingCycle ?? 'YEARLY');
+  readonly minEndDate = signal<Date | null>(null);
+  readonly availableDurationOptions = computed(() =>
+    this.billingCycle() === 'YEARLY'
+      ? this.durationOptions.filter((opt) => opt.value !== 6)
+      : this.durationOptions
+  );
 
-  readonly form = this.fb.group({
-    customerId: [
-      {
-        value: this.data?.customerId ?? 0,
-        disabled: this.isEdit,
-      },
-      Validators.min(1),
-    ],
-    projectId: [
-      {
-        value: this.data?.projectId ?? (null as number | null),
-        disabled: this.isEdit,
-      },
-      Validators.required,
-    ],
-    planId: [this.data?.planId ?? (null as number | null), Validators.required],
-    contractNo: [this.data?.contractNo ?? ''],
-    startDate: [parseDateOnly(this.data?.startDate) as Date | null, Validators.required],
-    endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
-    status: [(this.data?.status === 'RENEWED' ? 'ACTIVE' : this.data?.status ?? 'DRAFT') as Exclude<MaContractStatus, 'RENEWED'>],
-    price: [parseMoneyValue(this.data?.price) ?? 0, Validators.min(0)],
-    monthlyPrice: [null as number | null],
-    billingCycle: [(this.data?.billingCycle ?? 'YEARLY') as MaBillingCycle],
-    signedDate: [parseDateOnly(this.data?.signedDate) as Date | null],
-    note: [this.data?.note ?? ''],
-  });
+  private readonly initialDuration = this.inferDurationPreset(
+    this.data?.startDate,
+    this.data?.endDate
+  );
+
+  readonly form = this.fb.group(
+    {
+      customerId: [
+        {
+          value: this.data?.customerId ?? 0,
+          disabled: this.isEdit,
+        },
+        Validators.min(1),
+      ],
+      projectId: [
+        {
+          value: this.data?.projectId ?? (null as number | null),
+          disabled: this.isEdit,
+        },
+        Validators.required,
+      ],
+      planId: [this.data?.planId ?? (null as number | null), Validators.required],
+      durationMonths: [this.initialDuration as MaDurationPreset],
+      startDate: [parseDateOnly(this.data?.startDate) as Date | null, Validators.required],
+      endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
+      status: [
+        (this.data?.status === 'RENEWED'
+          ? 'ACTIVE'
+          : (this.data?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>,
+      ],
+      price: [parseMoneyValue(this.data?.price) ?? 0, Validators.min(0)],
+      unitPrice: [null as number | null],
+      billingCycle: [(this.data?.billingCycle ?? 'YEARLY') as MaBillingCycle],
+      signedDate: [parseDateOnly(this.data?.signedDate) as Date | null],
+      note: [this.data?.note ?? ''],
+    },
+    { validators: [MaFormDialogComponent.endAfterStart] }
+  );
 
   constructor() {
     this.api.listPlans({ isActive: true }).subscribe();
@@ -330,16 +398,49 @@ export class MaFormDialogComponent {
       if (firstPlan) {
         this.form.patchValue({ planId: firstPlan.id });
       }
+      if (!this.form.controls.startDate.value) {
+        this.form.patchValue({ startDate: new Date() });
+      }
     }
+
+    this.syncEndDateEditability();
+    this.ensureDurationMatchesBilling();
+    this.recalcEndFromDuration();
+    this.refreshMinEndDate();
+
+    this.form.controls.status.valueChanges.subscribe((value) => {
+      if (value) {
+        this.status.set(value);
+      }
+    });
+    this.form.controls.durationMonths.valueChanges.subscribe(() => {
+      this.syncEndDateEditability();
+      this.recalcEndFromDuration();
+      this.recalcTotalPrice();
+    });
+    this.form.controls.startDate.valueChanges.subscribe(() => {
+      this.refreshMinEndDate();
+      this.recalcEndFromDuration();
+      this.recalcTotalPrice();
+    });
+    this.form.controls.endDate.valueChanges.subscribe(() => {
+      this.recalcTotalPrice();
+    });
+    this.form.controls.billingCycle.valueChanges.subscribe((value) => {
+      if (value) {
+        this.billingCycle.set(value);
+      }
+      this.ensureDurationMatchesBilling();
+      this.recalcTotalPrice();
+    });
+    this.form.controls.unitPrice.valueChanges.subscribe(() => {
+      this.recalcTotalPrice();
+    });
   }
 
   filteredProjects() {
     const customerId = this.form.getRawValue().customerId;
     return this.projects().filter((p) => p.customerId === customerId);
-  }
-
-  onPlanChange(_planId: number | null): void {
-    /* ราคาตั้งที่สัญญา — ไม่ดึงจากแผน (BR-05) */
   }
 
   planHint(): string {
@@ -352,30 +453,43 @@ export class MaFormDialogComponent {
     return `โควตา ${plan.bugQuotaPerMonth} เคส/รอบ · ${sla}`;
   }
 
-  monthCount(): number {
-    const { startDate, endDate } = this.form.getRawValue();
-    return contractMonthCount(startDate, endDate);
+  isCustomDuration(): boolean {
+    return this.form.controls.durationMonths.value === 'CUSTOM';
   }
 
-  fillPriceFromMonthly(): void {
-    const { monthlyPrice, startDate, endDate } = this.form.getRawValue();
-    const months = contractMonthCount(startDate, endDate);
-    const monthly =
-      typeof monthlyPrice === 'number'
-        ? monthlyPrice
-        : (parseMoneyValue(monthlyPrice as string | null) ?? 0);
-    if (months <= 0 || monthly <= 0) {
-      return;
+  unitPriceLabel(): string {
+    return this.form.controls.billingCycle.value === 'MONTHLY' ? 'ราคาต่อเดือน' : 'ราคาต่อปี';
+  }
+
+  durationMonthCount(): number {
+    const duration = this.form.controls.durationMonths.value;
+    if (duration === 6 || duration === 12 || duration === 24) {
+      return duration;
     }
-    this.form.patchValue({ price: monthly * months });
+    const { startDate, endDate } = this.form.getRawValue();
+    return contractMonthCount(startDate, endDate);
   }
 
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      if (this.form.hasError('endBeforeStart')) {
+        this.error.set('วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา');
+      }
       return;
     }
     const raw = this.form.getRawValue();
+    const start = toDateOnlyString(raw.startDate);
+    const end = toDateOnlyString(raw.endDate);
+    if (!start || !end || end <= start) {
+      this.error.set('วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา');
+      return;
+    }
+    if (raw.billingCycle === 'YEARLY' && this.durationMonthCount() < 12) {
+      this.error.set('รอบวางบิลรายปีต้องมีระยะสัญญาอย่างน้อย 12 เดือน');
+      return;
+    }
+
     this.saving.set(true);
     this.error.set(null);
 
@@ -384,17 +498,17 @@ export class MaFormDialogComponent {
         planId: Number(raw.planId),
         price: toMoneyString(raw.price),
         billingCycle: raw.billingCycle as MaBillingCycle,
-        startDate: toDateOnlyString(raw.startDate),
-        endDate: toDateOnlyString(raw.endDate),
+        startDate: start,
+        endDate: end,
         status: raw.status as Exclude<MaContractStatus, 'RENEWED'>,
-        contractNo: raw.contractNo?.trim() || null,
         signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
         note: raw.note?.trim() || null,
       };
       this.api.update(this.data.id, payload).subscribe({
-        next: () => {
+        next: ({ message }) => {
           this.saving.set(false);
-          this.snack.open('บันทึกสัญญาแล้ว', 'ปิด', { duration: 2500 });
+          const text = message?.trim() || 'บันทึกสัญญาแล้ว';
+          this.snack.open(text, 'ปิด', { duration: message ? 6000 : 2500 });
           this.ref.close(true);
         },
         error: (err: Error) => {
@@ -417,10 +531,9 @@ export class MaFormDialogComponent {
       planId: Number(raw.planId),
       price: toMoneyString(raw.price),
       billingCycle: raw.billingCycle as MaBillingCycle,
-      startDate: toDateOnlyString(raw.startDate),
-      endDate: toDateOnlyString(raw.endDate),
+      startDate: start,
+      endDate: end,
       status: (raw.status as Exclude<MaContractStatus, 'RENEWED'>) ?? 'DRAFT',
-      contractNo: raw.contractNo?.trim() || null,
       signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
       note: raw.note?.trim() || null,
     };
@@ -436,5 +549,83 @@ export class MaFormDialogComponent {
         this.error.set(err.message);
       },
     });
+  }
+
+  private ensureDurationMatchesBilling(): void {
+    if (this.form.controls.billingCycle.value !== 'YEARLY') {
+      return;
+    }
+    if (this.form.controls.durationMonths.value === 6) {
+      this.form.controls.durationMonths.setValue(12);
+    }
+  }
+
+  private syncEndDateEditability(): void {
+    if (this.isCustomDuration()) {
+      this.form.controls.endDate.enable({ emitEvent: false });
+    } else {
+      this.form.controls.endDate.disable({ emitEvent: false });
+    }
+  }
+
+  private refreshMinEndDate(): void {
+    const start = this.form.controls.startDate.value;
+    this.minEndDate.set(start ? addDays(start, 1) : null);
+  }
+
+  private recalcEndFromDuration(): void {
+    if (this.isCustomDuration()) {
+      return;
+    }
+    const start = this.form.controls.startDate.value;
+    const duration = this.form.controls.durationMonths.value;
+    if (!start || (duration !== 6 && duration !== 12 && duration !== 24)) {
+      return;
+    }
+    const end = contractEndFromDuration(start, duration);
+    this.form.controls.endDate.setValue(end, { emitEvent: false });
+  }
+
+  private recalcTotalPrice(): void {
+    const unitRaw = this.form.controls.unitPrice.value;
+    const unit =
+      typeof unitRaw === 'number' ? unitRaw : (parseMoneyValue(unitRaw as string | null) ?? 0);
+    const months = this.durationMonthCount();
+    if (unit <= 0 || months <= 0) {
+      return;
+    }
+    const cycle = this.form.controls.billingCycle.value;
+    const total = cycle === 'MONTHLY' ? unit * months : unit * (months / 12);
+    this.form.controls.price.setValue(total, { emitEvent: false });
+  }
+
+  private inferDurationPreset(
+    start: string | null | undefined,
+    end: string | null | undefined
+  ): MaDurationPreset {
+    if (!start || !end) {
+      return 12;
+    }
+    const months = contractMonthCount(start, end);
+    if (months === 6 || months === 12 || months === 24) {
+      return months;
+    }
+    return 'CUSTOM';
+  }
+
+  private static endAfterStart(group: AbstractControl): ValidationErrors | null {
+    const start = group.get('startDate')?.value as Date | null;
+    const end = group.get('endDate')?.value as Date | null;
+    if (!start || !end) {
+      return null;
+    }
+    const s = start instanceof Date ? start : parseDateOnly(start);
+    const e = end instanceof Date ? end : parseDateOnly(end);
+    if (!s || !e) {
+      return null;
+    }
+    const sDay = new Date(s.getFullYear(), s.getMonth(), s.getDate()).getTime();
+    const eDay = new Date(e.getFullYear(), e.getMonth(), e.getDate()).getTime();
+    return eDay > sDay ? null : { endBeforeStart: true };
   }
 }

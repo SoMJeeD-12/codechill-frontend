@@ -90,18 +90,25 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
-            <button mat-button type="button" color="primary" (click)="openVersions(row)">
-              ประวัติเวอร์ชัน
-            </button>
             <button
-              mat-icon-button
+              mat-stroked-button
               type="button"
-              class="btn-danger"
-              (click)="removeDocument(row)"
-              matTooltip="ลบเอกสาร"
+              [matMenuTriggerFor]="manageMenu"
+              aria-label="จัดการเอกสาร"
             >
-              <mat-icon>delete</mat-icon>
+              จัดการ
+              <mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
+            <mat-menu #manageMenu="matMenu">
+              <button mat-menu-item type="button" (click)="openVersions(row)">
+                <mat-icon>history</mat-icon>
+                <span>ประวัติเวอร์ชัน</span>
+              </button>
+              <button mat-menu-item type="button" class="menu-danger" (click)="removeDocument(row)">
+                <mat-icon>delete</mat-icon>
+                <span>ลบเอกสาร</span>
+              </button>
+            </mat-menu>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

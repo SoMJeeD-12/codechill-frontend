@@ -83,6 +83,7 @@ export class MaDetailPageComponent implements OnInit {
   readonly notFound = signal(false);
   readonly savingAddon = signal(false);
   readonly renewing = signal(false);
+  readonly activating = signal(false);
   readonly statusLabels = MA_STATUS_LABELS;
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
   readonly addonColumns = ['title', 'extraQuota', 'price', 'effective', 'createdAt'];
@@ -91,6 +92,16 @@ export class MaDetailPageComponent implements OnInit {
     () =>
       this.auth.hasPermissionCode('ma.renew') || this.auth.hasPermissionCode('ma.update')
   );
+
+  readonly canActivate = computed(() => {
+    const c = this.contract();
+    if (!c || c.status !== 'DRAFT') {
+      return false;
+    }
+    return (
+      this.auth.hasPermissionCode('ma.update') || this.auth.hasPermission('ma', 'update')
+    );
+  });
 
   readonly planQuota = computed(
     () => this.contract()?.plan?.bugQuotaPerMonth ?? 0
@@ -208,6 +219,49 @@ export class MaDetailPageComponent implements OnInit {
     });
   }
 
+  activateContract(): void {
+    const c = this.contract();
+    if (!c || !this.canActivate() || this.activating()) {
+      return;
+    }
+    const signedToday = !c.signedDate;
+    const lines = [
+      'เปลี่ยนสถานะจาก「แบบร่าง」เป็น「ใช้งาน」',
+      'หลังเริ่มใช้งาน ระบบจะหักโควตาจากใบปัญหาได้',
+    ];
+    if (signedToday) {
+      lines.push('ยังไม่มีวันที่เซ็น — จะบันทึกเป็นวันนี้ (BR-12)');
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'เริ่มใช้งานสัญญา MA',
+      message: lines.join('\n'),
+      confirmLabel: 'เริ่มใช้งาน',
+      danger: false,
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.activating.set(true);
+      this.api
+        .update(c.id, {
+          status: 'ACTIVE',
+          ...(signedToday ? { signedDate: toDateOnlyString(new Date()) } : {}),
+        })
+        .subscribe({
+          next: ({ message }) => {
+            this.activating.set(false);
+            const text = message?.trim() || 'เริ่มใช้งานสัญญาแล้ว';
+            this.snack.open(text, 'ปิด', { duration: message ? 6000 : 2500 });
+            this.reload(c.id);
+          },
+          error: (err: Error) => {
+            this.activating.set(false);
+            this.snack.open(err.message, 'ปิด', { duration: 4000 });
+          },
+        });
+    });
+  }
+
   renewContract(): void {
     const c = this.contract();
     if (!c || !this.canRenew()) {
@@ -224,6 +278,7 @@ export class MaDetailPageComponent implements OnInit {
         `ราคา: ${formatMoneyDisplay(price)} บาท`,
       ].join('\n'),
       confirmLabel: 'ต่ออายุ',
+      danger: false,
     }).subscribe((ok) => {
       if (!ok) {
         return;

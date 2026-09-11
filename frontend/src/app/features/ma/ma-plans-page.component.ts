@@ -24,6 +24,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { MaPlan } from '../../core/models/ma.model';
 import { AuthService } from '../../core/services/auth.service';
 import {
@@ -49,6 +50,7 @@ type ActiveFilter = 'all' | 'active' | 'inactive';
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './ma-plans-page.component.html',

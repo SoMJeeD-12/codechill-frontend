@@ -68,23 +68,30 @@
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
             <button
-              mat-icon-button
+              mat-stroked-button
               type="button"
-              (click)="openEdit(row)"
-              matTooltip="แก้ไข"
+              [matMenuTriggerFor]="manageMenu"
+              aria-label="จัดการบทบาท"
             >
-              <mat-icon>edit</mat-icon>
+              จัดการ
+              <mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
-            <button
-              mat-icon-button
-              type="button"
-              color="warn"
-              (click)="remove(row)"
-              [disabled]="row.isSystem"
-              matTooltip="ลบ"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
+            <mat-menu #manageMenu="matMenu">
+              <button mat-menu-item type="button" (click)="openEdit(row)">
+                <mat-icon>edit</mat-icon>
+                <span>แก้ไข</span>
+              </button>
+              <button
+                mat-menu-item
+                type="button"
+                class="menu-danger"
+                (click)="remove(row)"
+                [disabled]="row.isSystem"
+              >
+                <mat-icon>delete</mat-icon>
+                <span>ลบ</span>
+              </button>
+            </mat-menu>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns()"></tr>

@@ -13,6 +13,23 @@
 
 .full { width: 100%; }
 
+.locked-summary {
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  color: #115e59;
+  font-size: 0.9rem;
+  line-height: 1.45;
+
+  strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: #0f766e;
+  }
+}
+
 .error {
   margin: 0.25rem 0 0;
   color: #b91c1c;

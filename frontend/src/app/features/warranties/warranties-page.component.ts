@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatMenuModule } from '@angular/material/menu';
 import { Delivery } from '../../core/models/project.model';
 import {
   WARRANTY_NEAR_EXPIRY_DAYS,
@@ -32,6 +33,7 @@ import {
 } from '../../core/services/warranty.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 
 @Component({
   selector: 'app-warranties-page',
@@ -46,6 +48,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './warranties-page.component.html',
@@ -56,6 +59,7 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
   readonly warranties = signal<Warranty[]>([]);
@@ -65,7 +69,6 @@ export class WarrantiesPageComponent implements OnInit {
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
   readonly columns = ['project', 'title', 'period', 'daysLeft', 'status', 'actions'];
-  private readonly snack = inject(MatSnackBar);
 
   readonly filtered = computed(() => {
     const list = this.warranties();
@@ -180,7 +183,38 @@ export class WarrantiesPageComponent implements OnInit {
       }
     });
   }
+
+  remove(row: Warranty): void {
+    openConfirmDialog(this.dialog, {
+      title: 'ลบประกัน',
+      message: `ต้องการลบประกันของ「${row.project?.name || 'โครงการ'}」หรือไม่?`,
+      confirmLabel: 'ลบประกัน',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.remove(row.id).subscribe({
+        next: () => {
+          this.snack.open('ลบประกันแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
+  }
 }
+
+export type WarrantyFormDialogData =
+  | Warranty
+  | {
+      customerId: number;
+      projectId?: number;
+      deliveryId?: number;
+      /** ล็อกลูกค้า/โครงการ/การส่งมอบ — กรอกแค่ระยะเดือน */
+      lockDelivery?: boolean;
+      deliveryLabel?: string;
+    }
+  | null;
 
 @Component({
   selector: 'app-warranty-form-dialog',
@@ -204,7 +238,7 @@ export class WarrantyFormDialogComponent {
   private readonly projectsApi = inject(ProjectService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<WarrantyFormDialogComponent, boolean>);
-  readonly data = inject<Warranty | { customerId: number } | null>(MAT_DIALOG_DATA);
+  readonly data = inject<WarrantyFormDialogData>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
   readonly projects = this.projectsApi.projects;
@@ -214,6 +248,16 @@ export class WarrantyFormDialogComponent {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!(this.data && 'id' in this.data && this.data.id);
+  readonly lockDelivery = !!(
+    this.data &&
+    !('id' in this.data) &&
+    'lockDelivery' in this.data &&
+    this.data.lockDelivery
+  );
+  readonly deliveryLabel =
+    this.data && !('id' in this.data) && 'deliveryLabel' in this.data
+      ? (this.data.deliveryLabel ?? '')
+      : '';
 
   readonly form = this.fb.group({
     customerId: [
@@ -254,6 +298,11 @@ export class WarrantyFormDialogComponent {
       if (this.data && 'customerId' in this.data && !('id' in this.data)) {
         this.form.controls.customerId.disable({ emitEvent: false });
       }
+      if (this.lockDelivery) {
+        this.form.controls.customerId.disable({ emitEvent: false });
+        this.form.controls.projectId.disable({ emitEvent: false });
+        this.form.controls.deliveryId.disable({ emitEvent: false });
+      }
     } else {
       this.form.controls.customerId.disable();
       this.form.controls.projectId.disable();
@@ -261,10 +310,16 @@ export class WarrantyFormDialogComponent {
     }
 
     this.form.controls.customerId.valueChanges.subscribe(() => {
+      if (this.lockDelivery) {
+        return;
+      }
       this.form.patchValue({ projectId: null, deliveryId: null });
       this.deliveries.set([]);
     });
     this.form.controls.projectId.valueChanges.subscribe((projectId) => {
+      if (this.lockDelivery) {
+        return;
+      }
       this.form.patchValue({ deliveryId: null });
       this.deliveries.set([]);
       if (projectId) {

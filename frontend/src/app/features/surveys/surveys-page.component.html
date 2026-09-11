@@ -63,13 +63,37 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
-            <a mat-button [routerLink]="['/app/surveys', row.id]">เปิด</a>
-            @if (row.status === 'DRAFT') {
-              <button mat-button type="button" color="primary" (click)="setStatus(row, 'ACTIVE')">เปิดรับ</button>
-            }
-            @if (row.status === 'ACTIVE') {
-              <button mat-button type="button" (click)="setStatus(row, 'CLOSED')">ปิด</button>
-            }
+            <button
+              mat-stroked-button
+              type="button"
+              [matMenuTriggerFor]="manageMenu"
+              aria-label="จัดการแบบประเมิน"
+            >
+              จัดการ
+              <mat-icon iconPositionEnd>expand_more</mat-icon>
+            </button>
+            <mat-menu #manageMenu="matMenu">
+              <a mat-menu-item [routerLink]="['/app/surveys', row.id]">
+                <mat-icon>open_in_new</mat-icon>
+                <span>เปิดรายละเอียด</span>
+              </a>
+              @if (row.status === 'DRAFT') {
+                <button mat-menu-item type="button" (click)="setStatus(row, 'ACTIVE')">
+                  <mat-icon>play_circle</mat-icon>
+                  <span>เปิดรับคำตอบ</span>
+                </button>
+              }
+              @if (row.status === 'ACTIVE') {
+                <button mat-menu-item type="button" (click)="setStatus(row, 'CLOSED')">
+                  <mat-icon>stop_circle</mat-icon>
+                  <span>ปิดแบบประเมิน</span>
+                </button>
+              }
+              <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                <mat-icon>delete</mat-icon>
+                <span>ลบ</span>
+              </button>
+            </mat-menu>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

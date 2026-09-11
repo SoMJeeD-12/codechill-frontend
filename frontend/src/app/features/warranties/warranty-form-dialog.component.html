@@ -1,40 +1,50 @@
-<h2 mat-dialog-title>{{ data ? 'แก้ไขประกัน' : 'เพิ่มประกัน' }}</h2>
+<h2 mat-dialog-title>{{ isEdit ? 'แก้ไขประกัน' : lockDelivery ? 'ออกประกันหลังส่งมอบ' : 'เพิ่มประกัน' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="warranty-form" (ngSubmit)="save()">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ลูกค้า</mat-label>
-      <mat-select formControlName="customerId">
-        @for (c of customers(); track c.id) {
-          <mat-option [value]="c.id">{{ c.name }}</mat-option>
+    @if (lockDelivery) {
+      <p class="locked-summary">
+        การส่งมอบนี้ถูกล็อกไว้แล้ว
+        @if (deliveryLabel) {
+          <strong>{{ deliveryLabel }}</strong>
         }
-      </mat-select>
-    </mat-form-field>
+        — กรอกแค่ระยะประกัน (เดือน)
+      </p>
+    } @else {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ลูกค้า</mat-label>
+        <mat-select formControlName="customerId">
+          @for (c of customers(); track c.id) {
+            <mat-option [value]="c.id">{{ c.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>โครงการ</mat-label>
-      <mat-select formControlName="projectId">
-        @for (p of filteredProjects(); track p.id) {
-          <mat-option [value]="p.id">{{ p.name }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>โครงการ</mat-label>
+        <mat-select formControlName="projectId">
+          @for (p of filteredProjects(); track p.id) {
+            <mat-option [value]="p.id">{{ p.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>การส่งมอบ</mat-label>
-      <mat-select formControlName="deliveryId">
-        @for (d of deliveries(); track d.id) {
-          <mat-option [value]="d.id">
-            {{ d.title }}{{ d.version ? ' · ' + d.version : '' }}
-          </mat-option>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>การส่งมอบ</mat-label>
+        <mat-select formControlName="deliveryId">
+          @for (d of deliveries(); track d.id) {
+            <mat-option [value]="d.id">
+              {{ d.title }}{{ d.version ? ' · ' + d.version : '' }}
+            </mat-option>
+          }
+        </mat-select>
+        @if (!isEdit && !deliveries().length && form.controls.projectId.value) {
+          <mat-hint>ยังไม่มีการส่งมอบในโครงการนี้ — สร้างที่หน้ารายละเอียดโครงการก่อน</mat-hint>
         }
-      </mat-select>
-      @if (!isEdit && !deliveries().length && form.controls.projectId.value) {
-        <mat-hint>ยังไม่มีการส่งมอบในโครงการนี้ — สร้างที่หน้ารายละเอียดโครงการก่อน</mat-hint>
-      }
-    </mat-form-field>
+      </mat-form-field>
+    }
 
     <div class="row">
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" [class.full]="!isEdit">
         <mat-label>ระยะประกัน (เดือน)</mat-label>
         <input matInput type="number" min="1" max="120" formControlName="durationMonth" />
       </mat-form-field>

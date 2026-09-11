@@ -17,6 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   FOLLOW_UP_STATUS_LABELS,
   FollowUp,
@@ -54,6 +55,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './follow-ups-page.component.html',

@@ -20,13 +20,17 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { forkJoin, of } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
   DeliveryAcceptance,
   PRIORITY_LABELS,
   PROJECT_STATUS_LABELS,
+  PROJECT_STATUSES,
   Project,
+  ProjectStatus,
   TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
   TASK_STATUSES,
@@ -39,9 +43,17 @@ import { Contact } from '../../core/models/customer.model';
 import { User } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { FollowUpService } from '../../core/services/follow-up.service';
 import { ProjectService } from '../../core/services/project.service';
+import { SurveyService } from '../../core/services/survey.service';
 import { UserService } from '../../core/services/user.service';
-import { combineDateAndTime, nowTimeString } from '../../core/utils/date.util';
+import {
+  addDays,
+  combineDateAndTime,
+  nowTimeString,
+  parseDateOnly,
+  toDateOnlyString,
+} from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
@@ -51,6 +63,8 @@ import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { TaskKanbanBoardComponent } from './task-kanban-board.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
+import { ProjectFormDialogComponent } from './projects-page.component';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -84,6 +98,8 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
   private readonly usersApi = inject(UserService);
+  private readonly followUpsApi = inject(FollowUpService);
+  private readonly surveysApi = inject(SurveyService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
@@ -101,6 +117,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly deliverySearch = signal('');
   readonly deliverySearchControl = this.fb.nonNullable.control('');
   readonly statusLabels = PROJECT_STATUS_LABELS;
+  readonly projectStatuses = PROJECT_STATUSES;
   readonly projectPriorityLabels = PRIORITY_LABELS;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
   readonly taskStatuses = TASK_STATUSES;
@@ -136,6 +153,41 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canAcceptDelivery = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('delivery.accept');
+  });
+  readonly canUpdateProject = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('project.update') ||
+      this.auth.hasPermission('projects', 'update')
+    );
+  });
+  readonly canDeleteProject = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('project.delete') ||
+      this.auth.hasPermission('projects', 'delete') ||
+      this.canUpdateProject()
+    );
+  });
+  readonly canDeleteTask = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('task.delete') ||
+      this.auth.hasPermissionCode('task.update') ||
+      this.canUpdateProject()
+    );
+  });
+  readonly nextProjectStatus = computed((): ProjectStatus | null => {
+    const status = this.project()?.status;
+    if (!status) {
+      return null;
+    }
+    const order: ProjectStatus[] = ['DRAFT', 'IN_PROGRESS', 'DELIVERED', 'CLOSED'];
+    const idx = order.indexOf(status);
+    if (idx < 0 || idx >= order.length - 1) {
+      return null;
+    }
+    return order[idx + 1];
   });
   readonly deliveriesDenied = signal(false);
   readonly tasksDenied = signal(false);
@@ -287,6 +339,99 @@ export class ProjectDetailPageComponent implements OnInit {
 
   projectStatusLabel(status: Project['status']): string {
     return this.statusLabels[status];
+  }
+
+  openEditProject(): void {
+    const project = this.project();
+    if (!project || !this.canUpdateProject()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขโครงการ', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(ProjectFormDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      data: { project },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.refresh();
+      }
+    });
+  }
+
+  changeProjectStatus(status: ProjectStatus): void {
+    const project = this.project();
+    if (!project || !this.canUpdateProject() || project.status === status) {
+      return;
+    }
+    const payload: { status: ProjectStatus; actualEndDate?: string } = { status };
+    if ((status === 'DELIVERED' || status === 'CLOSED') && !project.actualEndDate) {
+      payload.actualEndDate = toDateOnlyString(new Date());
+    }
+    this.projectsApi.updateProject(project.id, payload).subscribe({
+      next: () => {
+        this.snack.open(`อัปเดตสถานะเป็น「${this.statusLabels[status]}」แล้ว`, 'ปิด', {
+          duration: 2500,
+        });
+        this.refresh();
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+  }
+
+  advanceProjectStatus(): void {
+    const next = this.nextProjectStatus();
+    if (!next) {
+      return;
+    }
+    this.changeProjectStatus(next);
+  }
+
+  removeProject(): void {
+    const project = this.project();
+    if (!project || !this.canDeleteProject()) {
+      this.snack.open('ไม่มีสิทธิ์ลบโครงการ', 'ปิด', { duration: 3000 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบโครงการ',
+      message: `ต้องการลบโครงการ「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
+      confirmLabel: 'ลบโครงการ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.projectsApi.deleteProject(project.id).subscribe({
+        next: () => {
+          this.snack.open('ลบโครงการแล้ว', 'ปิด', { duration: 2500 });
+          void this.router.navigate(['/app/projects']);
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
+  }
+
+  removeTask(task: TaskItem): void {
+    if (!this.canDeleteTask()) {
+      this.snack.open('ไม่มีสิทธิ์ลบงานย่อย', 'ปิด', { duration: 3000 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบงานย่อย',
+      message: `ต้องการลบงาน「${task.title}」หรือไม่?`,
+      confirmLabel: 'ลบงาน',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.projectsApi.removeTask(this.projectId, task.id).subscribe({
+        next: () => {
+          this.snack.open('ลบงานย่อยแล้ว', 'ปิด', { duration: 2500 });
+          this.refresh();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
   }
 
   projectPriorityLabel(priority: Project['priority']): string {
@@ -452,7 +597,48 @@ export class ProjectDetailPageComponent implements OnInit {
     }).subscribe();
   }
 
+  openAcceptDelivery(delivery: Delivery): void {
+    if (!this.canAcceptDelivery()) {
+      this.snack.open('ไม่มีสิทธิ์ตรวจรับการส่งมอบ', 'ปิด', { duration: 3000 });
+      return;
+    }
+    if (delivery.acceptanceStatus === 'ACCEPTED') {
+      this.askIfFinalDelivery(delivery);
+      return;
+    }
+    const ref = this.dialog.open(DeliveryAcceptDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      data: {
+        delivery,
+        contacts: this.contacts(),
+      },
+    });
+    ref.afterClosed().subscribe((result: DeliveryAcceptResult | undefined) => {
+      if (!result) {
+        return;
+      }
+      this.projectsApi
+        .updateDeliveryAcceptance(delivery.id, 'ACCEPTED', {
+          acceptedByContactId: result.acceptedByContactId,
+          note: result.evidenceNote,
+        })
+        .subscribe({
+          next: (updated) => {
+            this.snack.open('บันทึกการยอมรับการส่งมอบแล้ว', 'ปิด', { duration: 2500 });
+            this.refresh();
+            this.askIfFinalDelivery(updated);
+          },
+          error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+        });
+    });
+  }
+
   setAcceptance(delivery: Delivery, acceptanceStatus: DeliveryAcceptance): void {
+    if (acceptanceStatus === 'ACCEPTED') {
+      this.openAcceptDelivery(delivery);
+      return;
+    }
     if (delivery.acceptanceStatus === acceptanceStatus) {
       return;
     }
@@ -467,6 +653,135 @@ export class ProjectDetailPageComponent implements OnInit {
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
       });
+  }
+
+  private askIfFinalDelivery(delivery: Delivery): void {
+    const project = this.project();
+    if (!project || project.status === 'DELIVERED' || project.status === 'CLOSED') {
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ส่งมอบครั้งสุดท้าย?',
+      message:
+        'นี่คือการส่งมอบครั้งสุดท้ายของโครงการใช่ไหม?\nเลือก「ไม่ใช่」ถ้าเป็นการส่งมอบเป็นเฟส — จบแค่นี้',
+      confirmLabel: 'ใช่',
+      cancelLabel: 'ไม่ใช่',
+      danger: false,
+    }).subscribe((isFinal) => {
+      if (!isFinal) {
+        return;
+      }
+      this.runFinalDeliveryFlow(delivery);
+    });
+  }
+
+  private runFinalDeliveryFlow(delivery: Delivery): void {
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    const deliveryLabel = `${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
+    const warrantyRef = this.dialog.open(WarrantyFormDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      disableClose: true,
+      data: {
+        customerId: project.customerId,
+        projectId: project.id,
+        deliveryId: delivery.id,
+        lockDelivery: true,
+        deliveryLabel,
+      },
+    });
+
+    warrantyRef.afterClosed().subscribe((warrantySaved) => {
+      const actualEndDate =
+        toDateOnlyString(parseDateOnly(delivery.deliveredAt)) || toDateOnlyString(new Date());
+      const followUpDue = toDateOnlyString(addDays(new Date(), 7));
+      const notes: string[] = [];
+      if (!warrantySaved) {
+        notes.push('ข้ามการออกประกัน');
+      }
+
+      const closeProject$ = this.projectsApi
+        .updateProject(project.id, {
+          status: 'DELIVERED',
+          actualEndDate,
+        })
+        .pipe(
+          catchError((err: Error) => {
+            notes.push(`ปิดโครงการไม่สำเร็จ: ${err.message}`);
+            return of(null);
+          })
+        );
+
+      const followUp$ = this.followUpsApi
+        .create({
+          customerId: project.customerId,
+          title: 'โทรถามผลการใช้งาน',
+          dueDate: followUpDue,
+          detail: `ติดตามหลังส่งมอบครั้งสุดท้าย · ${deliveryLabel}`,
+          assignedUserId: project.managerUserId ?? this.auth.currentUser()?.id ?? null,
+        })
+        .pipe(
+          catchError((err: Error) => {
+            notes.push(`สร้างงานติดตามไม่สำเร็จ: ${err.message}`);
+            return of(null);
+          })
+        );
+
+      const survey$ = this.surveysApi.list({ status: 'ACTIVE', limit: 50 }).pipe(
+        switchMap((surveys) => {
+          const survey = surveys.find((s) => s.isCurrentlyUsable) ?? surveys[0];
+          if (!survey) {
+            notes.push('ยังไม่มีแบบประเมินที่ส่งได้');
+            return of(null);
+          }
+          return this.surveysApi
+            .createAssignment(survey.id, {
+              customerId: project.customerId,
+              contactId: delivery.acceptedByContactId,
+              projectId: project.id,
+            })
+            .pipe(
+              catchError((err: Error) => {
+                notes.push(`ส่งแบบประเมินไม่สำเร็จ: ${err.message}`);
+                return of(null);
+              })
+            );
+        }),
+        catchError((err: Error) => {
+          notes.push(`โหลดแบบประเมินไม่สำเร็จ: ${err.message}`);
+          return of(null);
+        })
+      );
+
+      forkJoin({
+        project: closeProject$,
+        followUp: followUp$,
+        survey: survey$,
+      }).subscribe(({ project: closed, followUp, survey }) => {
+        const ok: string[] = [];
+        if (warrantySaved) {
+          ok.push('ออกประกัน');
+        }
+        if (closed) {
+          ok.push('สถานะโครงการ → ส่งมอบแล้ว');
+        }
+        if (followUp) {
+          ok.push('สร้างงานติดตาม +7 วัน');
+        }
+        if (survey) {
+          ok.push('ส่งแบบประเมิน');
+        }
+        const text = [
+          ok.length ? `ทำแล้ว: ${ok.join(' · ')}` : 'ไม่มีการดำเนินการสำเร็จ',
+          ...notes,
+        ].join('\n');
+        this.snack.open(text, 'ปิด', { duration: 7000 });
+        this.refresh();
+      });
+    });
   }
 }
 
@@ -622,5 +937,112 @@ export class DeliveryFormDialogComponent {
           this.snack.open(err.message, 'ปิด', { duration: 3500 });
         },
       });
+  }
+}
+
+/* ——— Accept delivery dialog ——— */
+
+export interface DeliveryAcceptDialogData {
+  delivery: Delivery;
+  contacts: Contact[];
+}
+
+export interface DeliveryAcceptResult {
+  acceptedByContactId: number;
+  evidenceNote: string | null;
+}
+
+@Component({
+  selector: 'app-delivery-accept-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>ยอมรับการส่งมอบ</h2>
+    <mat-dialog-content>
+      <p class="accept-lead">
+        {{ data.delivery.title }}
+        @if (data.delivery.version) {
+          · {{ data.delivery.version }}
+        }
+      </p>
+      <form [formGroup]="form" class="dlg-form" id="delivery-accept-form" (ngSubmit)="save()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ผู้รับมอบ *</mat-label>
+          <mat-select formControlName="acceptedByContactId">
+            @for (c of data.contacts; track c.id) {
+              <mat-option [value]="c.id">{{ c.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>หลักฐานการยอมรับ</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            formControlName="evidenceNote"
+            placeholder='เช่น ข้อความจากลูกค้า "โอเคค่ะ"'
+          ></textarea>
+          <mat-hint>แนบไฟล์ยังไม่พร้อม — ใส่ข้อความหลักฐานชั่วคราวได้</mat-hint>
+        </mat-form-field>
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="delivery-accept-form"
+      >
+        ยืนยันยอมรับ
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .accept-lead {
+      margin: 0 0 0.75rem;
+      color: #334155;
+      font-weight: 600;
+    }
+    .dlg-form {
+      display: grid;
+      gap: 0.35rem;
+      min-width: min(420px, 100%);
+    }
+    .full {
+      width: 100%;
+    }
+  `,
+})
+export class DeliveryAcceptDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly ref = inject(MatDialogRef<DeliveryAcceptDialogComponent, DeliveryAcceptResult>);
+  readonly data = inject<DeliveryAcceptDialogData>(MAT_DIALOG_DATA);
+
+  readonly form = this.fb.group({
+    acceptedByContactId: [
+      this.data.delivery.acceptedByContactId ?? (null as number | null),
+      Validators.required,
+    ],
+    evidenceNote: [this.data.delivery.note ?? ''],
+  });
+
+  save(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const raw = this.form.getRawValue();
+    this.ref.close({
+      acceptedByContactId: Number(raw.acceptedByContactId),
+      evidenceNote: (raw.evidenceNote ?? '').trim() || null,
+    });
   }
 }

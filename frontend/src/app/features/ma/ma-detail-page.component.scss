@@ -112,6 +112,14 @@
   color: #9a3412;
   font-size: 0.9rem;
   line-height: 1.45;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+
+.warn-banner__action {
+  margin-left: auto;
 }
 
 .two-col {

@@ -68,12 +68,29 @@
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let row" class="actions">
-                  @if (row.link) {
-                    <a mat-button [routerLink]="row.link">เปิด</a>
-                  }
-                  @if (!row.readAt) {
-                    <button mat-button type="button" (click)="markRead(row)">อ่านแล้ว</button>
-                  }
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [matMenuTriggerFor]="manageMenu"
+                    aria-label="จัดการการแจ้งเตือน"
+                  >
+                    จัดการ
+                    <mat-icon iconPositionEnd>expand_more</mat-icon>
+                  </button>
+                  <mat-menu #manageMenu="matMenu">
+                    @if (row.link) {
+                      <a mat-menu-item [routerLink]="row.link">
+                        <mat-icon>open_in_new</mat-icon>
+                        <span>เปิดลิงก์</span>
+                      </a>
+                    }
+                    @if (!row.readAt) {
+                      <button mat-menu-item type="button" (click)="markRead(row)">
+                        <mat-icon>done</mat-icon>
+                        <span>ทำเครื่องหมายอ่านแล้ว</span>
+                      </button>
+                    }
+                  </mat-menu>
                 </td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="itemColumns"></tr>

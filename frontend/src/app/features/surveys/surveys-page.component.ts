@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   QUESTION_TYPE_LABELS,
   QuestionType,
@@ -25,6 +26,7 @@ import {
 import { SurveyService } from '../../core/services/survey.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 
 @Component({
   selector: 'app-surveys-page',
@@ -39,6 +41,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
     MatTableModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatMenuModule,
     TablePaginatorComponent,
   ],
   templateUrl: './surveys-page.component.html',
@@ -107,6 +110,25 @@ export class SurveysPageComponent implements OnInit {
         this.reload();
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+  }
+
+  remove(row: Survey): void {
+    openConfirmDialog(this.dialog, {
+      title: 'ลบแบบประเมิน',
+      message: `ต้องการลบ「${row.title}」หรือไม่?`,
+      confirmLabel: 'ลบแบบประเมิน',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.api.remove(row.id).subscribe({
+        next: () => {
+          this.snack.open('ลบแบบประเมินแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
     });
   }
 }

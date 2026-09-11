@@ -69,12 +69,33 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
-            <a mat-icon-button [routerLink]="['/app/customers', row.id]" matTooltip="มุมมอง 360">
-              <mat-icon>travel_explore</mat-icon>
-            </a>
-            <button mat-icon-button type="button" (click)="openEdit(row)">
-              <mat-icon>edit</mat-icon>
+            <button
+              mat-stroked-button
+              type="button"
+              [matMenuTriggerFor]="manageMenu"
+              aria-label="จัดการลูกค้า"
+            >
+              จัดการ
+              <mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
+            <mat-menu #manageMenu="matMenu">
+              <button mat-menu-item type="button" (click)="openDetail(row)">
+                <mat-icon>travel_explore</mat-icon>
+                <span>มุมมอง 360</span>
+              </button>
+              @if (canUpdate()) {
+                <button mat-menu-item type="button" (click)="openEdit(row)">
+                  <mat-icon>edit</mat-icon>
+                  <span>แก้ไข</span>
+                </button>
+              }
+              @if (canDelete()) {
+                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                  <mat-icon>delete</mat-icon>
+                  <span>ลบ</span>
+                </button>
+              }
+            </mat-menu>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
