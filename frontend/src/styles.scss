@@ -30,6 +30,7 @@ html {
 html,
 body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -42,6 +43,39 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* สกอลล์บาร์บาง ๆ ไม่รกตา */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 43, 40, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(28, 43, 40, 0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 43, 40, 0.38);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 a {

@@ -36,7 +36,6 @@ export class MainLayoutComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
 
   readonly user = this.auth.currentUser;
-  sidenavOpened = true;
 
   readonly roleSummary = computed(() => {
     const me = this.user();
@@ -86,6 +85,7 @@ export class MainLayoutComponent implements OnInit {
       this.notifications.ensureDemoSeed(userId).subscribe();
     }
   }
+
   accountTypeLabel(type: string | undefined): string {
     switch (type) {
       case 'SUPER_ADMIN':

@@ -59,12 +59,7 @@
             เปลี่ยนผู้รับผิดชอบ
           </button>
         }
-        @if (canResolve() && t.status !== 'CLOSED' && t.status !== 'RESOLVED') {
-          <button mat-stroked-button type="button" (click)="openAddResolution()">
-            บันทึกการแก้ไข
-          </button>
-        }
-        @if (canResolve() && t.status === 'RESOLVED') {
+        @if (canReopen() && (t.status === 'RESOLVED' || t.status === 'CLOSED')) {
           <button mat-stroked-button type="button" (click)="openProblemReturned()">
             ปัญหาเดิมกลับมา
           </button>
@@ -78,18 +73,12 @@
           canResolve() &&
           t.status !== 'CLOSED' &&
           t.status !== 'RESOLVED' &&
-          (t.resolutionCount ?? 0) === 0
+          (t.resolutionCount || 0) === 0
         ) {
           <p class="close-hint">บันทึกการแก้ไขอย่างน้อย 1 รอบก่อน จึงจะปิดงานได้</p>
         }
       </div>
     </header>
-    @if (t.status === 'CLOSED') {
-      <p class="closed-hint">
-        ใบนี้ปิดงานแล้ว — ถ้าอาการเดิมกลับมา ให้เปิดใบใหม่แล้วอ้างถึงใบนี้
-        (ระบบไม่อนุญาตเปิดรอบในใบที่ปิดแล้ว)
-      </p>
-    }
 
     <nav class="status-stepper" aria-label="สถานะใบปัญหา">
       @for (step of statusSteps; track step.key; let i = $index) {
@@ -100,7 +89,13 @@
           [class.is-reopened]="t.status === 'REOPENED' && step.key === 'IN_PROGRESS'"
         >
           <span class="step-dot">{{ i + 1 }}</span>
-          <span class="step-label">{{ step.label }}</span>
+          <span class="step-label">
+            @if (t.status === 'REOPENED' && step.key === 'IN_PROGRESS') {
+              กลับมาเป็นซ้ำ
+            } @else {
+              {{ step.label }}
+            }
+          </span>
         </div>
         @if (i < statusSteps.length - 1) {
           <div class="step-line" [class.is-done]="stepIndex() > i"></div>
@@ -108,9 +103,12 @@
       }
     </nav>
     <p class="stepper-meta">
-      รอบที่ {{ t.resolutionCount || 0 }}
+      รอบที่แก้แล้ว {{ t.resolutionCount || 0 }}
       @if (t.status === 'REOPENED') {
-        · 「กลับมาเป็นซ้ำ」— กดรับงานรอบใหม่เพื่อเริ่มดำเนินการ
+        · พร้อมเริ่มรอบที่ {{ nextRound() }} — กดรับงานรอบใหม่เพื่อเริ่มดำเนินการ
+      }
+      @if (t.status === 'IN_PROGRESS' && (t.resolutionCount || 0) > 0) {
+        · กำลังทำ รอบที่ {{ nextRound() }}
       }
     </p>
 
@@ -118,6 +116,10 @@
       <mat-card>
         <strong>รับแจ้ง</strong>
         <span>{{ t.reportedAt | thaiDate }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ปิดงานเมื่อ</strong>
+        <span>{{ t.closedAt | thaiDate }}</span>
       </mat-card>
       <mat-card>
         <strong>ผู้รับเรื่อง</strong>
@@ -131,12 +133,10 @@
         <strong>รอบที่แก้แล้ว</strong>
         <span>{{ t.resolutionCount }} รอบ</span>
       </mat-card>
-      @if (serviceHours(); as hours) {
-        <mat-card>
-          <strong>ระยะเวลาให้บริการ</strong>
-          <span>{{ hours }}</span>
-        </mat-card>
-      }
+      <mat-card>
+        <strong>ระยะเวลาให้บริการ</strong>
+        <span>{{ serviceHours() }}</span>
+      </mat-card>
     </div>
 
     <div class="data-card">
@@ -152,7 +152,7 @@
               aria-label="ค้นหาประวัติการแก้ไข"
             />
           </label>
-          @if (canResolve() && t.status !== 'CLOSED') {
+          @if (canResolve() && t.status !== 'CLOSED' && t.status !== 'RESOLVED') {
             <button
               mat-flat-button
               color="primary"

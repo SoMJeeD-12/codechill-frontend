@@ -25,14 +25,6 @@
         </button>
       </div>
       <div class="ui-chips" role="tablist" aria-label="กรองสถานะลูกค้า">
-        <button
-          type="button"
-          class="ui-chip"
-          [class.is-active]="statusFilter() === 'ALL'"
-          (click)="statusFilter.set('ALL')"
-        >
-          ทั้งหมด
-        </button>
         @for (s of statuses; track s) {
           <button
             type="button"
@@ -43,6 +35,14 @@
             {{ statusLabels[s] }}
           </button>
         }
+        <button
+          type="button"
+          class="ui-chip"
+          [class.is-active]="statusFilter() === 'ALL'"
+          (click)="statusFilter.set('ALL')"
+        >
+          ทั้งหมด
+        </button>
       </div>
     </div>
 

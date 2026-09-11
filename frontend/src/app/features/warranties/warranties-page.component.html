@@ -39,21 +39,21 @@
 
     <div class="data-card__body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
+        <ng-container matColumnDef="project">
+          <th mat-header-cell *matHeaderCellDef>โครงการ / ลูกค้า</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.projectId) {
+              <a class="project-link" [routerLink]="['/app/projects', row.projectId]">{{ projectName(row) }}</a>
+            } @else {
+              <span class="project-link">{{ projectName(row) }}</span>
+            }
+            <div class="customer-sub">{{ customerName(row) }}</div>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>รายการ</th>
           <td mat-cell *matCellDef="let row">
-            <strong>{{ row.delivery?.title || 'ประกัน' }} · {{ row.durationMonth }} เดือน</strong>
-            <div class="muted">{{ row.project?.name || '—' }}</div>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="customer">
-          <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
-          <td mat-cell *matCellDef="let row">
-            @if (customerId(row); as cid) {
-              <a [routerLink]="['/app/customers', cid]">{{ customerName(row) }}</a>
-            } @else {
-              {{ customerName(row) }}
-            }
+            {{ row.delivery?.title || 'ประกัน' }} · {{ row.durationMonth }} เดือน
           </td>
         </ng-container>
         <ng-container matColumnDef="period">

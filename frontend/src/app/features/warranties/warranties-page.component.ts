@@ -64,7 +64,7 @@ export class WarrantiesPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
-  readonly columns = ['title', 'customer', 'period', 'daysLeft', 'status', 'actions'];
+  readonly columns = ['project', 'title', 'period', 'daysLeft', 'status', 'actions'];
   private readonly snack = inject(MatSnackBar);
 
   readonly filtered = computed(() => {
@@ -120,16 +120,23 @@ export class WarrantiesPageComponent implements OnInit {
     });
   }
 
+  projectName(w: Warranty): string {
+    if (w.project?.name?.trim()) {
+      return w.project.name.trim();
+    }
+    const project = w.projectId ? this.projectsApi.getProject(w.projectId) : null;
+    if (project?.name) {
+      return project.name;
+    }
+    return w.projectId ? `โครงการ #${w.projectId}` : '—';
+  }
+
   customerName(w: Warranty): string {
     if (w.project?.customerName) {
       return w.project.customerName;
     }
     const id = w.project?.customerId;
     return id ? this.customersApi.getCustomer(id)?.name ?? `#${id}` : '—';
-  }
-
-  customerId(w: Warranty): number | null {
-    return w.project?.customerId ?? null;
   }
 
   daysLeft(w: Warranty): string {

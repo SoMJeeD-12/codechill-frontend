@@ -84,6 +84,7 @@ export class TicketDetailPageComponent implements OnInit {
   readonly users = this.usersApi.users;
   readonly canResolve = computed(() => this.auth.hasPermission('tickets', 'resolve'));
   readonly canAssign = computed(() => this.auth.hasPermissionCode('ticket.assign'));
+  readonly canReopen = computed(() => this.auth.hasPermissionCode('ticket.reopen'));
   readonly canChangeResolver = this.auth.isAdminLevel();
 
   readonly statusSteps = [
@@ -109,6 +110,9 @@ export class TicketDetailPageComponent implements OnInit {
         return 0;
     }
   });
+
+  /** รอบถัดไปหลังเปิดกลับมา (resolutionCount เดิม + 1) */
+  readonly nextRound = computed(() => (this.ticket()?.resolutionCount ?? 0) + 1);
 
   readonly resolutionColumns = [
     'round',
@@ -222,19 +226,39 @@ export class TicketDetailPageComponent implements OnInit {
     return text.length > max ? `${text.slice(0, max)}…` : text;
   }
 
-  serviceHours(): string | null {
+  serviceHours(): string {
     const t = this.ticket();
-    if (!t?.closedAt) {
-      return null;
+    if (!t?.reportedAt) {
+      return '—';
     }
-    const ms = new Date(t.closedAt).getTime() - new Date(t.reportedAt).getTime();
-    const hours = ms / 3600000;
-    return `${hours.toFixed(1)} ชม.`;
+    const start = new Date(t.reportedAt).getTime();
+    if (Number.isNaN(start)) {
+      return '—';
+    }
+    if (t.closedAt) {
+      const end = new Date(t.closedAt).getTime();
+      if (Number.isNaN(end)) {
+        return '—';
+      }
+      const hours = Math.max(0, (end - start) / 3_600_000);
+      return `${hours.toFixed(1)} ชม.`;
+    }
+    const hours = Math.max(0, (Date.now() - start) / 3_600_000);
+    return `กำลังดำเนินการ (ผ่านมา ${hours.toFixed(1)} ชม.)`;
   }
 
   openAddResolution(): void {
     if (!this.canResolve()) {
       this.snack.open('ไม่มีสิทธิ์บันทึกรอบการแก้ไข', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const status = this.ticket()?.status;
+    if (status === 'CLOSED') {
+      this.snack.open(
+        'ใบปิดงานแล้ว — กด「ปัญหาเดิมกลับมา」ก่อนจึงจะบันทึกรอบแก้ไขได้',
+        'ปิด',
+        { duration: 4500 }
+      );
       return;
     }
     const ref = this.dialog.open(TicketResolutionFormDialogComponent, {
@@ -273,19 +297,16 @@ export class TicketDetailPageComponent implements OnInit {
     this.openProblemReturned();
   }
 
-  /** RESOLVED → เปิดรอบใหม่ + มอบหมายในกล่องเดียว (CLOSED เปิดไม่ได้ — ตาม backend) */
+  /** RESOLVED / CLOSED → reopen (+ assign ถ้ามีสิทธิ์) ในกล่องเดียว */
   openProblemReturned(): void {
-    if (!this.canResolve()) {
-      this.snack.open('ไม่มีสิทธิ์เปิดปัญหาเดิมซ้ำ', 'ปิด', { duration: 3000 });
+    if (!this.canReopen()) {
+      this.snack.open('ไม่มีสิทธิ์เปิดปัญหาเดิมกลับมา (ticket.reopen)', 'ปิด', {
+        duration: 3500,
+      });
       return;
     }
     const ticket = this.ticket();
-    if (!ticket || ticket.status !== 'RESOLVED') {
-      this.snack.open(
-        'ใบที่ปิดงานแล้วเปิดรอบในใบเดิมไม่ได้ — ให้เปิดใบใหม่แล้วอ้างถึงใบนี้',
-        'ปิด',
-        { duration: 4500 }
-      );
+    if (!ticket || (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED')) {
       return;
     }
     const last = [...this.resolutions()].sort((a, b) => b.round - a.round)[0] ?? null;
@@ -295,6 +316,8 @@ export class TicketDetailPageComponent implements OnInit {
       data: {
         ticketId: this.ticketId,
         ticket,
+        /** อ่านก่อนเรียก reopen — หลัง reopen closedAt จะเป็น null */
+        closedAtSnapshot: ticket.closedAt,
         lastResolution: last,
         users: this.users(),
         canAssign: this.canAssign(),
@@ -608,6 +631,8 @@ export class TicketAssignDialogComponent {
 export interface TicketProblemReturnedDialogData {
   ticketId: number;
   ticket: Ticket;
+  /** closedAt ณ ตอนเปิดกล่อง (ก่อนเรียก reopen) */
+  closedAtSnapshot: string | null;
   lastResolution: TicketResolution | null;
   users: { id: number; fullName: string }[];
   canAssign: boolean;
@@ -646,7 +671,7 @@ export interface TicketProblemReturnedDialogData {
         <p class="ago" [class.ago-warn]="ago.old">
           {{ ago.label }}
           @if (ago.old) {
-            <span> — นานพอสมควร โปรดยืนยันว่าเป็นปัญหาเดิมจริง</span>
+            <span> — ปิดไปนานแล้ว ยืนยันว่าเป็นอาการเดิม?</span>
           }
         </p>
       }
@@ -654,19 +679,27 @@ export interface TicketProblemReturnedDialogData {
       <form [formGroup]="form" id="ticket-reopen-form" class="dlg-form" (ngSubmit)="confirm()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>อาการที่กลับมา</mat-label>
-          <textarea matInput rows="3" formControlName="symptom" placeholder="อธิบายอาการที่กลับมาอีกครั้ง"></textarea>
+          <textarea
+            matInput
+            rows="3"
+            formControlName="symptom"
+            placeholder="อธิบายอาการที่กลับมาอีกครั้ง"
+          ></textarea>
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>ผู้รับผิดชอบรอบนี้</mat-label>
-          <mat-select formControlName="assignedUserId">
-            @for (u of data.users; track u.id) {
-              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
-            }
-          </mat-select>
-          @if (!data.canAssign) {
-            <mat-hint>ไม่มีสิทธิ์มอบหมาย — จะเปิดเป็น「กลับมาเป็นซ้ำ」ให้คนที่มีสิทธิ์รับงานต่อ</mat-hint>
-          }
-        </mat-form-field>
+        @if (data.canAssign) {
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>ผู้รับผิดชอบรอบนี้</mat-label>
+            <mat-select formControlName="assignedUserId">
+              @for (u of data.users; track u.id) {
+                <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        } @else {
+          <p class="muted">
+            ไม่มีสิทธิ์มอบหมาย — หลังเปิดจะเป็น「กลับมาเป็นซ้ำ」รอคนที่มีสิทธิ์กดรับงานรอบใหม่
+          </p>
+        }
       </form>
       @if (error()) {
         <p class="error">{{ error() }}</p>
@@ -723,6 +756,8 @@ export interface TicketProblemReturnedDialogData {
     .muted {
       color: #64748b;
       font-size: 0.86rem;
+      margin: 0 0 0.75rem;
+      line-height: 1.4;
     }
     .dlg-form {
       display: grid;
@@ -752,41 +787,52 @@ export class TicketProblemReturnedDialogComponent {
   readonly form = this.fb.group({
     symptom: [''],
     assignedUserId: [
-      {
-        value:
-          this.data.defaultAssigneeId ??
-          this.data.users[0]?.id ??
-          (null as number | null),
-        disabled: !this.data.canAssign,
-      },
+      this.data.canAssign
+        ? (this.data.defaultAssigneeId ?? this.data.users[0]?.id ?? null)
+        : null,
       this.data.canAssign ? [Validators.required, Validators.min(1)] : [],
     ],
   });
 
   closedAgo(): { label: string; old: boolean } | null {
-    const t = this.data.ticket;
-    const at = t.closedAt || t.resolvedAt;
-    if (!at) {
+    const closedAt = this.data.closedAtSnapshot;
+    if (closedAt) {
+      const days = Math.max(
+        0,
+        Math.floor((Date.now() - new Date(closedAt).getTime()) / 86_400_000)
+      );
+      const old = days > 90;
+      if (days < 1) {
+        return { label: 'ปิดงานไปเมื่อวันนี้', old: false };
+      }
+      if (days < 30) {
+        return { label: `ปิดงานไปเมื่อ ${days} วันก่อน`, old };
+      }
+      const months = Math.floor(days / 30);
+      if (months < 12) {
+        return { label: `ปิดงานไปเมื่อ ${months} เดือนก่อน`, old };
+      }
+      return { label: `ปิดงานไปเมื่อ ${Math.floor(months / 12)} ปีก่อน`, old };
+    }
+    const resolvedAt = this.data.ticket.resolvedAt;
+    if (!resolvedAt) {
       return null;
     }
     const days = Math.max(
       0,
-      Math.floor((Date.now() - new Date(at).getTime()) / 86_400_000)
+      Math.floor((Date.now() - new Date(resolvedAt).getTime()) / 86_400_000)
     );
-    const kind = t.closedAt ? 'ปิดงาน' : 'แก้ไขแล้ว';
-    const old = days > 90;
     if (days < 1) {
-      return { label: `${kind}ไปเมื่อวันนี้`, old: false };
+      return { label: 'แก้ไขแล้วเมื่อวันนี้', old: false };
     }
     if (days < 30) {
-      return { label: `${kind}ไปเมื่อ ${days} วันก่อน`, old };
+      return { label: `แก้ไขแล้วเมื่อ ${days} วันก่อน`, old: days > 90 };
     }
     const months = Math.floor(days / 30);
-    if (months < 12) {
-      return { label: `${kind}ไปเมื่อ ${months} เดือนก่อน`, old };
-    }
-    const years = Math.floor(months / 12);
-    return { label: `${kind}ไปเมื่อ ${years} ปีก่อน`, old };
+    return {
+      label: `แก้ไขแล้วเมื่อ ${months < 12 ? months + ' เดือน' : Math.floor(months / 12) + ' ปี'}ก่อน`,
+      old: days > 90,
+    };
   }
 
   confirm(): void {
@@ -812,14 +858,10 @@ export class TicketProblemReturnedDialogComponent {
             switchMap(() => of({ assigned: true as const })),
             catchError((err: Error) => {
               this.saving.set(false);
-              this.error.set(
-                `เปิดรอบใหม่แล้ว แต่มอบหมายไม่สำเร็จ: ${err.message}`
-              );
-              this.snack.open(
-                `เปิดรอบใหม่แล้ว แต่มอบหมายไม่สำเร็จ: ${err.message}`,
-                'ปิด',
-                { duration: 6000 }
-              );
+              const msg = `เปิดใบกลับมาแล้ว แต่ยังมอบหมายผู้รับผิดชอบไม่สำเร็จ: ${err.message}`;
+              this.error.set(msg);
+              this.snack.open(msg, 'ปิด', { duration: 6500 });
+              // ปิดกล่องแล้วรีเฟรช — ปุ่มรับงานรอบใหม่ต้องยังกดได้
               this.ref.close(true);
               return EMPTY;
             })

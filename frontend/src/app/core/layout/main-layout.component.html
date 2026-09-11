@@ -1,10 +1,5 @@
 <mat-sidenav-container class="layout-shell">
-  <mat-sidenav
-    class="layout-sidenav"
-    [mode]="'side'"
-    [opened]="sidenavOpened"
-    fixedInViewport
-  >
+  <mat-sidenav class="layout-sidenav" mode="side" [opened]="true" fixedInViewport>
     <div class="brand">
       <div class="brand-mark">CP</div>
       <div class="brand-text">
@@ -18,11 +13,7 @@
         <div class="nav-group-label">{{ group.label }}</div>
         <mat-nav-list>
           @for (item of group.items; track item.code) {
-            <a
-              mat-list-item
-              [routerLink]="item.route"
-              routerLinkActive="active"
-            >
+            <a mat-list-item [routerLink]="item.route" routerLinkActive="active">
               <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
               <span matListItemTitle>{{ item.label }}</span>
             </a>
@@ -39,10 +30,6 @@
 
   <mat-sidenav-content class="layout-content">
     <mat-toolbar class="topbar">
-      <button mat-icon-button type="button" (click)="sidenavOpened = !sidenavOpened" aria-label="สลับเมนู">
-        <mat-icon>menu</mat-icon>
-      </button>
-
       <span class="topbar-title">ระบบบริหารจัดการลูกค้าและบริการหลังการขาย</span>
       <span class="spacer"></span>
 

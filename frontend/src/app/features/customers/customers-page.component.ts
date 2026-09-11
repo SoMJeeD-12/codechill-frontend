@@ -48,7 +48,7 @@ export class CustomersPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   readonly customers = signal<Customer[]>([]);
-  readonly statusFilter = signal<CustomerStatus | 'ALL'>('ALL');
+  readonly statusFilter = signal<CustomerStatus | 'ALL'>('ACTIVE');
   readonly search = signal('');
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
