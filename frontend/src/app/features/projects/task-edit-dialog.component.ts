@@ -63,6 +63,7 @@ export class TaskEditDialogComponent {
   readonly priorities = TASK_PRIORITIES;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly status = signal<TaskStatus>(this.data.task?.status ?? 'TODO');
 
   readonly form = this.fb.group({
     title: [this.data.task?.title ?? '', Validators.required],
@@ -72,8 +73,16 @@ export class TaskEditDialogComponent {
     assignedUserId: [this.data.task?.assignedUserId ?? (null as number | null)],
     startDate: [parseDateOnly(this.data.task?.startDate) as Date | null],
     dueDate: [parseDateOnly(this.data.task?.dueDate) as Date | null],
-    estimatedHours: [this.data.task?.estimatedHours ?? (null as number | null)],
+    actualHours: [this.data.task?.actualHours ?? (null as number | null)],
   });
+
+  constructor() {
+    this.form.controls.status.valueChanges.subscribe((value) => {
+      if (value) {
+        this.status.set(value);
+      }
+    });
+  }
 
   save(): void {
     if (this.form.invalid) {
@@ -81,17 +90,20 @@ export class TaskEditDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
+    const taskStatus = raw.status as TaskStatus;
     const payload: TaskInput = {
       title: (raw.title ?? '').trim(),
       description: (raw.description ?? '').trim(),
-      status: raw.status as TaskStatus,
+      status: taskStatus,
       priority: raw.priority as TaskPriority,
       assignedUserId: raw.assignedUserId,
       startDate: toDateOnlyString(raw.startDate) || null,
       dueDate: toDateOnlyString(raw.dueDate) || null,
-      estimatedHours: raw.estimatedHours == null ? undefined : String(raw.estimatedHours),
       parentTaskId: this.data.task?.parentTaskId ?? this.data.parentTaskId ?? null,
     };
+    if (taskStatus === 'DONE' && raw.actualHours != null) {
+      payload.actualHours = String(raw.actualHours);
+    }
     this.saving.set(true);
     this.error.set(null);
 

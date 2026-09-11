@@ -64,10 +64,13 @@
         <mat-datepicker #duePicker></mat-datepicker>
       </mat-form-field>
     </div>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ชั่วโมงที่ประเมิน</mat-label>
-      <input matInput type="number" formControlName="estimatedHours" />
-    </mat-form-field>
+    @if (status() === 'DONE') {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>ชั่วโมงที่ใช้</mat-label>
+        <input matInput type="number" min="0" step="0.5" formControlName="actualHours" />
+        <mat-hint>บันทึกว่าส่วนนี้ใช้ไปกี่ชั่วโมง</mat-hint>
+      </mat-form-field>
+    }
   </form>
   @if (error()) {
     <p class="error">{{ error() }}</p>
