@@ -1,6 +1,7 @@
 /** รหัสเมนู/โมดูล ตามเอกสารออกแบบ M0–M12 */
 export type MenuCode =
   | 'dashboard'
+  | 'my-work'
   | 'users'
   | 'roles'
   | 'customers'

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MAT_DIALOG_DATA,
@@ -20,8 +21,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { forkJoin, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
@@ -43,15 +42,11 @@ import { Contact } from '../../core/models/customer.model';
 import { User } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { FollowUpService } from '../../core/services/follow-up.service';
 import { ProjectService } from '../../core/services/project.service';
-import { SurveyService } from '../../core/services/survey.service';
 import { UserService } from '../../core/services/user.service';
 import {
-  addDays,
   combineDateAndTime,
   nowTimeString,
-  parseDateOnly,
   toDateOnlyString,
 } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -98,8 +93,6 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly projectsApi = inject(ProjectService);
   private readonly customersApi = inject(CustomerService);
   private readonly usersApi = inject(UserService);
-  private readonly followUpsApi = inject(FollowUpService);
-  private readonly surveysApi = inject(SurveyService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
@@ -589,6 +582,8 @@ export class ProjectDetailPageComponent implements OnInit {
         `ผู้ส่งมอบ: ${this.userName(d.deliveredByUserId)}`,
         `ผู้รับมอบ: ${this.contactName(d.acceptedByContactId)}`,
         `สถานะยอมรับ: ${this.acceptanceLabels[d.acceptanceStatus]}`,
+        `ครั้งสุดท้าย: ${d.isFinal ? 'ใช่' : 'ไม่ใช่'}`,
+        `ออกประกันได้: ${d.canIssueWarranty ? 'ได้' : 'ไม่ได้'}`,
         `รายละเอียด: ${d.description || '—'}`,
         `หมายเหตุ: ${d.note || '—'}`,
       ].join('\n'),
@@ -600,10 +595,6 @@ export class ProjectDetailPageComponent implements OnInit {
   openAcceptDelivery(delivery: Delivery): void {
     if (!this.canAcceptDelivery()) {
       this.snack.open('ไม่มีสิทธิ์ตรวจรับการส่งมอบ', 'ปิด', { duration: 3000 });
-      return;
-    }
-    if (delivery.acceptanceStatus === 'ACCEPTED') {
-      this.askIfFinalDelivery(delivery);
       return;
     }
     const ref = this.dialog.open(DeliveryAcceptDialogComponent, {
@@ -622,14 +613,14 @@ export class ProjectDetailPageComponent implements OnInit {
         .updateDeliveryAcceptance(delivery.id, 'ACCEPTED', {
           acceptedByContactId: result.acceptedByContactId,
           note: result.evidenceNote,
+          isFinal: result.isFinal,
         })
         .subscribe({
-          next: (updated) => {
+          next: () => {
             this.snack.open('บันทึกการยอมรับการส่งมอบแล้ว', 'ปิด', { duration: 2500 });
             this.refresh();
-            this.askIfFinalDelivery(updated);
           },
-          error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+          error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 6000 }),
         });
     });
   }
@@ -651,31 +642,19 @@ export class ProjectDetailPageComponent implements OnInit {
           this.snack.open('อัปเดตสถานะการยอมรับแล้ว', 'ปิด', { duration: 2500 });
           this.refresh();
         },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 6000 }),
       });
   }
 
-  private askIfFinalDelivery(delivery: Delivery): void {
-    const project = this.project();
-    if (!project || project.status === 'DELIVERED' || project.status === 'CLOSED') {
+  openIssueWarranty(delivery: Delivery): void {
+    if (!delivery.canIssueWarranty) {
+      this.snack.open(
+        'ต้องเป็นการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว',
+        'ปิด',
+        { duration: 4000 }
+      );
       return;
     }
-    openConfirmDialog(this.dialog, {
-      title: 'ส่งมอบครั้งสุดท้าย?',
-      message:
-        'นี่คือการส่งมอบครั้งสุดท้ายของโครงการใช่ไหม?\nเลือก「ไม่ใช่」ถ้าเป็นการส่งมอบเป็นเฟส — จบแค่นี้',
-      confirmLabel: 'ใช่',
-      cancelLabel: 'ไม่ใช่',
-      danger: false,
-    }).subscribe((isFinal) => {
-      if (!isFinal) {
-        return;
-      }
-      this.runFinalDeliveryFlow(delivery);
-    });
-  }
-
-  private runFinalDeliveryFlow(delivery: Delivery): void {
     const project = this.project();
     if (!project) {
       return;
@@ -684,7 +663,6 @@ export class ProjectDetailPageComponent implements OnInit {
     const warrantyRef = this.dialog.open(WarrantyFormDialogComponent, {
       width: '520px',
       maxWidth: '95vw',
-      disableClose: true,
       data: {
         customerId: project.customerId,
         projectId: project.id,
@@ -693,94 +671,11 @@ export class ProjectDetailPageComponent implements OnInit {
         deliveryLabel,
       },
     });
-
-    warrantyRef.afterClosed().subscribe((warrantySaved) => {
-      const actualEndDate =
-        toDateOnlyString(parseDateOnly(delivery.deliveredAt)) || toDateOnlyString(new Date());
-      const followUpDue = toDateOnlyString(addDays(new Date(), 7));
-      const notes: string[] = [];
-      if (!warrantySaved) {
-        notes.push('ข้ามการออกประกัน');
-      }
-
-      const closeProject$ = this.projectsApi
-        .updateProject(project.id, {
-          status: 'DELIVERED',
-          actualEndDate,
-        })
-        .pipe(
-          catchError((err: Error) => {
-            notes.push(`ปิดโครงการไม่สำเร็จ: ${err.message}`);
-            return of(null);
-          })
-        );
-
-      const followUp$ = this.followUpsApi
-        .create({
-          customerId: project.customerId,
-          title: 'โทรถามผลการใช้งาน',
-          dueDate: followUpDue,
-          detail: `ติดตามหลังส่งมอบครั้งสุดท้าย · ${deliveryLabel}`,
-          assignedUserId: project.managerUserId ?? this.auth.currentUser()?.id ?? null,
-        })
-        .pipe(
-          catchError((err: Error) => {
-            notes.push(`สร้างงานติดตามไม่สำเร็จ: ${err.message}`);
-            return of(null);
-          })
-        );
-
-      const survey$ = this.surveysApi.list({ status: 'ACTIVE', limit: 50 }).pipe(
-        switchMap((surveys) => {
-          const survey = surveys.find((s) => s.isCurrentlyUsable) ?? surveys[0];
-          if (!survey) {
-            notes.push('ยังไม่มีแบบประเมินที่ส่งได้');
-            return of(null);
-          }
-          return this.surveysApi
-            .createAssignment(survey.id, {
-              customerId: project.customerId,
-              contactId: delivery.acceptedByContactId,
-              projectId: project.id,
-            })
-            .pipe(
-              catchError((err: Error) => {
-                notes.push(`ส่งแบบประเมินไม่สำเร็จ: ${err.message}`);
-                return of(null);
-              })
-            );
-        }),
-        catchError((err: Error) => {
-          notes.push(`โหลดแบบประเมินไม่สำเร็จ: ${err.message}`);
-          return of(null);
-        })
-      );
-
-      forkJoin({
-        project: closeProject$,
-        followUp: followUp$,
-        survey: survey$,
-      }).subscribe(({ project: closed, followUp, survey }) => {
-        const ok: string[] = [];
-        if (warrantySaved) {
-          ok.push('ออกประกัน');
-        }
-        if (closed) {
-          ok.push('สถานะโครงการ → ส่งมอบแล้ว');
-        }
-        if (followUp) {
-          ok.push('สร้างงานติดตาม +7 วัน');
-        }
-        if (survey) {
-          ok.push('ส่งแบบประเมิน');
-        }
-        const text = [
-          ok.length ? `ทำแล้ว: ${ok.join(' · ')}` : 'ไม่มีการดำเนินการสำเร็จ',
-          ...notes,
-        ].join('\n');
-        this.snack.open(text, 'ปิด', { duration: 7000 });
+    warrantyRef.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.snack.open('ออกประกันแล้ว', 'ปิด', { duration: 2500 });
         this.refresh();
-      });
+      }
     });
   }
 }
@@ -950,6 +845,7 @@ export interface DeliveryAcceptDialogData {
 export interface DeliveryAcceptResult {
   acceptedByContactId: number;
   evidenceNote: string | null;
+  isFinal: boolean;
 }
 
 @Component({
@@ -962,6 +858,7 @@ export interface DeliveryAcceptResult {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatCheckboxModule,
   ],
   template: `
     <h2 mat-dialog-title>ยอมรับการส่งมอบ</h2>
@@ -991,6 +888,13 @@ export interface DeliveryAcceptResult {
           ></textarea>
           <mat-hint>แนบไฟล์ยังไม่พร้อม — ใส่ข้อความหลักฐานชั่วคราวได้</mat-hint>
         </mat-form-field>
+        <label class="final-check">
+          <mat-checkbox formControlName="isFinal"></mat-checkbox>
+          <span>
+            นี่คือการส่งมอบครั้งสุดท้ายของโครงการ
+            <span class="final-hint">ติ๊กเฉพาะเมื่อปิดงานจริง — เฟส/เวอร์ชันทดลองไม่ต้องติ๊ก</span>
+          </span>
+        </label>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -1019,6 +923,23 @@ export interface DeliveryAcceptResult {
     .full {
       width: 100%;
     }
+    .final-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.35rem;
+      margin: 0.5rem 0 0.25rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #1e293b;
+      line-height: 1.4;
+    }
+    .final-hint {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.78rem;
+      color: #64748b;
+      font-weight: 400;
+    }
   `,
 })
 export class DeliveryAcceptDialogComponent {
@@ -1032,6 +953,7 @@ export class DeliveryAcceptDialogComponent {
       Validators.required,
     ],
     evidenceNote: [this.data.delivery.note ?? ''],
+    isFinal: [!!this.data.delivery.isFinal],
   });
 
   save(): void {
@@ -1043,6 +965,7 @@ export class DeliveryAcceptDialogComponent {
     this.ref.close({
       acceptedByContactId: Number(raw.acceptedByContactId),
       evidenceNote: (raw.evidenceNote ?? '').trim() || null,
+      isFinal: !!raw.isFinal,
     });
   }
 }

@@ -41,6 +41,12 @@ export const routes: Routes = [
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
+        path: 'my-work',
+        canActivate: [permissionGuard('my-work')],
+        loadComponent: () =>
+          import('./features/my-work/my-work-page.component').then((m) => m.MyWorkPageComponent),
+      },
+      {
         path: 'customers',
         canActivate: [permissionGuard('customers')],
         loadComponent: () =>

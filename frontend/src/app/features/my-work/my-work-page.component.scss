@@ -1,0 +1,251 @@
+.page {
+  max-width: none;
+  width: 100%;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+
+  h1 {
+    margin: 0.15rem 0;
+    font-size: clamp(1.35rem, 2vw + 0.8rem, 1.75rem);
+    color: var(--app-ink);
+  }
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--app-muted);
+  line-height: 1.45;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.loading,
+.empty-page {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 2rem 0;
+  color: var(--app-muted);
+}
+
+.summary-line {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  color: #0f766e;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.work-section {
+  margin-bottom: 1.35rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+
+  &--optional {
+    border-style: dashed;
+  }
+}
+
+.work-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+
+    mat-icon {
+      color: #0f766e;
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+}
+
+.empty,
+.section-error,
+.more-hint {
+  margin: 0;
+  padding: 1.1rem 1rem;
+  color: var(--app-muted);
+}
+
+.section-error {
+  color: #b91c1c;
+}
+
+.more-hint {
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+
+  a {
+    color: #0f766e;
+    font-weight: 600;
+    margin-left: 0.35rem;
+  }
+}
+
+.work-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.work-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+  padding: 0.85rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &.is-overdue {
+    background: #fff7ed;
+    border-left: 3px solid #ea580c;
+
+    &:hover {
+      background: #ffedd5;
+    }
+  }
+}
+
+.work-list li:last-child .work-row {
+  border-bottom: 0;
+}
+
+.work-row__main {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+
+  strong {
+    color: #0f172a;
+    overflow-wrap: anywhere;
+  }
+}
+
+.meta {
+  color: #64748b;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.work-row__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex: 0 1 auto;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+
+  &.muted {
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  &[data-priority='URGENT'] {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+  }
+
+  &[data-priority='HIGH'] {
+    background: #fff7ed;
+    color: #c2410c;
+    border-color: #fed7aa;
+  }
+}
+
+.due {
+  font-size: 0.8rem;
+  color: #475569;
+  white-space: nowrap;
+
+  &.muted {
+    color: #94a3b8;
+  }
+}
+
+.overdue-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+
+  mat-icon {
+    font-size: 0.95rem;
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .work-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .work-row__side {
+    justify-content: flex-start;
+  }
+}

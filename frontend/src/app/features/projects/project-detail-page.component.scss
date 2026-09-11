@@ -270,4 +270,18 @@
   }
 }
 
+.accept-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.final-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  font-weight: 600;
+}
+
 .missing { max-width: 480px; padding: 1.5rem; text-align: center; }

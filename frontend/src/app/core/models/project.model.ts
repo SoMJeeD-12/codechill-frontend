@@ -116,6 +116,10 @@ export interface Delivery {
   acceptedByContactId: number | null;
   deliveredByUserId: number | null;
   note: string | null;
+  /** การส่งมอบครั้งสุดท้ายของโครงการ */
+  isFinal: boolean;
+  /** ออกประกันจากใบนี้ได้ไหม (= ACCEPTED && isFinal) — ใช้ค่าจาก backend ห้ามคำนวณเอง */
+  canIssueWarranty: boolean;
 }
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {

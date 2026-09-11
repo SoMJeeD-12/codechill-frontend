@@ -1,0 +1,229 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">งานของฉัน</p>
+      <h1>งานของฉัน</h1>
+      <p class="subtitle">
+        สรุปงานที่มอบหมายให้
+        @if (user(); as me) {
+          {{ me.fullName || me.username }}
+        }
+        · ไม่ต้องไล่เปิดทีละเมนู
+      </p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span>กำลังโหลดงานของฉัน…</span>
+    </div>
+  } @else if (!hasAnySection()) {
+    <p class="empty-page">ไม่มีสิทธิ์ดูงานในส่วนใด — ติดต่อผู้ดูแลระบบหากควรเห็นหน้านี้</p>
+  } @else {
+    @if (summaryParts().length) {
+      <p class="summary-line">{{ summaryParts().join(' · ') }}</p>
+    }
+
+    @if (tickets().visible) {
+      <section class="work-section">
+        <header class="work-section__head">
+          <h2>
+            <mat-icon>support_agent</mat-icon>
+            ใบแจ้งปัญหาที่ต้องแก้
+          </h2>
+          <a mat-button routerLink="/app/tickets">ดูทั้งหมด</a>
+        </header>
+        @if (tickets().error) {
+          <p class="section-error">{{ tickets().error }}</p>
+        } @else if (!tickets().items.length) {
+          <p class="empty">ไม่มีงานค้าง</p>
+        } @else {
+          <ul class="work-list">
+            @for (row of tickets().items; track row.id) {
+              <li>
+                <a
+                  class="work-row"
+                  [class.is-overdue]="!!row.isOverdue"
+                  [routerLink]="['/app/tickets', row.id]"
+                >
+                  <div class="work-row__main">
+                    <strong>{{ row.title }}</strong>
+                    <span class="meta">
+                      {{ row.customer?.name || '—' }}
+                      @if (row.project?.name) {
+                        · {{ row.project?.name }}
+                      }
+                    </span>
+                  </div>
+                  <div class="work-row__side">
+                    @if (row.isOverdue) {
+                      <span class="overdue-tag">
+                        <mat-icon>warning</mat-icon>
+                        เลยกำหนด
+                      </span>
+                    }
+                    <span class="pill" [attr.data-priority]="row.priority">
+                      {{ ticketPriorityLabel(row.priority) }}
+                    </span>
+                    <span class="pill muted">{{ ticketStatusLabel(row.status) }}</span>
+                    @if (row.dueAt) {
+                      <span class="due">ครบ {{ row.dueAt | thaiDate }}</span>
+                    }
+                  </div>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    @if (tasks().visible) {
+      <section class="work-section">
+        <header class="work-section__head">
+          <h2>
+            <mat-icon>checklist</mat-icon>
+            งานย่อยในโครงการ
+          </h2>
+          <a mat-button routerLink="/app/projects/board">ดูทั้งหมด</a>
+        </header>
+        @if (tasks().error) {
+          <p class="section-error">{{ tasks().error }}</p>
+        } @else if (!tasks().items.length) {
+          <p class="empty">ไม่มีงานค้าง</p>
+        } @else {
+          <ul class="work-list">
+            @for (row of tasks().items; track row.id) {
+              <li>
+                <a
+                  class="work-row"
+                  [class.is-overdue]="row.isOverdue"
+                  [routerLink]="['/app/projects', row.projectId]"
+                >
+                  <div class="work-row__main">
+                    <strong>{{ row.title }}</strong>
+                    <span class="meta">
+                      {{ row.project?.name || 'โครงการ #' + row.projectId }}
+                      @if (row.project; as project) {
+                        · {{ projectStatusLabel(project.status) }}
+                      }
+                    </span>
+                  </div>
+                  <div class="work-row__side">
+                    @if (row.isOverdue) {
+                      <span class="overdue-tag">
+                        <mat-icon>warning</mat-icon>
+                        เลยกำหนด
+                      </span>
+                    }
+                    <span class="pill" [attr.data-priority]="row.priority">
+                      {{ taskPriorityLabel(row.priority) }}
+                    </span>
+                    <span class="pill muted">{{ taskStatusLabel(row.status) }}</span>
+                    @if (row.dueDate) {
+                      <span class="due">ครบ {{ row.dueDate | thaiDate: 'date' }}</span>
+                    } @else {
+                      <span class="due muted">ไม่ระบุวันครบกำหนด</span>
+                    }
+                  </div>
+                </a>
+              </li>
+            }
+          </ul>
+          @if (tasks().total > 100) {
+            <p class="more-hint">
+              มีงานทั้งหมด {{ tasks().total }} รายการ (แสดงสูงสุด 100)
+              <a routerLink="/app/projects/board">ดูทั้งหมด</a>
+            </p>
+          }
+        }
+      </section>
+    }
+
+    @if (followUps().visible) {
+      <section class="work-section">
+        <header class="work-section__head">
+          <h2>
+            <mat-icon>event_available</mat-icon>
+            งานติดตามลูกค้า
+          </h2>
+          <a mat-button routerLink="/app/follow-ups">ดูทั้งหมด</a>
+        </header>
+        @if (followUps().error) {
+          <p class="section-error">{{ followUps().error }}</p>
+        } @else if (!followUps().items.length) {
+          <p class="empty">ไม่มีงานค้าง</p>
+        } @else {
+          <ul class="work-list">
+            @for (row of followUps().items; track row.id) {
+              <li>
+                <a
+                  class="work-row"
+                  [class.is-overdue]="row.isOverdue"
+                  routerLink="/app/follow-ups"
+                >
+                  <div class="work-row__main">
+                    <strong>{{ row.title }}</strong>
+                    <span class="meta">{{ row.customer?.name || 'ลูกค้า #' + row.customerId }}</span>
+                  </div>
+                  <div class="work-row__side">
+                    @if (row.isOverdue) {
+                      <span class="overdue-tag">
+                        <mat-icon>warning</mat-icon>
+                        เลยกำหนด
+                      </span>
+                    }
+                    <span class="due">ครบ {{ row.dueDate | thaiDate: 'date' }}</span>
+                  </div>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    @if (projects().visible) {
+      <section class="work-section work-section--optional">
+        <header class="work-section__head">
+          <h2>
+            <mat-icon>folder_special</mat-icon>
+            โครงการที่ฉันเป็นผู้จัดการ
+          </h2>
+          <a mat-button routerLink="/app/projects">ดูทั้งหมด</a>
+        </header>
+        @if (projects().error) {
+          <p class="section-error">{{ projects().error }}</p>
+        } @else if (!projects().items.length) {
+          <p class="empty">ไม่มีโครงการที่รับผิดชอบ</p>
+        } @else {
+          <ul class="work-list">
+            @for (row of projects().items; track row.id) {
+              <li>
+                <a class="work-row" [routerLink]="['/app/projects', row.id]">
+                  <div class="work-row__main">
+                    <strong>{{ row.name }}</strong>
+                    <span class="meta">{{ row.customer?.name || '—' }}</span>
+                  </div>
+                  <div class="work-row__side">
+                    <span class="pill muted">{{ projectStatusLabel(row.status) }}</span>
+                    @if (row.targetEndDate) {
+                      <span class="due">เป้า {{ row.targetEndDate | thaiDate: 'date' }}</span>
+                    }
+                  </div>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  }
+</section>

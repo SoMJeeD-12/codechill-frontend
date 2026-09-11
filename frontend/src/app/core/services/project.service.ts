@@ -392,13 +392,19 @@ export class ProjectService {
   updateDeliveryAcceptance(
     id: number,
     acceptanceStatus: DeliveryAcceptance,
-    opts?: { acceptedByContactId?: number | null; note?: string | null }
+    opts?: {
+      acceptedByContactId?: number | null;
+      note?: string | null;
+      /** ส่งเฉพาะตอน ACCEPTED — boolean จริง ห้ามเป็น string */
+      isFinal?: boolean;
+    }
   ): Observable<Delivery> {
     return this.http
       .patch<Delivery>(`${environment.apiBaseUrl}/deliveries/${id}/acceptance`, pruneUndefined({
         acceptanceStatus,
         acceptedByContactId: opts?.acceptedByContactId ?? undefined,
         note: opts?.note?.trim() || undefined,
+        isFinal: opts?.isFinal,
       }))
       .pipe(
         tap((row) => this.deliveriesSignal.update((list) => upsertById(list, row))),

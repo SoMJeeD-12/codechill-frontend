@@ -44,6 +44,10 @@ export interface Ticket {
   resolvedAt: string | null;
   closedAt: string | null;
   dueAt: string | null;
+  /** จาก API — ห้ามคำนวณเองจาก dueAt */
+  isOverdue?: boolean;
+  customer?: { id: number; name: string } | null;
+  project?: { id: number; name: string } | null;
   resolutions?: TicketResolution[];
   createdAt?: string;
   updatedAt?: string;

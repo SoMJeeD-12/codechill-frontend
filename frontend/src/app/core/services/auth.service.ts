@@ -260,6 +260,15 @@ export class AuthService {
     if (menuCode === 'roles') {
       return session.user.accountType === 'SUPER_ADMIN';
     }
+    // งานของฉัน — ไม่มี permission แยก เปิดเมื่อมีสิทธิ์ดูอย่างน้อยหนึ่งส่วน (ห้ามเช็ค roles)
+    if (menuCode === 'my-work') {
+      return (
+        this.hasPermissionCode('ticket.view') ||
+        this.hasPermissionCode('task.view') ||
+        this.hasPermissionCode('followup.view') ||
+        this.hasPermissionCode('project.view')
+      );
+    }
     // SUPER_ADMIN / ADMIN เห็นและใช้ทุกเมนูอื่น
     if (
       session.user.accountType === 'SUPER_ADMIN' ||

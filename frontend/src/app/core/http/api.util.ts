@@ -18,6 +18,20 @@ export function asList<T>(body: T[] | Paginated<T> | { items: T[] } | null | und
   return Array.isArray(body.items) ? body.items : [];
 }
 
+/** ดึง items + total จาก response แบบแบ่งหน้า */
+export function asPage<T>(
+  body: T[] | Paginated<T> | { items: T[]; total?: number } | null | undefined
+): { items: T[]; total: number } {
+  if (!body) {
+    return { items: [], total: 0 };
+  }
+  if (Array.isArray(body)) {
+    return { items: body, total: body.length };
+  }
+  const items = Array.isArray(body.items) ? body.items : [];
+  return { items, total: typeof body.total === 'number' ? body.total : items.length };
+}
+
 /** สร้าง query string โดยตัด null/undefined/'' ออก */
 export function toHttpParams(
   source: Record<string, string | number | boolean | null | undefined>
