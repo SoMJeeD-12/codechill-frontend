@@ -1,9 +1,28 @@
 <h2 mat-dialog-title>{{ isEdit ? 'แก้ไขลูกค้า' : 'เพิ่มลูกค้า' }}</h2>
+
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
+    <!-- ——— ข้อมูลบริษัท — สำคัญสุด อยู่บนสุด ——— -->
     <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อลูกค้า *</mat-label>
+      <mat-label>ชื่อบริษัท *</mat-label>
       <input matInput formControlName="name" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>เลขผู้เสียภาษี</mat-label>
+      <input matInput formControlName="taxId" />
+      <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>ที่อยู่</mat-label>
+      <textarea matInput rows="2" formControlName="address"></textarea>
+      <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>หมายเหตุ</mat-label>
+      <textarea matInput rows="2" formControlName="note"></textarea>
     </mat-form-field>
 
     <div class="row">
@@ -30,17 +49,6 @@
 
     <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>LINE</mat-label>
-        <input matInput formControlName="lineOfficialId" placeholder="LINE Official ID" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Facebook</mat-label>
-        <input matInput formControlName="facebookUrl" placeholder="URL" />
-      </mat-form-field>
-    </div>
-
-    <div class="row">
-      <mat-form-field appearance="outline">
         <mat-label>สถานะ</mat-label>
         <mat-select formControlName="status">
           @for (s of statuses; track s) {
@@ -59,6 +67,7 @@
       </mat-form-field>
     </div>
 
+    <!-- ——— ผู้ติดต่อ ——— -->
     <fieldset class="section" formGroupName="primaryContact">
       <legend>ผู้ติดต่อหลัก</legend>
       <mat-form-field appearance="outline" class="full">
@@ -78,36 +87,33 @@
           />
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>LINE ID</mat-label>
+          <mat-label>LINE ID ผู้ติดต่อ</mat-label>
           <input matInput formControlName="lineId" />
         </mat-form-field>
       </div>
     </fieldset>
 
-    <details class="more" [open]="showMore()">
-      <summary (click)="toggleMore($event)">ข้อมูลเพิ่มเติม</summary>
-      <div class="more-body">
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>เลขผู้เสียภาษี</mat-label>
-          <input matInput formControlName="taxId" />
-          <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
+    <!-- ——— ช่องทางโซเชียล — ใช้น้อยสุด อยู่ล่างสุด ——— -->
+    <fieldset class="section section--muted">
+      <legend>ช่องทางโซเชียล</legend>
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>LINE Official</mat-label>
+          <input matInput formControlName="lineOfficialId" placeholder="LINE Official ID" />
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>ที่อยู่</mat-label>
-          <textarea matInput rows="2" formControlName="address"></textarea>
-          <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>หมายเหตุ</mat-label>
-          <textarea matInput rows="2" formControlName="note"></textarea>
+        <mat-form-field appearance="outline">
+          <mat-label>Facebook</mat-label>
+          <input matInput formControlName="facebookUrl" placeholder="URL" />
         </mat-form-field>
       </div>
-    </details>
+    </fieldset>
   </form>
+
   @if (error()) {
     <p class="error">{{ error() }}</p>
   }
 </mat-dialog-content>
+
 <mat-dialog-actions align="end">
   <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
   <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">

@@ -1,13 +1,19 @@
 <h2 mat-dialog-title>{{ isEdit ? 'แก้ไขงานติดตาม' : 'สร้างงานติดตาม' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
-    <mat-checkbox
-      [checked]="withoutProject()"
-      (change)="setWithoutProject($event.checked)"
-      [disabled]="projectLocked"
-    >
-      ติดตามลูกค้าโดยไม่ระบุโปรเจค
-    </mat-checkbox>
+    <!--
+      ตอนสร้างต้องเลือกโปรเจคเสมอ — ระบบใช้ลูกค้าของโปรเจคให้เอง
+      ตัวเลือก "ไม่ระบุโปรเจค" เหลือไว้เฉพาะตอนแก้ไขงานเก่าที่ยังไม่ได้ผูกโปรเจค
+    -->
+    @if (isEdit) {
+      <mat-checkbox
+        [checked]="withoutProject()"
+        (change)="setWithoutProject($event.checked)"
+        [disabled]="projectLocked"
+      >
+        ติดตามลูกค้าโดยไม่ระบุโปรเจค
+      </mat-checkbox>
+    }
 
     @if (!withoutProject()) {
       <mat-form-field appearance="outline" class="full">
@@ -36,9 +42,9 @@
           }
         </mat-autocomplete>
         @if (selectedProjectCustomer(); as customerName) {
-          <mat-hint>ลูกค้า: {{ customerName }}</mat-hint>
+          <mat-hint>ลูกค้า: {{ customerName }} — ระบบเติมให้จากโปรเจค</mat-hint>
         } @else if (!projectLocked) {
-          <mat-hint>เลือกโปรเจคที่ต้องการติดตาม</mat-hint>
+          <mat-hint>เลือกโปรเจค แล้วระบบจะใช้ลูกค้าของโปรเจคนั้นให้เอง</mat-hint>
         }
       </mat-form-field>
     } @else {

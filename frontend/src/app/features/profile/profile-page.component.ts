@@ -10,7 +10,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 
 const MODULE_LABELS: Record<string, string> = {
-  dashboard: 'ภาพรวม',
+  dashboard: 'หน้าแรก',
   user: 'ผู้ใช้งาน',
   role: 'บทบาทและสิทธิ์',
   permission: 'สิทธิ์',

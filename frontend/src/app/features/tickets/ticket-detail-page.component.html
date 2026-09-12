@@ -17,19 +17,13 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">
-          {{ t.ticketNo || 'ใบ #' + t.id }} · {{ ticketStatusLabel(t.status) }}
-        </p>
+        <p class="eyebrow">{{ t.ticketNo || 'ใบ #' + t.id }}</p>
         <h1>{{ t.title }}</h1>
         <p class="subtitle">
           {{ customerName() }} · {{ projectName() }} ·
           {{ billingLabel(t.billingType) }}
           @if (t.billingType === 'ONE_TIME' && t.extraCharge != null) {
             ({{ t.extraCharge | baht }})
-          }
-          · รอบที่ {{ t.resolutionCount || 0 }}
-          @if (t.status === 'REOPENED') {
-            · <span class="reopen-tag">กลับมาเป็นซ้ำ</span>
           }
         </p>
         @if (t.billingType === 'MA_QUOTA') {
@@ -82,37 +76,21 @@
       </div>
     </header>
 
-    <nav class="status-stepper" aria-label="สถานะใบปัญหา">
-      @for (step of statusSteps; track step.key; let i = $index) {
-        <div
-          class="step"
-          [class.is-active]="stepIndex() === i"
-          [class.is-done]="stepIndex() > i"
-          [class.is-reopened]="t.status === 'REOPENED' && step.key === 'IN_PROGRESS'"
-        >
-          <span class="step-dot">{{ i + 1 }}</span>
-          <span class="step-label">
-            @if (t.status === 'REOPENED' && step.key === 'IN_PROGRESS') {
-              กลับมาเป็นซ้ำ
-            } @else {
-              {{ step.label }}
-            }
-          </span>
-        </div>
-        @if (i < statusSteps.length - 1) {
-          <div class="step-line" [class.is-done]="stepIndex() > i"></div>
+    <!-- แถบสถานะปัจจุบันของใบ — มีแถบเดียว ไม่ซ้อนกับตารางด้านล่าง -->
+    <div class="status-bar" [attr.data-status]="t.status">
+      <span class="status-bar__now">{{ ticketStatusLabel(t.status) }}</span>
+      <span class="status-bar__detail">
+        แก้ไปแล้ว {{ t.resolutionCount || 0 }} รอบ
+        @if (t.status === 'REOPENED') {
+          · พร้อมเริ่มรอบที่ {{ nextRound() }} — กด「รับงานรอบใหม่」เพื่อเริ่ม
+        } @else if (t.status === 'IN_PROGRESS' && (t.resolutionCount || 0) > 0) {
+          · กำลังทำรอบที่ {{ nextRound() }}
         }
-      }
-    </nav>
-    <p class="stepper-meta">
-      รอบที่แก้แล้ว {{ t.resolutionCount || 0 }}
-      @if (t.status === 'REOPENED') {
-        · พร้อมเริ่มรอบที่ {{ nextRound() }} — กดรับงานรอบใหม่เพื่อเริ่มดำเนินการ
-      }
-      @if (t.status === 'IN_PROGRESS' && (t.resolutionCount || 0) > 0) {
-        · กำลังทำ รอบที่ {{ nextRound() }}
-      }
-    </p>
+      </span>
+      <span class="status-bar__owner">
+        ผู้รับผิดชอบ: {{ userName(t.assignedUserId) }}
+      </span>
+    </div>
 
     <div class="meta-grid">
       <mat-card>
@@ -126,14 +104,6 @@
       <mat-card>
         <strong>ผู้รับเรื่อง</strong>
         <span>{{ userName(t.receivedByUserId) }}</span>
-      </mat-card>
-      <mat-card>
-        <strong>ผู้รับผิดชอบแก้</strong>
-        <span>{{ userName(t.assignedUserId) }}</span>
-      </mat-card>
-      <mat-card>
-        <strong>รอบที่แก้แล้ว</strong>
-        <span>{{ t.resolutionCount }} รอบ</span>
       </mat-card>
       <mat-card>
         <strong>ระยะเวลาให้บริการ</strong>
@@ -180,6 +150,8 @@
                     <span class="muted">{{ userName(row.resolvedByUserId) }}</span>
                     @if (row.hoursSpent != null) {
                       <span class="pill">{{ row.hoursSpent }} ชม.</span>
+                    } @else {
+                      <span class="not-filled">ยังไม่กรอก</span>
                     }
                     <mat-icon>chevron_right</mat-icon>
                   </div>

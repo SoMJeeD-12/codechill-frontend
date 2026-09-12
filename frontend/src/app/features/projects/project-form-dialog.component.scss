@@ -1,8 +1,41 @@
 .form {
+  min-width: min(980px, 88vw);
+  margin-top: 0.5rem;
+}
+
+/* popup ใหญ่ 2 คอลัมน์ — โปรเจคซ้าย ลูกค้าขวา */
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.6rem;
+  align-items: start;
+}
+
+.col {
   display: grid;
   gap: 0.15rem;
-  min-width: min(680px, 80vw);
-  margin-top: 0.5rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.col + .col {
+  padding-left: 1.6rem;
+  border-left: 1px solid rgba(28, 43, 40, 0.1);
+}
+
+.col-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.col-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: #5b6762;
 }
 
 .row {
@@ -29,41 +62,30 @@
   }
 }
 
-.more {
-  margin-top: 0.35rem;
-  border: 1px dashed rgba(28, 43, 40, 0.18);
-  border-radius: 10px;
-  padding: 0.35rem 0.65rem 0.15rem;
-
-  summary {
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: #0f766e;
-    list-style: none;
-    padding: 0.35rem 0;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-  }
-}
-
-.more-body {
-  display: grid;
-  gap: 0.15rem;
-  padding-bottom: 0.35rem;
-}
-
 .error {
   color: #991b1b;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .form {
     min-width: 0;
   }
 
+  .cols {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .col + .col {
+    padding-left: 0;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-left: 0;
+    border-top: 1px solid rgba(28, 43, 40, 0.1);
+  }
+}
+
+@media (max-width: 640px) {
   .row {
     grid-template-columns: 1fr;
   }

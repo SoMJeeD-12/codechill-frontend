@@ -260,9 +260,11 @@ export class AuthService {
     if (menuCode === 'roles') {
       return session.user.accountType === 'SUPER_ADMIN';
     }
-    // งานของฉัน — ไม่มี permission แยก เปิดเมื่อมีสิทธิ์ดูอย่างน้อยหนึ่งส่วน (ห้ามเช็ค roles)
-    if (menuCode === 'my-work') {
+    // หน้าแรก — เป็นแค่หน้ารวมของงานที่มีสิทธิ์ดูอยู่แล้ว
+    // ไม่มี permission แยก จึงเปิดให้เมื่อมีสิทธิ์ดูอย่างน้อยหนึ่งส่วน (ห้ามเช็ค roles)
+    if (menuCode === 'dashboard') {
       return (
+        this.hasPermissionCode('dashboard.view') ||
         this.hasPermissionCode('ticket.view') ||
         this.hasPermissionCode('task.view') ||
         this.hasPermissionCode('followup.view') ||
@@ -359,7 +361,7 @@ export class AuthService {
     }
     const codes = this.getVisibleMenuCodes();
     if (codes.includes('dashboard')) {
-      return '/app/dashboard';
+      return '/app/home';
     }
     const first = MENU_ITEMS.find((item) => codes.includes(item.code));
     return first?.route ?? '/app/no-access';

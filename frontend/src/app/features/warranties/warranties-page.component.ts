@@ -1,7 +1,7 @@
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import {
@@ -61,6 +61,7 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
 
   readonly warranties = signal<Warranty[]>([]);
   readonly view = signal<'near' | 'active' | 'all'>('all');
@@ -103,6 +104,10 @@ export class WarrantiesPageComponent implements OnInit {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.customersApi.listCustomers().subscribe();
     this.projectsApi.listProjects().subscribe();
+    // เข้ามาจากการ์ด "ประกัน / MA ใกล้หมด" บนหน้าแรก
+    if (this.route.snapshot.queryParamMap.get('expiring')) {
+      this.view.set('near');
+    }
     this.reload();
   }
 

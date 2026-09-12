@@ -50,12 +50,23 @@ import {
 import { Contact } from '../../core/models/customer.model';
 import { User } from '../../core/models/user.model';
 import { FollowUp, followUpDisplayStatus } from '../../core/models/follow-up.model';
+import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
+import {
+  TICKET_PRIORITY_LABELS,
+  TICKET_STATUS_LABELS,
+  Ticket,
+} from '../../core/models/ticket.model';
+import { WARRANTY_STATUS_LABELS, Warranty } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
+import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
+import { QuickActionsService } from '../../core/services/quick-actions.service';
+import { TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
+import { WarrantyService } from '../../core/services/warranty.service';
 import {
   combineDateAndTime,
   nowTimeString,
@@ -109,6 +120,10 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly customersApi = inject(CustomerService);
   private readonly documentsApi = inject(DocumentService);
   private readonly followUpsApi = inject(FollowUpService);
+  private readonly warrantiesApi = inject(WarrantyService);
+  private readonly ticketsApi = inject(TicketService);
+  private readonly maApi = inject(MaService);
+  private readonly quickActions = inject(QuickActionsService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
@@ -140,6 +155,14 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly followUpsLoading = signal(false);
   readonly followUpSearch = signal('');
   readonly followUpSearchControl = this.fb.nonNullable.control('');
+  /** ประกันที่ออกแล้วของโปรเจคนี้ — แสดงในแท็บส่งมอบ */
+  readonly warranties = signal<Warranty[]>([]);
+  /** ใบแจ้งปัญหาของโปรเจคนี้ */
+  readonly projectTickets = signal<Ticket[]>([]);
+  readonly ticketsLoading = signal(false);
+  /** สัญญา MA ของโปรเจคนี้ */
+  readonly maContracts = signal<MaContract[]>([]);
+  readonly maLoading = signal(false);
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly projectStatuses = PROJECT_STATUSES;
   readonly projectPriorityLabels = PRIORITY_LABELS;
@@ -147,6 +170,10 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskStatuses = TASK_STATUSES;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
   readonly priorities = TASK_PRIORITIES;
+  readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
+  readonly ticketStatusLabels = TICKET_STATUS_LABELS;
+  readonly ticketPriorityLabels = TICKET_PRIORITY_LABELS;
+  readonly maStatusLabels = MA_STATUS_LABELS;
   readonly acceptanceLabels = DELIVERY_ACCEPTANCE_LABELS;
   readonly acceptances = Object.keys(DELIVERY_ACCEPTANCE_LABELS) as DeliveryAcceptance[];
   readonly users = this.usersApi.users;
@@ -161,6 +188,9 @@ export class ProjectDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
+  readonly warrantyColumns = ['delivery', 'period', 'daysLeft', 'status'];
+  readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt'];
+  readonly maColumns = ['contractNo', 'plan', 'period', 'status'];
   readonly documentColumns = [
     'title',
     'fileName',
@@ -229,6 +259,22 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canCreateFollowUp = computed(() => {
     this.auth.session();
     return this.auth.hasPermission('follow-ups', 'create');
+  });
+  readonly canViewWarranties = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('warranty.view');
+  });
+  readonly canViewTickets = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.view');
+  });
+  readonly canCreateTicket = computed(() => {
+    this.auth.session();
+    return this.quickActions.canOpenTicket();
+  });
+  readonly canViewMa = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.view');
   });
   readonly nextProjectStatus = computed((): ProjectStatus | null => {
     const status = this.project()?.status;
@@ -469,7 +515,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(ProjectFormDialogComponent, {
-      width: '720px',
+      width: '1040px',
       maxWidth: '95vw',
       data: { project },
     });
@@ -612,6 +658,96 @@ export class ProjectDetailPageComponent implements OnInit {
         this.followUpsLoading.set(false);
       },
     });
+
+    this.loadWarranties();
+    this.loadProjectTickets();
+    this.loadMaContracts();
+  }
+
+  /** ประกันที่ออกจากการส่งมอบของโปรเจคนี้ */
+  private loadWarranties(): void {
+    if (!this.canViewWarranties()) {
+      this.warranties.set([]);
+      return;
+    }
+    this.warrantiesApi.listByProject(this.projectId).subscribe({
+      next: (rows) => this.warranties.set(rows),
+      error: () => this.warranties.set([]),
+    });
+  }
+
+  private loadProjectTickets(): void {
+    if (!this.canViewTickets()) {
+      this.projectTickets.set([]);
+      return;
+    }
+    this.ticketsLoading.set(true);
+    this.ticketsApi.list({ projectId: this.projectId, limit: 100 }).subscribe({
+      next: (rows) => {
+        this.projectTickets.set(rows);
+        this.ticketsLoading.set(false);
+      },
+      error: () => {
+        this.projectTickets.set([]);
+        this.ticketsLoading.set(false);
+      },
+    });
+  }
+
+  private loadMaContracts(): void {
+    if (!this.canViewMa()) {
+      this.maContracts.set([]);
+      return;
+    }
+    this.maLoading.set(true);
+    this.maApi.list({ projectId: this.projectId, limit: 100 }).subscribe({
+      next: (rows) => {
+        this.maContracts.set(rows);
+        this.maLoading.set(false);
+      },
+      error: () => {
+        this.maContracts.set([]);
+        this.maLoading.set(false);
+      },
+    });
+  }
+
+  /* ——— ป้ายชื่อสำหรับตาราง (แถวจาก mat-table เป็น any) ——— */
+
+  warrantyStatusLabel(status: Warranty['status']): string {
+    return this.warrantyStatusLabels[status] ?? status;
+  }
+
+  ticketStatusLabel(status: Ticket['status']): string {
+    return this.ticketStatusLabels[status] ?? status;
+  }
+
+  ticketPriorityLabel(priority: Ticket['priority']): string {
+    return this.ticketPriorityLabels[priority] ?? priority;
+  }
+
+  maStatusLabel(status: MaContract['status']): string {
+    return this.maStatusLabels[status] ?? status;
+  }
+
+  /** เปิดใบแจ้งปัญหาของโปรเจคนี้ — ไม่ต้องเด้งไปเมนูปัญหา */
+  openTicketForProject(): void {
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    this.quickActions
+      .openTicketForm({
+        project: { id: project.id, label: project.name, code: project.code },
+        customer: project.customer
+          ? { id: project.customer.id, label: project.customer.name }
+          : null,
+      })
+      .subscribe((saved) => {
+        if (saved) {
+          this.loadProjectTickets();
+        }
+      });
   }
 
   loadDocuments(): void {

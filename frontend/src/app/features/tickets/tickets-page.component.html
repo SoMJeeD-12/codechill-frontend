@@ -1,99 +1,108 @@
 <section class="page">
   <header class="page-header">
+    <!-- ปุ่ม "เปิดใบแจ้งปัญหา" อยู่บนแถบบนแล้ว (ทุกหน้า) จึงไม่ซ้ำในหน้านี้อีก -->
     <div>
-      <p class="eyebrow">M5 · ปัญหา / ซัพพอร์ต</p>
-      <h1>ปัญหาและการแก้ไข</h1>
-      <p class="subtitle">เปิดใบปัญหา และบันทึกการแก้ไขหลายรอบในใบเดิม</p>
+      <h1>ปัญหา / ซัพพอร์ต</h1>
+      <p class="subtitle">รับเรื่องจากลูกค้า แล้วบันทึกการแก้ไขได้หลายรอบในใบเดิม</p>
     </div>
   </header>
 
   <div class="data-card">
     <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
-          <mat-icon>search</mat-icon>
-          <input
-            type="search"
-            [formControl]="searchControl"
-            placeholder="ค้นหาหัวข้อ / เลขใบ / ลูกค้า / โปรเจค"
-            aria-label="ค้นหาปัญหา"
-          />
-        </label>
-        <button
-          mat-flat-button
-          color="primary"
-          type="button"
-          class="ui-add-btn"
-          (click)="openCreate()"
-          [disabled]="!canCreate()"
-        >
-          <mat-icon>add_alert</mat-icon>
-          เปิดปัญหา
-        </button>
-      </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองปัญหา">
         <button
           type="button"
+          role="tab"
           class="ui-chip"
-          [class.is-active]="view() === 'all'"
-          (click)="view.set('all')"
+          [class.is-active]="view() === 'open'"
+          [attr.aria-selected]="view() === 'open'"
+          (click)="setView('open')"
         >
-          ทั้งหมด
+          รอรับการแก้ไข
+          @if (openCount() > 0) {
+            <span class="ui-chip__count">{{ openCount() }}</span>
+          }
         </button>
         <button
           type="button"
+          role="tab"
           class="ui-chip"
-          [class.is-active]="view() === 'open'"
-          (click)="view.set('open')"
+          [class.is-active]="view() === 'all'"
+          [attr.aria-selected]="view() === 'all'"
+          (click)="setView('all')"
         >
-          รอรับแก้ไข
+          ทั้งหมด
         </button>
       </div>
+
+      <label class="ui-search">
+        <mat-icon>search</mat-icon>
+        <input
+          type="search"
+          [formControl]="searchControl"
+          placeholder="ค้นหา เลขใบ · หัวข้อ · ชื่อลูกค้า · ชื่อโปรเจค"
+          aria-label="ค้นหาปัญหา"
+        />
+      </label>
     </div>
 
     <div class="data-card__body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
+        <ng-container matColumnDef="ticketNo">
+          <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
+          <td mat-cell *matCellDef="let row" class="col-code">
+            {{ row.ticketNo || '—' }}
+          </td>
+        </ng-container>
+
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/tickets', row.id]">{{ row.title }}</a>
+            <a [routerLink]="['/app/tickets', row.id]" class="row-link">{{ row.title }}</a>
+            @if (projectName(row); as project) {
+              <small class="row-sub">{{ project }}</small>
+            }
           </td>
         </ng-container>
+
         <ng-container matColumnDef="customer">
           <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
-          <td mat-cell *matCellDef="let row">{{ customerName(row.customerId) }}</td>
+          <td mat-cell *matCellDef="let row">{{ customerName(row) }}</td>
         </ng-container>
+
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>สถานะ</th>
           <td mat-cell *matCellDef="let row">
-            <span class="status" [attr.data-status]="row.status">{{ statusLabel(row.status) }}</span>
+            <span class="status" [attr.data-status]="row.status">
+              {{ statusLabel(row.status) }}
+            </span>
           </td>
         </ng-container>
+
         <ng-container matColumnDef="priority">
           <th mat-header-cell *matHeaderCellDef>ความเร่งด่วน</th>
           <td mat-cell *matCellDef="let row">
-            <span class="priority-badge" [attr.data-priority]="row.priority">{{ priorityLabel(row.priority) }}</span>
+            <span class="priority-badge" [attr.data-priority]="row.priority">
+              {{ priorityLabel(row.priority) }}
+            </span>
           </td>
         </ng-container>
-        <ng-container matColumnDef="billing">
-          <th mat-header-cell *matHeaderCellDef>คิดเงิน</th>
-          <td mat-cell *matCellDef="let row">{{ billingLabel(row.billingType) }}</td>
-        </ng-container>
+
         <ng-container matColumnDef="reportedAt">
           <th mat-header-cell *matHeaderCellDef>รับแจ้ง</th>
           <td mat-cell *matCellDef="let row">{{ row.reportedAt | thaiDate }}</td>
         </ng-container>
+
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
             <button
-              mat-stroked-button
+              mat-icon-button
               type="button"
               [matMenuTriggerFor]="manageMenu"
-              aria-label="จัดการปัญหา"
+              aria-label="จัดการใบแจ้งปัญหา"
             >
-              จัดการ
-              <mat-icon iconPositionEnd>expand_more</mat-icon>
+              <mat-icon>more_vert</mat-icon>
             </button>
             <mat-menu #manageMenu="matMenu">
               <a mat-menu-item [routerLink]="['/app/tickets', row.id]">
@@ -106,16 +115,20 @@
                   <span>แก้ไข</span>
                 </button>
               }
-              <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                <mat-icon>delete</mat-icon>
-                <span>ลบ</span>
-              </button>
+              @if (canDelete()) {
+                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                  <mat-icon>delete</mat-icon>
+                  <span>ลบ</span>
+                </button>
+              }
             </mat-menu>
           </td>
         </ng-container>
+
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+
       <app-table-paginator
         [length]="pager.length()"
         [pageIndex]="pager.pageIndex()"
@@ -123,9 +136,16 @@
         [pageSizeOptions]="pager.pageSizeOptions"
         (page)="pager.onPage($event)"
       />
-      @if (filtered().length === 0) {
+
+      @if (filtered().length === 0 && !loading()) {
         <p class="data-empty">
-          {{ search().trim() ? 'ไม่พบปัญหาตามคำค้นหา/ตัวกรอง' : 'ไม่มีรายการในมุมมองนี้' }}
+          @if (search().trim()) {
+            ไม่พบใบแจ้งปัญหาตามคำค้นหา
+          } @else if (view() === 'open') {
+            ไม่มีใบที่รอรับการแก้ไข — เคลียร์หมดแล้ว
+          } @else {
+            ยังไม่มีใบแจ้งปัญหา
+          }
         </p>
       }
     </div>

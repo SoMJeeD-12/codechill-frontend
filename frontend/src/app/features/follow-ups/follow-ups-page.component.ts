@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -39,6 +39,7 @@ import {
   FollowUpUpdateInput,
 } from '../../core/services/follow-up.service';
 import { ProjectService } from '../../core/services/project.service';
+import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
@@ -87,6 +88,8 @@ export class FollowUpsPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly quickActions = inject(QuickActionsService);
 
   readonly items = signal<FollowUp[]>([]);
   readonly loading = signal(false);
@@ -114,9 +117,27 @@ export class FollowUpsPageComponent implements OnInit {
   );
   readonly canDelete = computed(() => this.auth.hasPermission('follow-ups', 'delete'));
 
+  /** งานที่ค้างนานสุดอยู่บนสุด — ใช้ isOverdue จาก API ห้ามคำนวณเองจากวันที่ */
+  private sortOldestFirst(list: FollowUp[]): FollowUp[] {
+    const rank = (f: FollowUp) => {
+      if (f.status === 'DONE' || f.status === 'CANCELLED') {
+        return 2;
+      }
+      return f.isOverdue ? 0 : 1;
+    };
+    return [...list].sort((a, b) => {
+      const byRank = rank(a) - rank(b);
+      if (byRank !== 0) {
+        return byRank;
+      }
+      // ครบกำหนดก่อน = ค้างนานกว่า = อยู่บนสุด
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }
+
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
-    let list = this.items();
+    const list = this.sortOldestFirst(this.items());
     if (!q) {
       return list;
     }
@@ -143,6 +164,12 @@ export class FollowUpsPageComponent implements OnInit {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.customersApi.listCustomers({ limit: 100 }).subscribe();
     this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
+
+    // เข้ามาจากการ์ด "ติดตามที่เลยกำหนด" บนหน้าแรก
+    const params = this.route.snapshot.queryParamMap;
+    if (params.get('overdue') === 'true') {
+      this.view.set('overdue');
+    }
     this.reload();
   }
 
@@ -260,9 +287,34 @@ export class FollowUpsPageComponent implements OnInit {
       data: row,
     });
     ref.afterClosed().subscribe((saved) => {
-      if (saved) {
-        this.reload();
+      if (!saved) {
+        return;
       }
+      this.reload();
+      this.offerCommunicationLog(row);
+    });
+  }
+
+  /** ปิดงานติดตามแล้วถามต่อทันที — ไม่ต้องเด้งไปเมนูลูกค้า */
+  private offerCommunicationLog(row: FollowUp): void {
+    if (!this.quickActions.canLogCommunication()) {
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'บันทึกการติดต่อเลยไหม',
+      message: `ปิดงานติดตาม「${row.title}」แล้ว\nต้องการบันทึกประวัติการติดต่อของ ${this.customerName(row)} ตอนนี้เลยไหม?`,
+      confirmLabel: 'บันทึกเลย',
+      cancelLabel: 'ไว้ทีหลัง',
+      danger: false,
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.quickActions
+        .openCommunicationLog({
+          customer: { id: row.customerId, label: this.customerName(row) },
+        })
+        .subscribe();
     });
   }
 

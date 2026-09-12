@@ -35,17 +35,14 @@ export const routes: Routes = [
           import('./features/profile/profile-page.component').then((m) => m.ProfilePageComponent),
       },
       {
-        path: 'dashboard',
+        path: 'home',
         canActivate: [permissionGuard('dashboard')],
         loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/home/home-page.component').then((m) => m.HomePageComponent),
       },
-      {
-        path: 'my-work',
-        canActivate: [permissionGuard('my-work')],
-        loadComponent: () =>
-          import('./features/my-work/my-work-page.component').then((m) => m.MyWorkPageComponent),
-      },
+      // ลิงก์เดิม — "งานของฉัน" รวมอยู่ในหน้าแรกแล้ว
+      { path: 'dashboard', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'my-work', redirectTo: 'home', pathMatch: 'full' },
       {
         path: 'customers',
         canActivate: [permissionGuard('customers')],
@@ -178,14 +175,6 @@ export const routes: Routes = [
         canActivate: [permissionGuard('reports')],
         loadComponent: () =>
           import('./features/reports/reports-page.component').then((m) => m.ReportsPageComponent),
-      },
-      {
-        path: 'notifications',
-        canActivate: [permissionGuard('notifications')],
-        loadComponent: () =>
-          import('./features/notifications/notifications-page.component').then(
-            (m) => m.NotificationsPageComponent
-          ),
       },
       {
         path: 'users',

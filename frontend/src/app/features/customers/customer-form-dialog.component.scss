@@ -15,6 +15,15 @@
   width: 100%;
 }
 
+/* ช่องทางที่ใช้น้อย — จางกว่าเพื่อไม่แย่งความสนใจ */
+.section--muted {
+  background: rgba(28, 43, 40, 0.02);
+
+  legend {
+    color: #5b6762 !important;
+  }
+}
+
 .section {
   margin: 0.35rem 0 0.5rem;
   padding: 0.65rem 0.75rem 0.25rem;

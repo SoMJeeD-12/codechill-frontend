@@ -50,7 +50,6 @@ export class CustomerFormDialogComponent {
   readonly users = this.usersApi.users;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly showMore = signal(false);
   readonly isEdit = !!this.data.customer;
   private primaryContactId: number | null = null;
 
@@ -88,9 +87,6 @@ export class CustomerFormDialogComponent {
         address: c.address ?? '',
         note: c.note ?? '',
       });
-      if (c.taxId || c.address || c.note) {
-        this.showMore.set(true);
-      }
       this.api.listContacts(c.id).subscribe({
         next: (rows) => {
           const primary = rows.find((x) => x.isPrimary) ?? rows[0];
@@ -106,11 +102,6 @@ export class CustomerFormDialogComponent {
         error: () => undefined,
       });
     }
-  }
-
-  toggleMore(event: Event): void {
-    event.preventDefault();
-    this.showMore.update((v) => !v);
   }
 
   save(): void {

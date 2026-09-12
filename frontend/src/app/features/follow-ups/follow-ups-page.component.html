@@ -1,12 +1,21 @@
 <section class="page">
   <header class="page-header">
     <div>
-      <p class="eyebrow">M7 · ติดตามลูกค้า</p>
       <h1>ติดตามลูกค้า</h1>
-      <p class="subtitle">
-        งานติดตามจาก API · อ่านสถานะเลยกำหนดจาก isOverdue · ปิดงานแล้วควรบันทึกการติดต่อต่อ
-      </p>
+      <p class="subtitle">งานที่ค้างนานสุดอยู่บนสุด — ปิดงานแล้วบันทึกการติดต่อได้ทันที</p>
     </div>
+    @if (canCreate()) {
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        class="primary-action"
+        (click)="openCreate()"
+      >
+        <mat-icon>add</mat-icon>
+        สร้างงานติดตาม
+      </button>
+    }
   </header>
 
   <div class="data-card">
@@ -21,12 +30,6 @@
             aria-label="ค้นหาติดตามลูกค้า"
           />
         </label>
-        @if (canCreate()) {
-          <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
-            <mat-icon>add</mat-icon>
-            สร้างงานติดตาม
-          </button>
-        }
       </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองติดตาม">
         <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="setView('all')">

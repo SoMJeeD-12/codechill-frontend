@@ -35,7 +35,6 @@ import { navigateBack } from '../../core/utils/navigation.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { EMPTY, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
@@ -54,7 +53,6 @@ import { catchError, switchMap } from 'rxjs/operators';
     MatSnackBarModule,
     MatTableModule,
     MatDialogModule,
-    TablePaginatorComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -86,30 +84,6 @@ export class TicketDetailPageComponent implements OnInit {
   readonly canAssign = computed(() => this.auth.hasPermissionCode('ticket.assign'));
   readonly canReopen = computed(() => this.auth.hasPermissionCode('ticket.reopen'));
   readonly canChangeResolver = this.auth.isAdminLevel();
-
-  readonly statusSteps = [
-    { key: 'RECEIVED', label: 'รับเรื่อง' },
-    { key: 'IN_PROGRESS', label: 'กำลังดำเนินการ' },
-    { key: 'RESOLVED', label: 'แก้ไขแล้ว' },
-    { key: 'CLOSED', label: 'ปิดงาน' },
-  ] as const;
-
-  readonly stepIndex = computed(() => {
-    const status = this.ticket()?.status;
-    switch (status) {
-      case 'RECEIVED':
-        return 0;
-      case 'IN_PROGRESS':
-      case 'REOPENED':
-        return 1;
-      case 'RESOLVED':
-        return 2;
-      case 'CLOSED':
-        return 3;
-      default:
-        return 0;
-    }
-  });
 
   /** รอบถัดไปหลังเปิดกลับมา (resolutionCount เดิม + 1) */
   readonly nextRound = computed(() => (this.ticket()?.resolutionCount ?? 0) + 1);
@@ -286,7 +260,8 @@ export class TicketDetailPageComponent implements OnInit {
         `สาเหตุ: ${r.rootCause || '—'}`,
         `วิธีแก้ไข: ${r.detail || '—'}`,
         `ผู้แก้ไข: ${this.userName(r.resolvedByUserId)}`,
-        `เวลาที่ใช้: ${r.hoursSpent != null ? r.hoursSpent + ' ชม.' : '—'}`,
+        // ยังไม่กรอก ≠ 0 ชั่วโมง
+        `เวลาที่ใช้: ${r.hoursSpent != null ? r.hoursSpent + ' ชม.' : 'ยังไม่กรอก'}`,
         `เวลาที่แก้เสร็จ: ${r.resolvedAt || '—'}`,
       ].join('\n'),
       confirmLabel: 'ปิด',

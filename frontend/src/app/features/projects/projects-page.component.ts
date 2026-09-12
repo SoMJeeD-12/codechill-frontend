@@ -93,12 +93,13 @@ export class ProjectsPageComponent implements OnInit {
   readonly statuses = PROJECT_STATUSES;
   readonly priorityLabels = PRIORITY_LABELS;
   readonly columns = [
+    'code',
     'name',
     'customer',
-    'priority',
-    'targetEndDate',
-    'progress',
     'status',
+    'progress',
+    'manager',
+    'targetEndDate',
     'actions',
   ];
 
@@ -131,6 +132,7 @@ export class ProjectsPageComponent implements OnInit {
       }
       const customer = this.customerName(p.customerId).toLowerCase();
       return (
+        (p.code ?? '').toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
         customer.includes(q) ||
         (p.description ?? '').toLowerCase().includes(q)
@@ -219,7 +221,7 @@ export class ProjectsPageComponent implements OnInit {
 
   private openForm(project?: Project): void {
     const ref = this.dialog.open(ProjectFormDialogComponent, {
-      width: '720px',
+      width: '1040px',
       maxWidth: '95vw',
       data: { project: project ?? null },
     });
@@ -243,6 +245,7 @@ const NEW_CUSTOMER_TOKEN = '__NEW_CUSTOMER__';
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatIconModule,
     MatSnackBarModule,
     MatDatepickerModule,
     MatAutocompleteModule,
@@ -269,7 +272,6 @@ export class ProjectFormDialogComponent {
   readonly priorityLabels = PRIORITY_LABELS;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly showMore = signal(false);
   readonly isEdit = !!this.data.project;
   /** สร้างจากหน้าลูกค้า — ล็อกเลือกลูกค้า */
   readonly customerLocked = !this.data.project && !!this.data.customerId;
@@ -300,28 +302,25 @@ export class ProjectFormDialogComponent {
     customerId: [0],
     projectType: [''],
     contractValue: [null as number | null, Validators.min(0)],
-    functionCount: [null as number | null, Validators.min(0)],
     startDate: [null as Date | null],
     targetEndDate: [null as Date | null],
     status: ['DRAFT' as ProjectStatus, Validators.required],
     priority: ['NORMAL' as ProjectPriority, Validators.required],
     managerUserId: [null as number | null],
     description: [''],
+    // ฟอร์มสร้างโปรเจคเก็บเฉพาะข้อมูลลูกค้าที่จำเป็น
+    // (LINE / Facebook / หมายเหตุ แก้ได้ที่หน้าลูกค้า)
     customer: this.fb.group({
       name: [''],
       taxId: [''],
       address: [''],
       phone: ['', thaiPhoneValidator],
       email: ['', Validators.email],
-      lineOfficialId: [''],
-      facebookUrl: [''],
-      note: [''],
     }),
     contact: this.fb.group({
       name: [''],
       phone: ['', thaiPhoneValidator],
       email: ['', Validators.email],
-      lineId: [''],
       position: [''],
     }),
   });
@@ -369,11 +368,6 @@ export class ProjectFormDialogComponent {
     this.selectExistingCustomer(value);
   }
 
-  toggleMore(event: Event): void {
-    event.preventDefault();
-    this.showMore.update((v) => !v);
-  }
-
   save(): void {
     this.syncCustomerValidators();
     if (this.form.invalid) {
@@ -419,7 +413,6 @@ export class ProjectFormDialogComponent {
       !!(contactRaw.name ?? '').trim() ||
       !!sanitizePhoneDigits(contactRaw.phone) ||
       !!(contactRaw.email ?? '').trim() ||
-      !!(contactRaw.lineId ?? '').trim() ||
       !!(contactRaw.position ?? '').trim();
     if (contactPartial && !(contactRaw.name ?? '').trim()) {
       this.error.set('กรุณาระบุชื่อผู้ติดต่อเมื่อกรอกข้อมูลผู้ติดต่อ');
@@ -495,7 +488,6 @@ export class ProjectFormDialogComponent {
       code: (raw.code ?? '').trim() || undefined,
       projectType: (raw.projectType ?? '').trim() || undefined,
       contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
-      functionCount: raw.functionCount ?? undefined,
       startDate: toDateOnlyString(raw.startDate) || undefined,
       targetEndDate: toDateOnlyString(raw.targetEndDate) || undefined,
       status: raw.status as ProjectStatus,
@@ -513,9 +505,6 @@ export class ProjectFormDialogComponent {
       address: (c.address ?? '').trim() || undefined,
       phone: sanitizePhoneDigits(c.phone) || undefined,
       email: (c.email ?? '').trim() || undefined,
-      lineOfficialId: (c.lineOfficialId ?? '').trim() || undefined,
-      facebookUrl: (c.facebookUrl ?? '').trim() || undefined,
-      note: (c.note ?? '').trim() || undefined,
     };
   }
 
@@ -527,9 +516,6 @@ export class ProjectFormDialogComponent {
       address: (c.address ?? '').trim() || undefined,
       phone: sanitizePhoneDigits(c.phone) || undefined,
       email: (c.email ?? '').trim() || undefined,
-      lineOfficialId: (c.lineOfficialId ?? '').trim() || undefined,
-      facebookUrl: (c.facebookUrl ?? '').trim() || undefined,
-      note: (c.note ?? '').trim() || undefined,
     };
   }
 
@@ -538,9 +524,8 @@ export class ProjectFormDialogComponent {
     const name = (c.name ?? '').trim();
     const phone = sanitizePhoneDigits(c.phone);
     const email = (c.email ?? '').trim();
-    const lineId = (c.lineId ?? '').trim();
     const position = (c.position ?? '').trim();
-    if (!name && !phone && !email && !lineId && !position) {
+    if (!name && !phone && !email && !position) {
       return null;
     }
     if (!name) {
@@ -550,7 +535,6 @@ export class ProjectFormDialogComponent {
       name,
       phone: phone || undefined,
       email: email || undefined,
-      lineId: lineId || undefined,
       position: position || undefined,
       isPrimary: true,
     };
@@ -568,10 +552,7 @@ export class ProjectFormDialogComponent {
       norm(c.taxId) !== norm(snap.taxId) ||
       norm(c.address) !== norm(snap.address) ||
       sanitizePhoneDigits(c.phone) !== sanitizePhoneDigits(snap.phone) ||
-      norm(c.email) !== norm(snap.email) ||
-      norm(c.lineOfficialId) !== norm(snap.lineOfficialId) ||
-      norm(c.facebookUrl) !== norm(snap.facebookUrl) ||
-      norm(c.note) !== norm(snap.note)
+      norm(c.email) !== norm(snap.email)
     );
   }
 
@@ -660,9 +641,6 @@ export class ProjectFormDialogComponent {
       address: '',
       phone: '',
       email: '',
-      lineOfficialId: '',
-      facebookUrl: '',
-      note: '',
     });
   }
 
@@ -673,9 +651,6 @@ export class ProjectFormDialogComponent {
       address: c.address ?? '',
       phone: sanitizePhoneDigits(c.phone),
       email: c.email ?? '',
-      lineOfficialId: c.lineOfficialId ?? '',
-      facebookUrl: c.facebookUrl ?? '',
-      note: c.note ?? '',
     });
   }
 
@@ -686,7 +661,6 @@ export class ProjectFormDialogComponent {
       customerId: p.customerId,
       projectType: p.projectType ?? '',
       contractValue: p.contractValue,
-      functionCount: p.functionCount,
       startDate: parseDateOnly(p.startDate),
       targetEndDate: parseDateOnly(p.targetEndDate),
       status: p.status,
@@ -694,9 +668,6 @@ export class ProjectFormDialogComponent {
       managerUserId: p.managerUserId,
       description: p.description ?? '',
     });
-    if (p.functionCount != null) {
-      this.showMore.set(true);
-    }
     this.customerMode.set('existing');
     this.customerSearchControl.disable({ emitEvent: false });
     const existing = this.customersApi.getCustomer(p.customerId);

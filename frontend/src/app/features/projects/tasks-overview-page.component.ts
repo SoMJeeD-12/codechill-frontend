@@ -117,10 +117,15 @@ export class TasksOverviewPageComponent implements OnInit {
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.usersApi.loadForPicker().subscribe({ error: () => undefined });
-    const qProject = Number(this.route.snapshot.queryParamMap.get('projectId'));
+    const params = this.route.snapshot.queryParamMap;
+    const qProject = Number(params.get('projectId'));
     if (Number.isFinite(qProject) && qProject > 0) {
       this.filterProjectId.set(qProject);
       this.view.set('board');
+    }
+    // เข้ามาจากการ์ด "งานเลยกำหนด" บนหน้าแรก
+    if (params.get('overdue') === 'true') {
+      this.view.set('overdue');
     }
     this.reload();
   }

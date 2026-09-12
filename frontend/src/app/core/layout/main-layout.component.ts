@@ -1,7 +1,6 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatBadgeModule } from '@angular/material/badge';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
@@ -10,7 +9,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MENU_ITEMS } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
-import { NotificationService } from '../services/notification.service';
+import { QuickActionsService } from '../services/quick-actions.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -26,16 +25,26 @@ import { NotificationService } from '../services/notification.service';
     MatButtonModule,
     MatMenuModule,
     MatTooltipModule,
-    MatBadgeModule,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
 export class MainLayoutComponent implements OnInit {
   private readonly auth = inject(AuthService);
-  private readonly notifications = inject(NotificationService);
+  private readonly quickActions = inject(QuickActionsService);
 
   readonly user = this.auth.currentUser;
+
+  /** ปุ่มลัดมุมขวาบน — ใช้ได้จากทุกหน้า ไม่ต้องเปลี่ยนเมนู */
+  readonly canOpenTicket = computed(() => {
+    this.auth.session();
+    return this.quickActions.canOpenTicket();
+  });
+
+  readonly canLogCommunication = computed(() => {
+    this.auth.session();
+    return this.quickActions.canLogCommunication();
+  });
 
   readonly roleSummary = computed(() => {
     const me = this.user();
@@ -48,15 +57,6 @@ export class MainLayoutComponent implements OnInit {
     return this.accountTypeLabel(me.accountType);
   });
 
-  readonly unreadCount = computed(() => {
-    const id = this.user()?.id;
-    return id ? this.notifications.unreadCountFor(id) : 0;
-  });
-
-  readonly canSeeNotifications = computed(() =>
-    this.auth.getVisibleMenuCodes().includes('notifications')
-  );
-
   readonly visibleMenus = computed(() => {
     const codes = new Set(this.auth.getVisibleMenuCodes());
     return MENU_ITEMS.filter((item) => codes.has(item.code));
@@ -65,7 +65,7 @@ export class MainLayoutComponent implements OnInit {
   readonly menuGroups = computed(() => {
     const groups: { key: string; label: string; items: typeof MENU_ITEMS }[] = [
       { key: 'main', label: 'งานหลัก', items: [] },
-      { key: 'support', label: 'ข้อมูลรอง', items: [] },
+      { key: 'support', label: 'ข้อมูล', items: [] },
       { key: 'settings', label: 'ตั้งค่า', items: [] },
     ];
 
@@ -79,10 +79,16 @@ export class MainLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.auth.refreshSession();
-    const userId = this.auth.currentUser()?.id;
-    if (userId) {
-      this.notifications.ensureDemoSeed(userId).subscribe();
-    }
+  }
+
+  /** + เปิดใบแจ้งปัญหา */
+  openTicketForm(): void {
+    this.quickActions.openTicketForm().subscribe();
+  }
+
+  /** + บันทึกการติดต่อ — พนักงานเพิ่งวางสายแล้วบันทึกได้ทันที */
+  openCommunicationLog(): void {
+    this.quickActions.openCommunicationLog().subscribe();
   }
 
   accountTypeLabel(type: string | undefined): string {

@@ -33,19 +33,30 @@
       <span class="topbar-title">ระบบบริหารจัดการลูกค้าและบริการหลังการขาย</span>
       <span class="spacer"></span>
 
-      @if (canSeeNotifications()) {
-        <a
-          mat-icon-button
-          routerLink="/app/notifications"
-          matTooltip="การแจ้งเตือน"
-          class="notif-btn"
-          aria-label="การแจ้งเตือน"
-          [matBadge]="unreadCount() || null"
-          matBadgeColor="warn"
-          matBadgeSize="small"
+      <!-- ปุ่มลัด — ทำงานครั้งเดียวจบ ไม่ต้องเปลี่ยนเมนู -->
+      @if (canOpenTicket()) {
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          class="quick-action"
+          (click)="openTicketForm()"
         >
-          <mat-icon>notifications</mat-icon>
-        </a>
+          <mat-icon>add</mat-icon>
+          <span class="quick-action__text">เปิดใบแจ้งปัญหา</span>
+        </button>
+      }
+
+      @if (canLogCommunication()) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="quick-action quick-action--ghost"
+          (click)="openCommunicationLog()"
+        >
+          <mat-icon>add</mat-icon>
+          <span class="quick-action__text">บันทึกการติดต่อ</span>
+        </button>
       }
 
       <button mat-button [matMenuTriggerFor]="userMenu" class="user-chip">

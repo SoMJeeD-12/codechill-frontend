@@ -13,7 +13,9 @@ import {
   UpcomingContractValueReport,
   formatCompleteness,
 } from '../models/report.model';
-import { OPEN_PROJECT_STATUSES } from '../models/project.model';
+import { Customer } from '../models/customer.model';
+import { OPEN_PROJECT_STATUSES, Project } from '../models/project.model';
+import { Ticket } from '../models/ticket.model';
 import { WARRANTY_NEAR_EXPIRY_DAYS } from '../models/warranty.model';
 import { formatMoneyDisplay } from '../utils/money.util';
 import { CustomerService } from './customer.service';
@@ -134,6 +136,11 @@ export class ReportService {
         .pipe(catchError(() => of([]))),
       followUps: this.followUps.list({ overdue: true, limit: 100 }).pipe(catchError(() => of([]))),
       surveys: this.surveys.list().pipe(catchError(() => of([]))),
+      // ต้องโหลดเองที่นี่ — ห้ามพึ่ง cache ของหน้าอื่น
+      // ไม่งั้นเปิดหน้ารายงานตรง ๆ ตัวเลขด้านบนจะขึ้น 0 ทั้งที่มีข้อมูลจริง
+      customers: this.customers.listCustomers({ limit: 100 }).pipe(catchError(() => of([]))),
+      projects: this.projects.listProjects({ limit: 100 }).pipe(catchError(() => of([]))),
+      tickets: this.tickets.listPending({ limit: 100 }).pipe(catchError(() => of([]))),
     }).pipe(map((data) => this.buildReport(data)));
   }
 
@@ -146,11 +153,14 @@ export class ReportService {
     warranties: unknown[];
     followUps: unknown[];
     surveys: Array<{ title: string; id: number; responseCount: number }>;
+    customers: Customer[];
+    projects: Project[];
+    tickets: Ticket[];
   }): ExecutiveReport {
-    const customerList = this.customers.customers();
-    const projectList = this.projects.projects();
+    const customerList = data.customers;
+    const projectList = data.projects;
     const openProjects = projectList.filter((p) => OPEN_PROJECT_STATUSES.includes(p.status));
-    const openTickets = this.tickets.openQueue();
+    const openTickets = data.tickets;
     const nearWarranty = data.warranties.length;
     const overdueFollowUps = data.followUps.length;
     const byType = data.byType;

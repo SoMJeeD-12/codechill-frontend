@@ -1,7 +1,6 @@
 /** รหัสเมนู/โมดูล ตามเอกสารออกแบบ M0–M12 */
 export type MenuCode =
   | 'dashboard'
-  | 'my-work'
   | 'tasks'
   | 'users'
   | 'roles'
@@ -16,7 +15,6 @@ export type MenuCode =
   | 'surveys'
   | 'documents'
   | 'reports'
-  | 'notifications'
   | 'audit-logs';
 
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete';
@@ -55,6 +53,6 @@ export interface MenuItem {
   label: string;
   icon: string;
   route: string;
-  /** กลุ่มใน sidebar — งานหลัก / ข้อมูลรอง / ตั้งค่า */
+  /** กลุ่มใน sidebar — งานหลัก / ข้อมูล / ตั้งค่า */
   group: 'main' | 'support' | 'settings';
 }

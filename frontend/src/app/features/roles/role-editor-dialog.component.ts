@@ -18,7 +18,7 @@ import { RoleService } from '../../core/services/role.service';
 
 /** ชื่อโมดูลภาษาไทย — โมดูลที่ไม่รู้จักจะแสดงรหัสตามที่ API ส่งมา */
 const MODULE_LABELS: Record<string, string> = {
-  dashboard: 'ภาพรวม',
+  dashboard: 'หน้าแรก',
   user: 'ผู้ใช้งาน',
   role: 'บทบาทและสิทธิ์',
   permission: 'สิทธิ์',

@@ -56,22 +56,25 @@
           ผู้จัดการ {{ p.manager?.fullName || userName(p.managerUserId) }}
         </p>
         <p class="subtitle">
-          วันเริ่ม {{ p.startDate || '—' }} ·
-          กำหนดส่ง {{ p.targetEndDate || '—' }} ·
-          มูลค่า {{ p.contractValue | baht }} ·
+          วันเริ่ม {{ p.startDate ? (p.startDate | thaiDate: 'date') : '—' }} ·
+          กำหนดส่ง {{ p.targetEndDate ? (p.targetEndDate | thaiDate: 'date') : '—' }} ·
+          มูลค่าตามสัญญา {{ p.contractValue | baht }} ·
           ความคืบหน้า {{ progress() }}%
-          @if (p.functionCount != null) {
-            · ฟังก์ชัน {{ p.functionCount }}
-          }
           @if (p.actualEndDate) {
-            · ปิดจริง {{ p.actualEndDate }}
+            · ปิดจริง {{ p.actualEndDate | thaiDate: 'date' }}
           }
         </p>
         <p class="description">{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
         <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | thaiDate }}</p>
       </div>
-      @if (canUpdateProject() || canDeleteProject()) {
-        <div class="header-actions">
+      <div class="header-actions">
+        @if (canViewTasks()) {
+          <a mat-stroked-button routerLink="/app/tasks" [queryParams]="{ projectId: p.id }">
+            <mat-icon>view_kanban</mat-icon>
+            กระดานงานของโปรเจคนี้
+          </a>
+        }
+        @if (canUpdateProject() || canDeleteProject()) {
           @if (nextProjectStatus(); as nextStatus) {
             <button
               mat-flat-button
@@ -105,26 +108,13 @@
               </button>
             }
           </mat-menu>
-        </div>
-      }
+        }
+      </div>
     </header>
 
     <mat-tab-group animationDuration="150ms">
-            <mat-tab label="งาน">
-        <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__body">
-              <p class="data-empty">
-                งานย่อยย้ายไปเมนู「งาน」แล้ว —
-                <a routerLink="/app/tasks" [queryParams]="{ projectId: p.id }">เปิดกระดานงานของโปรเจคนี้</a>
-              </p>
-            </div>
-          </div>
-        </div>
-      </mat-tab>
-
       @if (canViewDeliveries()) {
-      <mat-tab label="การส่งมอบ">
+      <mat-tab label="ส่งมอบ &amp; ประกัน">
         @if (deliveriesDenied()) {
           <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
         } @else {
@@ -269,6 +259,55 @@
                 }
               </div>
             </div>
+
+            <!-- ประกันที่ออกจากการส่งมอบข้างบน — อยู่แท็บเดียวกัน ไม่ต้องเปลี่ยนเมนู -->
+            @if (canViewWarranties()) {
+              <div class="data-card sub-card">
+                <div class="data-card__head">
+                  <div class="data-card__row tab-toolbar">
+                    <h3 class="tab-heading">ประกันที่ออกแล้ว</h3>
+                  </div>
+                </div>
+                <div class="data-card__body">
+                  <table mat-table [dataSource]="warranties()" class="data-table">
+                    <ng-container matColumnDef="delivery">
+                      <th mat-header-cell *matHeaderCellDef>จากการส่งมอบ</th>
+                      <td mat-cell *matCellDef="let row">
+                        {{ row.delivery?.title || '—' }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="period">
+                      <th mat-header-cell *matHeaderCellDef>ระยะประกัน</th>
+                      <td mat-cell *matCellDef="let row">
+                        {{ row.startDate | thaiDate: 'date' }} –
+                        {{ row.endDate | thaiDate: 'date' }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="daysLeft">
+                      <th mat-header-cell *matHeaderCellDef>เหลือ</th>
+                      <td mat-cell *matCellDef="let row">
+                        {{ row.daysUntilExpiry != null ? row.daysUntilExpiry + ' วัน' : '—' }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="status">
+                      <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                      <td mat-cell *matCellDef="let row">
+                        <span class="status" [attr.data-status]="row.status">
+                          {{ warrantyStatusLabel(row.status) }}
+                        </span>
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="warrantyColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: warrantyColumns"></tr>
+                  </table>
+                  @if (warranties().length === 0) {
+                    <p class="data-empty">
+                      ยังไม่มีประกัน — ออกประกันได้จากการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว
+                    </p>
+                  }
+                </div>
+              </div>
+            }
           </div>
         }
       </mat-tab>
@@ -392,6 +431,76 @@
       </mat-tab>
       }
 
+      <!-- ——— ปัญหาของโปรเจคนี้ ——— -->
+      @if (canViewTickets()) {
+        <mat-tab label="ปัญหาของโปรเจคนี้">
+          <div class="tab-panel">
+            <div class="data-card">
+              <div class="data-card__head">
+                <div class="data-card__row tab-toolbar">
+                  <h3 class="tab-heading">ใบแจ้งปัญหาของโปรเจคนี้</h3>
+                  @if (canCreateTicket()) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      class="ui-add-btn"
+                      (click)="openTicketForProject()"
+                    >
+                      <mat-icon>add</mat-icon>
+                      เปิดใบแจ้งปัญหา
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="data-card__body">
+                <table mat-table [dataSource]="projectTickets()" class="data-table">
+                  <ng-container matColumnDef="ticketNo">
+                    <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
+                    <td mat-cell *matCellDef="let row" class="col-code">
+                      {{ row.ticketNo || '—' }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="title">
+                    <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
+                    <td mat-cell *matCellDef="let row">
+                      <a [routerLink]="['/app/tickets', row.id]" class="row-link">
+                        {{ row.title }}
+                      </a>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                    <td mat-cell *matCellDef="let row">
+                      <span class="status" [attr.data-status]="row.status">
+                        {{ ticketStatusLabel(row.status) }}
+                      </span>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="priority">
+                    <th mat-header-cell *matHeaderCellDef>ความเร่งด่วน</th>
+                    <td mat-cell *matCellDef="let row">
+                      <span class="priority-badge" [attr.data-priority]="row.priority">
+                        {{ ticketPriorityLabel(row.priority) }}
+                      </span>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="reportedAt">
+                    <th mat-header-cell *matHeaderCellDef>รับแจ้ง</th>
+                    <td mat-cell *matCellDef="let row">{{ row.reportedAt | thaiDate }}</td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ticketColumns"></tr>
+                </table>
+                @if (projectTickets().length === 0 && !ticketsLoading()) {
+                  <p class="data-empty">ยังไม่มีใบแจ้งปัญหาของโปรเจคนี้</p>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      }
+
       <mat-tab label="งานติดตาม">
         <div class="tab-panel">
           <div class="data-card">
@@ -479,6 +588,55 @@
           </div>
         </div>
       </mat-tab>
+
+      <!-- ——— สัญญา MA ——— -->
+      @if (canViewMa()) {
+        <mat-tab label="สัญญา MA">
+          <div class="tab-panel">
+            <div class="data-card">
+              <div class="data-card__head">
+                <div class="data-card__row tab-toolbar">
+                  <h3 class="tab-heading">สัญญา MA ของโปรเจคนี้</h3>
+                </div>
+              </div>
+              <div class="data-card__body">
+                <table mat-table [dataSource]="maContracts()" class="data-table">
+                  <ng-container matColumnDef="contractNo">
+                    <th mat-header-cell *matHeaderCellDef>เลขสัญญา</th>
+                    <td mat-cell *matCellDef="let row" class="col-code">
+                      <a [routerLink]="['/app/ma', row.id]">{{ row.contractNo || '—' }}</a>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="plan">
+                    <th mat-header-cell *matHeaderCellDef>แผน</th>
+                    <td mat-cell *matCellDef="let row">{{ row.plan?.name || '—' }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="period">
+                    <th mat-header-cell *matHeaderCellDef>ระยะสัญญา</th>
+                    <td mat-cell *matCellDef="let row">
+                      {{ row.startDate | thaiDate: 'date' }} –
+                      {{ row.endDate | thaiDate: 'date' }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+                    <td mat-cell *matCellDef="let row">
+                      <span class="status" [attr.data-status]="row.status">
+                        {{ maStatusLabel(row.status) }}
+                      </span>
+                    </td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="maColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: maColumns"></tr>
+                </table>
+                @if (maContracts().length === 0 && !maLoading()) {
+                  <p class="data-empty">ยังไม่มีสัญญา MA ของโปรเจคนี้</p>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      }
     </mat-tab-group>
   </section>
   }

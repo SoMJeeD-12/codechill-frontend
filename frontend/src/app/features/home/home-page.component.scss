@@ -1,0 +1,310 @@
+.home {
+  width: 100%;
+}
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.4rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.6rem;
+  }
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.8rem 0 0.85rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #34524c;
+}
+
+.section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #e7f3f0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1.5rem 0;
+  color: #5b6762;
+}
+
+/* ——— การ์ดต้องทำวันนี้ ——— */
+
+.todo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.todo-card {
+  display: grid;
+  grid-template-areas:
+    'icon  count'
+    'label label'
+    'hint  hint'
+    'go    go';
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+  padding: 1.1rem 1.2rem 0.9rem;
+  border: 1px solid #d8e5e1;
+  border-left: 5px solid #cbd5d1;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.06);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    border-color 0.14s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(28, 43, 40, 0.12);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(15, 118, 110, 0.4);
+    outline-offset: 2px;
+  }
+}
+
+.todo-card__icon {
+  grid-area: icon;
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+  color: #6b7f79;
+}
+
+.todo-card__count {
+  grid-area: count;
+  justify-self: end;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #1c2b28;
+}
+
+.todo-card__label {
+  grid-area: label;
+  margin-top: 0.5rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #1c2b28;
+}
+
+.todo-card__hint {
+  grid-area: hint;
+  font-size: 0.79rem;
+  color: #7b8a85;
+}
+
+.todo-card__go {
+  grid-area: go;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f766e;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+/* น้ำหนักสีตามความเร่งด่วน — ตัวเลข 0 จะกลายเป็น calm เสมอ */
+.todo-card[data-tone='urgent'] {
+  border-left-color: #b91c1c;
+
+  .todo-card__icon,
+  .todo-card__count {
+    color: #b91c1c;
+  }
+}
+
+.todo-card[data-tone='warn'] {
+  border-left-color: #c2410c;
+
+  .todo-card__icon,
+  .todo-card__count {
+    color: #c2410c;
+  }
+}
+
+.todo-card[data-tone='calm'] {
+  border-left-color: #cbd5d1;
+
+  .todo-card__count {
+    color: #8a9792;
+  }
+}
+
+/* ——— งานของฉัน ——— */
+
+.mywork-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.mywork-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #d8e5e1;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.06);
+  overflow: hidden;
+}
+
+.mywork-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.9rem 1.05rem;
+  background: linear-gradient(180deg, #f3faf8 0%, #ffffff 100%);
+  border-bottom: 1px solid #e4eeeb;
+
+  mat-icon {
+    color: #0f766e;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+}
+
+.mywork-card__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #e7f3f0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mywork-list {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li + li {
+    border-top: 1px solid #eef3f1;
+  }
+
+  a {
+    display: block;
+    padding: 0.65rem 1.05rem;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+      background: #f8fbfa;
+    }
+  }
+}
+
+.item-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #1c2b28;
+}
+
+.item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  font-size: 0.76rem;
+  color: #7b8a85;
+}
+
+.item-project,
+.item-status,
+.item-due {
+  color: #7b8a85;
+}
+
+.item-status {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f1f5f4;
+}
+
+.flag-overdue {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.mywork-empty {
+  padding: 1.5rem 1.05rem;
+  color: #8a9792;
+  font-size: 0.86rem;
+  text-align: center;
+}
+
+.mywork-card__more {
+  padding: 0.65rem 1.05rem;
+  border-top: 1px solid #eef3f1;
+  background: #fbfdfc;
+  color: #0f766e;
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-header .primary-action {
+    width: 100%;
+  }
+}

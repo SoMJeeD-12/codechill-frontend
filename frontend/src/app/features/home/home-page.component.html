@@ -1,0 +1,160 @@
+<section class="home">
+  <!-- ปุ่ม "เปิดใบแจ้งปัญหา" อยู่บนแถบบนแล้ว (ทุกหน้า) จึงไม่ซ้ำในหน้านี้อีก -->
+  <header class="home-header">
+    <div>
+      <h1>{{ greeting() }} {{ user()?.nickname || user()?.fullName }}</h1>
+      <p class="subtitle">
+        @if (loading()) {
+          กำลังโหลดงานของวันนี้…
+        } @else if (hasUrgentWork()) {
+          มีงานที่ต้องจัดการวันนี้ — เริ่มจากการ์ดสีแดงก่อน
+        } @else {
+          วันนี้ยังไม่มีงานค้าง
+        }
+      </p>
+    </div>
+  </header>
+
+  <!-- ——— ต้องทำวันนี้ ——— -->
+  <h2 class="section-title">ต้องทำวันนี้</h2>
+
+  @if (loading()) {
+    <div class="loading-row">
+      <mat-spinner diameter="28" />
+      <span>กำลังโหลด…</span>
+    </div>
+  } @else {
+    <div class="todo-grid">
+      @for (card of todoCards(); track card.key) {
+        <button
+          type="button"
+          class="todo-card"
+          [attr.data-tone]="(card.count ?? 0) > 0 ? card.tone : 'calm'"
+          (click)="openCard(card)"
+        >
+          <mat-icon class="todo-card__icon">{{ card.icon }}</mat-icon>
+          <span class="todo-card__count">{{ card.count ?? '—' }}</span>
+          <span class="todo-card__label">{{ card.label }}</span>
+          <span class="todo-card__hint">{{ card.hint }}</span>
+          <span class="todo-card__go">
+            ดูรายการ
+            <mat-icon>arrow_forward</mat-icon>
+          </span>
+        </button>
+      } @empty {
+        <p class="data-empty">ยังไม่มีสิทธิ์ดูงานส่วนนี้</p>
+      }
+    </div>
+  }
+
+  <!-- ——— งานของฉัน ——— -->
+  @if (hasAnyMySection()) {
+    <h2 class="section-title">
+      งานของฉัน
+      @if (!loading() && myWorkTotal() > 0) {
+        <span class="section-count">{{ myWorkTotal() }}</span>
+      }
+    </h2>
+
+    <div class="mywork-grid">
+      <!-- ปัญหาที่ฉันรับผิดชอบ -->
+      @if (canTickets()) {
+        <article class="mywork-card">
+          <header class="mywork-card__head">
+            <mat-icon>support_agent</mat-icon>
+            <h3>ปัญหาที่ฉันรับผิดชอบ</h3>
+            <span class="mywork-card__count">{{ myTickets().length }}</span>
+          </header>
+          <ul class="mywork-list">
+            @for (ticket of myTickets(); track ticket.id) {
+              <li>
+                <a [routerLink]="['/app/tickets', ticket.id]">
+                  <span class="item-title">{{ ticket.title }}</span>
+                  <span class="item-meta">
+                    <span class="col-code">{{ ticket.ticketNo || '—' }}</span>
+                    <span class="priority-badge" [attr.data-priority]="ticket.priority">
+                      {{ ticketPriorityLabels[ticket.priority] }}
+                    </span>
+                    @if (ticket.isOverdue) {
+                      <span class="flag-overdue">เลยกำหนด</span>
+                    }
+                  </span>
+                </a>
+              </li>
+            } @empty {
+              <li class="mywork-empty">ไม่มีปัญหาที่ค้างอยู่กับคุณ</li>
+            }
+          </ul>
+          <a class="mywork-card__more" routerLink="/app/tickets">ดูทั้งหมด</a>
+        </article>
+      }
+
+      <!-- งานของฉัน -->
+      @if (canTasks()) {
+        <article class="mywork-card">
+          <header class="mywork-card__head">
+            <mat-icon>view_kanban</mat-icon>
+            <h3>งานของฉัน</h3>
+            <span class="mywork-card__count">{{ myTasks().length }}</span>
+          </header>
+          <ul class="mywork-list">
+            @for (task of myTasks(); track task.id) {
+              <li>
+                <a [routerLink]="['/app/tasks']" [queryParams]="{ taskId: task.id }">
+                  <span class="item-title">{{ task.title }}</span>
+                  <span class="item-meta">
+                    @if (task.project?.name; as projectName) {
+                      <span class="item-project">{{ projectName }}</span>
+                    }
+                    <span class="item-status">{{ taskStatusLabels[task.status] }}</span>
+                    @if (task.isOverdue) {
+                      <span class="flag-overdue">เลยกำหนด</span>
+                    } @else if (task.dueDate) {
+                      <span class="item-due">{{ task.dueDate | thaiDate }}</span>
+                    }
+                  </span>
+                </a>
+              </li>
+            } @empty {
+              <li class="mywork-empty">ไม่มีงานที่ค้างอยู่กับคุณ</li>
+            }
+          </ul>
+          <a class="mywork-card__more" routerLink="/app/tasks">เปิดกระดานงาน</a>
+        </article>
+      }
+
+      <!-- งานติดตามของฉัน -->
+      @if (canFollowUps()) {
+        <article class="mywork-card">
+          <header class="mywork-card__head">
+            <mat-icon>event_available</mat-icon>
+            <h3>งานติดตามของฉัน</h3>
+            <span class="mywork-card__count">{{ myFollowUps().length }}</span>
+          </header>
+          <ul class="mywork-list">
+            @for (followUp of myFollowUps(); track followUp.id) {
+              <li>
+                <a routerLink="/app/follow-ups" [queryParams]="{ followUpId: followUp.id }">
+                  <span class="item-title">{{ followUp.title }}</span>
+                  <span class="item-meta">
+                    @if (followUp.customer?.name; as customerName) {
+                      <span class="item-project">{{ customerName }}</span>
+                    }
+                    @if (followUp.isOverdue) {
+                      <span class="flag-overdue">เลยกำหนด</span>
+                    } @else if (followUp.dueDate) {
+                      <span class="item-due">{{ followUp.dueDate | thaiDate }}</span>
+                    }
+                  </span>
+                </a>
+              </li>
+            } @empty {
+              <li class="mywork-empty">ไม่มีงานติดตามที่ค้างอยู่กับคุณ</li>
+            }
+          </ul>
+          <a class="mywork-card__more" routerLink="/app/follow-ups">ดูทั้งหมด</a>
+        </article>
+      }
+    </div>
+  }
+</section>
