@@ -19,8 +19,9 @@ import {
 } from '../../core/models/customer.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { CustomerFormDialogComponent } from './customer-form-dialog.component';
+import { CustomerPreviewDialogComponent } from './customer-preview-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
@@ -118,8 +119,14 @@ export class CustomersPageComponent implements OnInit {
   }
 
   openDetail(customer: Customer): void {
-    const base = this.is360Mode ? '/app/customer-360' : '/app/customers';
-    void this.router.navigate([base, customer.id]);
+    if (this.is360Mode) {
+      void this.router.navigate(['/app/customer-360', customer.id]);
+      return;
+    }
+    this.dialog.open(CustomerPreviewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: { customerId: customer.id, seed: customer },
+    });
   }
 
   remove(customer: Customer): void {

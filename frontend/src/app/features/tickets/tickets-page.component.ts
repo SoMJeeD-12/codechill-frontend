@@ -78,8 +78,8 @@ export class TicketsPageComponent implements OnInit {
     );
   });
   readonly canDelete = computed(() => {
-    this.auth.session();
-    return this.auth.hasPermissionCode('ticket.delete');
+    // BE ยังไม่มี DELETE /api/tickets/:id ใน Swagger — ซ่อนกันกดแล้ว Cannot DELETE
+    return false;
   });
 
   readonly columns = [

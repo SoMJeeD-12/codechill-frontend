@@ -94,10 +94,13 @@
                 <mat-icon>edit</mat-icon>
                 <span>แก้ไข</span>
               </button>
-              <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                <mat-icon>delete</mat-icon>
-                <span>ลบ</span>
-              </button>
+              @if (false) {
+                <!-- BE ยังไม่มี DELETE /api/warranties/:id -->
+                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                  <mat-icon>delete</mat-icon>
+                  <span>ลบ</span>
+                </button>
+              }
             </mat-menu>
           </td>
         </ng-container>

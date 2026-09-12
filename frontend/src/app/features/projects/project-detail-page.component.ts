@@ -160,6 +160,8 @@ export class ProjectDetailPageComponent implements OnInit {
   /** ใบแจ้งปัญหาของโปรเจคนี้ */
   readonly projectTickets = signal<Ticket[]>([]);
   readonly ticketsLoading = signal(false);
+  readonly ticketSearch = signal('');
+  readonly ticketSearchControl = this.fb.nonNullable.control('');
   /** สัญญา MA ของโปรเจคนี้ */
   readonly maContracts = signal<MaContract[]>([]);
   readonly maLoading = signal(false);
@@ -238,6 +240,96 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     return null;
   });
+  /** checklist ทวนความพร้อมก่อนปิด / ออกประกัน ในแท็บส่งมอบ */
+  readonly deliveryReadiness = computed(() => {
+    const status = this.project()?.status;
+    const deliveries = this.deliveries();
+    const started =
+      status === 'IN_PROGRESS' || status === 'DELIVERED' || status === 'CLOSED';
+    const hasDelivery = deliveries.length > 0;
+    const finalAccepted =
+      status === 'DELIVERED' ||
+      status === 'CLOSED' ||
+      deliveries.some((d) => d.acceptanceStatus === 'ACCEPTED' && d.isFinal);
+    const issuedWarranty = this.warranties().length > 0;
+    const canIssue = deliveries.some((d) => d.canIssueWarranty);
+
+    const items: { id: string; ok: boolean; label: string }[] = [
+      {
+        id: 'started',
+        ok: started,
+        label: started
+          ? 'เริ่มดำเนินการแล้ว'
+          : 'ยังเป็นร่าง — ต้องเริ่มดำเนินการก่อน',
+      },
+      {
+        id: 'delivery',
+        ok: hasDelivery,
+        label: hasDelivery ? 'มีรายการส่งมอบแล้ว' : 'ยังไม่มีรายการส่งมอบ',
+      },
+      {
+        id: 'final',
+        ok: finalAccepted,
+        label: finalAccepted
+          ? 'ยอมรับรอบสุดท้ายแล้ว'
+          : 'ยังไม่มียอมรับการส่งมอบรอบสุดท้าย',
+      },
+    ];
+    if (this.canViewWarranties()) {
+      items.push({
+        id: 'warranty',
+        ok: issuedWarranty || canIssue,
+        label: issuedWarranty
+          ? 'ออกประกันแล้ว'
+          : canIssue
+            ? 'พร้อมออกประกัน'
+            : 'ยังออกประกันไม่ได้',
+      });
+    }
+    return items;
+  });
+  /** การ์ดทวนก่อนยืนยัน — สรุป + ปุ่มทำต่อ */
+  readonly deliveryReadyCard = computed(() => {
+    const items = this.deliveryReadiness();
+    const done = items.filter((i) => i.ok).length;
+    const total = items.length;
+    const allOk = total > 0 && done === total;
+    const status = this.project()?.status;
+    const missingDelivery = !items.find((i) => i.id === 'delivery')?.ok;
+
+    let title = 'ทวนก่อนดำเนินการต่อ';
+    let summary = `ครบ ${done}/${total} ข้อ`;
+    let actionLabel: string | null = null;
+    let actionKind: 'advance' | 'delivery' | null = null;
+
+    if (status === 'CLOSED') {
+      title = 'สถานะโปรเจค';
+      summary = 'โปรเจคปิดแล้ว — รายการด้านล่างเป็นประวัติ';
+    } else if (status === 'DRAFT' && this.canUpdateProject()) {
+      title = 'ทวนก่อนเริ่มงาน';
+      summary = 'โปรเจคยังเป็นร่าง ยืนยันแล้วค่อยเริ่มดำเนินการ';
+      actionLabel = 'ยืนยัน · เริ่มดำเนินการ';
+      actionKind = 'advance';
+    } else if (status === 'IN_PROGRESS') {
+      title = 'ทวนความพร้อมส่งมอบ';
+      summary = allOk
+        ? 'ครบทุกข้อแล้ว — รอออกประกันหรือปิดโปรเจคเมื่อพร้อม'
+        : `ครบ ${done}/${total} ข้อ — ตรวจรายการที่ยังค้างด้านล่าง`;
+      if (this.canRecordDelivery() && missingDelivery) {
+        actionLabel = 'บันทึกการส่งมอบ';
+        actionKind = 'delivery';
+      }
+    } else if (status === 'DELIVERED' && this.canUpdateProject()) {
+      title = 'ทวนก่อนปิดโปรเจค';
+      summary = allOk
+        ? 'ส่งมอบครบแล้ว — ยืนยันเพื่อปิดโปรเจค'
+        : `ครบ ${done}/${total} ข้อ ก่อนปิดโปรเจค`;
+      actionLabel = 'ยืนยัน · ปิดโปรเจค';
+      actionKind = 'advance';
+    }
+
+    return { items, done, total, allOk, title, summary, actionLabel, actionKind };
+  });
   readonly canViewDocuments = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('document.view');
@@ -262,12 +354,8 @@ export class ProjectDetailPageComponent implements OnInit {
     );
   });
   readonly canDeleteProject = computed(() => {
-    this.auth.session();
-    return (
-      this.auth.hasPermissionCode('project.delete') ||
-      this.auth.hasPermission('projects', 'delete') ||
-      this.canUpdateProject()
-    );
+    // BE ยังไม่มี DELETE /api/projects/:id — ซ่อนปุ่ม
+    return false;
   });
   readonly canDeleteTask = computed(() => {
     this.auth.session();
@@ -357,25 +445,26 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly filteredDeliveries = computed(() => {
     const q = this.deliverySearch().trim().toLowerCase();
     const list = this.deliveries();
-    if (!q) {
-      return list;
-    }
-    return list.filter((d) => {
-      const deliveredBy = this.userName(d.deliveredByUserId).toLowerCase();
-      const acceptedBy = this.contactName(d.acceptedByContactId).toLowerCase();
-      return (
-        String(d.id).includes(q) ||
-        `ส่งมอบ #${d.id}`.includes(q) ||
-        d.title.toLowerCase().includes(q) ||
-        (d.deliveryNo ?? '').toLowerCase().includes(q) ||
-        (d.version ?? '').toLowerCase().includes(q) ||
-        (d.description ?? '').toLowerCase().includes(q) ||
-        (d.note ?? '').toLowerCase().includes(q) ||
-        deliveredBy.includes(q) ||
-        acceptedBy.includes(q) ||
-        this.acceptanceLabels[d.acceptanceStatus].toLowerCase().includes(q)
-      );
-    });
+    const filtered = !q
+      ? list
+      : list.filter((d) => {
+          const deliveredBy = this.userName(d.deliveredByUserId).toLowerCase();
+          const acceptedBy = this.contactName(d.acceptedByContactId).toLowerCase();
+          return (
+            String(d.id).includes(q) ||
+            `ส่งมอบ #${d.id}`.includes(q) ||
+            d.title.toLowerCase().includes(q) ||
+            (d.deliveryNo ?? '').toLowerCase().includes(q) ||
+            (d.version ?? '').toLowerCase().includes(q) ||
+            (d.description ?? '').toLowerCase().includes(q) ||
+            (d.note ?? '').toLowerCase().includes(q) ||
+            deliveredBy.includes(q) ||
+            acceptedBy.includes(q) ||
+            this.acceptanceLabels[d.acceptanceStatus].toLowerCase().includes(q)
+          );
+        });
+    // เรียงตามลำดับสร้าง (เก่า → ใหม่) ให้เวอร์ชัน 1, 2, 3 เรียงตามที่สร้าง
+    return [...filtered].sort((a, b) => a.id - b.id);
   });
 
   readonly filteredFollowUps = computed(() => {
@@ -398,9 +487,28 @@ export class ProjectDetailPageComponent implements OnInit {
     );
   });
 
+  readonly filteredProjectTickets = computed(() => {
+    const q = this.ticketSearch().trim().toLowerCase();
+    const list = this.projectTickets();
+    const filtered = !q
+      ? list
+      : list.filter((t) => {
+          return (
+            (t.ticketNo ?? '').toLowerCase().includes(q) ||
+            (t.title ?? '').toLowerCase().includes(q) ||
+            this.ticketStatusLabel(t.status).toLowerCase().includes(q) ||
+            this.ticketPriorityLabel(t.priority).toLowerCase().includes(q)
+          );
+        });
+    return [...filtered].sort(
+      (a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime()
+    );
+  });
+
   readonly tasksPager = createClientPager(this.filteredTasks);
   readonly deliveriesPager = createClientPager(this.filteredDeliveries);
   readonly followUpsPager = createClientPager(this.filteredFollowUps);
+  readonly projectTicketsPager = createClientPager(this.filteredProjectTickets);
 
   private projectId = 0;
 
@@ -429,6 +537,10 @@ export class ProjectDetailPageComponent implements OnInit {
     this.taskSearchControl.valueChanges.subscribe((v) => this.taskSearch.set(v));
     this.deliverySearchControl.valueChanges.subscribe((v) => this.deliverySearch.set(v));
     this.followUpSearchControl.valueChanges.subscribe((v) => this.followUpSearch.set(v));
+    this.ticketSearchControl.valueChanges.subscribe((v) => {
+      this.ticketSearch.set(v);
+      this.projectTicketsPager.reset();
+    });
     this.documentSearchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((v) => {
@@ -553,6 +665,18 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     this.changeProjectStatus(next);
+  }
+
+  /** ปุ่มยืนยันบนการ์ดทวนความพร้อม */
+  onReadyCardAction(): void {
+    const kind = this.deliveryReadyCard().actionKind;
+    if (kind === 'advance') {
+      this.advanceProjectStatus();
+      return;
+    }
+    if (kind === 'delivery') {
+      this.openAddDelivery();
+    }
   }
 
   changeProjectStatus(status: ProjectStatus): void {
@@ -726,13 +850,15 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     this.ticketsLoading.set(true);
-    this.ticketsApi.list({ projectId: this.projectId, limit: 100 }).subscribe({
+    this.ticketsApi.list({ projectId: this.projectId, limit: 500 }).subscribe({
       next: (rows) => {
         this.projectTickets.set(rows);
+        this.projectTicketsPager.reset();
         this.ticketsLoading.set(false);
       },
       error: () => {
         this.projectTickets.set([]);
+        this.projectTicketsPager.reset();
         this.ticketsLoading.set(false);
       },
     });

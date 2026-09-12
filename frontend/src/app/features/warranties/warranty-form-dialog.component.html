@@ -7,7 +7,7 @@
         @if (deliveryLabel) {
           <strong>{{ deliveryLabel }}</strong>
         }
-        — กรอกระยะประกัน และเลือกสัญญา MA ที่เกี่ยวข้องได้ (ไม่บังคับ)
+        — กรอกระยะประกัน และเลือกสัญญา MA ของโปรเจคนี้ได้ (ไม่บังคับ · ไม่รวมโควตา/เงินกับประกัน)
       </p>
     } @else {
       <mat-form-field appearance="outline" class="full">
@@ -68,8 +68,22 @@
           <mat-option [value]="c.id">{{ maContractOptionLabel(c) }}</mat-option>
         }
       </mat-select>
-      <mat-hint>อ้างอิงว่าประกันใบนี้มาคู่กับสัญญาไหน — ไม่รวมโควตาหรือราคาเข้ากับประกัน</mat-hint>
+      @if (form.getRawValue().projectId && maContracts().length === 0) {
+        <mat-hint>
+          โปรเจคนี้ยังไม่มีสัญญา MA — ต้องสร้างสัญญาก่อนจึงจะมีตัวเลือก
+          (หรือเว้น「ไม่ได้ผูก MA」ได้ ตามประชุม: ผูกไม่บังคับ)
+        </mat-hint>
+      } @else {
+        <mat-hint>อ้างอิงว่าประกันใบนี้มาคู่กับสัญญาไหน — ไม่รวมโควตาหรือราคาเข้ากับประกัน</mat-hint>
+      }
     </mat-form-field>
+
+    @if (form.getRawValue().projectId && maContracts().length === 0) {
+      <button mat-stroked-button type="button" class="ma-create-btn" (click)="openCreateMaForProject()">
+        <mat-icon>handshake</mat-icon>
+        สร้างสัญญา MA ของโปรเจคนี้
+      </button>
+    }
 
     <mat-form-field appearance="outline" class="full">
       <mat-label>ขอบเขต / หมายเหตุ</mat-label>

@@ -107,6 +107,21 @@
           </mat-select>
         </mat-form-field>
       </div>
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>คิดค่าใช้จ่าย</mat-label>
+        <mat-select formControlName="billingType">
+          @for (b of availableBillingTypes(); track b) {
+            <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+          }
+        </mat-select>
+        @if (billingHint(); as hint) {
+          <mat-hint>{{ hint }}</mat-hint>
+        }
+        @if (form.controls.billingType.touched && form.controls.billingType.invalid) {
+          <mat-error>เลือกประเภทการคิดค่าใช้จ่าย</mat-error>
+        }
+      </mat-form-field>
     </section>
 
     <!-- ——— ที่เหลือพับไว้ ——— -->
@@ -137,18 +152,6 @@
             <span matTextSuffix>น.</span>
           </mat-form-field>
         </div>
-
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>คิดค่าใช้จ่าย</mat-label>
-          <mat-select formControlName="billingType">
-            @for (b of availableBillingTypes(); track b) {
-              <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
-            }
-          </mat-select>
-          @if (billingHint(); as hint) {
-            <mat-hint>{{ hint }}</mat-hint>
-          }
-        </mat-form-field>
       </section>
     }
 

@@ -1,5 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -117,12 +124,8 @@ export class ProjectsPageComponent implements OnInit {
     );
   });
   readonly canDelete = computed(() => {
-    this.auth.session();
-    return (
-      this.auth.hasPermissionCode('project.delete') ||
-      this.auth.hasPermission('projects', 'delete') ||
-      this.canUpdate()
-    );
+    // BE ยังไม่มี DELETE /api/projects/:id (Swagger มีแค่ GET/PUT) — ซ่อนกันกดแล้ว error ตอนสาธิต
+    return false;
   });
 
   readonly filtered = computed(() => {
@@ -272,6 +275,16 @@ export class ProjectFormDialogComponent {
   /** สร้างจากหน้าลูกค้า — ล็อกเลือกลูกค้า */
   readonly customerLocked = !this.data.project && !!this.data.customerId;
 
+  /** วิซาร์ดสร้างโปรเจค — ห้ามข้ามขั้นที่ยังไม่ปลดล็อก */
+  readonly createSteps = [
+    { id: 'project', label: 'ข้อมูลโปรเจค' },
+    { id: 'customer', label: 'ลูกค้า' },
+    { id: 'contact', label: 'ผู้ติดต่อหลัก' },
+  ] as const;
+  readonly createStep = signal(0);
+  /** ขั้นสูงสุดที่ไปถึงแล้ว (ผ่าน「ถัดไป」หรือเริ่มต้น) */
+  readonly maxReachedStep = signal(0);
+
   /** none | existing | new */
   readonly customerMode = signal<'none' | 'existing' | 'new'>('none');
   readonly customerSuggestions = signal<Customer[]>([]);
@@ -299,7 +312,7 @@ export class ProjectFormDialogComponent {
     projectType: [''],
     contractValue: [null as number | null, Validators.min(0)],
     startDate: [null as Date | null],
-    targetEndDate: [null as Date | null],
+    targetEndDate: [null as Date | null, endNotBeforeStartValidator],
     status: ['DRAFT' as ProjectStatus, Validators.required],
     priority: ['NORMAL' as ProjectPriority, Validators.required],
     managerUserId: [null as number | null],
@@ -335,6 +348,10 @@ export class ProjectFormDialogComponent {
         )
         .subscribe((value) => this.onCustomerSearchChanged(value));
     }
+
+    this.form.controls.startDate.valueChanges.subscribe(() => {
+      this.form.controls.targetEndDate.updateValueAndValidity({ emitEvent: false });
+    });
 
     if (this.data.project) {
       this.patchEditProject(this.data.project);
@@ -379,10 +396,61 @@ export class ProjectFormDialogComponent {
     this.error.set(null);
   }
 
+  goToCreateStep(index: number): void {
+    if (this.isEdit || index < 0 || index > this.maxReachedStep()) {
+      return;
+    }
+    this.createStep.set(index);
+    this.error.set(null);
+  }
+
+  goCreateBack(): void {
+    if (this.isEdit || this.createStep() <= 0) {
+      return;
+    }
+    this.createStep.update((s) => s - 1);
+    this.error.set(null);
+  }
+
+  goCreateNext(): void {
+    if (this.isEdit) {
+      return;
+    }
+    if (!this.validateCreateStep(this.createStep())) {
+      return;
+    }
+    const next = this.createStep() + 1;
+    this.createStep.set(next);
+    this.maxReachedStep.update((m) => Math.max(m, next));
+    this.error.set(null);
+  }
+
   save(): void {
+    if (!this.isEdit) {
+      // บันทึกได้เฉพาะขั้นสุดท้าย — กันข้าม
+      if (this.createStep() !== this.createSteps.length - 1) {
+        this.goCreateNext();
+        return;
+      }
+      if (!this.validateCreateStep(2)) {
+        return;
+      }
+    }
+
     this.syncCustomerValidators();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      if (this.form.controls.targetEndDate.hasError('endBeforeStart')) {
+        this.error.set('กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจค');
+      } else if (
+        !this.isEdit &&
+        this.form.controls.contact.controls.name.invalid &&
+        (this.customerMode() === 'new' || this.customerMode() === 'existing')
+      ) {
+        this.error.set('กรุณาระบุชื่อผู้ติดต่อหลัก เพื่อใช้เป็นผู้รับมอบตอนส่งมอบ');
+      } else {
+        this.error.set(null);
+      }
       return;
     }
 
@@ -391,6 +459,76 @@ export class ProjectFormDialogComponent {
       return;
     }
     this.saveCreate();
+  }
+
+  /** ตรวจขั้นปัจจุบันก่อนไปต่อ / บันทึก */
+  private validateCreateStep(step: number): boolean {
+    this.syncCustomerValidators();
+    if (step === 0) {
+      const controls = [
+        this.form.controls.name,
+        this.form.controls.priority,
+        this.form.controls.status,
+        this.form.controls.contractValue,
+        this.form.controls.startDate,
+        this.form.controls.targetEndDate,
+      ];
+      const invalid = controls.some((c) => c.invalid);
+      if (invalid) {
+        controls.forEach((c) => c.markAsTouched());
+        if (this.form.controls.targetEndDate.hasError('endBeforeStart')) {
+          this.error.set('กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจค');
+        } else if (this.form.controls.name.invalid) {
+          this.error.set('กรอกชื่อโปรเจคก่อนไปขั้นถัดไป');
+        } else {
+          this.error.set('กรอกข้อมูลโปรเจคให้ครบก่อนไปขั้นถัดไป');
+        }
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 1) {
+      const mode = this.customerMode();
+      if (mode === 'none') {
+        this.error.set('เลือกลูกค้าหรือสร้างลูกค้าใหม่ก่อนไปขั้นถัดไป');
+        this.customerSearchControl.markAsTouched();
+        return false;
+      }
+      const customer = this.form.controls.customer;
+      if (customer.invalid) {
+        customer.markAllAsTouched();
+        this.error.set(
+          customer.controls.name.invalid
+            ? 'กรอกชื่อบริษัทก่อนไปขั้นถัดไป'
+            : 'ตรวจข้อมูลลูกค้าให้ถูกต้องก่อนไปขั้นถัดไป'
+        );
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 2) {
+      const mode = this.customerMode();
+      if (mode === 'none') {
+        this.error.set('เลือกลูกค้าก่อนบันทึก');
+        this.createStep.set(1);
+        return false;
+      }
+      const contact = this.form.controls.contact;
+      if (contact.invalid) {
+        contact.markAllAsTouched();
+        this.error.set(
+          contact.controls.name.invalid
+            ? 'กรุณาระบุชื่อผู้ติดต่อหลัก เพื่อใช้เป็นผู้รับมอบตอนส่งมอบ'
+            : 'ตรวจข้อมูลผู้ติดต่อให้ถูกต้องก่อนบันทึก'
+        );
+        return false;
+      }
+      return true;
+    }
+
+    return true;
   }
 
   private saveEdit(projectId: number): void {
@@ -416,18 +554,6 @@ export class ProjectFormDialogComponent {
     if (mode === 'none') {
       this.error.set('เลือกลูกค้าหรือสร้างลูกค้าใหม่');
       this.customerSearchControl.markAsTouched();
-      return;
-    }
-
-    const contactRaw = this.form.controls.contact.getRawValue();
-    const contactPartial =
-      !!(contactRaw.name ?? '').trim() ||
-      !!sanitizePhoneDigits(contactRaw.phone) ||
-      !!(contactRaw.email ?? '').trim() ||
-      !!(contactRaw.position ?? '').trim();
-    if (contactPartial && !(contactRaw.name ?? '').trim()) {
-      this.error.set('กรุณาระบุชื่อผู้ติดต่อเมื่อกรอกข้อมูลผู้ติดต่อ');
-      this.form.controls.contact.controls.name.markAsTouched();
       return;
     }
 
@@ -477,9 +603,21 @@ export class ProjectFormDialogComponent {
 
     const contact = this.buildContactInput();
     if (contact) {
-      chain$ = chain$.pipe(
-        switchMap(() => this.customersApi.saveContact(customerId, contact))
-      );
+      if (this.customerMode() === 'new') {
+        chain$ = chain$.pipe(
+          switchMap(() => this.customersApi.saveContact(customerId, contact))
+        );
+      } else {
+        // ลูกค้าเดิม — สร้างผู้ติดต่อเฉพาะเมื่อยังไม่มี (กันซ้ำตอน prefill)
+        chain$ = chain$.pipe(
+          switchMap(() => this.customersApi.listContacts(customerId)),
+          switchMap((contacts) =>
+            contacts.length > 0
+              ? of(null)
+              : this.customersApi.saveContact(customerId, contact)
+          )
+        );
+      }
     }
 
     return chain$.pipe(
@@ -572,14 +710,18 @@ export class ProjectFormDialogComponent {
 
   private syncCustomerValidators(): void {
     const nameCtrl = this.form.controls.customer.controls.name;
-    if (!this.isEdit && this.customerMode() === 'new') {
+    const contactNameCtrl = this.form.controls.contact.controls.name;
+    const needCustomer =
+      !this.isEdit && (this.customerMode() === 'new' || this.customerMode() === 'existing');
+    if (needCustomer) {
       nameCtrl.setValidators([Validators.required]);
-    } else if (!this.isEdit && this.customerMode() === 'existing') {
-      nameCtrl.setValidators([Validators.required]);
+      contactNameCtrl.setValidators([Validators.required]);
     } else {
       nameCtrl.clearValidators();
+      contactNameCtrl.clearValidators();
     }
     nameCtrl.updateValueAndValidity({ emitEvent: false });
+    contactNameCtrl.updateValueAndValidity({ emitEvent: false });
   }
 
   private onCustomerSearchChanged(
@@ -621,10 +763,13 @@ export class ProjectFormDialogComponent {
     this.selectedCustomerSnapshot = customer;
     this.form.patchValue({ customerId: customer.id });
     this.patchCustomerFields(customer);
+    this.clearContactFields();
     this.customerSearchControl.setValue(customer, { emitEvent: false });
     this.customerSuggestions.set([]);
     this.customerQueryReady.set(false);
     this.error.set(null);
+    this.syncCustomerValidators();
+    this.prefillPrimaryContact(customer.id);
   }
 
   private selectNewCustomer(): void {
@@ -632,10 +777,12 @@ export class ProjectFormDialogComponent {
     this.selectedCustomerSnapshot = null;
     this.form.patchValue({ customerId: 0 });
     this.clearCustomerFields();
+    this.clearContactFields();
     this.customerSearchControl.setValue(NEW_CUSTOMER_TOKEN, { emitEvent: false });
     this.customerSuggestions.set([]);
     this.customerQueryReady.set(false);
     this.error.set(null);
+    this.syncCustomerValidators();
   }
 
   private clearCustomerSelection(clearSearch: boolean): void {
@@ -643,6 +790,8 @@ export class ProjectFormDialogComponent {
     this.selectedCustomerSnapshot = null;
     this.form.patchValue({ customerId: 0 });
     this.clearCustomerFields();
+    this.clearContactFields();
+    this.syncCustomerValidators();
     if (clearSearch) {
       this.customerSearchControl.setValue('', { emitEvent: false });
     }
@@ -655,6 +804,37 @@ export class ProjectFormDialogComponent {
       address: '',
       phone: '',
       email: '',
+    });
+  }
+
+  private clearContactFields(): void {
+    this.form.controls.contact.reset({
+      name: '',
+      phone: '',
+      email: '',
+      position: '',
+    });
+  }
+
+  /** เติมผู้ติดต่อหลักของลูกค้าเดิม — มีแล้วส่งมอบได้ทันที / ยังไม่มีต้องกรอก */
+  private prefillPrimaryContact(customerId: number): void {
+    this.customersApi.listContacts(customerId).subscribe({
+      next: (contacts) => {
+        if (this.customerMode() !== 'existing' || this.form.controls.customerId.value !== customerId) {
+          return;
+        }
+        const primary = contacts.find((c) => c.isPrimary) ?? contacts[0];
+        if (!primary) {
+          return;
+        }
+        this.form.controls.contact.patchValue({
+          name: primary.name ?? '',
+          phone: sanitizePhoneDigits(primary.phone),
+          email: primary.email ?? '',
+          position: primary.position ?? '',
+        });
+      },
+      error: () => undefined,
     });
   }
 
@@ -732,3 +912,17 @@ export class ProjectFormDialogComponent {
     return typeof value === 'string' ? value : `id:${value.id}`;
   }
 }
+
+/** กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจค */
+const endNotBeforeStartValidator: ValidatorFn = (
+  control: AbstractControl
+): ValidationErrors | null => {
+  const end = control.value as Date | null | undefined;
+  const start = control.parent?.get('startDate')?.value as Date | null | undefined;
+  if (!start || !end) {
+    return null;
+  }
+  const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDay = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return endDay < startDay ? { endBeforeStart: true } : null;
+};

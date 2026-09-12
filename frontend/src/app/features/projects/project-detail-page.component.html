@@ -301,6 +301,46 @@
                 </div>
               </div>
             }
+
+            @if (deliveryReadyCard(); as card) {
+              <aside
+                class="ready-card"
+                [class.is-complete]="card.allOk"
+                [class.is-closed]="project()?.status === 'CLOSED'"
+                aria-label="การ์ดทวนก่อนยืนยัน"
+              >
+                <header class="ready-card__head">
+                  <div>
+                    <p class="ready-card__eyebrow">ก่อนดำเนินการต่อ</p>
+                    <h3 class="ready-card__title">{{ card.title }}</h3>
+                    <p class="ready-card__summary">{{ card.summary }}</p>
+                  </div>
+                  <span class="ready-card__count" [class.is-complete]="card.allOk">
+                    {{ card.done }}/{{ card.total }}
+                  </span>
+                </header>
+                <ul class="ready-card__list">
+                  @for (item of card.items; track item.id) {
+                    <li [class.is-ok]="item.ok" [class.is-todo]="!item.ok">
+                      <mat-icon>{{ item.ok ? 'check_circle' : 'cancel' }}</mat-icon>
+                      <span>{{ item.label }}</span>
+                    </li>
+                  }
+                </ul>
+                @if (card.actionLabel) {
+                  <footer class="ready-card__foot">
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      (click)="onReadyCardAction()"
+                    >
+                      {{ card.actionLabel }}
+                    </button>
+                  </footer>
+                }
+              </aside>
+            }
           </div>
         }
       </mat-tab>
@@ -431,7 +471,21 @@
             <div class="data-card">
               <div class="data-card__head">
                 <div class="data-card__row tab-toolbar">
-                  <h3 class="tab-heading">ใบแจ้งปัญหาของโปรเจคนี้</h3>
+                  <h3 class="tab-heading">
+                    ใบแจ้งปัญหาของโปรเจคนี้
+                    @if (filteredProjectTickets().length) {
+                      <span class="muted"> · {{ filteredProjectTickets().length }} ใบ</span>
+                    }
+                  </h3>
+                  <label class="ui-search">
+                    <mat-icon>search</mat-icon>
+                    <input
+                      type="search"
+                      [formControl]="ticketSearchControl"
+                      placeholder="ค้นหาเลขใบ / หัวข้อ / สถานะ"
+                      aria-label="ค้นหาใบแจ้งปัญหาของโปรเจค"
+                    />
+                  </label>
                   @if (canCreateTicket()) {
                     <button
                       mat-flat-button
@@ -447,7 +501,7 @@
                 </div>
               </div>
               <div class="data-card__body">
-                <table mat-table [dataSource]="projectTickets()" class="data-table">
+                <table mat-table [dataSource]="projectTicketsPager.paged()" class="data-table">
                   <ng-container matColumnDef="ticketNo">
                     <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
                     <td mat-cell *matCellDef="let row" class="col-code">
@@ -485,8 +539,21 @@
                   <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: ticketColumns"></tr>
                 </table>
-                @if (projectTickets().length === 0 && !ticketsLoading()) {
-                  <p class="data-empty">ยังไม่มีใบแจ้งปัญหาของโปรเจคนี้</p>
+                <app-table-paginator
+                  [length]="projectTicketsPager.length()"
+                  [pageIndex]="projectTicketsPager.pageIndex()"
+                  [pageSize]="projectTicketsPager.pageSize()"
+                  [pageSizeOptions]="projectTicketsPager.pageSizeOptions"
+                  (page)="projectTicketsPager.onPage($event)"
+                />
+                @if (filteredProjectTickets().length === 0 && !ticketsLoading()) {
+                  <p class="data-empty">
+                    {{
+                      ticketSearch().trim()
+                        ? 'ไม่พบใบแจ้งปัญหาตามคำค้นหา'
+                        : 'ยังไม่มีใบแจ้งปัญหาของโปรเจคนี้'
+                    }}
+                  </p>
                 }
               </div>
             </div>

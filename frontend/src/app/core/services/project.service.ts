@@ -367,7 +367,7 @@ export class ProjectService {
   getDeliveries(projectId: number): Delivery[] {
     return this.deliveriesSignal()
       .filter((d) => d.projectId === projectId)
-      .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt));
+      .sort((a, b) => a.id - b.id);
   }
 
   listDeliveries(projectId: number, opts?: { optional?: boolean }): Observable<Delivery[]> {

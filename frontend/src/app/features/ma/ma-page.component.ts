@@ -281,6 +281,11 @@ export class MaPageComponent implements OnInit {
   }
 }
 
+export type MaFormDialogData =
+  | MaContract
+  | { projectId?: number; customerId?: number }
+  | null;
+
 @Component({
   selector: 'app-ma-form-dialog',
   standalone: true,
@@ -305,7 +310,11 @@ export class MaFormDialogComponent {
   private readonly projectsApi = inject(ProjectService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<MaFormDialogComponent, boolean>);
-  readonly data = inject<MaContract | null>(MAT_DIALOG_DATA);
+  /** สร้างใหม่ส่ง `{ projectId, customerId }` ได้ · แก้ไขส่ง MaContract */
+  readonly data = inject<MaFormDialogData>(MAT_DIALOG_DATA);
+  /** แถวแก้สัญญา — null ตอนสร้างใหม่ / preset */
+  private readonly editRow: MaContract | null =
+    this.data && 'id' in this.data && this.data.id ? this.data : null;
 
   readonly customers = this.customersApi.customers;
   readonly projects = this.projectsApi.projects;
@@ -325,14 +334,13 @@ export class MaFormDialogComponent {
   ];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly isEdit = !!this.data?.id;
+  readonly isEdit = !!this.editRow;
   readonly status = signal<Exclude<MaContractStatus, 'RENEWED'>>(
-    (this.data?.status === 'RENEWED' ? 'ACTIVE' : this.data?.status ?? 'DRAFT') as Exclude<
-      MaContractStatus,
-      'RENEWED'
-    >
+    (this.editRow?.status === 'RENEWED'
+      ? 'ACTIVE'
+      : (this.editRow?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>
   );
-  readonly billingCycle = signal<MaBillingCycle>(this.data?.billingCycle ?? 'YEARLY');
+  readonly billingCycle = signal<MaBillingCycle>(this.editRow?.billingCycle ?? 'YEARLY');
   readonly minEndDate = signal<Date | null>(null);
   readonly availableDurationOptions = computed(() =>
     this.billingCycle() === 'YEARLY'
@@ -341,40 +349,40 @@ export class MaFormDialogComponent {
   );
 
   private readonly initialDuration = this.inferDurationPreset(
-    this.data?.startDate,
-    this.data?.endDate
+    this.editRow?.startDate,
+    this.editRow?.endDate
   );
 
   readonly form = this.fb.group(
     {
       customerId: [
         {
-          value: this.data?.customerId ?? 0,
+          value: this.editRow?.customerId ?? this.data?.customerId ?? 0,
           disabled: this.isEdit,
         },
         Validators.min(1),
       ],
       projectId: [
         {
-          value: this.data?.projectId ?? (null as number | null),
+          value: this.editRow?.projectId ?? this.data?.projectId ?? (null as number | null),
           disabled: this.isEdit,
         },
         Validators.required,
       ],
-      planId: [this.data?.planId ?? (null as number | null), Validators.required],
+      planId: [this.editRow?.planId ?? (null as number | null), Validators.required],
       durationMonths: [this.initialDuration as MaDurationPreset],
-      startDate: [parseDateOnly(this.data?.startDate) as Date | null, Validators.required],
-      endDate: [parseDateOnly(this.data?.endDate) as Date | null, Validators.required],
+      startDate: [parseDateOnly(this.editRow?.startDate) as Date | null, Validators.required],
+      endDate: [parseDateOnly(this.editRow?.endDate) as Date | null, Validators.required],
       status: [
-        (this.data?.status === 'RENEWED'
+        (this.editRow?.status === 'RENEWED'
           ? 'ACTIVE'
-          : (this.data?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>,
+          : (this.editRow?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>,
       ],
-      price: [parseMoneyValue(this.data?.price) ?? 0, Validators.min(0)],
+      price: [parseMoneyValue(this.editRow?.price) ?? 0, Validators.min(0)],
       unitPrice: [null as number | null],
-      billingCycle: [(this.data?.billingCycle ?? 'YEARLY') as MaBillingCycle],
-      signedDate: [parseDateOnly(this.data?.signedDate) as Date | null],
-      note: [this.data?.note ?? ''],
+      billingCycle: [(this.editRow?.billingCycle ?? 'YEARLY') as MaBillingCycle],
+      signedDate: [parseDateOnly(this.editRow?.signedDate) as Date | null],
+      note: [this.editRow?.note ?? ''],
     },
     { validators: [MaFormDialogComponent.endAfterStart] }
   );
@@ -400,6 +408,27 @@ export class MaFormDialogComponent {
       }
       if (!this.form.controls.startDate.value) {
         this.form.patchValue({ startDate: new Date() });
+      }
+      // จากฟอร์มประกัน — ล็อกโปรเจค/ลูกค้าตามที่ส่งมา
+      const presetProjectId = this.data?.projectId;
+      if (presetProjectId) {
+        const applyProject = (p: { id: number; customerId: number }) => {
+          this.form.patchValue({
+            projectId: p.id,
+            customerId: p.customerId,
+          });
+          this.form.controls.projectId.disable({ emitEvent: false });
+          this.form.controls.customerId.disable({ emitEvent: false });
+        };
+        const cached = this.projectsApi.getProject(presetProjectId);
+        if (cached) {
+          applyProject(cached);
+        } else {
+          this.projectsApi.fetchProject(presetProjectId).subscribe({
+            next: applyProject,
+            error: () => this.form.patchValue({ projectId: presetProjectId }),
+          });
+        }
       }
     }
 
@@ -493,7 +522,7 @@ export class MaFormDialogComponent {
     this.saving.set(true);
     this.error.set(null);
 
-    if (this.isEdit && this.data && 'id' in this.data) {
+    if (this.isEdit && this.editRow) {
       const payload: MaContractUpdateInput = {
         planId: Number(raw.planId),
         price: toMoneyString(raw.price),
@@ -504,7 +533,7 @@ export class MaFormDialogComponent {
         signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
         note: raw.note?.trim() || null,
       };
-      this.api.update(this.data.id, payload).subscribe({
+      this.api.update(this.editRow.id, payload).subscribe({
         next: ({ message }) => {
           this.saving.set(false);
           const text = message?.trim() || 'บันทึกสัญญาแล้ว';

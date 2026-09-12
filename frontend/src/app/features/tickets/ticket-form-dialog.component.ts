@@ -166,7 +166,10 @@ export class TicketFormDialogComponent {
     description: [this.ticket?.description ?? '', Validators.required],
     priority: [(this.ticket?.priority ?? 'NORMAL') as TicketPriority],
     reportedChannel: [(this.ticket?.reportedChannel ?? 'PHONE') as ReportedChannel],
-    billingType: [(this.ticket?.billingType ?? 'ONE_TIME') as BillingType],
+    billingType: [
+      (this.ticket?.billingType ?? null) as BillingType | null,
+      Validators.required,
+    ],
     reportedDate: [
       (this.ticket ? parseDateOnly(this.ticket.reportedAt) : new Date()) as Date | null,
       Validators.required,
@@ -178,7 +181,7 @@ export class TicketFormDialogComponent {
   });
 
   constructor() {
-    this.billingSelection.set((this.ticket?.billingType ?? 'ONE_TIME') as BillingType);
+    this.billingSelection.set((this.ticket?.billingType ?? null) as BillingType | null);
 
     // เติมค่าเริ่มต้นจาก preset / ใบเดิม
     const presetProject = this.data?.project ?? this.projectOptionFrom(this.ticket);
@@ -339,13 +342,21 @@ export class TicketFormDialogComponent {
 
   private syncBillingSelection(opts: { preserveCurrent: boolean }): void {
     const eligible = this.eligibleBillingTypes();
-    const current = (this.form.getRawValue().billingType as BillingType) ?? null;
+    const current = (this.form.getRawValue().billingType as BillingType | null) ?? null;
     if (current && eligible.includes(current)) {
       this.billingSelection.set(current);
       return;
     }
     if (opts.preserveCurrent && current && this.ticket && current === this.ticket.billingType) {
       this.billingSelection.set(current);
+      return;
+    }
+    // สร้างใหม่ — ไม่เดาค่าให้ ต้องเลือกเอง
+    if (!this.isEdit) {
+      if (current && !eligible.includes(current)) {
+        this.form.patchValue({ billingType: null }, { emitEvent: false });
+        this.billingSelection.set(null);
+      }
       return;
     }
     const next = eligible.includes('WARRANTY')
@@ -367,7 +378,11 @@ export class TicketFormDialogComponent {
     }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.error.set('กรอกหัวข้อและรายละเอียดปัญหาก่อนบันทึก');
+      if (this.form.controls.billingType.invalid) {
+        this.error.set('เลือกประเภทการคิดค่าใช้จ่ายก่อนบันทึก');
+      } else {
+        this.error.set('กรอกหัวข้อและรายละเอียดปัญหาก่อนบันทึก');
+      }
       return;
     }
 
@@ -381,7 +396,7 @@ export class TicketFormDialogComponent {
         title: raw.title ?? '',
         description: (raw.description ?? '').trim() || null,
         priority: (raw.priority as TicketPriority) ?? 'NORMAL',
-        billingType: (raw.billingType as BillingType) ?? 'ONE_TIME',
+        billingType: raw.billingType as BillingType,
         reportedChannel: (raw.reportedChannel as ReportedChannel) ?? 'PHONE',
         reportedAt: combineDateAndTime(raw.reportedDate, raw.reportedTime),
         projectId: this.project()?.id ?? null,
@@ -406,7 +421,7 @@ export class TicketFormDialogComponent {
       title: raw.title ?? '',
       description: (raw.description ?? '').trim() || null,
       priority: (raw.priority as TicketPriority) ?? 'NORMAL',
-      billingType: (raw.billingType as BillingType) ?? 'ONE_TIME',
+      billingType: raw.billingType as BillingType,
       reportedChannel: (raw.reportedChannel as ReportedChannel) ?? 'PHONE',
       reportedAt: combineDateAndTime(raw.reportedDate, raw.reportedTime),
       // ผู้รับเรื่อง = คนที่กำลังกรอก · ผู้รับผิดชอบปล่อยว่างให้หัวหน้ามอบหมายทีหลัง

@@ -39,6 +39,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
+import { MaFormDialogComponent } from '../ma/ma-page.component';
 
 @Component({
   selector: 'app-warranties-page',
@@ -237,6 +238,7 @@ export type WarrantyFormDialogData =
     MatSelectModule,
     MatButtonModule,
     MatSnackBarModule,
+    MatIconModule,
   ],
   templateUrl: './warranty-form-dialog.component.html',
   styleUrl: './warranty-form-dialog.component.scss',
@@ -247,6 +249,7 @@ export class WarrantyFormDialogComponent {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly maApi = inject(MaService);
+  private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<WarrantyFormDialogComponent, boolean>);
   readonly data = inject<WarrantyFormDialogData>(MAT_DIALOG_DATA);
@@ -343,14 +346,14 @@ export class WarrantyFormDialogComponent {
       this.maContracts.set([]);
       if (projectId) {
         this.loadDeliveries(projectId);
-        this.loadMaContracts(projectId);
+        this.loadMaContracts(projectId, { preferSelect: !this.isEdit });
       }
     });
 
     const projectId = this.form.getRawValue().projectId;
     if (projectId) {
       this.loadDeliveries(projectId);
-      this.loadMaContracts(projectId);
+      this.loadMaContracts(projectId, { preferSelect: !this.isEdit });
     }
   }
 
@@ -362,7 +365,40 @@ export class WarrantyFormDialogComponent {
   maContractOptionLabel(c: MaContract): string {
     const no = c.contractNo?.trim() || `#${c.id}`;
     const plan = c.plan?.name?.trim() || '—';
-    return `${no} · ${plan}`;
+    const status = c.isCurrentlyActive
+      ? 'ใช้งาน'
+      : c.status === 'DRAFT'
+        ? 'ร่าง'
+        : c.status === 'EXPIRED'
+          ? 'หมดอายุ'
+          : '';
+    return status ? `${no} · ${plan} (${status})` : `${no} · ${plan}`;
+  }
+
+  /** สร้างสัญญา MA ของโปรเจคนี้แล้วกลับมาเลือกลงในประกัน */
+  openCreateMaForProject(): void {
+    const projectId = Number(this.form.getRawValue().projectId) || 0;
+    const customerId = Number(this.form.getRawValue().customerId) || 0;
+    if (!projectId) {
+      this.error.set('เลือกโปรเจคก่อนจึงสร้างสัญญา MA ได้');
+      return;
+    }
+    const ref = this.dialog.open(MaFormDialogComponent, {
+      ...FORM_DIALOG,
+      data: {
+        projectId,
+        customerId: customerId || undefined,
+      },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (!saved) {
+        return;
+      }
+      this.loadMaContracts(projectId, { preferSelect: true });
+      this.snack.open('สร้างสัญญา MA แล้ว — เลือกในช่องด้านบนได้', 'ปิด', {
+        duration: 3500,
+      });
+    });
   }
 
   private loadDeliveries(projectId: number): void {
@@ -372,11 +408,39 @@ export class WarrantyFormDialogComponent {
     });
   }
 
-  private loadMaContracts(projectId: number): void {
+  private loadMaContracts(
+    projectId: number,
+    opts?: { preferSelect?: boolean }
+  ): void {
     this.maApi
       .list({ projectId })
       .pipe(swallowHttpError([] as MaContract[], 'warranty-form ma-contracts'))
-      .subscribe((rows) => this.maContracts.set(rows));
+      .subscribe((rows) => {
+        // ACTIVE ก่อน · จากนั้นตาม id
+        const sorted = [...rows].sort((a, b) => {
+          const aRank = a.isCurrentlyActive || a.status === 'ACTIVE' ? 0 : 1;
+          const bRank = b.isCurrentlyActive || b.status === 'ACTIVE' ? 0 : 1;
+          if (aRank !== bRank) {
+            return aRank - bRank;
+          }
+          return a.id - b.id;
+        });
+        this.maContracts.set(sorted);
+
+        // สร้างใหม่ / ยังไม่เลือก — ถ้ามี ACTIVE อันเดียวให้เลือกให้
+        if (this.isEdit || !opts?.preferSelect) {
+          return;
+        }
+        const current = this.form.controls.maContractId.value;
+        if (current != null && Number(current) > 0) {
+          return;
+        }
+        const active = sorted.filter((c) => c.isCurrentlyActive || c.status === 'ACTIVE');
+        const pick = active.length === 1 ? active[0] : sorted.length === 1 ? sorted[0] : null;
+        if (pick) {
+          this.form.patchValue({ maContractId: pick.id }, { emitEvent: false });
+        }
+      });
   }
 
   save(): void {
