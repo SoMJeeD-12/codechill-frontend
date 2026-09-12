@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -22,6 +22,7 @@ import { UserService } from '../../core/services/user.service';
 import { UserFormDialogComponent } from './user-form-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 
 @Component({
   selector: 'app-users-page',
@@ -153,8 +154,7 @@ export class UsersPageComponent implements OnInit {
 
   private openForm(user?: User): void {
     const ref = this.dialog.open(UserFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { user: user ?? null, roles: this.roles() },
     });
     ref.afterClosed().subscribe((saved) => {

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
@@ -46,6 +46,7 @@ import { openConfirmDialog } from '../../shared/components/confirm-dialog.compon
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 /** preset เมื่อสร้างจากหน้าโปรเจค/ลูกค้า */
@@ -265,8 +266,7 @@ export class FollowUpsPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(FollowUpFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: row ?? preset ?? null,
     });
     ref.afterClosed().subscribe((saved) => {
@@ -282,8 +282,7 @@ export class FollowUpsPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(FollowUpCompleteDialogComponent, {
-      width: '520px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: row,
     });
     ref.afterClosed().subscribe((saved) => {
@@ -776,7 +775,7 @@ export class FollowUpFormDialogComponent {
   styles: `
     .lead { margin: 0 0 0.25rem; }
     .muted { margin: 0 0 1rem; color: #64748b; font-size: 0.9rem; }
-    .form { display: flex; flex-direction: column; gap: 0.35rem; min-width: min(440px, 80vw); }
+    .form { display: flex; flex-direction: column; gap: 0.35rem; min-width: min(720px, 92vw); }
     .full { width: 100%; }
     .hint { margin: 0 0 0.5rem; font-size: 0.8rem; color: #64748b; line-height: 1.4; }
     .error { color: #b91c1c; margin: 0.25rem 0 0; }

@@ -15,12 +15,13 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูลลูกค้า' }}</p>
+        <p class="eyebrow">ลูกค้า · มุมมอง 360°</p>
         <h1>{{ c.name }}</h1>
         <p class="subtitle">
           รหัส {{ c.code || '—' }} ·
           {{ statusLabel(c.status) }} ·
           ผู้ดูแล {{ c.owner?.fullName || '—' }}
+          · ทะเบียนข้อมูลและสรุปทุกอย่างของลูกค้ารายนี้
         </p>
       </div>
     </header>
@@ -50,7 +51,6 @@
         <strong>Facebook</strong>
         <span>{{ c.facebookUrl || '—' }}</span>
       </mat-card>
-      @if (is360Mode) {
       <mat-card>
         <strong>ติดต่อล่าสุด</strong>
         <span>
@@ -89,7 +89,6 @@
             <small class="muted">{{ oneTimeLabel }}</small>
           }
         </mat-card>
-      }
       }
     </div>
 
@@ -203,7 +202,6 @@
         </div>
       </mat-tab>
 
-      @if (is360Mode) {
       <mat-tab label="ประวัติการติดต่อ">
         <div class="tab-panel">
           <div class="data-card">
@@ -598,7 +596,6 @@
           </div>
         </div>
       </mat-tab>
-    }
     </mat-tab-group>
   </section>
   }

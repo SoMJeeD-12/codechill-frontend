@@ -47,6 +47,7 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { ApiToastService } from '../../shared/services/api-toast.service';
 import { Router } from '@angular/router';
 import { Customer } from '../../core/models/customer.model';
@@ -217,8 +218,7 @@ export class ProjectsPageComponent implements OnInit {
 
   private openForm(project?: Project): void {
     const ref = this.dialog.open(ProjectFormDialogComponent, {
-      width: '1040px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG_WIDE,
       data: { project: project ?? null },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -356,12 +356,27 @@ export class ProjectFormDialogComponent {
   };
 
   onCustomerSelected(event: MatAutocompleteSelectedEvent): void {
-    const value = event.option.value as Customer | typeof NEW_CUSTOMER_TOKEN;
-    if (value === NEW_CUSTOMER_TOKEN) {
-      this.selectNewCustomer();
+    const value = event.option.value as Customer;
+    this.selectExistingCustomer(value);
+  }
+
+  /** ปุ่ม「ลูกค้าใหม่」— สลับไปโหมดกรอกฟอร์มในคอลัมน์นี้ */
+  startNewCustomer(): void {
+    if (!this.canCreateCustomer() || this.isEdit || this.customerLocked) {
       return;
     }
-    this.selectExistingCustomer(value);
+    this.selectNewCustomer();
+  }
+
+  /** ล้างการเลือกลูกค้า / ยกเลิกโหมดลูกค้าใหม่ */
+  clearCustomerChoice(): void {
+    if (this.isEdit || this.customerLocked) {
+      return;
+    }
+    this.clearCustomerSelection(true);
+    this.customerSuggestions.set([]);
+    this.customerQueryReady.set(false);
+    this.error.set(null);
   }
 
   save(): void {

@@ -26,6 +26,7 @@ import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.compon
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { TicketFormDialogComponent } from './ticket-form-dialog.component';
 
 @Component({
@@ -207,8 +208,7 @@ export class TicketsPageComponent implements OnInit {
     }
     this.dialog
       .open(TicketFormDialogComponent, {
-        width: '640px',
-        maxWidth: '95vw',
+        ...FORM_DIALOG,
         data: { ticket },
       })
       .afterClosed()

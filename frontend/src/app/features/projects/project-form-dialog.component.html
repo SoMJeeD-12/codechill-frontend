@@ -101,42 +101,100 @@
       <section class="col">
         <h3 class="col-title">ลูกค้า</h3>
 
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>ค้นหาลูกค้า</mat-label>
-          <input
-            matInput
-            [formControl]="customerSearchControl"
-            [matAutocomplete]="customerAuto"
-            [readonly]="isEdit || customerLocked"
-            [placeholder]="
-              canViewCustomer() ? 'พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา' : 'ไม่มีสิทธิ์ค้นหาลูกค้า'
-            "
-          />
-          <mat-icon matSuffix>search</mat-icon>
-          <mat-autocomplete
-            #customerAuto="matAutocomplete"
-            [displayWith]="displayCustomer"
-            (optionSelected)="onCustomerSelected($event)"
-          >
-            @if (!isEdit && !customerLocked && canViewCustomer() && customerQueryReady()) {
-              @for (c of customerSuggestions(); track c.id) {
-                <mat-option [value]="c">{{ c.name }}</mat-option>
-              }
-              @if (canCreateCustomer()) {
-                <mat-option [value]="newCustomerToken">+ ลูกค้าใหม่</mat-option>
+        @if (isEdit || customerLocked) {
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>ลูกค้า</mat-label>
+            <input
+              matInput
+              [formControl]="customerSearchControl"
+              [matAutocomplete]="customerAuto"
+              readonly
+            />
+            <mat-autocomplete
+              #customerAuto="matAutocomplete"
+              [displayWith]="displayCustomer"
+            ></mat-autocomplete>
+          </mat-form-field>
+          @if (isEdit) {
+            <p class="col-note">ย้ายลูกค้าไม่ได้หลังสร้างโปรเจคแล้ว</p>
+          }
+        } @else {
+          <div class="customer-pick">
+            @if (customerMode() === 'new') {
+              <div class="customer-pick__chosen">
+                <mat-icon>person_add</mat-icon>
+                <div class="customer-pick__text">
+                  <strong>ลูกค้าใหม่</strong>
+                  <small>จะถูกสร้างพร้อมโปรเจคในฟอร์มนี้</small>
+                </div>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="ยกเลิกลูกค้าใหม่"
+                  (click)="clearCustomerChoice()"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="customer-pick__row">
+                <mat-form-field appearance="outline" class="customer-pick__search">
+                  <mat-label>ค้นหาลูกค้าเดิม</mat-label>
+                  <input
+                    matInput
+                    [formControl]="customerSearchControl"
+                    [matAutocomplete]="customerAuto"
+                    [placeholder]="
+                      canViewCustomer()
+                        ? 'พิมพ์อย่างน้อย 2 ตัวอักษร'
+                        : 'ไม่มีสิทธิ์ค้นหาลูกค้า'
+                    "
+                  />
+                  <mat-icon matSuffix>search</mat-icon>
+                  <mat-autocomplete
+                    #customerAuto="matAutocomplete"
+                    [displayWith]="displayCustomer"
+                    (optionSelected)="onCustomerSelected($event)"
+                  >
+                    @if (canViewCustomer() && customerQueryReady()) {
+                      @for (c of customerSuggestions(); track c.id) {
+                        <mat-option [value]="c">{{ c.name }}</mat-option>
+                      }
+                    }
+                  </mat-autocomplete>
+                  @if (customerMode() === 'none') {
+                    <mat-hint>พิมพ์ค้นหาลูกค้าที่มีอยู่แล้ว</mat-hint>
+                  }
+                  @if (customerMode() === 'existing') {
+                    <mat-hint>เลือกแล้ว — แก้ข้อมูลด้านล่างได้ถ้าต้องการ</mat-hint>
+                  }
+                </mat-form-field>
+
+                @if (canCreateCustomer()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="customer-pick__new"
+                    (click)="startNewCustomer()"
+                  >
+                    <mat-icon>add</mat-icon>
+                    ลูกค้าใหม่
+                  </button>
+                }
+              </div>
+
+              @if (customerMode() === 'existing') {
+                <button
+                  mat-button
+                  type="button"
+                  class="customer-pick__clear"
+                  (click)="clearCustomerChoice()"
+                >
+                  เปลี่ยนลูกค้า
+                </button>
               }
             }
-          </mat-autocomplete>
-          @if (!isEdit && customerMode() === 'none') {
-            <mat-hint>เลือกลูกค้าเดิม หรือกด「+ ลูกค้าใหม่」เพื่อกรอกในฟอร์มนี้</mat-hint>
-          }
-          @if (customerMode() === 'new') {
-            <mat-hint>ลูกค้าใหม่ — จะถูกสร้างพร้อมโปรเจค</mat-hint>
-          }
-        </mat-form-field>
-
-        @if (isEdit) {
-          <p class="col-note">ย้ายลูกค้าไม่ได้หลังสร้างโปรเจคแล้ว</p>
+          </div>
         }
 
         @if (!isEdit && (customerMode() === 'existing' || customerMode() === 'new')) {

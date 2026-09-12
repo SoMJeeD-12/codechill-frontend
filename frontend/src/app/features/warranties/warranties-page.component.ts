@@ -1,4 +1,4 @@
-import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+﻿import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -33,6 +33,7 @@ import {
 } from '../../core/services/warranty.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 
 @Component({
@@ -177,8 +178,7 @@ export class WarrantiesPageComponent implements OnInit {
 
   openCreate(row?: Warranty): void {
     const ref = this.dialog.open(WarrantyFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: row ?? null,
     });
     ref.afterClosed().subscribe((saved) => {

@@ -108,6 +108,19 @@ button.back.mat-mdc-outlined-button {
   }
 }
 
+/* ฟอร์มกรอกข้อมูลใน dialog — ให้กว้างได้ตามที่กำหนด ไม่โดน Material จำกัดแคบ */
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  max-width: 96vw !important;
+}
+
+.mat-mdc-dialog-container {
+  --mat-dialog-container-max-width: 96vw;
+}
+
+.mat-mdc-dialog-surface {
+  max-height: 92vh;
+}
+
 /* กรองโครงการ — ซ่อนสกอลล์บาร์ของแผง autocomplete */
 .mat-mdc-autocomplete-panel.project-filter-auto-panel {
   scrollbar-width: none !important;

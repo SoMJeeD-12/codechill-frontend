@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -15,6 +15,7 @@ import { UserService } from '../../core/services/user.service';
 import { RoleEditorDialogComponent } from './role-editor-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 
 @Component({
   selector: 'app-roles-page',
@@ -128,8 +129,7 @@ export class RolesPageComponent implements OnInit {
 
   private openEditor(role?: Role): void {
     const ref = this.dialog.open(RoleEditorDialogComponent, {
-      width: '720px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG_WIDE,
       data: { role: role ?? null },
     });
     ref.afterClosed().subscribe((saved) => {

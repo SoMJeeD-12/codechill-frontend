@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -54,6 +54,7 @@ import { MoneyInputDirective } from '../../shared/directives/money-input.directi
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
@@ -246,8 +247,7 @@ export class MaPageComponent implements OnInit {
 
   openCreate(row?: MaContract): void {
     const ref = this.dialog.open(MaFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: row ?? null,
     });
     ref.afterClosed().subscribe((saved) => {

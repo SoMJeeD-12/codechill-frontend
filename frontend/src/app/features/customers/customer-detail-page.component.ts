@@ -1,4 +1,4 @@
-import { Location } from '@angular/common';
+﻿import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -63,6 +63,7 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 
 @Component({
   selector: 'app-customer-detail-page',
@@ -98,9 +99,6 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
-
-  /** จากเมนูมุมมอง 360° — โหมดข้อมูลลูกค้าธรรมดาจะเน้นภาษี/ผู้ติดต่อ/โซเชียล */
-  readonly is360Mode = this.route.snapshot.data['mode'] === '360';
 
   readonly customer = signal<Customer | null>(null);
   readonly overview = signal<CustomerOverview | null>(null);
@@ -435,8 +433,7 @@ export class CustomerDetailPageComponent implements OnInit {
 
   openContactForm(contact?: Contact): void {
     const ref = this.dialog.open(CustomerContactFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { customerId: this.customerId, contact: contact ?? null },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -484,8 +481,7 @@ export class CustomerDetailPageComponent implements OnInit {
 
   openLogForm(log?: CommunicationLog): void {
     const ref = this.dialog.open(CustomerLogFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: {
         customerId: this.customerId,
         contacts: this.contacts(),
@@ -637,7 +633,7 @@ export class CustomerDetailPageComponent implements OnInit {
     .dlg-form {
       display: grid;
       gap: 0.35rem;
-      min-width: min(480px, 80vw);
+      min-width: min(720px, 92vw);
       padding-top: 0.25rem;
     }
     .row {
@@ -782,7 +778,7 @@ export class CustomerContactFormDialogComponent {
     .dlg-form {
       display: grid;
       gap: 0.35rem;
-      min-width: min(480px, 80vw);
+      min-width: min(720px, 92vw);
       padding-top: 0.25rem;
     }
     .row {

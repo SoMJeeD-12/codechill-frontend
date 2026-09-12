@@ -1,4 +1,4 @@
-import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+﻿import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -36,6 +36,7 @@ import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 
 const MAX_LOCAL_FILE_BYTES = 1_500_000;
 
@@ -303,8 +304,7 @@ export class DocumentsPageComponent implements OnInit {
 
   openCreate(): void {
     const ref = this.dialog.open(DocumentUploadDialogComponent, {
-      width: '520px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { mode: 'create' as const },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -316,8 +316,7 @@ export class DocumentsPageComponent implements OnInit {
 
   openVersions(doc: ProjectDocument): void {
     const ref = this.dialog.open(DocumentVersionsDialogComponent, {
-      width: '640px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: doc,
     });
     ref.afterClosed().subscribe((saved) => {

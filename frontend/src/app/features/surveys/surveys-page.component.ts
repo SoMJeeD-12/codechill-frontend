@@ -1,4 +1,4 @@
-import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+﻿import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -26,6 +26,7 @@ import {
 import { SurveyService } from '../../core/services/survey.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 
 @Component({
@@ -93,8 +94,7 @@ export class SurveysPageComponent implements OnInit {
 
   openCreate(): void {
     const ref = this.dialog.open(SurveyFormDialogComponent, {
-      width: '640px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {

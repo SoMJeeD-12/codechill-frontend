@@ -1,4 +1,4 @@
-import { Location } from '@angular/common';
+﻿import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -37,6 +37,7 @@ import { StatusBarComponent } from '../../shared/components/status-bar.component
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { EMPTY, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 
@@ -249,8 +250,7 @@ export class TicketDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(TicketResolutionFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: {
         ticketId: this.ticketId,
         canChangeResolver: this.canChangeResolver,
@@ -300,8 +300,7 @@ export class TicketDetailPageComponent implements OnInit {
     }
     const last = [...this.resolutions()].sort((a, b) => b.round - a.round)[0] ?? null;
     const ref = this.dialog.open(TicketProblemReturnedDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: {
         ticketId: this.ticketId,
         ticket,
@@ -378,8 +377,7 @@ export class TicketDetailPageComponent implements OnInit {
       null;
 
     const ref = this.dialog.open(TicketAssignDialogComponent, {
-      width: '420px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG_COMPACT,
       data: {
         users: this.users(),
         defaultUserId: defaultId,
@@ -477,7 +475,7 @@ export interface TicketResolutionFormData {
     .dlg-form {
       display: grid;
       gap: 0.35rem;
-      min-width: min(480px, 80vw);
+      min-width: min(720px, 92vw);
     }
     .row {
       display: grid;
@@ -751,7 +749,7 @@ export interface TicketProblemReturnedDialogData {
     .dlg-form {
       display: grid;
       gap: 0.25rem;
-      min-width: min(480px, 80vw);
+      min-width: min(720px, 92vw);
     }
     .full {
       width: 100%;

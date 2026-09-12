@@ -155,7 +155,7 @@ export interface QuickLogDialogData {
       display: grid;
       gap: 0.35rem;
       /* ต้องไม่กว้างกว่าเนื้อที่ของ dialog ไม่งั้นจะมีแถบเลื่อนแนวนอน */
-      min-width: min(470px, 100%);
+      min-width: min(720px, 100%);
       max-width: 100%;
       padding-top: 0.25rem;
     }

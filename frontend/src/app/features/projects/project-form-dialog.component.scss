@@ -1,6 +1,6 @@
 /* popup ใหญ่ 2 คอลัมน์ — โครงเดียวกับ shared/styles/wide-form-dialog.scss */
 .form {
-  min-width: min(980px, 88vw);
+  min-width: min(1120px, 92vw);
   margin-top: 0.5rem;
 }
 
@@ -36,6 +36,63 @@
   margin: 0 0 0.5rem;
   font-size: 0.82rem;
   color: #5b6762;
+}
+
+.customer-pick {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.customer-pick__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.customer-pick__search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.customer-pick__new {
+  flex: 0 0 auto;
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
+.customer-pick__clear {
+  justify-self: start;
+  margin: -0.15rem 0 0.25rem;
+  color: #0f766e;
+}
+
+.customer-pick__chosen {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.4rem 0.55rem 0.7rem;
+  margin-bottom: 0.35rem;
+  border-radius: 10px;
+  background: rgb(15 118 110 / 0.08);
+  border: 1px solid rgb(15 118 110 / 0.2);
+
+  mat-icon:first-child {
+    color: #0f766e;
+  }
+}
+
+.customer-pick__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+
+  small {
+    color: rgb(15 23 42 / 0.58);
+    font-size: 0.76rem;
+  }
 }
 
 .row {
@@ -82,6 +139,15 @@
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid rgba(28, 43, 40, 0.1);
+  }
+
+  .customer-pick__row {
+    flex-direction: column;
+  }
+
+  .customer-pick__new {
+    margin-top: 0;
+    width: 100%;
   }
 
   .row {

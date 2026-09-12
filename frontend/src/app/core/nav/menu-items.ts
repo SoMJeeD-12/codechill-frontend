@@ -59,17 +59,9 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'customers',
     label: 'ลูกค้า',
-    description: 'ทะเบียนข้อมูลลูกค้า',
+    description: 'ทะเบียนลูกค้า และมุมมอง 360° สรุปทุกอย่างของรายเดียว',
     icon: 'business',
     route: '/app/customers',
-    group: 'support',
-  },
-  {
-    code: 'customer-360',
-    label: 'มุมมอง 360°',
-    description: 'สรุปทุกอย่างของลูกค้ารายเดียว',
-    icon: 'travel_explore',
-    route: '/app/customer-360',
     group: 'support',
   },
   {

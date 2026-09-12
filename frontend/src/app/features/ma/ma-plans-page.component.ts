@@ -1,4 +1,4 @@
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+﻿import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   FormArray,
@@ -34,6 +34,7 @@ import {
 } from '../../core/services/ma.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 
 type ActiveFilter = 'all' | 'active' | 'inactive';
 
@@ -187,8 +188,7 @@ export class MaPlansPageComponent implements OnInit {
 
   private openForm(plan?: MaPlan): void {
     const ref = this.dialog.open(MaPlanFormDialogComponent, {
-      width: '640px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: plan ?? null,
     });
     ref.afterClosed().subscribe((saved) => {

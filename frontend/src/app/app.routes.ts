@@ -57,22 +57,9 @@ export const routes: Routes = [
             (m) => m.CustomerDetailPageComponent
           ),
       },
-      {
-        path: 'customer-360',
-        canActivate: [permissionGuard('customer-360')],
-        loadComponent: () =>
-          import('./features/customers/customers-page.component').then((m) => m.CustomersPageComponent),
-        data: { mode: '360' },
-      },
-      {
-        path: 'customer-360/:id',
-        canActivate: [permissionGuard('customer-360')],
-        loadComponent: () =>
-          import('./features/customers/customer-detail-page.component').then(
-            (m) => m.CustomerDetailPageComponent
-          ),
-        data: { mode: '360' },
-      },
+      // ลิงก์เก่า — รวมมุมมอง 360° เข้าเมนูลูกค้าแล้ว
+      { path: 'customer-360', redirectTo: 'customers', pathMatch: 'full' },
+      { path: 'customer-360/:id', redirectTo: 'customers/:id' },
       {
         path: 'projects',
         canActivate: [permissionGuard('projects')],

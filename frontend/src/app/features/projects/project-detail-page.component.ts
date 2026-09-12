@@ -80,6 +80,7 @@ import { openConfirmDialog } from '../../shared/components/confirm-dialog.compon
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
 import { ProjectFormDialogComponent } from './projects-page.component';
 import {
@@ -487,8 +488,7 @@ export class ProjectDetailPageComponent implements OnInit {
       project: { id: project.id, code: project.code, name: project.name },
     };
     const ref = this.dialog.open(FollowUpFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: preset,
     });
     ref.afterClosed().subscribe((saved) => {
@@ -515,8 +515,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(ProjectFormDialogComponent, {
-      width: '1040px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG_WIDE,
       data: { project },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -797,8 +796,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(ProjectDocumentUploadDialogComponent, {
-      width: '520px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { projectId: this.projectId },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -815,8 +813,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(ProjectDocumentEditDialogComponent, {
-      width: '480px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG_COMPACT,
       data: { document: doc },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -914,8 +911,7 @@ export class ProjectDetailPageComponent implements OnInit {
 
   openCreateTask(): void {
     const ref = this.dialog.open(TaskEditDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { projectId: this.projectId, task: null },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -927,8 +923,7 @@ export class ProjectDetailPageComponent implements OnInit {
 
   openEditTask(task: TaskItem): void {
     const ref = this.dialog.open(TaskEditDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { projectId: this.projectId, task },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -944,8 +939,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(DeliveryFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: {
         projectId: this.projectId,
         users: this.users(),
@@ -986,8 +980,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const ref = this.dialog.open(DeliveryAcceptDialogComponent, {
-      width: '480px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG_COMPACT,
       data: {
         delivery,
         contacts: this.contacts(),
@@ -1049,8 +1042,7 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     const deliveryLabel = `${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
     const warrantyRef = this.dialog.open(WarrantyFormDialogComponent, {
-      width: '520px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: {
         customerId: project.customerId,
         projectId: project.id,
@@ -1156,7 +1148,7 @@ export interface DeliveryFormDialogData {
       display: grid;
       gap: 0.35rem;
       padding-top: 0.25rem;
-      min-width: min(100%, 28rem);
+      min-width: min(100%, 42rem);
     }
     .row {
       display: grid;
@@ -1306,7 +1298,7 @@ export interface DeliveryAcceptResult {
     .dlg-form {
       display: grid;
       gap: 0.35rem;
-      min-width: min(420px, 100%);
+      min-width: min(720px, 100%);
     }
     .full {
       width: 100%;
@@ -1424,7 +1416,7 @@ export interface ProjectDocumentUploadDialogData {
       display: grid;
       gap: 0.45rem;
       padding-top: 0.25rem;
-      min-width: min(100%, 26rem);
+      min-width: min(100%, 40rem);
     }
     .full {
       width: 100%;
@@ -1571,7 +1563,7 @@ export interface ProjectDocumentEditDialogData {
     .dlg-form {
       display: grid;
       gap: 0.35rem;
-      min-width: min(100%, 24rem);
+      min-width: min(100%, 40rem);
     }
     .full {
       width: 100%;

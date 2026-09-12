@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -19,6 +19,7 @@ import {
 } from '../../core/models/customer.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { CustomerFormDialogComponent } from './customer-form-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
@@ -54,11 +55,7 @@ export class CustomersPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
-
-  /** โหมดมุมมอง 360° จากเมนูแยก */
-  readonly is360Mode = this.route.snapshot.data['mode'] === '360';
 
   readonly customers = signal<Customer[]>([]);
   readonly statusFilter = signal<CustomerStatus | 'ALL'>('ACTIVE');
@@ -117,8 +114,7 @@ export class CustomersPageComponent implements OnInit {
   }
 
   openDetail(customer: Customer): void {
-    const base = this.is360Mode ? '/app/customer-360' : '/app/customers';
-    void this.router.navigate([base, customer.id]);
+    void this.router.navigate(['/app/customers', customer.id]);
   }
 
   remove(customer: Customer): void {
@@ -150,8 +146,7 @@ export class CustomersPageComponent implements OnInit {
 
   private openForm(customer?: Customer): void {
     const ref = this.dialog.open(CustomerFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
+      ...FORM_DIALOG,
       data: { customer: customer ?? null },
     });
     ref.afterClosed().subscribe((saved) => {
