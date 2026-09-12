@@ -290,8 +290,12 @@
                     <ng-container matColumnDef="daysLeft">
                       <th mat-header-cell *matHeaderCellDef>เหลือ</th>
                       <td mat-cell *matCellDef="let row">
-                        {{ row.daysUntilExpiry != null ? row.daysUntilExpiry + ' วัน' : '—' }}
+                        {{ row.daysRemaining != null ? row.daysRemaining + ' วัน' : '—' }}
                       </td>
+                    </ng-container>
+                    <ng-container matColumnDef="maLink">
+                      <th mat-header-cell *matHeaderCellDef>สัญญา MA</th>
+                      <td mat-cell *matCellDef="let row">{{ warrantyMaLinkLabel(row) }}</td>
                     </ng-container>
                     <ng-container matColumnDef="status">
                       <th mat-header-cell *matHeaderCellDef>สถานะ</th>

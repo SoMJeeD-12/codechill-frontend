@@ -41,6 +41,7 @@ import { TICKET_PRIORITY_LABELS, TICKET_STATUS_LABELS, Ticket } from '../../core
 import {
   WARRANTY_STATUS_LABELS,
   Warranty,
+  warrantyMaLinkLabel,
 } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -150,7 +151,8 @@ export class CustomerDetailPageComponent implements OnInit {
   ];
   readonly logColumns = ['occurredAt', 'channel', 'subject', 'contact', 'handler', 'actions'];
   readonly projectColumns = ['name', 'status', 'targetEndDate', 'actions'];
-  readonly warrantyColumns = ['title', 'duration', 'status', 'endDate', 'actions'];
+  readonly warrantyColumns = ['title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
+  readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly maColumns = ['id', 'plan', 'status', 'quota', 'actions'];
   readonly ticketColumns = ['title', 'status', 'priority', 'actions'];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'actions'];

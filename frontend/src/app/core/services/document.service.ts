@@ -111,6 +111,8 @@ export class DocumentService {
     projectId: number,
     input: ProjectDocumentUploadInput
   ): Observable<ApiProjectDocument> {
+    // multipart ฟิลด์ที่ BE รับ: file (บังคับ) · title · note
+    // ห้ามส่ง name / description — จะได้ 400 「ไม่รู้จักฟิลด์ …」
     const form = new FormData();
     form.append('file', input.file, input.file.name);
     const title = input.title?.trim();

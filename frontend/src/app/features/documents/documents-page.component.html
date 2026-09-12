@@ -103,10 +103,12 @@
                 <mat-icon>history</mat-icon>
                 <span>ประวัติเวอร์ชัน</span>
               </button>
-              <button mat-menu-item type="button" class="menu-danger" (click)="removeDocument(row)">
-                <mat-icon>delete</mat-icon>
-                <span>ลบเอกสาร</span>
-              </button>
+              @if (canDeleteDocument()) {
+                <button mat-menu-item type="button" class="menu-danger" (click)="removeDocument(row)">
+                  <mat-icon>delete</mat-icon>
+                  <span>ลบเอกสาร</span>
+                </button>
+              }
             </mat-menu>
           </td>
         </ng-container>

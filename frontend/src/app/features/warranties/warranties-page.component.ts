@@ -18,13 +18,16 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
 import { Delivery } from '../../core/models/project.model';
+import { MaContract } from '../../core/models/ma.model';
 import {
   WARRANTY_NEAR_EXPIRY_DAYS,
   WARRANTY_STATUS_LABELS,
   Warranty,
   WarrantyStatus,
+  warrantyMaLinkLabel,
 } from '../../core/models/warranty.model';
 import { CustomerService } from '../../core/services/customer.service';
+import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
   WarrantyCreateInput,
@@ -35,6 +38,7 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { swallowHttpError } from '../../shared/utils/swallow-http-error';
 
 @Component({
   selector: 'app-warranties-page',
@@ -70,7 +74,8 @@ export class WarrantiesPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
-  readonly columns = ['project', 'title', 'period', 'daysLeft', 'status', 'actions'];
+  readonly columns = ['project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
+  readonly maLinkLabel = warrantyMaLinkLabel;
 
   readonly filtered = computed(() => {
     const list = this.warranties();
@@ -241,6 +246,7 @@ export class WarrantyFormDialogComponent {
   private readonly api = inject(WarrantyService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
+  private readonly maApi = inject(MaService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<WarrantyFormDialogComponent, boolean>);
   readonly data = inject<WarrantyFormDialogData>(MAT_DIALOG_DATA);
@@ -248,6 +254,7 @@ export class WarrantyFormDialogComponent {
   readonly customers = this.customersApi.customers;
   readonly projects = this.projectsApi.projects;
   readonly deliveries = signal<Delivery[]>([]);
+  readonly maContracts = signal<MaContract[]>([]);
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly statuses = Object.keys(WARRANTY_STATUS_LABELS) as WarrantyStatus[];
   readonly saving = signal(false);
@@ -289,6 +296,11 @@ export class WarrantyFormDialogComponent {
       (this.data && 'status' in this.data ? this.data.status : 'ACTIVE') as WarrantyStatus,
     ],
     scopeNote: [this.data && 'scopeNote' in this.data ? (this.data.scopeNote ?? '') : ''],
+    maContractId: [
+      this.data && 'maContractId' in this.data
+        ? (this.data.maContractId ?? null)
+        : (null as number | null),
+    ],
   });
 
   constructor() {
@@ -318,23 +330,27 @@ export class WarrantyFormDialogComponent {
       if (this.lockDelivery) {
         return;
       }
-      this.form.patchValue({ projectId: null, deliveryId: null });
+      this.form.patchValue({ projectId: null, deliveryId: null, maContractId: null });
       this.deliveries.set([]);
+      this.maContracts.set([]);
     });
     this.form.controls.projectId.valueChanges.subscribe((projectId) => {
       if (this.lockDelivery) {
         return;
       }
-      this.form.patchValue({ deliveryId: null });
+      this.form.patchValue({ deliveryId: null, maContractId: null });
       this.deliveries.set([]);
+      this.maContracts.set([]);
       if (projectId) {
         this.loadDeliveries(projectId);
+        this.loadMaContracts(projectId);
       }
     });
 
     const projectId = this.form.getRawValue().projectId;
     if (projectId) {
       this.loadDeliveries(projectId);
+      this.loadMaContracts(projectId);
     }
   }
 
@@ -343,11 +359,24 @@ export class WarrantyFormDialogComponent {
     return this.projects().filter((p) => p.customerId === customerId);
   }
 
+  maContractOptionLabel(c: MaContract): string {
+    const no = c.contractNo?.trim() || `#${c.id}`;
+    const plan = c.plan?.name?.trim() || '—';
+    return `${no} · ${plan}`;
+  }
+
   private loadDeliveries(projectId: number): void {
     this.projectsApi.listDeliveries(projectId).subscribe({
       next: (rows) => this.deliveries.set(rows),
       error: (err: Error) => this.error.set(err.message),
     });
+  }
+
+  private loadMaContracts(projectId: number): void {
+    this.maApi
+      .list({ projectId })
+      .pipe(swallowHttpError([] as MaContract[], 'warranty-form ma-contracts'))
+      .subscribe((rows) => this.maContracts.set(rows));
   }
 
   save(): void {
@@ -358,12 +387,17 @@ export class WarrantyFormDialogComponent {
     const raw = this.form.getRawValue();
     this.saving.set(true);
     this.error.set(null);
+    const maContractId =
+      raw.maContractId != null && Number(raw.maContractId) > 0
+        ? Number(raw.maContractId)
+        : null;
 
     if (this.isEdit && this.data && 'id' in this.data) {
       const payload: WarrantyUpdateInput = {
         durationMonth: Number(raw.durationMonth),
         status: (raw.status as WarrantyStatus) ?? 'ACTIVE',
         scopeNote: (raw.scopeNote ?? '').trim() || null,
+        maContractId,
       };
       this.api.update(this.data.id, payload).subscribe({
         next: () => this.onSaved(true),
@@ -375,6 +409,7 @@ export class WarrantyFormDialogComponent {
     const payload: WarrantyCreateInput = {
       durationMonth: Number(raw.durationMonth),
       scopeNote: (raw.scopeNote ?? '').trim() || null,
+      ...(maContractId != null ? { maContractId } : {}),
     };
     this.api.createForDelivery(Number(raw.deliveryId), payload).subscribe({
       next: () => this.onSaved(false),

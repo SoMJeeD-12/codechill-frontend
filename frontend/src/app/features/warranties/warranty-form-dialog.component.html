@@ -7,7 +7,7 @@
         @if (deliveryLabel) {
           <strong>{{ deliveryLabel }}</strong>
         }
-        — กรอกแค่ระยะประกัน (เดือน)
+        — กรอกระยะประกัน และเลือกสัญญา MA ที่เกี่ยวข้องได้ (ไม่บังคับ)
       </p>
     } @else {
       <mat-form-field appearance="outline" class="full">
@@ -59,6 +59,17 @@
         </mat-form-field>
       }
     </div>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>สัญญา MA ที่ผูกกับประกันนี้ (ถ้ามี)</mat-label>
+      <mat-select formControlName="maContractId">
+        <mat-option [value]="null">ไม่ได้ผูก MA</mat-option>
+        @for (c of maContracts(); track c.id) {
+          <mat-option [value]="c.id">{{ maContractOptionLabel(c) }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>อ้างอิงว่าประกันใบนี้มาคู่กับสัญญาไหน — ไม่รวมโควตาหรือราคาเข้ากับประกัน</mat-hint>
+    </mat-form-field>
 
     <mat-form-field appearance="outline" class="full">
       <mat-label>ขอบเขต / หมายเหตุ</mat-label>

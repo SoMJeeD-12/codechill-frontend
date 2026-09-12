@@ -16,13 +16,16 @@ import { ProjectService } from './project.service';
 export interface WarrantyCreateInput {
   durationMonth: number;
   scopeNote?: string | null;
+  /** ไม่บังคับ — สัญญาต้องเป็นของโปรเจคเดียวกับใบส่งมอบ */
+  maContractId?: number | null;
 }
 
-/** UpdateWarrantyDto */
+/** UpdateWarrantyDto — ส่ง `maContractId: null` เพื่อถอดการผูก · ไม่ส่งฟิลด์ = คงค่าเดิม */
 export interface WarrantyUpdateInput {
   durationMonth?: number;
   status?: WarrantyStatus;
   scopeNote?: string | null;
+  maContractId?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -151,6 +154,7 @@ export class WarrantyService {
         pruneUndefined({
           durationMonth: input.durationMonth,
           scopeNote: input.scopeNote?.trim() || undefined,
+          maContractId: input.maContractId ?? undefined,
         })
       )
       .pipe(

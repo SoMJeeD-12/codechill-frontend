@@ -40,7 +40,8 @@ export function triggerBlobDownload(blob: Blob, fileName: string): void {
 
 /**
  * ดึงชื่อไฟล์จาก Content-Disposition
- * รองรับ `filename*=UTF-8''...` (ชื่อไทย) และ `filename="..."`
+ * ต้องอ่าน `filename*=UTF-8''...` ก่อนเสมอ
+ * ช่อง `filename="..."` มักเป็น ASCII ที่แทนอักษรไทยด้วย `_` — ห้ามอ่านถ้ามี filename* อยู่
  */
 export function fileNameFromContentDisposition(
   header: string | null,
@@ -49,15 +50,20 @@ export function fileNameFromContentDisposition(
   if (!header) {
     return fallback;
   }
-  const utf8 = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header);
+  const utf8 = /filename\*\s*=\s*UTF-8''([^;\n]+)/i.exec(header);
   if (utf8?.[1]) {
+    const raw = utf8[1].trim().replace(/^"|"$/g, '');
     try {
-      return decodeURIComponent(utf8[1].trim().replace(/^"|"$/g, ''));
+      const decoded = decodeURIComponent(raw);
+      if (decoded) {
+        return decoded;
+      }
     } catch {
-      /* fall through */
+      /* อย่าตกไปอ่าน filename= ASCII — ใช้ fallback จาก API แทน */
     }
+    return fallback || 'download';
   }
-  const plain = /filename\s*=\s*("?)([^";]+)\1/i.exec(header);
+  const plain = /(?:^|;)\s*filename\s*=\s*("?)([^";]+)\1/i.exec(header);
   if (plain?.[2]) {
     return plain[2].trim();
   }

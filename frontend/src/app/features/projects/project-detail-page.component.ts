@@ -56,7 +56,7 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
 } from '../../core/models/ticket.model';
-import { WARRANTY_STATUS_LABELS, Warranty } from '../../core/models/warranty.model';
+import { WARRANTY_STATUS_LABELS, Warranty, warrantyMaLinkLabel } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
@@ -189,7 +189,8 @@ export class ProjectDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
-  readonly warrantyColumns = ['delivery', 'period', 'daysLeft', 'status'];
+  readonly warrantyColumns = ['delivery', 'period', 'daysLeft', 'maLink', 'status'];
+  readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt'];
   readonly maColumns = ['contractNo', 'plan', 'period', 'status'];
   readonly documentColumns = [
@@ -1389,8 +1390,8 @@ export interface ProjectDocumentUploadDialogData {
         }
 
         <mat-form-field appearance="outline" class="full">
-          <mat-label>รายละเอียด</mat-label>
-          <textarea matInput rows="2" formControlName="note"></textarea>
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note" placeholder="ไม่บังคับ"></textarea>
         </mat-form-field>
 
         @if (error()) {
@@ -1532,8 +1533,8 @@ export interface ProjectDocumentEditDialogData {
           <input matInput formControlName="title" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full">
-          <mat-label>รายละเอียด</mat-label>
-          <textarea matInput rows="3" formControlName="note"></textarea>
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="3" formControlName="note" placeholder="ว่าง = ล้างหมายเหตุ"></textarea>
         </mat-form-field>
         @if (error()) {
           <p class="error">{{ error() }}</p>

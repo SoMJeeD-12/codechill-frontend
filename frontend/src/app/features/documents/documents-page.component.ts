@@ -137,6 +137,11 @@ export class DocumentsPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
+  readonly canDeleteDocument = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.delete');
+  });
+
   readonly documents = signal<ProjectDocument[]>([]);
   readonly projectFilter = signal<number | 'ALL'>('ALL');
   readonly search = signal('');
@@ -327,6 +332,10 @@ export class DocumentsPageComponent implements OnInit {
   }
 
   removeDocument(doc: ProjectDocument): void {
+    if (!this.canDeleteDocument()) {
+      this.snack.open('คุณไม่มีสิทธิ์ลบเอกสาร', 'ปิด', { duration: 3000 });
+      return;
+    }
     openConfirmDialog(this.dialog, {
       title: 'ลบเอกสาร',
       message: `ลบเอกสาร「${doc.title}」และทุกเวอร์ชันหรือไม่?`,
