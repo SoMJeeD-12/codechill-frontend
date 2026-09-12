@@ -16,32 +16,12 @@
           กลับ
         </button>
         <div class="status-row">
-          @if (canUpdateProject()) {
-            <button
-              type="button"
-              class="cell-badge status-badge project-status-badge is-editable"
-              [attr.data-project-status]="p.status"
-              [matMenuTriggerFor]="projectStatusMenu"
-              matTooltip="เปลี่ยนสถานะโปรเจค"
-            >
-              {{ projectStatusLabel(p.status) }}
-              <mat-icon>expand_more</mat-icon>
-            </button>
-            <mat-menu #projectStatusMenu="matMenu">
-              @for (s of projectStatuses; track s) {
-                <button mat-menu-item type="button" (click)="changeProjectStatus(s)">
-                  @if (p.status === s) {
-                    <mat-icon>check</mat-icon>
-                  }
-                  <span>{{ statusLabels[s] }}</span>
-                </button>
-              }
-            </mat-menu>
-          } @else {
-            <span class="cell-badge status-badge project-status-badge" [attr.data-project-status]="p.status">
-              {{ projectStatusLabel(p.status) }}
-            </span>
-          }
+          <span
+            class="cell-badge status-badge project-status-badge"
+            [attr.data-project-status]="p.status"
+          >
+            {{ projectStatusLabel(p.status) }}
+          </span>
         </div>
         <h1>{{ p.name }}</h1>
         <p class="subtitle">
@@ -119,10 +99,6 @@
           <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
         } @else {
           <div class="delivery-panel">
-            <p class="tab-help">
-              บันทึกว่าส่งงานให้ลูกค้ารอบไหน ลูกค้าตรวจรับแล้วหรือยัง —
-              ตรวจรับรอบสุดท้ายแล้วจึงออกใบประกันได้
-            </p>
             <div class="data-card">
               <div class="data-card__head">
                 <div class="data-card__row tab-toolbar">
@@ -136,7 +112,7 @@
                       aria-label="ค้นหารายการส่งมอบ"
                     />
                   </label>
-                  @if (canCreateDelivery()) {
+                  @if (canRecordDelivery()) {
                     <button
                       mat-flat-button
                       color="primary"
@@ -145,6 +121,15 @@
                       (click)="openAddDelivery()"
                     >
                       <mat-icon>add</mat-icon>
+                      บันทึกการส่งมอบ
+                    </button>
+                  } @else if (canCreateDelivery() && project()?.status === 'DRAFT') {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      disabled
+                      matTooltip="กดขั้นถัดไปเป็น「กำลังดำเนินการ」ก่อน"
+                    >
                       บันทึกการส่งมอบ
                     </button>
                   }

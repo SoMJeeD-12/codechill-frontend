@@ -30,7 +30,6 @@ import {
   DeliveryAcceptance,
   PRIORITY_LABELS,
   PROJECT_STATUS_LABELS,
-  PROJECT_STATUSES,
   Project,
   ProjectStatus,
   TASK_PRIORITIES,
@@ -165,7 +164,6 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly maContracts = signal<MaContract[]>([]);
   readonly maLoading = signal(false);
   readonly statusLabels = PROJECT_STATUS_LABELS;
-  readonly projectStatuses = PROJECT_STATUSES;
   readonly projectPriorityLabels = PRIORITY_LABELS;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
   readonly taskStatuses = TASK_STATUSES;
@@ -215,9 +213,30 @@ export class ProjectDetailPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('delivery.create');
   });
+  /** บันทึกส่งมอบได้เฉพาะตอนกำลังดำเนินการ — ร่าง/ส่งมอบแล้ว/ปิด/ยกเลิก ห้าม */
+  readonly canRecordDelivery = computed(() => {
+    const status = this.project()?.status;
+    return this.canCreateDelivery() && status === 'IN_PROGRESS';
+  });
   readonly canAcceptDelivery = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('delivery.accept');
+  });
+  /**
+   * ขั้นถัดไปที่กดมือได้:
+   * - ร่าง → กำลังดำเนินการ
+   * - ส่งมอบแล้ว → ปิดโปรเจค (ถึงขั้นนี้ได้ก็ต่อเมื่อ BE ยอมรับรอบสุดท้ายแล้ว)
+   * ส่งมอบแล้วจาก IN_PROGRESS ให้ BE เปลี่ยนเอง — ห้ามกดมือ
+   */
+  readonly nextProjectStatus = computed((): ProjectStatus | null => {
+    const status = this.project()?.status;
+    if (status === 'DRAFT') {
+      return 'IN_PROGRESS';
+    }
+    if (status === 'DELIVERED') {
+      return 'CLOSED';
+    }
+    return null;
   });
   readonly canViewDocuments = computed(() => {
     this.auth.session();
@@ -277,18 +296,6 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canViewMa = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('ma.view');
-  });
-  readonly nextProjectStatus = computed((): ProjectStatus | null => {
-    const status = this.project()?.status;
-    if (!status) {
-      return null;
-    }
-    const order: ProjectStatus[] = ['DRAFT', 'IN_PROGRESS', 'DELIVERED', 'CLOSED'];
-    const idx = order.indexOf(status);
-    if (idx < 0 || idx >= order.length - 1) {
-      return null;
-    }
-    return order[idx + 1];
   });
   readonly deliveriesDenied = signal(false);
   readonly tasksDenied = signal(false);
@@ -526,9 +533,54 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
+  advanceProjectStatus(): void {
+    const next = this.nextProjectStatus();
+    if (!next) {
+      const status = this.project()?.status;
+      if (status === 'IN_PROGRESS') {
+        this.snack.open(
+          'สถานะ「ส่งมอบแล้ว」จะเปลี่ยนเองเมื่อลูกค้ายอมรับการส่งมอบรอบสุดท้าย — ไม่ต้องกดมือ',
+          'ปิด',
+          { duration: 4500 }
+        );
+      } else if (status === 'DELIVERED') {
+        this.snack.open(
+          'ปิดโปรเจคได้เมื่อมีการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว',
+          'ปิด',
+          { duration: 4000 }
+        );
+      }
+      return;
+    }
+    this.changeProjectStatus(next);
+  }
+
   changeProjectStatus(status: ProjectStatus): void {
     const project = this.project();
     if (!project || !this.canUpdateProject() || project.status === status) {
+      return;
+    }
+    // กันข้ามขั้นผิดทางแม้เรียกจากที่อื่น
+    if (status === 'DELIVERED' && project.status !== 'DELIVERED') {
+      this.snack.open(
+        'สถานะ「ส่งมอบแล้ว」มาจากการยอมรับการส่งมอบรอบสุดท้ายเท่านั้น',
+        'ปิด',
+        { duration: 4000 }
+      );
+      return;
+    }
+    if (status === 'CLOSED') {
+      if (project.status !== 'DELIVERED') {
+        this.snack.open('ต้องเป็นสถานะ「ส่งมอบแล้ว」ก่อนปิดโปรเจค', 'ปิด', {
+          duration: 3500,
+        });
+        return;
+      }
+    }
+    if (status === 'IN_PROGRESS' && project.status !== 'DRAFT') {
+      this.snack.open('เปลี่ยนเป็น「กำลังดำเนินการ」ได้จากสถานะร่างเท่านั้น', 'ปิด', {
+        duration: 3500,
+      });
       return;
     }
     const payload: { status: ProjectStatus; actualEndDate?: string } = { status };
@@ -544,14 +596,6 @@ export class ProjectDetailPageComponent implements OnInit {
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
-  }
-
-  advanceProjectStatus(): void {
-    const next = this.nextProjectStatus();
-    if (!next) {
-      return;
-    }
-    this.changeProjectStatus(next);
   }
 
   removeProject(): void {
@@ -935,8 +979,21 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   openAddDelivery(): void {
-    if (!this.canCreateDelivery()) {
-      this.snack.open('ไม่มีสิทธิ์บันทึกการส่งมอบ', 'ปิด', { duration: 3000 });
+    if (!this.canRecordDelivery()) {
+      const status = this.project()?.status;
+      if (!this.canCreateDelivery()) {
+        this.snack.open('ไม่มีสิทธิ์บันทึกการส่งมอบ', 'ปิด', { duration: 3000 });
+      } else if (status === 'DRAFT') {
+        this.snack.open(
+          'โปรเจคยังเป็นร่าง — กด「ขั้นถัดไป · กำลังดำเนินการ」ก่อนจึงบันทึกการส่งมอบได้',
+          'ปิด',
+          { duration: 4500 }
+        );
+      } else {
+        this.snack.open('บันทึกการส่งมอบได้เฉพาะตอนสถานะ「กำลังดำเนินการ」', 'ปิด', {
+          duration: 4000,
+        });
+      }
       return;
     }
     const ref = this.dialog.open(DeliveryFormDialogComponent, {
@@ -999,7 +1056,13 @@ export class ProjectDetailPageComponent implements OnInit {
         })
         .subscribe({
           next: () => {
-            this.snack.open('บันทึกการยอมรับการส่งมอบแล้ว', 'ปิด', { duration: 2500 });
+            this.snack.open(
+              result.isFinal
+                ? 'ยอมรับรอบสุดท้ายแล้ว — ระบบจะเปลี่ยนสถานะโปรเจคเป็น「ส่งมอบแล้ว」'
+                : 'บันทึกการยอมรับการส่งมอบแล้ว',
+              'ปิด',
+              { duration: 4000 }
+            );
             this.refresh();
           },
           error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 6000 }),

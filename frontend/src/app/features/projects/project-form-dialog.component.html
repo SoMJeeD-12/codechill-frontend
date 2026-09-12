@@ -29,11 +29,18 @@
         <div class="row">
           <mat-form-field appearance="outline">
             <mat-label>สถานะ</mat-label>
-            <mat-select formControlName="status">
+            <mat-select formControlName="status" [disabled]="true">
               @for (s of statuses; track s) {
                 <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
               }
             </mat-select>
+            <mat-hint>
+              {{
+                isEdit
+                  ? 'เปลี่ยนสถานะจากปุ่ม「ขั้นถัดไป」หรือเมื่อยอมรับการส่งมอบรอบสุดท้าย'
+                  : 'โปรเจคใหม่เริ่มที่「ร่าง」เสมอ'
+              }}
+            </mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>ความสำคัญ</mat-label>

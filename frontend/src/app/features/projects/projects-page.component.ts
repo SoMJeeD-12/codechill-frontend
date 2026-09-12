@@ -501,7 +501,10 @@ export class ProjectFormDialogComponent {
       contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
       startDate: toDateOnlyString(raw.startDate) || undefined,
       targetEndDate: toDateOnlyString(raw.targetEndDate) || undefined,
-      status: raw.status as ProjectStatus,
+      // สถานะเดินตาม workflow บนหน้ารายละเอียด — ฟอร์มสร้าง/แก้ไม่เปลี่ยนสถานะ
+      status: this.isEdit
+        ? (this.data.project?.status ?? 'DRAFT')
+        : 'DRAFT',
       priority: raw.priority as ProjectPriority,
       managerUserId: raw.managerUserId ?? undefined,
       description: (raw.description ?? '').trim() || undefined,
