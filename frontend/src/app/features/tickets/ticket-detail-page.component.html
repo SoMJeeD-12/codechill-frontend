@@ -77,20 +77,12 @@
     </header>
 
     <!-- แถบสถานะปัจจุบันของใบ — มีแถบเดียว ไม่ซ้อนกับตารางด้านล่าง -->
-    <div class="status-bar" [attr.data-status]="t.status">
-      <span class="status-bar__now">{{ ticketStatusLabel(t.status) }}</span>
-      <span class="status-bar__detail">
-        แก้ไปแล้ว {{ t.resolutionCount || 0 }} รอบ
-        @if (t.status === 'REOPENED') {
-          · พร้อมเริ่มรอบที่ {{ nextRound() }} — กด「รับงานรอบใหม่」เพื่อเริ่ม
-        } @else if (t.status === 'IN_PROGRESS' && (t.resolutionCount || 0) > 0) {
-          · กำลังทำรอบที่ {{ nextRound() }}
-        }
-      </span>
-      <span class="status-bar__owner">
-        ผู้รับผิดชอบ: {{ userName(t.assignedUserId) }}
-      </span>
-    </div>
+    <app-status-bar
+      [status]="t.status"
+      [label]="ticketStatusLabel(t.status)"
+      [detail]="statusDetail(t)"
+      [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
+    />
 
     <div class="meta-grid">
       <mat-card>

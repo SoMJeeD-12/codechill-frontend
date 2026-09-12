@@ -14,6 +14,22 @@
         (selectionChange)="onProjectPicked($event)"
       />
 
+      @if (maQuota(); as quota) {
+        <div class="ma-quota" [class.is-exhausted]="quota.isExhausted">
+          <mat-icon>{{ quota.isExhausted ? 'warning' : 'handshake' }}</mat-icon>
+          <div>
+            <strong>
+              สัญญา MA รอบ {{ quota.periodStart | thaiDate: 'date' }} –
+              {{ quota.periodEnd | thaiDate: 'date' }}
+            </strong>
+            <small>ใช้ไป {{ quota.used }}/{{ quota.quota }} ครั้ง · เหลือ {{ quota.remaining }}</small>
+            @if (quota.isExhausted) {
+              <p class="ma-quota__warn">โควตาในรอบนี้หมดแล้ว — เปิดใบได้แต่ควรแจ้งลูกค้าเรื่องค่าใช้จ่าย</p>
+            }
+          </div>
+        </div>
+      }
+
       @if (customer(); as picked) {
         <div class="picked-customer" [class.is-auto]="customerFromProject()">
           <mat-icon>business</mat-icon>

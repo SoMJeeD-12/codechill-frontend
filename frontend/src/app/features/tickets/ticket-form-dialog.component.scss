@@ -66,6 +66,47 @@
   border-color: rgb(3 105 161 / 0.18);
 }
 
+.ma-quota {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.65rem 0.75rem;
+  margin: 0.15rem 0 0.55rem;
+  border-radius: 10px;
+  background: rgb(15 118 110 / 0.08);
+  border: 1px solid rgb(15 118 110 / 0.2);
+  font-size: 0.86rem;
+  line-height: 1.35;
+
+  mat-icon {
+    color: #0f766e;
+    margin-top: 0.1rem;
+  }
+
+  strong {
+    display: block;
+  }
+
+  small {
+    color: rgb(15 23 42 / 0.62);
+  }
+
+  &.is-exhausted {
+    background: rgb(185 28 28 / 0.08);
+    border-color: rgb(185 28 28 / 0.25);
+
+    mat-icon {
+      color: #b91c1c;
+    }
+  }
+}
+
+.ma-quota__warn {
+  margin: 0.35rem 0 0;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
+
 .picked-customer__text {
   display: flex;
   flex-direction: column;

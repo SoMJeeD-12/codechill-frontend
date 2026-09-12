@@ -231,13 +231,10 @@ export class ProjectService {
       );
   }
 
-  /** % จาก progress ของ project ถ้ามี ไม่งั้นคำนวณจาก task ที่โหลดไว้ */
-  progressPercent(projectId: number): number {
+  /** % จาก progress ของ project ที่ API ส่งมาเท่านั้น — ไม่มีค่า = null (ห้ามโชว์เป็น 0) */
+  progressPercent(projectId: number): number | null {
     const percent = this.getProject(projectId)?.progress?.percent;
-    if (typeof percent === 'number') {
-      return percent;
-    }
-    return this.computeProgress(this.getTasks(projectId));
+    return typeof percent === 'number' ? percent : null;
   }
 
   createTask(projectId: number, input: TaskInput): Observable<TaskItem> {

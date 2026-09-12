@@ -23,6 +23,8 @@ import { CustomerFormDialogComponent } from './customer-form-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-customers-page',
@@ -83,31 +85,27 @@ export class CustomersPageComponent implements OnInit {
   });
 
   readonly filtered = computed(() => {
-    const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
-    return this.customers().filter((c) => {
-      const matchStatus = status === 'ALL' || c.status === status;
-      const matchQ =
-        !q ||
-        c.name.toLowerCase().includes(q) ||
-        (c.code ?? '').toLowerCase().includes(q) ||
-        (c.phone ?? '').includes(q) ||
-        (c.email ?? '').toLowerCase().includes(q) ||
-        (c.taxId ?? '').includes(q) ||
-        (c.owner?.fullName ?? '').toLowerCase().includes(q);
-      return matchStatus && matchQ;
-    });
+    return this.customers().filter((c) => status === 'ALL' || c.status === status);
   });
 
   readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
     this.reload();
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
+    this.searchControl.valueChanges
+      .pipe(debounceTime(PICKER_DEBOUNCE_MS), distinctUntilChanged())
+      .subscribe((v) => {
+        this.search.set(v);
+        this.pager.reset();
+        this.reload();
+      });
   }
 
   reload(): void {
-    this.api.listCustomers().subscribe((list) => this.customers.set(list));
+    const q = this.search().trim();
+    const params = q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
+    this.api.listCustomers(params).subscribe((list) => this.customers.set(list));
   }
 
   openCreate(): void {

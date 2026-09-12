@@ -41,42 +41,27 @@ export const PICKER_MIN_CHARS = 2;
 export const PICKER_DEBOUNCE_MS = 300;
 
 /**
- * ค้นหาผ่าน API ก่อน ถ้าไม่เจอค่อยกรองฝั่ง client
- *
- * เหตุผล: ตอนนี้พารามิเตอร์ `search` ของ backend ยังค้นภาษาไทยไม่เจอ
- * (ดู docs/be-requests.md หัวข้อ "ค้นหาภาษาไทย")
- * ถ้า backend แก้แล้ว fallback นี้จะไม่ถูกเรียกเอง เพราะรอบแรกจะเจอผลลัพธ์
+ * ค้นหาผ่าน backend `?search=` โดยตรง
+ * — ปล่อยให้ HttpParams encode เอง · ไม่ดึงรายการมากรองในเบราว์เซอร์
  */
-export function searchWithClientFallback<T>(
-  fetchList: (params: { search?: string; limit: number }) => Observable<T[]>,
+export function searchViaBackend<T>(
+  fetchList: (params: { search: string; limit: number }) => Observable<T[]>,
   toOption: (row: T) => PickerOption,
   query: string,
-  fallbackLimit = 100
+  limit = 20
 ): Observable<PickerOption[]> {
-  const needle = query.trim().toLowerCase();
-
-  return fetchList({ search: query, limit: 20 }).pipe(
+  const q = query.trim();
+  if (q.length < PICKER_MIN_CHARS) {
+    return of([]);
+  }
+  return fetchList({ search: q, limit }).pipe(
     map((rows) => rows.map(toOption)),
-    switchMap((options) => {
-      if (options.length > 0) {
-        return of(options);
-      }
-      return fetchList({ limit: fallbackLimit }).pipe(
-        map((rows) =>
-          rows
-            .map(toOption)
-            .filter((opt) =>
-              [opt.label, opt.code, opt.meta]
-                .filter(Boolean)
-                .some((field) => String(field).toLowerCase().includes(needle))
-            )
-            .slice(0, 20)
-        ),
-        catchError(() => of([] as PickerOption[]))
-      );
-    })
+    catchError(() => of([] as PickerOption[]))
   );
 }
+
+/** @deprecated ใช้ searchViaBackend — backend ค้นไทยได้แล้ว */
+export const searchWithClientFallback = searchViaBackend;
 
 /**
  * ช่องค้นหาแบบเลือกข้อมูล (ลูกค้า / โปรเจค / ผู้ใช้)

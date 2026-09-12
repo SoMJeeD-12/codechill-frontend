@@ -59,7 +59,7 @@
           วันเริ่ม {{ p.startDate ? (p.startDate | thaiDate: 'date') : '—' }} ·
           กำหนดส่ง {{ p.targetEndDate ? (p.targetEndDate | thaiDate: 'date') : '—' }} ·
           มูลค่าตามสัญญา {{ p.contractValue | baht }} ·
-          ความคืบหน้า {{ progress() }}%
+          ความคืบหน้า {{ progress() == null ? '—' : progress() + '%' }}
           @if (p.actualEndDate) {
             · ปิดจริง {{ p.actualEndDate | thaiDate: 'date' }}
           }
@@ -119,6 +119,10 @@
           <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
         } @else {
           <div class="delivery-panel">
+            <p class="tab-help">
+              บันทึกว่าส่งงานให้ลูกค้ารอบไหน ลูกค้าตรวจรับแล้วหรือยัง —
+              ตรวจรับรอบสุดท้ายแล้วจึงออกใบประกันได้
+            </p>
             <div class="data-card">
               <div class="data-card__head">
                 <div class="data-card__row tab-toolbar">
@@ -157,9 +161,9 @@
                       }
                     </td>
                   </ng-container>
-                  <ng-container matColumnDef="id">
+                  <ng-container matColumnDef="deliveryNo">
                     <th mat-header-cell *matHeaderCellDef>รหัส</th>
-                    <td mat-cell *matCellDef="let row">ส่งมอบ #{{ row.id }}</td>
+                    <td mat-cell *matCellDef="let row">{{ row.deliveryNo || '—' }}</td>
                   </ng-container>
                   <ng-container matColumnDef="deliveredAt">
                     <th mat-header-cell *matHeaderCellDef>วันเวลาส่ง</th>
@@ -638,6 +642,33 @@
         </mat-tab>
       }
     </mat-tab-group>
+
+    <!-- รายงานรายโปรเจค — ยังไม่มี API รวม แสดงเท่าที่มีจากโปรเจคนี้ -->
+    <section class="report-strip" aria-label="สรุปโปรเจค">
+      <h2 class="report-strip__title">รายงานของโปรเจคนี้</h2>
+      <p class="report-strip__note">
+        ยังไม่มี API สรุปตัวเลขรายโปรเจค — แสดงเท่าที่มีจากข้อมูลในหน้านี้
+        (ความคืบหน้า / จำนวนใบปัญหา / การส่งมอบ / สัญญา MA)
+      </p>
+      <div class="report-strip__grid">
+        <div>
+          <span>ความคืบหน้า</span>
+          <strong>{{ progress() == null ? '—' : progress() + '%' }}</strong>
+        </div>
+        <div>
+          <span>ใบปัญหา</span>
+          <strong>{{ projectTickets().length }}</strong>
+        </div>
+        <div>
+          <span>การส่งมอบ</span>
+          <strong>{{ deliveries().length }}</strong>
+        </div>
+        <div>
+          <span>สัญญา MA</span>
+          <strong>{{ maContracts().length }}</strong>
+        </div>
+      </div>
+    </section>
   </section>
   }
 }

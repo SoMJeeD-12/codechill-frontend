@@ -101,21 +101,6 @@ export class TicketsPageComponent implements OnInit {
       list = list.filter((t) => this.isOpen(t));
     }
 
-    const q = this.search().trim().toLowerCase();
-    if (q) {
-      list = list.filter((t) => {
-        const customer = t.customer ?? this.customersApi.getCustomer(t.customerId);
-        const project =
-          t.project ?? (t.projectId != null ? this.projectsApi.getProject(t.projectId) : null);
-        return (
-          (t.ticketNo ?? '').toLowerCase().includes(q) ||
-          t.title.toLowerCase().includes(q) ||
-          (customer?.name ?? '').toLowerCase().includes(q) ||
-          (project?.name ?? '').toLowerCase().includes(q)
-        );
-      });
-    }
-
     const priorityRank: Record<TicketPriority, number> = {
       URGENT: 0,
       HIGH: 1,
@@ -152,20 +137,21 @@ export class TicketsPageComponent implements OnInit {
       .subscribe((v) => {
         this.search.set(v);
         this.pager.reset();
+        this.reload();
       });
     // เข้ามาจากการ์ด "ปัญหารอแก้" บนหน้าแรก
     if (this.route.snapshot.queryParamMap.get('view') === 'all') {
       this.view.set('all');
     }
-    // ใช้เติมชื่อลูกค้า/โปรเจคในตารางเมื่อ API ไม่ส่งมาพ่วง
-    this.customersApi.listCustomers({ limit: 100 }).subscribe({ error: () => undefined });
-    this.projectsApi.listProjects({ limit: 100 }).subscribe({ error: () => undefined });
     this.reload();
   }
 
   reload(): void {
     this.loading.set(true);
-    this.ticketsApi.list({ limit: 100 }).subscribe({
+    const q = this.search().trim();
+    const params =
+      q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
+    this.ticketsApi.list(params).subscribe({
       next: (list) => {
         this.tickets.set(list);
         this.loading.set(false);

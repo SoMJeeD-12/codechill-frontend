@@ -84,11 +84,20 @@
 a.mat-mdc-list-item {
   border-radius: 8px;
   margin-bottom: 2px;
+  height: auto !important;
+  min-height: 48px;
 
   &.active {
     background: rgba(15, 118, 110, 0.18);
     color: #0f766e;
   }
+}
+
+.nav-item-desc {
+  font-size: 0.72rem !important;
+  line-height: 1.25 !important;
+  opacity: 0.65;
+  white-space: normal;
 }
 
 .layout-content {

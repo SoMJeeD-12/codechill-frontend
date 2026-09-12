@@ -41,12 +41,14 @@ import {
   parseDateOnly,
   toTimeString,
 } from '../../core/utils/date.util';
+import { MaQuotaStatus } from '../../core/models/ma.model';
 import {
   EntityPickerComponent,
   PickerOption,
-  searchWithClientFallback,
+  searchViaBackend,
 } from '../../shared/components/entity-picker.component';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 
 const BILLING_TYPE_ORDER: BillingType[] = [
   'WARRANTY',
@@ -89,6 +91,7 @@ export interface TicketFormDialogData {
     MatSnackBarModule,
     MatDatepickerModule,
     ThaiTimeInputDirective,
+    ThaiDatePipe,
     EntityPickerComponent,
   ],
   templateUrl: './ticket-form-dialog.component.html',
@@ -130,6 +133,8 @@ export class TicketFormDialogComponent {
 
   readonly hasActiveWarranty = signal(false);
   readonly hasActiveMa = signal(false);
+  /** โควตา MA ของโปรเจคที่เลือก — ไม่มีสัญญา = null (ห้ามโชว์เป็น 0) */
+  readonly maQuota = signal<MaQuotaStatus | null>(null);
   readonly billingSelection = signal<BillingType | null>(null);
 
   readonly availableBillingTypes = computed(() => {
@@ -198,7 +203,7 @@ export class TicketFormDialogComponent {
   /* ——— ค้นหา ——— */
 
   readonly searchProjects = (query: string) =>
-    searchWithClientFallback(
+    searchViaBackend(
       (params) => this.projectsApi.listProjects(params),
       (p): PickerOption => ({
         id: p.id,
@@ -210,7 +215,7 @@ export class TicketFormDialogComponent {
     );
 
   readonly searchCustomers = (query: string) =>
-    searchWithClientFallback(
+    searchViaBackend(
       (params) => this.customersApi.listCustomers(params),
       (c): PickerOption => ({
         id: c.id,
@@ -231,6 +236,7 @@ export class TicketFormDialogComponent {
         this.customer.set(null);
         this.customerFromProject.set(false);
       }
+      this.maQuota.set(null);
       this.loadBillingEligibility(null, { preserveCurrent: false });
       return;
     }
@@ -290,28 +296,33 @@ export class TicketFormDialogComponent {
     if (!projectId) {
       this.hasActiveWarranty.set(false);
       this.hasActiveMa.set(false);
+      this.maQuota.set(null);
       this.syncBillingSelection(opts);
       return;
     }
 
     forkJoin({
       warranties: this.warrantiesApi.listByProject(projectId).pipe(catchError(() => of([]))),
-      contracts: this.maApi
-        .list({ projectId, status: 'ACTIVE', limit: 100 })
-        .pipe(catchError(() => of([]))),
+      contracts: this.maApi.list({ projectId, limit: 100 }).pipe(catchError(() => of([]))),
     }).subscribe({
       next: ({ warranties, contracts }) => {
-        this.hasActiveWarranty.set(
-          warranties.some((w) => w.isCurrentlyActive || w.status === 'ACTIVE')
-        );
-        this.hasActiveMa.set(
-          contracts.some((c) => c.status === 'ACTIVE' || c.isCurrentlyActive)
-        );
+        this.hasActiveWarranty.set(warranties.some((w) => w.isCurrentlyActive));
+        const active = contracts.find((c) => c.isCurrentlyActive) ?? null;
+        this.hasActiveMa.set(!!active);
         this.syncBillingSelection(opts);
+        if (!active) {
+          this.maQuota.set(null);
+          return;
+        }
+        this.maApi.getQuota(active.id).subscribe({
+          next: (quota) => this.maQuota.set(quota),
+          error: () => this.maQuota.set(null),
+        });
       },
       error: () => {
         this.hasActiveWarranty.set(false);
         this.hasActiveMa.set(false);
+        this.maQuota.set(null);
         this.syncBillingSelection(opts);
       },
     });

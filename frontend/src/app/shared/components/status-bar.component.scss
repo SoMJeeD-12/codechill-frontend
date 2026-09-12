@@ -1,0 +1,81 @@
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(28, 43, 40, 0.12);
+  background: #fff;
+}
+
+.status-bar__now {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.status-bar__detail {
+  color: #5b6762;
+  font-size: 0.88rem;
+}
+
+.status-bar__owner {
+  margin-left: auto;
+  font-size: 0.88rem;
+  color: #1c2b28;
+}
+
+.status-bar[data-status='RECEIVED'],
+.status-bar[data-status='DRAFT'],
+.status-bar[data-status='PLANNED'] {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: #eff6ff;
+
+  .status-bar__now {
+    color: #1d4ed8;
+  }
+}
+
+.status-bar[data-status='IN_PROGRESS'],
+.status-bar[data-status='ACTIVE'],
+.status-bar[data-status='IN_DEV'] {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: #ecfdf5;
+
+  .status-bar__now {
+    color: #0f766e;
+  }
+}
+
+.status-bar[data-status='RESOLVED'],
+.status-bar[data-status='DONE'],
+.status-bar[data-status='DELIVERED'] {
+  border-color: rgba(5, 150, 105, 0.35);
+  background: #ecfdf5;
+
+  .status-bar__now {
+    color: #047857;
+  }
+}
+
+.status-bar[data-status='REOPENED'],
+.status-bar[data-status='ON_HOLD'] {
+  border-color: rgba(217, 119, 6, 0.4);
+  background: #fffbeb;
+
+  .status-bar__now {
+    color: #b45309;
+  }
+}
+
+.status-bar[data-status='CLOSED'],
+.status-bar[data-status='CANCELLED'],
+.status-bar[data-status='EXPIRED'] {
+  border-color: rgba(100, 116, 139, 0.35);
+  background: #f8fafc;
+
+  .status-bar__now {
+    color: #475569;
+  }
+}

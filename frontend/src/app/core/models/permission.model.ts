@@ -51,6 +51,8 @@ export interface Role {
 export interface MenuItem {
   code: MenuCode;
   label: string;
+  /** คำอธิบายสั้นใต้ชื่อเมนู */
+  description?: string;
   icon: string;
   route: string;
   /** กลุ่มใน sidebar — งานหลัก / ข้อมูล / ตั้งค่า */

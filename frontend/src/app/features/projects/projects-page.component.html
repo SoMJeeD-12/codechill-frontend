@@ -55,7 +55,9 @@
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="code">
           <th mat-header-cell *matHeaderCellDef>รหัส</th>
-          <td mat-cell *matCellDef="let row" class="col-code">{{ row.code || '—' }}</td>
+          <td mat-cell *matCellDef="let row">
+            <app-code-label [value]="row.code" />
+          </td>
         </ng-container>
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อโปรเจค</th>
@@ -80,12 +82,16 @@
         <ng-container matColumnDef="progress">
           <th mat-header-cell *matHeaderCellDef>ความคืบหน้า</th>
           <td mat-cell *matCellDef="let row">
-            <span class="progress-cell">
-              <span class="progress-track">
-                <span class="progress-fill" [style.width.%]="progress(row.id)"></span>
+            @if (progress(row.id); as pct) {
+              <span class="progress-cell">
+                <span class="progress-track">
+                  <span class="progress-fill" [style.width.%]="pct"></span>
+                </span>
+                <span class="progress-value">{{ pct }}%</span>
               </span>
-              <span class="progress-value">{{ progress(row.id) }}%</span>
-            </span>
+            } @else {
+              —
+            }
           </td>
         </ng-container>
         <ng-container matColumnDef="status">

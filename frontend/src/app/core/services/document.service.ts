@@ -1,6 +1,6 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, delay, from, of, throwError } from 'rxjs';
+import { Observable, delay, of, throwError } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
@@ -13,6 +13,7 @@ import {
   ProjectDocument,
 } from '../models/document.model';
 import { buildFilePreview } from '../utils/file-preview.util';
+import { downloadAuthorizedBlob } from '../../shared/utils/download-blob';
 import { FileService } from './file.service';
 
 export { buildFilePreview } from '../utils/file-preview.util';
@@ -154,61 +155,9 @@ export class DocumentService {
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
-  /** ดาวน์โหลดผ่าน blob + Authorization (interceptor) */
+  /** ดาวน์โหลดผ่าน blob + Authorization (interceptor) — ใช้ตัวช่วยกลาง */
   download(doc: ApiProjectDocument): Observable<void> {
-    const url = this.resolveDownloadUrl(doc.downloadUrl);
-    return this.http.get(url, { responseType: 'blob' }).pipe(
-      tap((blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = doc.fileName || 'download';
-        a.rel = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(objectUrl);
-      }),
-      map(() => void 0),
-      catchError((err) => this.blobToError(err))
-    );
-  }
-
-  private resolveDownloadUrl(downloadUrl: string): string {
-    const raw = (downloadUrl || '').trim();
-    if (!raw) {
-      return `${environment.apiBaseUrl}/documents/0/download`;
-    }
-    if (/^https?:\/\//i.test(raw)) {
-      return raw;
-    }
-    if (raw.startsWith('/api/')) {
-      const origin = environment.apiBaseUrl.replace(/\/api\/?$/, '');
-      return `${origin}${raw}`;
-    }
-    if (raw.startsWith('/')) {
-      return `${environment.apiBaseUrl}${raw}`;
-    }
-    return `${environment.apiBaseUrl}/${raw}`;
-  }
-
-  private blobToError(err: unknown): Observable<never> {
-    if (err instanceof HttpErrorResponse && err.error instanceof Blob) {
-      return from(err.error.text()).pipe(
-        switchMap((text) => {
-          try {
-            const json = JSON.parse(text) as { message?: string };
-            if (typeof json.message === 'string' && json.message.trim()) {
-              return throwError(() => new Error(json.message));
-            }
-          } catch {
-            /* fall through */
-          }
-          return throwError(() => new Error(apiErrorMessage(err)));
-        })
-      );
-    }
-    return throwError(() => new Error(apiErrorMessage(err)));
+    return downloadAuthorizedBlob(this.http, doc.downloadUrl, doc.fileName || 'download');
   }
 
   /* ——— Mock (documents-page) ——— */

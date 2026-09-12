@@ -16,6 +16,9 @@
             <a mat-list-item [routerLink]="item.route" routerLinkActive="active">
               <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
               <span matListItemTitle>{{ item.label }}</span>
+              @if (item.description) {
+                <span matListItemLine class="nav-item-desc">{{ item.description }}</span>
+              }
             </a>
           }
         </mat-nav-list>
@@ -34,18 +37,17 @@
       <span class="spacer"></span>
 
       <!-- ปุ่มลัด — ทำงานครั้งเดียวจบ ไม่ต้องเปลี่ยนเมนู -->
-      @if (canOpenTicket()) {
-        <button
-          mat-flat-button
-          color="primary"
-          type="button"
-          class="quick-action"
-          (click)="openTicketForm()"
-        >
-          <mat-icon>add</mat-icon>
-          <span class="quick-action__text">เปิดใบแจ้งปัญหา</span>
-        </button>
-      }
+      <button
+        *appHasPermission="'ticket.create'"
+        mat-flat-button
+        color="primary"
+        type="button"
+        class="quick-action"
+        (click)="openTicketForm()"
+      >
+        <mat-icon>add</mat-icon>
+        <span class="quick-action__text">เปิดใบแจ้งปัญหา</span>
+      </button>
 
       @if (canLogCommunication()) {
         <button

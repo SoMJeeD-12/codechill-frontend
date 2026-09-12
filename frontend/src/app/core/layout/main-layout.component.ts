@@ -10,6 +10,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MENU_ITEMS } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
+import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-main-layout',
@@ -25,6 +26,7 @@ import { QuickActionsService } from '../services/quick-actions.service';
     MatButtonModule,
     MatMenuModule,
     MatTooltipModule,
+    HasPermissionDirective,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -35,12 +37,7 @@ export class MainLayoutComponent implements OnInit {
 
   readonly user = this.auth.currentUser;
 
-  /** ปุ่มลัดมุมขวาบน — ใช้ได้จากทุกหน้า ไม่ต้องเปลี่ยนเมนู */
-  readonly canOpenTicket = computed(() => {
-    this.auth.session();
-    return this.quickActions.canOpenTicket();
-  });
-
+  /** บันทึกการติดต่อ — สิทธิ์ create log หรืออัปเดตลูกค้า */
   readonly canLogCommunication = computed(() => {
     this.auth.session();
     return this.quickActions.canLogCommunication();

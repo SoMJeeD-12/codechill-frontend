@@ -28,7 +28,7 @@ import {
 import {
   EntityPickerComponent,
   PickerOption,
-  searchWithClientFallback,
+  searchViaBackend,
 } from '../../shared/components/entity-picker.component';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 
@@ -230,7 +230,7 @@ export class QuickLogDialogComponent {
   }
 
   readonly searchCustomers = (query: string) =>
-    searchWithClientFallback(
+    searchViaBackend(
       (params) => this.api.listCustomers(params),
       (c): PickerOption => ({
         id: c.id,

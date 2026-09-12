@@ -33,6 +33,7 @@ import { TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { StatusBarComponent } from '../../shared/components/status-bar.component';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
@@ -53,6 +54,7 @@ import { catchError, switchMap } from 'rxjs/operators';
     MatSnackBarModule,
     MatTableModule,
     MatDialogModule,
+    StatusBarComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -147,7 +149,7 @@ export class TicketDetailPageComponent implements OnInit {
       next: (ticket) => {
         this.ticket.set(ticket);
         this.resolutions.set(
-          [...(ticket.resolutions ?? [])].sort((a, b) => a.round - b.round)
+          [...(ticket.resolutions ?? [])].sort((a, b) => b.round - a.round)
         );
         this.notFound.set(false);
         this.loading.set(false);
@@ -182,6 +184,17 @@ export class TicketDetailPageComponent implements OnInit {
 
   ticketStatusLabel(status: TicketStatus): string {
     return this.statusLabels[status];
+  }
+
+  /** ข้อความรองของแถบสถานะ */
+  statusDetail(t: Ticket): string {
+    const parts = [`แก้ไปแล้ว ${t.resolutionCount || 0} รอบ`];
+    if (t.status === 'REOPENED') {
+      parts.push(`พร้อมเริ่มรอบที่ ${this.nextRound()} — กด「รับงานรอบใหม่」เพื่อเริ่ม`);
+    } else if (t.status === 'IN_PROGRESS' && (t.resolutionCount || 0) > 0) {
+      parts.push(`กำลังทำรอบที่ ${this.nextRound()}`);
+    }
+    return parts.join(' · ');
   }
 
   billingLabel(type: BillingType): string {

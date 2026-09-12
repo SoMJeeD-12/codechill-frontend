@@ -42,9 +42,12 @@ import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { CodeLabelComponent } from '../../shared/components/code-label.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { ApiToastService } from '../../shared/services/api-toast.service';
 import { Router } from '@angular/router';
 import { Customer } from '../../core/models/customer.model';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
@@ -72,6 +75,7 @@ import { catchError, debounceTime, distinctUntilChanged, map } from 'rxjs/operat
     MatTooltipModule,
     MatMenuModule,
     TablePaginatorComponent,
+    CodeLabelComponent,
   ],
   templateUrl: './projects-page.component.html',
   styleUrl: './projects-page.component.scss',
@@ -82,6 +86,7 @@ export class ProjectsPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly toast = inject(ApiToastService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
@@ -121,23 +126,7 @@ export class ProjectsPageComponent implements OnInit {
 
   readonly filtered = computed(() => {
     const status = this.statusFilter();
-    const q = this.search().trim().toLowerCase();
-    const list = this.projects().filter((p) => {
-      const matchStatus = status === 'ALL' || p.status === status;
-      if (!matchStatus) {
-        return false;
-      }
-      if (!q) {
-        return true;
-      }
-      const customer = this.customerName(p.customerId).toLowerCase();
-      return (
-        (p.code ?? '').toLowerCase().includes(q) ||
-        p.name.toLowerCase().includes(q) ||
-        customer.includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q)
-      );
-    });
+    const list = this.projects().filter((p) => status === 'ALL' || p.status === status);
     const statusRank: Record<ProjectStatus, number> = {
       IN_PROGRESS: 0,
       DRAFT: 1,
@@ -159,20 +148,27 @@ export class ProjectsPageComponent implements OnInit {
   readonly pager = createClientPager(this.filtered);
 
   ngOnInit(): void {
-    this.customersApi.listCustomers().subscribe();
     this.reload();
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
+    this.searchControl.valueChanges
+      .pipe(debounceTime(PICKER_DEBOUNCE_MS), distinctUntilChanged())
+      .subscribe((v) => {
+        this.search.set(v);
+        this.pager.reset();
+        this.reload();
+      });
   }
 
   reload(): void {
-    this.projectsApi.listProjects().subscribe((list) => this.projects.set(list));
+    const q = this.search().trim();
+    const params = q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
+    this.projectsApi.listProjects(params).subscribe((list) => this.projects.set(list));
   }
 
   customerName(id: number): string {
     return this.customersApi.getCustomer(id)?.name ?? `#${id}`;
   }
 
-  progress(id: number): number {
+  progress(id: number): number | null {
     return this.projectsApi.progressPercent(id);
   }
 
@@ -214,7 +210,7 @@ export class ProjectsPageComponent implements OnInit {
           this.snack.open('ลบโปรเจคแล้ว', 'ปิด', { duration: 2500 });
           this.reload();
         },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+        error: (err: Error) => this.toast.error(err),
       });
     });
   }

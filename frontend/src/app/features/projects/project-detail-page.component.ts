@@ -1,4 +1,4 @@
-import { Location } from '@angular/common';
+﻿import { Location } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -133,7 +133,7 @@ export class ProjectDetailPageComponent implements OnInit {
 
   readonly project = signal<Project | null>(null);
   readonly notFound = signal(false);
-  readonly progress = signal(0);
+  readonly progress = signal<number | null>(null);
   readonly tasks = signal<TaskItem[]>([]);
   readonly tasksView = signal<'table' | 'board'>('table');
   readonly statusFilter = signal<TaskStatus | 'ALL'>('ALL');
@@ -180,7 +180,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskColumns = ['title', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   readonly deliveryColumns = [
     'title',
-    'id',
+    'deliveryNo',
     'deliveredAt',
     'deliveredBy',
     'acceptedBy',
