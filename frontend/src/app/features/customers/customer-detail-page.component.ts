@@ -100,6 +100,9 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
 
+  /** จากเมนูมุมมอง 360° — โหมดสรุปทุกอย่างของลูกค้ารายเดียว */
+  readonly is360Mode = this.route.snapshot.data['mode'] === '360';
+
   readonly customer = signal<Customer | null>(null);
   readonly overview = signal<CustomerOverview | null>(null);
   readonly contacts = signal<Contact[]>([]);
@@ -276,7 +279,8 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly ticketsPager = createClientPager(this.filteredTickets);
   readonly followUpsPager = createClientPager(this.filteredFollowUps);
 
-  private static readonly TAB_KEYS = [
+  private static readonly TAB_KEYS_REGISTRY = ['contacts', 'logs'] as const;
+  private static readonly TAB_KEYS_360 = [
     'contacts',
     'logs',
     'projects',
@@ -284,6 +288,12 @@ export class CustomerDetailPageComponent implements OnInit {
     'tickets',
     'follow-ups',
   ] as const;
+
+  private get tabKeys(): readonly string[] {
+    return this.is360Mode
+      ? CustomerDetailPageComponent.TAB_KEYS_360
+      : CustomerDetailPageComponent.TAB_KEYS_REGISTRY;
+  }
 
   private customerId = 0;
 
@@ -308,12 +318,16 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   goBack(): void {
-    navigateBack(this.location, this.router, '/app/customers');
+    navigateBack(
+      this.location,
+      this.router,
+      this.is360Mode ? '/app/customer-360' : '/app/customers'
+    );
   }
 
   onTabChange(index: number): void {
     this.selectedTab.set(index);
-    const tab = CustomerDetailPageComponent.TAB_KEYS[index];
+    const tab = this.tabKeys[index];
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tab || null },
@@ -326,7 +340,7 @@ export class CustomerDetailPageComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.customerId = id;
     const tabKey = this.route.snapshot.queryParamMap.get('tab');
-    const tabIndex = CustomerDetailPageComponent.TAB_KEYS.findIndex((key) => key === tabKey);
+    const tabIndex = this.tabKeys.findIndex((key) => key === tabKey);
     if (tabIndex >= 0) {
       this.selectedTab.set(tabIndex);
     } else {

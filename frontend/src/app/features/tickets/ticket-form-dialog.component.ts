@@ -15,7 +15,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -41,7 +40,8 @@ import {
   parseDateOnly,
   toTimeString,
 } from '../../core/utils/date.util';
-import { MaQuotaStatus } from '../../core/models/ma.model';
+import { MaQuotaStatus, MaContract } from '../../core/models/ma.model';
+import { Warranty } from '../../core/models/warranty.model';
 import {
   EntityPickerComponent,
   PickerOption,
@@ -49,6 +49,7 @@ import {
 } from '../../shared/components/entity-picker.component';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { swallowHttpError, warnHttpError } from '../../shared/utils/swallow-http-error';
 
 const BILLING_TYPE_ORDER: BillingType[] = [
   'WARRANTY',
@@ -302,8 +303,12 @@ export class TicketFormDialogComponent {
     }
 
     forkJoin({
-      warranties: this.warrantiesApi.listByProject(projectId).pipe(catchError(() => of([]))),
-      contracts: this.maApi.list({ projectId, limit: 100 }).pipe(catchError(() => of([]))),
+      warranties: this.warrantiesApi
+        .listByProject(projectId)
+        .pipe(swallowHttpError([] as Warranty[], 'ticket-form warranties')),
+      contracts: this.maApi
+        .list({ projectId, limit: 100 })
+        .pipe(swallowHttpError([] as MaContract[], 'ticket-form ma-contracts')),
     }).subscribe({
       next: ({ warranties, contracts }) => {
         this.hasActiveWarranty.set(warranties.some((w) => w.isCurrentlyActive));
@@ -316,10 +321,14 @@ export class TicketFormDialogComponent {
         }
         this.maApi.getQuota(active.id).subscribe({
           next: (quota) => this.maQuota.set(quota),
-          error: () => this.maQuota.set(null),
+          error: (err) => {
+            warnHttpError(err, 'ticket-form ma-quota');
+            this.maQuota.set(null);
+          },
         });
       },
-      error: () => {
+      error: (err) => {
+        warnHttpError(err, 'ticket-form billing-eligibility');
         this.hasActiveWarranty.set(false);
         this.hasActiveMa.set(false);
         this.maQuota.set(null);

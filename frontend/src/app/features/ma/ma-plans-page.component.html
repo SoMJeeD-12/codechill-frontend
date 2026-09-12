@@ -84,10 +84,6 @@
           <th mat-header-cell *matHeaderCellDef>SLA (ชม.)</th>
           <td mat-cell *matCellDef="let row">{{ row.responseTimeHour ?? '—' }}</td>
         </ng-container>
-        <ng-container matColumnDef="onsiteQuotaPerMonth">
-          <th mat-header-cell *matHeaderCellDef>Onsite/เดือน</th>
-          <td mat-cell *matCellDef="let row">{{ row.onsiteQuotaPerMonth ?? '—' }}</td>
-        </ng-container>
         <ng-container matColumnDef="isActive">
           <th mat-header-cell *matHeaderCellDef>สถานะ</th>
           <td mat-cell *matCellDef="let row">

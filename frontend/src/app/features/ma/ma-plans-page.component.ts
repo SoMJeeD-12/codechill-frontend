@@ -78,7 +78,6 @@ export class MaPlansPageComponent implements OnInit {
     'name',
     'bugQuotaPerMonth',
     'responseTimeHour',
-    'onsiteQuotaPerMonth',
     'isActive',
     'sortOrder',
     'actions',

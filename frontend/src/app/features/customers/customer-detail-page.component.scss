@@ -4,12 +4,24 @@
 }
 
 .page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
   margin-bottom: 1rem;
 
   h1 {
     margin: 0.15rem 0;
     font-size: 1.6rem;
   }
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .eyebrow {

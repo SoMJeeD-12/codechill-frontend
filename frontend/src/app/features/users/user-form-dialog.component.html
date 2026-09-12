@@ -50,14 +50,28 @@
     </div>
 
     @if (showRoles) {
+      @if (hasLegacyMultiRole) {
+        <p class="notice warn">
+          ผู้ใช้นี้ถือ {{ legacyMultiRoleCount }} บทบาทจากข้อมูลเดิม —
+          ระบบใหม่ให้ถือได้อันเดียว บันทึกแล้วจะเหลือเฉพาะที่เลือก
+        </p>
+      }
       <mat-form-field appearance="outline" class="full">
         <mat-label>บทบาท</mat-label>
         <mat-select formControlName="roleId">
           <mat-option [value]="null">— ไม่ระบุ —</mat-option>
           @for (role of data.roles; track role.id) {
-            <mat-option [value]="role.id">{{ role.name }}</mat-option>
+            <mat-option [value]="role.id">
+              <span class="role-option">
+                <strong>{{ role.name }}</strong>
+                @if (role.description) {
+                  <small>{{ role.description }}</small>
+                }
+              </span>
+            </mat-option>
           }
         </mat-select>
+        <mat-hint>ระบบใหม่: ผู้ใช้ 1 คนถือบทบาทได้ 1 อัน</mat-hint>
       </mat-form-field>
     } @else {
       <p class="hint">Admin เข้าถึงทุกเมนูโดยอัตโนมัติ ไม่ต้องผูกบทบาท</p>

@@ -59,9 +59,17 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'customers',
     label: 'ลูกค้า',
-    description: 'ทะเบียนลูกค้า และมุมมอง 360° สรุปทุกอย่างของรายเดียว',
+    description: 'ทะเบียนลูกค้า — ชื่อ ภาษี ที่อยู่ ผู้ติดต่อ',
     icon: 'business',
     route: '/app/customers',
+    group: 'support',
+  },
+  {
+    code: 'customer-360',
+    label: 'มุมมอง 360°',
+    description: 'เลือกลูกค้า 1 ราย แล้วดูโปรเจค ประกัน MA ปัญหา ติดตาม ในหน้าเดียว',
+    icon: 'travel_explore',
+    route: '/app/customer-360',
     group: 'support',
   },
   {

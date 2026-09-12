@@ -1,10 +1,14 @@
 <section class="page">
   <header class="page-header">
     <div>
-      <p class="eyebrow">ข้อมูล</p>
-      <h1>ลูกค้า</h1>
+      <p class="eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูล' }}</p>
+      <h1>{{ is360Mode ? 'มุมมอง 360°' : 'ลูกค้า' }}</h1>
       <p class="subtitle">
-        ทะเบียนข้อมูลลูกค้า · กดชื่อเพื่อดูมุมมอง 360° (โปรเจค ประกัน สัญญา ปัญหา การติดตาม)
+        {{
+          is360Mode
+            ? 'เลือกลูกค้า 1 ราย แล้วดูโปรเจค ประกัน MA ปัญหา ติดตาม ในหน้าเดียว'
+            : 'ทะเบียนลูกค้า — ชื่อ ภาษี ที่อยู่ ผู้ติดต่อ'
+        }}
       </p>
     </div>
   </header>
@@ -21,10 +25,12 @@
             aria-label="ค้นหาลูกค้า"
           />
         </label>
-        <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
-          <mat-icon>add_business</mat-icon>
-          เพิ่มลูกค้า
-        </button>
+        @if (!is360Mode) {
+          <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
+            <mat-icon>add_business</mat-icon>
+            เพิ่มลูกค้า
+          </button>
+        }
       </div>
       <div class="ui-chips" role="tablist" aria-label="กรองสถานะลูกค้า">
         @for (s of statuses; track s) {
@@ -53,7 +59,9 @@
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อลูกค้า</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/customers', row.id]">{{ row.name }}</a>
+            <a
+              [routerLink]="[is360Mode ? '/app/customer-360' : '/app/customers', row.id]"
+            >{{ row.name }}</a>
             <div class="muted">รหัส {{ row.code || '—' }}</div>
           </td>
         </ng-container>
@@ -84,15 +92,15 @@
             <mat-menu #manageMenu="matMenu">
               <button mat-menu-item type="button" (click)="openDetail(row)">
                 <mat-icon>travel_explore</mat-icon>
-                <span>ดูรายละเอียด / 360°</span>
+                <span>{{ is360Mode ? 'เปิดมุมมอง 360°' : 'ดูรายละเอียด' }}</span>
               </button>
-              @if (canUpdate()) {
+              @if (!is360Mode && canUpdate()) {
                 <button mat-menu-item type="button" (click)="openEdit(row)">
                   <mat-icon>edit</mat-icon>
                   <span>แก้ไข</span>
                 </button>
               }
-              @if (canDelete()) {
+              @if (!is360Mode && canDelete()) {
                 <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
                   <mat-icon>delete</mat-icon>
                   <span>ลบ</span>

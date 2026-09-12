@@ -260,6 +260,13 @@ export class AuthService {
     if (menuCode === 'roles') {
       return session.user.accountType === 'SUPER_ADMIN';
     }
+    // ประวัติการใช้งาน — backend กั้นระดับ ADMIN ไม่ใช่แค่ audit.view
+    if (menuCode === 'audit-logs') {
+      return (
+        session.user.accountType === 'SUPER_ADMIN' ||
+        session.user.accountType === 'ADMIN'
+      );
+    }
     // หน้าแรก — เป็นแค่หน้ารวมของงานที่มีสิทธิ์ดูอยู่แล้ว
     // ไม่มี permission แยก จึงเปิดให้เมื่อมีสิทธิ์ดูอย่างน้อยหนึ่งส่วน (ห้ามเช็ค roles)
     if (menuCode === 'dashboard') {

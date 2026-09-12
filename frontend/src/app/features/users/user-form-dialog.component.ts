@@ -43,6 +43,9 @@ export class UserFormDialogComponent {
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.data.user;
   readonly isSuper = this.data.user?.accountType === 'SUPER_ADMIN';
+  /** ผู้ใช้เดิมที่ยังถือหลายบทบาทจากข้อมูล legacy */
+  readonly legacyMultiRoleCount = (this.data.user?.roles ?? []).length;
+  readonly hasLegacyMultiRole = this.legacyMultiRoleCount > 1;
 
   readonly form = this.fb.nonNullable.group({
     username: [{ value: '', disabled: this.isEdit }, Validators.required],

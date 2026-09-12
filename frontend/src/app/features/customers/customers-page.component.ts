@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -55,7 +55,11 @@ export class CustomersPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
+
+  /** จากเมนูมุมมอง 360° — รายการเดียวกันแต่เข้าหน้ารายละเอียดโหมดสรุป */
+  readonly is360Mode = this.route.snapshot.data['mode'] === '360';
 
   readonly customers = signal<Customer[]>([]);
   readonly statusFilter = signal<CustomerStatus | 'ALL'>('ACTIVE');
@@ -114,7 +118,8 @@ export class CustomersPageComponent implements OnInit {
   }
 
   openDetail(customer: Customer): void {
-    void this.router.navigate(['/app/customers', customer.id]);
+    const base = this.is360Mode ? '/app/customer-360' : '/app/customers';
+    void this.router.navigate([base, customer.id]);
   }
 
   remove(customer: Customer): void {

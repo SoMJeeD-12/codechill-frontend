@@ -100,7 +100,10 @@ export class UsersPageComponent implements OnInit {
     this.reload();
     this.rolesApi.listAssignable().subscribe({
       next: (roles) => this.roles.set(roles),
-      error: () => this.roles.set([]),
+      error: (err) => {
+        console.warn('[users assignable roles]', err);
+        this.roles.set([]);
+      },
     });
   }
 

@@ -26,6 +26,27 @@
   color: #c2410c;
 }
 
+.notice.warn {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: rgb(194 65 12 / 0.08);
+  border: 1px solid rgb(194 65 12 / 0.25);
+  line-height: 1.4;
+}
+
+.role-option {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  padding: 0.15rem 0;
+
+  small {
+    color: rgb(15 23 42 / 0.55);
+    font-size: 0.78rem;
+    white-space: normal;
+  }
+}
+
 .error {
   color: #991b1b;
 }

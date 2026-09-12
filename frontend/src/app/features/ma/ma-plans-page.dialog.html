@@ -30,14 +30,12 @@
 
       <div class="row">
         <mat-form-field appearance="outline">
-          <mat-label>โควตา Onsite/เดือน</mat-label>
-          <input matInput type="number" formControlName="onsiteQuotaPerMonth" min="0" max="999" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
           <mat-label>ลำดับแสดง</mat-label>
           <input matInput type="number" formControlName="sortOrder" min="0" />
         </mat-form-field>
       </div>
+
+      <!-- โควตา Onsite/เดือน ซ่อนไว้ — backend ยังไม่ได้นับค่านี้ -->
 
       <mat-slide-toggle formControlName="isActive">เปิดใช้งานแผนนี้</mat-slide-toggle>
 
