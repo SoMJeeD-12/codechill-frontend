@@ -26,6 +26,7 @@ import {
   WarrantyStatus,
   warrantyMaLinkLabel,
 } from '../../core/models/warranty.model';
+import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
@@ -85,7 +86,7 @@ export class WarrantiesPageComponent implements OnInit {
     if (view === 'near') {
       rows = list.filter((w) => this.isNear(w));
     } else if (view === 'active') {
-      rows = list.filter((w) => w.status === 'ACTIVE' || w.isCurrentlyActive);
+      rows = list.filter((w) => w.isCurrentlyActive);
     }
     const q = this.search().trim().toLowerCase();
     if (!q) {
@@ -174,7 +175,7 @@ export class WarrantiesPageComponent implements OnInit {
       days !== null &&
       days >= 0 &&
       days <= this.nearDays &&
-      (w.status === 'ACTIVE' || w.isCurrentlyActive)
+      (w.isCurrentlyActive)
     );
   }
 
@@ -249,6 +250,7 @@ export class WarrantyFormDialogComponent {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly maApi = inject(MaService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<WarrantyFormDialogComponent, boolean>);
@@ -262,6 +264,10 @@ export class WarrantyFormDialogComponent {
   readonly statuses = Object.keys(WARRANTY_STATUS_LABELS) as WarrantyStatus[];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly canCreateMa = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.create');
+  });
   readonly isEdit = !!(this.data && 'id' in this.data && this.data.id);
   readonly lockDelivery = !!(
     this.data &&
@@ -366,17 +372,21 @@ export class WarrantyFormDialogComponent {
     const no = c.contractNo?.trim() || `#${c.id}`;
     const plan = c.plan?.name?.trim() || '—';
     const status = c.isCurrentlyActive
-      ? 'ใช้งาน'
+      ? 'ใช้งานอยู่'
       : c.status === 'DRAFT'
         ? 'ร่าง'
         : c.status === 'EXPIRED'
           ? 'หมดอายุ'
-          : '';
-    return status ? `${no} · ${plan} (${status})` : `${no} · ${plan}`;
+          : c.status;
+    return `${no} · ${plan} (${status})`;
   }
 
   /** สร้างสัญญา MA ของโปรเจคนี้แล้วกลับมาเลือกลงในประกัน */
   openCreateMaForProject(): void {
+    if (!this.canCreateMa()) {
+      this.error.set('ไม่มีสิทธิ์สร้างสัญญา MA — ติดต่อผู้ดูแลระบบ');
+      return;
+    }
     const projectId = Number(this.form.getRawValue().projectId) || 0;
     const customerId = Number(this.form.getRawValue().customerId) || 0;
     if (!projectId) {
@@ -413,13 +423,13 @@ export class WarrantyFormDialogComponent {
     opts?: { preferSelect?: boolean }
   ): void {
     this.maApi
-      .list({ projectId })
+      .list({ projectId, limit: 100 })
       .pipe(swallowHttpError([] as MaContract[], 'warranty-form ma-contracts'))
       .subscribe((rows) => {
-        // ACTIVE ก่อน · จากนั้นตาม id
+        // เรียงด้วย isCurrentlyActive เท่านั้น — ห้ามใช้ status (ACTIVE ในฐานอาจหมดอายุแล้ว)
         const sorted = [...rows].sort((a, b) => {
-          const aRank = a.isCurrentlyActive || a.status === 'ACTIVE' ? 0 : 1;
-          const bRank = b.isCurrentlyActive || b.status === 'ACTIVE' ? 0 : 1;
+          const aRank = a.isCurrentlyActive ? 0 : 1;
+          const bRank = b.isCurrentlyActive ? 0 : 1;
           if (aRank !== bRank) {
             return aRank - bRank;
           }
@@ -427,7 +437,6 @@ export class WarrantyFormDialogComponent {
         });
         this.maContracts.set(sorted);
 
-        // สร้างใหม่ / ยังไม่เลือก — ถ้ามี ACTIVE อันเดียวให้เลือกให้
         if (this.isEdit || !opts?.preferSelect) {
           return;
         }
@@ -435,7 +444,7 @@ export class WarrantyFormDialogComponent {
         if (current != null && Number(current) > 0) {
           return;
         }
-        const active = sorted.filter((c) => c.isCurrentlyActive || c.status === 'ACTIVE');
+        const active = sorted.filter((c) => c.isCurrentlyActive);
         const pick = active.length === 1 ? active[0] : sorted.length === 1 ? sorted[0] : null;
         if (pick) {
           this.form.patchValue({ maContractId: pick.id }, { emitEvent: false });

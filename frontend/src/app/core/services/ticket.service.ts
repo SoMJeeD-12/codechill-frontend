@@ -4,7 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import { asList, asPage, fetchAllPages, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   BillingType,
   OPEN_TICKET_STATUSES,
@@ -111,15 +111,58 @@ export class TicketService {
   );
 
   list(params: TicketListParams = {}): Observable<Ticket[]> {
+    // รายการเต็ม — วนหน้าอัตโนมัติเมื่อไม่ระบุ page
+    if (params.page == null) {
+      const { page: _p, limit: _l, ...rest } = params;
+      return this.listAll(rest);
+    }
+    return this.listPage(params).pipe(
+      map((page) => page.items),
+      tap((rows) => this.items.set(rows)),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /** หนึ่งหน้า — ใช้เมื่อต้องการ total / วนเอง */
+  listPage(
+    params: TicketListParams = {}
+  ): Observable<{ items: Ticket[]; total: number }> {
+    const { page, limit, ...rest } = params;
     return this.http
-      .get<ApiTicket[] | { items: ApiTicket[] }>(this.base, {
-        params: toHttpParams({ limit: 100, ...params }),
+      .get<ApiTicket[] | { items: ApiTicket[]; total?: number }>(this.base, {
+        params: toHttpParams({
+          page: page ?? 1,
+          limit: Math.min(limit ?? 100, 100),
+          ...rest,
+        }),
       })
       .pipe(
-        map((body) => asList(body).map((row) => this.normalizeTicket(row))),
-        tap((rows) => this.items.set(rows)),
+        map((body) => {
+          const pageBody = asPage(body);
+          return {
+            items: pageBody.items.map((row) => this.normalizeTicket(row)),
+            total: pageBody.total,
+          };
+        }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /** ดึงครบทุกหน้า (limit ≤ 100 ต่อครั้ง) — ใช้แท็บปัญหาของโปรเจค / รายการที่ต้องครบ */
+  listAll(params: Omit<TicketListParams, 'page' | 'limit'> = {}): Observable<Ticket[]> {
+    return fetchAllPages((page, limit) => this.listPage({ ...params, page, limit })).pipe(
+      tap((rows) => {
+        // merge — ห้าม set ทับทั้ง store (เช่นโหลดแค่ใบของโปรเจคเดียว)
+        this.items.update((all) => {
+          const byId = new Map(all.map((t) => [t.id, t]));
+          for (const row of rows) {
+            byId.set(row.id, row);
+          }
+          return Array.from(byId.values());
+        });
+      }),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   /** GET /tickets/pending — ใบค้างแก้ */

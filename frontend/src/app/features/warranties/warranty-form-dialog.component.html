@@ -79,10 +79,16 @@
     </mat-form-field>
 
     @if (form.getRawValue().projectId && maContracts().length === 0) {
-      <button mat-stroked-button type="button" class="ma-create-btn" (click)="openCreateMaForProject()">
-        <mat-icon>handshake</mat-icon>
-        สร้างสัญญา MA ของโปรเจคนี้
-      </button>
+      @if (canCreateMa()) {
+        <button mat-stroked-button type="button" class="ma-create-btn" (click)="openCreateMaForProject()">
+          <mat-icon>handshake</mat-icon>
+          สร้างสัญญา MA ของโปรเจคนี้
+        </button>
+      } @else {
+        <p class="ma-create-hint">
+          ไม่มีสิทธิ์สร้างสัญญา MA — ติดต่อผู้ดูแลระบบให้สร้างสัญญาก่อน (หรือเว้น「ไม่ได้ผูก MA」)
+        </p>
+      }
     }
 
     <mat-form-field appearance="outline" class="full">

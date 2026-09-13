@@ -24,13 +24,13 @@
   font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .header-actions {
@@ -41,9 +41,9 @@
 }
 
 .data-card {
-  background: #fff;
-  border: 1px solid #d8e5e1;
-  border-radius: 16px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-radius-card);
   box-shadow: 0 8px 24px rgba(28, 43, 40, 0.06);
   overflow: hidden;
 }
@@ -53,7 +53,7 @@
   gap: 0.85rem;
   padding: 1rem 1.1rem;
   background: linear-gradient(180deg, #f3faf8 0%, #ffffff 100%);
-  border-bottom: 1px solid #e4eeeb;
+  border-bottom: 1px solid var(--app-line-soft);
 }
 
 .data-card__row {
@@ -70,7 +70,7 @@
 .data-card__body app-table-paginator,
 .table-wrap app-table-paginator {
   display: block;
-  border-top: 1px solid #e4eeea;
+  border-top: 1px solid var(--app-line-soft);
 }
 
 .ui-search {
@@ -82,8 +82,8 @@
   height: 44px;
   padding: 0 0.85rem;
   border: 1px solid #cfe0db;
-  border-radius: 12px;
-  background: #fff;
+  border-radius: var(--app-radius-control);
+  background: var(--app-surface);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
   mat-icon,
@@ -109,7 +109,7 @@
   }
 
   &:focus-within {
-    border-color: #0f766e;
+    border-color: var(--app-accent);
     box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
   }
 }
@@ -125,7 +125,7 @@
 
 .ui-add-btn {
   height: 44px !important;
-  border-radius: 12px !important;
+  border-radius: var(--app-radius-control) !important;
   flex-shrink: 0;
 }
 
@@ -279,6 +279,12 @@
     color: #075985;
   }
 
+  /* มอบหมายแล้ว รอเริ่มงาน (ตัวอย่าง FE) */
+  &[data-status='ASSIGNED'] {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
   /* ต้องรีบดู */
   &[data-status='REOPENED'],
   &[data-status='WAITING'] {
@@ -423,4 +429,65 @@
   .ui-filter {
     width: 100%;
   }
+}
+
+/* แถบขั้นถัดไป — ใช้ร่วมโปรเจค / ใบปัญหา (โทนเดิม) */
+.next-hint {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  border-radius: var(--app-radius-control);
+  border: 1px solid rgb(180 83 9 / 0.28);
+  background: #fffbeb;
+
+  &[data-tone='ok'] {
+    border-color: rgb(15 118 110 / 0.28);
+    background: var(--app-accent-soft);
+
+    .next-hint__title {
+      color: var(--app-accent);
+    }
+
+    .next-hint__detail {
+      color: var(--app-accent-dark);
+    }
+  }
+}
+
+.next-hint__body {
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.next-hint__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.next-hint__detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #78350f;
+}
+
+.next-hint__list {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+.next-hint__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
 }

@@ -3,7 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { Observable, from, of } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import { PickerOption } from '../../shared/components/entity-picker.component';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG, FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { AuthService } from './auth.service';
 
 /**
@@ -45,7 +45,7 @@ export class QuickActionsService {
       switchMap((m) =>
         this.dialog
           .open(m.TicketFormDialogComponent, {
-            ...FORM_DIALOG,
+            ...FORM_DIALOG_WIDE,
             autoFocus: 'first-tabbable',
             data: { customer: preset?.customer ?? null, project: preset?.project ?? null },
           })

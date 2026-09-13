@@ -17,12 +17,19 @@ html {
 }
 
 :root {
+  /* โทเคนเดียวทั้งแอป — Tailwind @theme อ้างค่าเหล่านี้ */
   --app-bg: #f4f1ea;
   --app-ink: #1c2b28;
   --app-muted: #5b6762;
   --app-border: rgba(28, 43, 40, 0.1);
   --app-accent: #0f766e;
+  --app-accent-dark: #115e59;
   --app-accent-soft: #ecfdf5;
+  --app-surface: #ffffff;
+  --app-line: #d8e5e1;
+  --app-line-soft: #e4eeeb;
+  --app-radius-card: 16px;
+  --app-radius-control: 12px;
   --app-sidebar: #ffffff;
   --app-sidebar-text: #1c2b28;
 }

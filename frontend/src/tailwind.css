@@ -1,4 +1,6 @@
-/* Utilities + theme only — skip preflight so Angular Material keeps its styles. */
+/* Utilities + theme only — skip preflight so Angular Material keeps its styles.
+ * สี/โทเคนหลักอยู่ที่ :root ใน styles.scss — ที่นี่ชี้ไปที่เดียวกัน ห้ามคนละค่า
+ */
 @layer theme, base, components, utilities;
 
 @import 'tailwindcss/theme.css' layer(theme);
@@ -8,11 +10,14 @@
 @source "./index.html";
 
 @theme {
-  --color-brand: #0f766e;
-  --color-brand-dark: #115e59;
-  --color-brand-soft: #f0fdfa;
-  --color-ink: #1c2b28;
-  --color-muted: #5b6762;
-  --color-surface: #ffffff;
-  --color-line: #d8e5e1;
+  --color-brand: var(--app-accent);
+  --color-brand-dark: var(--app-accent-dark);
+  --color-brand-soft: var(--app-accent-soft);
+  --color-ink: var(--app-ink);
+  --color-muted: var(--app-muted);
+  --color-surface: var(--app-surface);
+  --color-line: var(--app-line);
+  --color-bg: var(--app-bg);
+  --font-sans: 'Sarabun', 'Segoe UI', sans-serif;
+  --radius-card: var(--app-radius-card);
 }

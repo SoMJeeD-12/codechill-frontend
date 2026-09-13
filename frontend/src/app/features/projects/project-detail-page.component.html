@@ -302,42 +302,31 @@
               </div>
             }
 
-            @if (deliveryReadyCard(); as card) {
-              <aside
-                class="ready-card"
-                [class.is-complete]="card.allOk"
-                [class.is-closed]="project()?.status === 'CLOSED'"
-                aria-label="การ์ดทวนก่อนยืนยัน"
-              >
-                <header class="ready-card__head">
-                  <div>
-                    <p class="ready-card__eyebrow">ก่อนดำเนินการต่อ</p>
-                    <h3 class="ready-card__title">{{ card.title }}</h3>
-                    <p class="ready-card__summary">{{ card.summary }}</p>
-                  </div>
-                  <span class="ready-card__count" [class.is-complete]="card.allOk">
-                    {{ card.done }}/{{ card.total }}
-                  </span>
-                </header>
-                <ul class="ready-card__list">
-                  @for (item of card.items; track item.id) {
-                    <li [class.is-ok]="item.ok" [class.is-todo]="!item.ok">
-                      <mat-icon>{{ item.ok ? 'check_circle' : 'cancel' }}</mat-icon>
-                      <span>{{ item.label }}</span>
-                    </li>
+            @if (deliveryNextHint(); as hint) {
+              <aside class="next-hint" aria-label="ขั้นถัดไปของการส่งมอบ">
+                <div class="next-hint__body">
+                  <p class="next-hint__title">{{ hint.title }}</p>
+                  @if (hint.blockers.length > 1) {
+                    <ul class="next-hint__list">
+                      @for (item of hint.blockers; track item) {
+                        <li>{{ item }}</li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="next-hint__detail">{{ hint.detail }}</p>
                   }
-                </ul>
-                @if (card.actionLabel) {
-                  <footer class="ready-card__foot">
+                </div>
+                @if (hint.actionLabel) {
+                  <div class="next-hint__actions">
                     <button
                       mat-flat-button
                       color="primary"
                       type="button"
-                      (click)="onReadyCardAction()"
+                      (click)="onDeliveryNextHintAction()"
                     >
-                      {{ card.actionLabel }}
+                      {{ hint.actionLabel }}
                     </button>
-                  </footer>
+                  </div>
                 }
               </aside>
             }
@@ -415,9 +404,9 @@
                         mat-button
                         type="button"
                         color="primary"
-                        (click)="downloadDocument(row)"
+                        (click)="openDocumentPreview(row)"
                       >
-                        ดาวน์โหลด
+                        ดูรายละเอียด
                       </button>
                       @if (canUpdateDocument()) {
                         <button mat-button type="button" (click)="openEditDocument(row)">
@@ -536,6 +525,19 @@
                     <th mat-header-cell *matHeaderCellDef>รับแจ้ง</th>
                     <td mat-cell *matCellDef="let row">{{ row.reportedAt | thaiDate }}</td>
                   </ng-container>
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let row" class="row-actions">
+                      <a mat-button color="primary" [routerLink]="['/app/tickets', row.id]">
+                        รายละเอียด
+                      </a>
+                      @if (canCloseTicket() && row.status !== 'CLOSED') {
+                        <button mat-button type="button" (click)="closeProjectTicket(row)">
+                          ปิดงาน
+                        </button>
+                      }
+                    </td>
+                  </ng-container>
                   <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: ticketColumns"></tr>
                 </table>
@@ -546,7 +548,16 @@
                   [pageSizeOptions]="projectTicketsPager.pageSizeOptions"
                   (page)="projectTicketsPager.onPage($event)"
                 />
-                @if (filteredProjectTickets().length === 0 && !ticketsLoading()) {
+                @if (ticketsLoadError(); as err) {
+                  <div class="load-error">
+                    <p>โหลดใบแจ้งปัญหาไม่สำเร็จ — {{ err }}</p>
+                    <button mat-stroked-button type="button" (click)="loadProjectTickets()">
+                      ลองใหม่
+                    </button>
+                  </div>
+                } @else if (ticketsLoading()) {
+                  <p class="data-empty">กำลังโหลด…</p>
+                } @else if (filteredProjectTickets().length === 0) {
                   <p class="data-empty">
                     {{
                       ticketSearch().trim()

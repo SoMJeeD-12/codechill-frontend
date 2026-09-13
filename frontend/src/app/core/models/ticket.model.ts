@@ -1,5 +1,6 @@
 export type TicketStatus =
   | 'RECEIVED'
+  | 'ASSIGNED'
   | 'IN_PROGRESS'
   | 'RESOLVED'
   | 'REOPENED'
@@ -69,9 +70,12 @@ export interface TicketResolution {
 
 export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   RECEIVED: 'รับเรื่อง',
+  /** ตัวอย่าง FE — BE ยังไม่มี enum นี้ */
+  ASSIGNED: 'ส่งให้ผู้รับผิดชอบแล้ว',
   IN_PROGRESS: 'กำลังดำเนินการ',
   RESOLVED: 'แก้ไขเรียบร้อย',
-  REOPENED: 'กลับมาเป็นซ้ำ',
+  /** ปัญหาเดิมกลับมาแล้ว แต่ยังไม่มีคนรับงานรอบใหม่ */
+  REOPENED: 'รอรับงานรอบใหม่',
   CLOSED: 'ปิดงาน',
 };
 
@@ -104,9 +108,110 @@ export const RESOLUTION_RESULT_LABELS: Record<ResolutionResult, string> = {
   FAILED: 'ไม่สำเร็จ',
 };
 
+/**
+ * BE ต่อเหตุผล reopen ลง `description` เป็นบรรทัด
+ * `[เปิดกลับมาอีกครั้ง] อาการ…`
+ */
+export const TICKET_REOPEN_NOTE_PREFIX = '[เปิดกลับมาอีกครั้ง]';
+
+export function splitTicketDescription(raw: string | null | undefined): {
+  base: string;
+  /** เก่า → ใหม่ ตามลำดับที่ต่อใน description */
+  reopenNotes: string[];
+} {
+  const text = (raw ?? '').replace(/\r\n/g, '\n').trim();
+  if (!text) {
+    return { base: '', reopenNotes: [] };
+  }
+
+  const reopenNotes: string[] = [];
+  const baseParts: string[] = [];
+
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(TICKET_REOPEN_NOTE_PREFIX)) {
+      const note = trimmed.slice(TICKET_REOPEN_NOTE_PREFIX.length).trim();
+      reopenNotes.push(note || 'ไม่ระบุอาการ');
+    } else {
+      baseParts.push(line);
+    }
+  }
+
+  return {
+    base: baseParts.join('\n').trim(),
+    reopenNotes,
+  };
+}
+
 /** สถานะที่ถือว่ายังค้าง — แสดงในหน้ารอรับแก้ไข */
 export const OPEN_TICKET_STATUSES: TicketStatus[] = [
   'RECEIVED',
+  'ASSIGNED',
   'IN_PROGRESS',
   'REOPENED',
 ];
+
+export interface TicketTimelineEvent {
+  id: string;
+  at: string | null;
+  label: string;
+  detail?: string;
+  /** สร้างจากข้อมูลที่มี / overlay ตัวอย่าง */
+  demo?: boolean;
+}
+
+/** สร้าง timeline จากใบ + รอบแก้ไข (+ overlay ถ้ามี) — สำหรับเดโม */
+export function buildTicketTimeline(input: {
+  ticket: Ticket;
+  assignedAt?: string | null;
+  assigneeName?: string;
+  receiverName?: string;
+}): TicketTimelineEvent[] {
+  const { ticket, assignedAt, assigneeName, receiverName } = input;
+  const events: TicketTimelineEvent[] = [
+    {
+      id: 'reported',
+      at: ticket.reportedAt,
+      label: 'รับเรื่อง',
+      detail: receiverName ? `ผู้รับเรื่อง: ${receiverName}` : undefined,
+    },
+  ];
+
+  if (ticket.assignedUserId || assignedAt) {
+    events.push({
+      id: 'assigned',
+      at: assignedAt ?? ticket.firstResponseAt ?? ticket.reportedAt,
+      label: 'ส่งให้ผู้รับผิดชอบ',
+      detail: assigneeName ? `ผู้รับผิดชอบ: ${assigneeName}` : undefined,
+      demo: !assignedAt && !ticket.firstResponseAt,
+    });
+  }
+
+  const resolutions = [...(ticket.resolutions ?? [])].sort((a, b) => a.round - b.round);
+  for (const r of resolutions) {
+    events.push({
+      id: `res-${r.id}`,
+      at: r.resolvedAt,
+      label: `บันทึกงานแก้ไขครั้งที่ ${r.round}`,
+      detail: r.result,
+    });
+  }
+
+  if (ticket.resolvedAt && ticket.status !== 'CLOSED') {
+    events.push({
+      id: 'resolved',
+      at: ticket.resolvedAt,
+      label: 'แก้ไขเรียบร้อย (รอปิดงาน)',
+    });
+  }
+
+  if (ticket.closedAt) {
+    events.push({
+      id: 'closed',
+      at: ticket.closedAt,
+      label: 'ปิดงาน',
+    });
+  }
+
+  return events;
+}

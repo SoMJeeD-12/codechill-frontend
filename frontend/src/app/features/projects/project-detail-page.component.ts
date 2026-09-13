@@ -80,6 +80,7 @@ import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
+import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
 import { ProjectFormDialogComponent } from './projects-page.component';
 import {
@@ -160,6 +161,7 @@ export class ProjectDetailPageComponent implements OnInit {
   /** ใบแจ้งปัญหาของโปรเจคนี้ */
   readonly projectTickets = signal<Ticket[]>([]);
   readonly ticketsLoading = signal(false);
+  readonly ticketsLoadError = signal<string | null>(null);
   readonly ticketSearch = signal('');
   readonly ticketSearchControl = this.fb.nonNullable.control('');
   /** สัญญา MA ของโปรเจคนี้ */
@@ -191,7 +193,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
   readonly warrantyColumns = ['delivery', 'period', 'daysLeft', 'maLink', 'status'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
-  readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt'];
+  readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'period', 'status'];
   readonly documentColumns = [
     'title',
@@ -288,47 +290,49 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     return items;
   });
-  /** การ์ดทวนก่อนยืนยัน — สรุป + ปุ่มทำต่อ */
-  readonly deliveryReadyCard = computed(() => {
-    const items = this.deliveryReadiness();
-    const done = items.filter((i) => i.ok).length;
-    const total = items.length;
-    const allOk = total > 0 && done === total;
+  /**
+   * แถบขั้นถัดไปในแท็บส่งมอบ — โชว์เฉพาะตอนยังมีสิ่งที่ต้องทำ
+   * (ไม่โชว์เช็คลิสต์ครบแล้ว / โปรเจคปิด — รบกวนตอนเข้ามาดู)
+   */
+  readonly deliveryNextHint = computed(() => {
     const status = this.project()?.status;
-    const missingDelivery = !items.find((i) => i.id === 'delivery')?.ok;
-
-    let title = 'ทวนก่อนดำเนินการต่อ';
-    let summary = `ครบ ${done}/${total} ข้อ`;
-    let actionLabel: string | null = null;
-    let actionKind: 'advance' | 'delivery' | null = null;
-
-    if (status === 'CLOSED') {
-      title = 'สถานะโปรเจค';
-      summary = 'โปรเจคปิดแล้ว — รายการด้านล่างเป็นประวัติ';
-    } else if (status === 'DRAFT' && this.canUpdateProject()) {
-      title = 'ทวนก่อนเริ่มงาน';
-      summary = 'โปรเจคยังเป็นร่าง ยืนยันแล้วค่อยเริ่มดำเนินการ';
-      actionLabel = 'ยืนยัน · เริ่มดำเนินการ';
-      actionKind = 'advance';
-    } else if (status === 'IN_PROGRESS') {
-      title = 'ทวนความพร้อมส่งมอบ';
-      summary = allOk
-        ? 'ครบทุกข้อแล้ว — รอออกประกันหรือปิดโปรเจคเมื่อพร้อม'
-        : `ครบ ${done}/${total} ข้อ — ตรวจรายการที่ยังค้างด้านล่าง`;
-      if (this.canRecordDelivery() && missingDelivery) {
-        actionLabel = 'บันทึกการส่งมอบ';
-        actionKind = 'delivery';
-      }
-    } else if (status === 'DELIVERED' && this.canUpdateProject()) {
-      title = 'ทวนก่อนปิดโปรเจค';
-      summary = allOk
-        ? 'ส่งมอบครบแล้ว — ยืนยันเพื่อปิดโปรเจค'
-        : `ครบ ${done}/${total} ข้อ ก่อนปิดโปรเจค`;
-      actionLabel = 'ยืนยัน · ปิดโปรเจค';
-      actionKind = 'advance';
+    if (!status || status === 'CLOSED' || status === 'CANCELLED') {
+      return null;
     }
 
-    return { items, done, total, allOk, title, summary, actionLabel, actionKind };
+    const items = this.deliveryReadiness();
+    const blockers = items.filter((i) => !i.ok).map((i) => i.label);
+
+    if (status === 'DRAFT' && this.canUpdateProject()) {
+      return {
+        title: 'โปรเจคยังเป็นร่าง',
+        detail: 'เริ่มดำเนินการก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
+        blockers: [] as string[],
+        actionLabel: 'เริ่มดำเนินการ',
+        actionKind: 'advance' as const,
+      };
+    }
+
+    if (status === 'IN_PROGRESS') {
+      if (blockers.length === 0) {
+        return null;
+      }
+      const missingDelivery = items.some((i) => i.id === 'delivery' && !i.ok);
+      return {
+        title: 'สิ่งที่ยังค้างก่อนส่งมอบครบ',
+        detail: blockers[0],
+        blockers,
+        actionLabel:
+          this.canRecordDelivery() && missingDelivery ? 'บันทึกการส่งมอบ' : null,
+        actionKind:
+          this.canRecordDelivery() && missingDelivery
+            ? ('delivery' as const)
+            : null,
+      };
+    }
+
+    // DELIVERED: ปุ่มปิดอยู่ที่หัวหน้าแล้ว — ไม่ซ้ำการ์ดทวน
+    return null;
   });
   readonly canViewDocuments = computed(() => {
     this.auth.session();
@@ -380,6 +384,10 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canCreateTicket = computed(() => {
     this.auth.session();
     return this.quickActions.canOpenTicket();
+  });
+  readonly canCloseTicket = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.close');
   });
   readonly canViewMa = computed(() => {
     this.auth.session();
@@ -445,26 +453,26 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly filteredDeliveries = computed(() => {
     const q = this.deliverySearch().trim().toLowerCase();
     const list = this.deliveries();
-    const filtered = !q
-      ? list
-      : list.filter((d) => {
-          const deliveredBy = this.userName(d.deliveredByUserId).toLowerCase();
-          const acceptedBy = this.contactName(d.acceptedByContactId).toLowerCase();
-          return (
-            String(d.id).includes(q) ||
-            `ส่งมอบ #${d.id}`.includes(q) ||
-            d.title.toLowerCase().includes(q) ||
-            (d.deliveryNo ?? '').toLowerCase().includes(q) ||
-            (d.version ?? '').toLowerCase().includes(q) ||
-            (d.description ?? '').toLowerCase().includes(q) ||
-            (d.note ?? '').toLowerCase().includes(q) ||
-            deliveredBy.includes(q) ||
-            acceptedBy.includes(q) ||
-            this.acceptanceLabels[d.acceptanceStatus].toLowerCase().includes(q)
-          );
-        });
-    // เรียงตามลำดับสร้าง (เก่า → ใหม่) ให้เวอร์ชัน 1, 2, 3 เรียงตามที่สร้าง
-    return [...filtered].sort((a, b) => a.id - b.id);
+    if (!q) {
+      // คงลำดับจาก backend (deliveredAt DESC · id รอง)
+      return list;
+    }
+    return list.filter((d) => {
+      const deliveredBy = this.userName(d.deliveredByUserId).toLowerCase();
+      const acceptedBy = this.contactName(d.acceptedByContactId).toLowerCase();
+      return (
+        String(d.id).includes(q) ||
+        `ส่งมอบ #${d.id}`.includes(q) ||
+        d.title.toLowerCase().includes(q) ||
+        (d.deliveryNo ?? '').toLowerCase().includes(q) ||
+        (d.version ?? '').toLowerCase().includes(q) ||
+        (d.description ?? '').toLowerCase().includes(q) ||
+        (d.note ?? '').toLowerCase().includes(q) ||
+        deliveredBy.includes(q) ||
+        acceptedBy.includes(q) ||
+        this.acceptanceLabels[d.acceptanceStatus].toLowerCase().includes(q)
+      );
+    });
   });
 
   readonly filteredFollowUps = computed(() => {
@@ -667,9 +675,9 @@ export class ProjectDetailPageComponent implements OnInit {
     this.changeProjectStatus(next);
   }
 
-  /** ปุ่มยืนยันบนการ์ดทวนความพร้อม */
-  onReadyCardAction(): void {
-    const kind = this.deliveryReadyCard().actionKind;
+  /** ปุ่มบนแถบขั้นถัดไปในแท็บส่งมอบ */
+  onDeliveryNextHintAction(): void {
+    const kind = this.deliveryNextHint()?.actionKind;
     if (kind === 'advance') {
       this.advanceProjectStatus();
       return;
@@ -844,23 +852,53 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  private loadProjectTickets(): void {
+  loadProjectTickets(): void {
     if (!this.canViewTickets()) {
       this.projectTickets.set([]);
+      this.ticketsLoadError.set(null);
       return;
     }
     this.ticketsLoading.set(true);
-    this.ticketsApi.list({ projectId: this.projectId, limit: 500 }).subscribe({
+    this.ticketsLoadError.set(null);
+    this.ticketsApi.listAll({ projectId: this.projectId }).subscribe({
       next: (rows) => {
         this.projectTickets.set(rows);
         this.projectTicketsPager.reset();
         this.ticketsLoading.set(false);
       },
-      error: () => {
+      error: (err: Error) => {
         this.projectTickets.set([]);
         this.projectTicketsPager.reset();
         this.ticketsLoading.set(false);
+        this.ticketsLoadError.set(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ');
       },
+    });
+  }
+
+  /** ปิดงานใบปัญหา — แทนการลบ (ใบยัง reopen ได้) */
+  closeProjectTicket(row: Ticket): void {
+    if (!this.canCloseTicket()) {
+      this.snack.open('ไม่มีสิทธิ์ปิดงานใบแจ้งปัญหา', 'ปิด', { duration: 3000 });
+      return;
+    }
+    if (row.status === 'CLOSED') {
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ปิดงานใบแจ้งปัญหา',
+      message: `ต้องการปิดงาน「${row.title}」หรือไม่?\nใบจะออกจากคิวเปิด แต่เปิดรอบใหม่ (reopen) ได้ภายหลัง`,
+      confirmLabel: 'ปิดงาน',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.ticketsApi.close(row.id).subscribe({
+        next: () => {
+          this.snack.open('ปิดงานใบแจ้งปัญหาแล้ว', 'ปิด', { duration: 2500 });
+          this.loadProjectTickets();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+      });
     });
   }
 
@@ -994,14 +1032,14 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  downloadDocument(doc: ApiProjectDocument): void {
+  openDocumentPreview(doc: ApiProjectDocument): void {
     if (!this.canViewDocuments()) {
-      this.snack.open('ไม่มีสิทธิ์ดาวน์โหลดเอกสาร', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์ดูเอกสาร', 'ปิด', { duration: 3000 });
       return;
     }
-    this.documentsApi.download(doc).subscribe({
-      next: () => undefined,
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+    this.dialog.open(DocumentPreviewDialogComponent, {
+      ...FORM_DIALOG_WIDE,
+      data: { document: doc },
     });
   }
 
@@ -1191,7 +1229,8 @@ export class ProjectDetailPageComponent implements OnInit {
             );
             this.refresh();
           },
-          error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 6000 }),
+          error: (err: Error) =>
+            this.snack.open(err.message, 'ปิด', { duration: 8000 }),
         });
     });
   }

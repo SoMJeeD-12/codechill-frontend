@@ -2,66 +2,71 @@
 
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="ticket-form" (ngSubmit)="save()">
-    <!-- ——— ใครแจ้ง ——— -->
+    <!-- 1) ใคร — ต้องรู้ก่อนทุกอย่าง -->
     <section class="block">
-      <h3 class="block-title">ปัญหาของใคร</h3>
+      <h3 class="block-title">1 · ปัญหาของใคร</h3>
+      <div class="who-grid">
+        <div class="who-grid__main">
+          <app-entity-picker
+            label="โปรเจค"
+            placeholder="พิมพ์ชื่อโปรเจคอย่างน้อย 2 ตัวอักษร"
+            [searchFn]="searchProjects"
+            [selected]="project()"
+            (selectionChange)="onProjectPicked($event)"
+          />
 
-      <app-entity-picker
-        label="โปรเจค"
-        placeholder="พิมพ์ชื่อโปรเจคอย่างน้อย 2 ตัวอักษร"
-        [searchFn]="searchProjects"
-        [selected]="project()"
-        (selectionChange)="onProjectPicked($event)"
-      />
-
-      @if (maQuota(); as quota) {
-        <div class="ma-quota" [class.is-exhausted]="quota.isExhausted">
-          <mat-icon>{{ quota.isExhausted ? 'warning' : 'handshake' }}</mat-icon>
-          <div>
-            <strong>
-              สัญญา MA รอบ {{ quota.periodStart | thaiDate: 'date' }} –
-              {{ quota.periodEnd | thaiDate: 'date' }}
-            </strong>
-            <small>ใช้ไป {{ quota.used }}/{{ quota.quota }} ครั้ง · เหลือ {{ quota.remaining }}</small>
-            @if (quota.isExhausted) {
-              <p class="ma-quota__warn">โควตาในรอบนี้หมดแล้ว — เปิดใบได้แต่ควรแจ้งลูกค้าเรื่องค่าใช้จ่าย</p>
-            }
-          </div>
+          @if (maQuota(); as quota) {
+            <div class="ma-quota" [class.is-exhausted]="quota.isExhausted">
+              <mat-icon>{{ quota.isExhausted ? 'warning' : 'handshake' }}</mat-icon>
+              <div>
+                <strong>
+                  สัญญา MA รอบ {{ quota.periodStart | thaiDate: 'date' }} –
+                  {{ quota.periodEnd | thaiDate: 'date' }}
+                </strong>
+                <small>ใช้ไป {{ quota.used }}/{{ quota.quota }} ครั้ง · เหลือ {{ quota.remaining }}</small>
+                @if (quota.isExhausted) {
+                  <p class="ma-quota__warn">โควตาในรอบนี้หมดแล้ว — เปิดใบได้แต่ควรแจ้งลูกค้าเรื่องค่าใช้จ่าย</p>
+                }
+              </div>
+            </div>
+          }
         </div>
-      }
 
-      @if (customer(); as picked) {
-        <div class="picked-customer" [class.is-auto]="customerFromProject()">
-          <mat-icon>business</mat-icon>
-          <div class="picked-customer__text">
-            <strong>{{ picked.label }}</strong>
-            @if (picked.meta) {
-              <small>{{ picked.meta }}</small>
-            }
-          </div>
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="เปลี่ยนลูกค้า"
-            (click)="clearCustomerLock()"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
+        <div class="who-grid__side">
+          @if (customer(); as picked) {
+            <div class="picked-customer" [class.is-auto]="customerFromProject()">
+              <mat-icon>business</mat-icon>
+              <div class="picked-customer__text">
+                <strong>{{ picked.label }}</strong>
+                @if (picked.meta) {
+                  <small>{{ picked.meta }}</small>
+                }
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="เปลี่ยนลูกค้า"
+                (click)="clearCustomerLock()"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          } @else {
+            <app-entity-picker
+              label="หรือเลือกลูกค้าอย่างเดียว"
+              placeholder="พิมพ์ชื่อลูกค้าอย่างน้อย 2 ตัวอักษร"
+              [searchFn]="searchCustomers"
+              (selectionChange)="onCustomerPicked($event)"
+            />
+            <p class="field-note">เลือกโปรเจคแล้วระบบจะเติมลูกค้าให้เอง</p>
+          }
         </div>
-      } @else {
-        <app-entity-picker
-          label="หรือเลือกลูกค้าอย่างเดียว"
-          placeholder="พิมพ์ชื่อลูกค้าอย่างน้อย 2 ตัวอักษร"
-          [searchFn]="searchCustomers"
-          (selectionChange)="onCustomerPicked($event)"
-        />
-        <p class="field-note">เลือกโปรเจคแล้วระบบจะเติมลูกค้าให้เอง</p>
-      }
+      </div>
     </section>
 
-    <!-- ——— ปัญหาคืออะไร ——— -->
+    <!-- 2) ปัญหาอะไร — หัวใจของใบ -->
     <section class="block">
-      <h3 class="block-title">ปัญหาคืออะไร</h3>
+      <h3 class="block-title">2 · ปัญหาคืออะไร</h3>
 
       <mat-form-field appearance="outline" class="full">
         <mat-label>หัวข้อ</mat-label>
@@ -71,11 +76,11 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full">
+      <mat-form-field appearance="outline" class="full description-field">
         <mat-label>รายละเอียด</mat-label>
         <textarea
           matInput
-          rows="4"
+          rows="7"
           formControlName="description"
           placeholder="อาการที่ลูกค้าเจอ · เกิดตอนไหน · กระทบอะไรบ้าง"
         ></textarea>
@@ -83,18 +88,13 @@
           <mat-error>กรอกรายละเอียด</mat-error>
         }
       </mat-form-field>
+    </section>
 
-      <div class="row">
-        <mat-form-field appearance="outline">
-          <mat-label>ช่องทางที่แจ้ง</mat-label>
-          <mat-select formControlName="reportedChannel">
-            @for (ch of channels; track ch) {
-              <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
+    <!-- 3) ความเร่งด่วน + คิดเงิน — ตัดสินใจคิวและค่าใช้จ่าย -->
+    <section class="block block--decide">
+      <h3 class="block-title">3 · ความเร่งด่วนและการคิดค่าใช้จ่าย</h3>
+      <div class="row row--2">
+        <mat-form-field appearance="outline" class="priority-field">
           <mat-label>ความเร่งด่วน</mat-label>
           <mat-select formControlName="priority">
             @for (p of priorities; track p) {
@@ -105,69 +105,85 @@
               </mat-option>
             }
           </mat-select>
+          <mat-hint>ใช้จัดลำดับคิว「รอรับการแก้ไข」</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>คิดค่าใช้จ่าย</mat-label>
+          <mat-select formControlName="billingType">
+            @for (b of availableBillingTypes(); track b) {
+              <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+            }
+          </mat-select>
+          @if (billingHint(); as hint) {
+            <mat-hint>{{ hint }}</mat-hint>
+          }
+          @if (form.controls.billingType.touched && form.controls.billingType.invalid) {
+            <mat-error>เลือกประเภทการคิดค่าใช้จ่าย</mat-error>
+          }
         </mat-form-field>
       </div>
-
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>คิดค่าใช้จ่าย</mat-label>
-        <mat-select formControlName="billingType">
-          @for (b of availableBillingTypes(); track b) {
-            <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
-          }
-        </mat-select>
-        @if (billingHint(); as hint) {
-          <mat-hint>{{ hint }}</mat-hint>
-        }
-        @if (form.controls.billingType.touched && form.controls.billingType.invalid) {
-          <mat-error>เลือกประเภทการคิดค่าใช้จ่าย</mat-error>
-        }
-      </mat-form-field>
     </section>
 
-    <!-- ——— ที่เหลือพับไว้ ——— -->
-    <button type="button" class="advanced-toggle" (click)="toggleAdvanced()">
-      <mat-icon>{{ showAdvanced() ? 'expand_less' : 'expand_more' }}</mat-icon>
-      ตัวเลือกเพิ่มเติม (ไม่กรอกก็ได้)
-    </button>
+    <!-- 4) รายละเอียดรอง -->
+    <section class="block block--secondary">
+      <h3 class="block-title">4 · รายละเอียดเพิ่มเติม</h3>
+      <div class="row row--4">
+        <mat-form-field appearance="outline">
+          <mat-label>ช่องทางที่แจ้ง</mat-label>
+          <mat-select formControlName="reportedChannel">
+            @for (ch of channels; track ch) {
+              <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
 
-    @if (showAdvanced()) {
-      <section class="block block--advanced">
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>วันที่รับแจ้ง</mat-label>
-            <input
-              matInput
-              [matDatepicker]="reportPicker"
-              formControlName="reportedDate"
-              readonly
-              (click)="reportPicker.open()"
-            />
-            <mat-datepicker-toggle matIconSuffix [for]="reportPicker" />
-            <mat-datepicker #reportPicker />
-          </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>หมวดหมู่ (ตัวอย่าง)</mat-label>
+          <mat-select formControlName="category">
+            <mat-option [value]="null">ไม่ระบุ</mat-option>
+            @for (c of categories; track c) {
+              <mat-option [value]="c">{{ categoryLabels[c] }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>ยังไม่ส่งขึ้น API</mat-hint>
+        </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>เวลารับแจ้ง</mat-label>
-            <input matInput appThaiTimeInput formControlName="reportedTime" />
-            <span matTextSuffix>น.</span>
-          </mat-form-field>
-        </div>
-      </section>
-    }
+        <mat-form-field appearance="outline">
+          <mat-label>วันที่รับแจ้ง</mat-label>
+          <input
+            matInput
+            [matDatepicker]="reportPicker"
+            formControlName="reportedDate"
+            readonly
+            (click)="reportPicker.open()"
+          />
+          <mat-datepicker-toggle matIconSuffix [for]="reportPicker" />
+          <mat-datepicker #reportPicker />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>เวลารับแจ้ง</mat-label>
+          <input matInput appThaiTimeInput formControlName="reportedTime" />
+          <span matTextSuffix>น.</span>
+        </mat-form-field>
+      </div>
+    </section>
 
     @if (!isEdit) {
-      <p class="assign-note">
-        <mat-icon>info</mat-icon>
-        รับเรื่องอย่างเดียวพอ — หัวหน้าจะมอบหมายผู้รับผิดชอบให้ทีหลัง
-      </p>
-      <p class="recurring-note">
-        <mat-icon>replay</mat-icon>
-        <span>
-          ถ้าเป็น<strong>ปัญหาเดิมที่กลับมา</strong> อย่าเปิดใบใหม่ —
-          ปิดหน้านี้แล้วค้นใบเดิม (ค้นด้วยเลขใบ หัวข้อ หรือชื่อลูกค้า)
-          จากนั้นกดปุ่ม「ปัญหาเดิมกลับมา」ในใบนั้นเพื่อเปิดรอบใหม่
-        </span>
-      </p>
+      <div class="form-notes">
+        <p class="assign-note">
+          <mat-icon>info</mat-icon>
+          รับเรื่องอย่างเดียวพอ — หัวหน้าจะมอบหมายผู้รับผิดชอบให้ทีหลัง
+        </p>
+        <p class="recurring-note">
+          <mat-icon>replay</mat-icon>
+          <span>
+            ถ้าเป็น<strong>ปัญหาเดิมที่กลับมา</strong> อย่าเปิดใบใหม่ —
+            หาใบเดิมที่<strong>ปิดงานแล้ว</strong> แล้วกด「ปัญหาเดิมกลับมา」เพื่อเปิดงานครั้งใหม่
+          </span>
+        </p>
+      </div>
     }
 
     @if (error(); as e) {

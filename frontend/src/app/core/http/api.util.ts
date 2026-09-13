@@ -1,4 +1,9 @@
 import { HttpParams } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
+
+/** เพดาน limit ของ backend ทุก endpoint รายการ */
+export const API_LIST_MAX_LIMIT = 100;
 
 export interface Paginated<T> {
   items: T[];
@@ -30,6 +35,28 @@ export function asPage<T>(
   }
   const items = Array.isArray(body.items) ? body.items : [];
   return { items, total: typeof body.total === 'number' ? body.total : items.length };
+}
+
+/**
+ * ดึงรายการครบทุกหน้า — ยิงทีละไม่เกิน API_LIST_MAX_LIMIT
+ * หยุดเมื่อ items รวม ≥ total หรือหน้าล่าสุดว่าง/สั้นกว่า limit
+ */
+export function fetchAllPages<T>(
+  fetchPage: (page: number, limit: number) => Observable<{ items: T[]; total: number }>,
+  limit = API_LIST_MAX_LIMIT
+): Observable<T[]> {
+  const pageSize = Math.min(Math.max(1, limit), API_LIST_MAX_LIMIT);
+  const load = (page: number, acc: T[]): Observable<T[]> =>
+    fetchPage(page, pageSize).pipe(
+      switchMap(({ items, total }) => {
+        const next = acc.concat(items);
+        if (items.length === 0 || next.length >= total || items.length < pageSize) {
+          return of(next);
+        }
+        return load(page + 1, next);
+      })
+    );
+  return load(1, []);
 }
 
 /** สร้าง query string โดยตัด null/undefined/'' ออก */

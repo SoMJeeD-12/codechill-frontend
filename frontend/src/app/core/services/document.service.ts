@@ -13,7 +13,10 @@ import {
   ProjectDocument,
 } from '../models/document.model';
 import { buildFilePreview } from '../utils/file-preview.util';
-import { downloadAuthorizedBlob } from '../../shared/utils/download-blob';
+import {
+  downloadAuthorizedBlob,
+  fetchAuthorizedBlob,
+} from '../../shared/utils/download-blob';
 import { FileService } from './file.service';
 
 export { buildFilePreview } from '../utils/file-preview.util';
@@ -155,6 +158,17 @@ export class DocumentService {
     return this.http
       .delete<void>(`${environment.apiBaseUrl}/documents/${id}`)
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  /** ดึงไฟล์เป็น blob สำหรับดูตัวอย่าง / พิมพ์ (ยังไม่เซฟลงเครื่อง) */
+  fetchBlob(
+    doc: ApiProjectDocument
+  ): Observable<{ blob: Blob; fileName: string }> {
+    return fetchAuthorizedBlob(
+      this.http,
+      doc.downloadUrl,
+      doc.fileName || 'download'
+    );
   }
 
   /** ดาวน์โหลดผ่าน blob + Authorization (interceptor) — ใช้ตัวช่วยกลาง */

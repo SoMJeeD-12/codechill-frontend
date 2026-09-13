@@ -29,6 +29,11 @@ import { CustomerService } from '../../core/services/customer.service';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
+  TICKET_CATEGORY_DEMO_LABELS,
+  TicketCategoryDemo,
+  TicketDemoOverlayService,
+} from '../../core/services/ticket-demo-overlay.service';
+import {
   TicketCreateInput,
   TicketService,
   TicketUpdateInput,
@@ -106,6 +111,7 @@ export class TicketFormDialogComponent {
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly maApi = inject(MaService);
   private readonly auth = inject(AuthService);
+  private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly snack = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly ref = inject(MatDialogRef<TicketFormDialogComponent, boolean>);
@@ -120,11 +126,13 @@ export class TicketFormDialogComponent {
   readonly channels = Object.keys(REPORTED_CHANNEL_LABELS) as ReportedChannel[];
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
-  readonly priorities = Object.keys(TICKET_PRIORITY_LABELS) as TicketPriority[];
+  /** เรียงจากเร่งด่วนมาก → ต่ำ ตามความสำคัญตอนเลือก */
+  readonly priorities: TicketPriority[] = ['URGENT', 'HIGH', 'NORMAL', 'LOW'];
+  readonly categoryLabels = TICKET_CATEGORY_DEMO_LABELS;
+  readonly categories = Object.keys(TICKET_CATEGORY_DEMO_LABELS) as TicketCategoryDemo[];
 
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly showAdvanced = signal(false);
 
   /** ลูกค้า/โปรเจคที่เลือกอยู่ — โปรเจคเป็นตัวเติมลูกค้าให้ */
   readonly customer = signal<PickerOption | null>(null);
@@ -166,6 +174,12 @@ export class TicketFormDialogComponent {
     description: [this.ticket?.description ?? '', Validators.required],
     priority: [(this.ticket?.priority ?? 'NORMAL') as TicketPriority],
     reportedChannel: [(this.ticket?.reportedChannel ?? 'PHONE') as ReportedChannel],
+    /** ตัวอย่าง FE เท่านั้น — ไม่ส่งขึ้น API */
+    category: [
+      (this.ticket
+        ? (this.demoOverlay.snapshot(this.ticket.id).category ?? null)
+        : null) as TicketCategoryDemo | null,
+    ],
     billingType: [
       (this.ticket?.billingType ?? null) as BillingType | null,
       Validators.required,
@@ -192,9 +206,6 @@ export class TicketFormDialogComponent {
     if (presetCustomer) {
       this.customer.set(presetCustomer);
       this.customerFromProject.set(!!presetProject);
-    }
-    if (this.isEdit) {
-      this.showAdvanced.set(true);
     }
 
     this.form.controls.billingType.valueChanges
@@ -273,10 +284,6 @@ export class TicketFormDialogComponent {
     this.customerFromProject.set(false);
     this.project.set(null);
     this.loadBillingEligibility(null, { preserveCurrent: false });
-  }
-
-  toggleAdvanced(): void {
-    this.showAdvanced.update((v) => !v);
   }
 
   /* ——— ประเภทการคิดค่าใช้จ่าย ——— */
@@ -403,6 +410,10 @@ export class TicketFormDialogComponent {
       };
       this.ticketsApi.update(this.ticket.id, update).subscribe({
         next: () => {
+          this.demoOverlay.setCategory(
+            this.ticket!.id,
+            (raw.category as TicketCategoryDemo | null) ?? null
+          );
           this.saving.set(false);
           this.snack.open('บันทึกการแก้ไขแล้ว', 'ปิด', { duration: 2800 });
           this.ref.close(true);
@@ -429,7 +440,11 @@ export class TicketFormDialogComponent {
     };
 
     this.ticketsApi.create(payload).subscribe({
-      next: () => {
+      next: (created) => {
+        const cat = (raw.category as TicketCategoryDemo | null) ?? null;
+        if (cat) {
+          this.demoOverlay.setCategory(created.id, cat);
+        }
         this.saving.set(false);
         this.snack.open('เปิดใบแจ้งปัญหาแล้ว', 'ปิด', { duration: 2800 });
         this.ref.close(true);

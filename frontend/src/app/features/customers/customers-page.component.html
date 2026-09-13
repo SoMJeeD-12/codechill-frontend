@@ -84,39 +84,40 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
-            <button mat-button type="button" color="primary" (click)="openDetail(row)">
-              รายละเอียด
-            </button>
-            @if (!is360Mode && (canUpdate() || canDelete())) {
-              <button
-                mat-stroked-button
-                type="button"
-                [matMenuTriggerFor]="manageMenu"
-                aria-label="จัดการลูกค้า"
-              >
-                จัดการ
-                <mat-icon iconPositionEnd>expand_more</mat-icon>
-              </button>
-              <mat-menu #manageMenu="matMenu">
-                @if (canUpdate()) {
-                  <button mat-menu-item type="button" (click)="openEdit(row)">
-                    <mat-icon>edit</mat-icon>
-                    <span>แก้ไข</span>
-                  </button>
-                }
-                @if (canDelete()) {
-                  <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                    <mat-icon>delete</mat-icon>
-                    <span>ลบ</span>
-                  </button>
-                }
-              </mat-menu>
-            }
             @if (is360Mode) {
-              <button mat-stroked-button type="button" (click)="openDetail(row)">
+              <button mat-stroked-button type="button" color="primary" (click)="openDetail(row)">
                 <mat-icon>travel_explore</mat-icon>
                 เปิดมุมมอง 360°
               </button>
+            } @else {
+              <button mat-button type="button" color="primary" (click)="openDetail(row)">
+                รายละเอียด
+              </button>
+              @if (canUpdate() || canDelete()) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [matMenuTriggerFor]="manageMenu"
+                  aria-label="จัดการลูกค้า"
+                >
+                  จัดการ
+                  <mat-icon iconPositionEnd>expand_more</mat-icon>
+                </button>
+                <mat-menu #manageMenu="matMenu">
+                  @if (canUpdate()) {
+                    <button mat-menu-item type="button" (click)="openEdit(row)">
+                      <mat-icon>edit</mat-icon>
+                      <span>แก้ไข</span>
+                    </button>
+                  }
+                  @if (canDelete()) {
+                    <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                      <mat-icon>delete</mat-icon>
+                      <span>ลบ</span>
+                    </button>
+                  }
+                </mat-menu>
+              }
             }
           </td>
         </ng-container>

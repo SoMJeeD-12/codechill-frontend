@@ -37,6 +37,15 @@
   }
 }
 
+.status-bar[data-status='ASSIGNED'] {
+  border-color: rgba(124, 58, 237, 0.35);
+  background: #f5f3ff;
+
+  .status-bar__now {
+    color: #6d28d9;
+  }
+}
+
 .status-bar[data-status='IN_PROGRESS'],
 .status-bar[data-status='ACTIVE'],
 .status-bar[data-status='IN_DEV'] {

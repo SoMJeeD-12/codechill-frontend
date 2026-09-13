@@ -11,22 +11,25 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { debounceTime } from 'rxjs/operators';
 import {
+  OPEN_TICKET_STATUSES,
   TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
   Ticket,
   TicketPriority,
+  TicketStatus,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
+import { TicketDemoOverlayService } from '../../core/services/ticket-demo-overlay.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { TicketFormDialogComponent } from './ticket-form-dialog.component';
 
 @Component({
@@ -53,6 +56,7 @@ export class TicketsPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
+  private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly quickActions = inject(QuickActionsService);
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
@@ -78,16 +82,20 @@ export class TicketsPageComponent implements OnInit {
     );
   });
   readonly canDelete = computed(() => {
-    // BE ยังไม่มี DELETE /api/tickets/:id ใน Swagger — ซ่อนกันกดแล้ว Cannot DELETE
+    // BE ยังไม่มี DELETE /api/tickets/:id — ซ่อน · ใช้「ปิดงาน」แทน
     return false;
+  });
+  readonly canClose = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.close');
   });
 
   readonly columns = [
     'ticketNo',
-    'title',
-    'customer',
-    'status',
     'priority',
+    'title',
+    'status',
+    'customer',
     'reportedAt',
     'actions',
   ];
@@ -150,16 +158,17 @@ export class TicketsPageComponent implements OnInit {
   reload(): void {
     this.loading.set(true);
     const q = this.search().trim();
-    const params =
-      q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
-    this.ticketsApi.list(params).subscribe({
+    const params = q.length >= 2 ? { search: q } : {};
+    this.ticketsApi.listAll(params).subscribe({
       next: (list) => {
         this.tickets.set(list);
         this.loading.set(false);
       },
       error: (err: Error) => {
         this.loading.set(false);
-        this.snack.open(err.message, 'ปิด', { duration: 4000 });
+        this.snack.open(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ', 'ปิด', {
+          duration: 4000,
+        });
       },
     });
   }
@@ -169,12 +178,20 @@ export class TicketsPageComponent implements OnInit {
     this.pager.reset();
   }
 
-  /** ใช้ flag จาก API ก่อนเสมอ — ห้ามคำนวณเองจากวันที่ */
+  /** ใช้ flag จาก API ก่อนเสมอ — รวมสถานะ ASSIGNED ตัวอย่างจาก overlay */
   private isOpen(ticket: Ticket): boolean {
+    const shown = this.displayStatus(ticket);
     return (
       ticket.isPending ||
-      ['RECEIVED', 'IN_PROGRESS', 'REOPENED'].includes(ticket.status)
+      OPEN_TICKET_STATUSES.includes(shown) ||
+      ['RECEIVED', 'IN_PROGRESS', 'REOPENED', 'ASSIGNED'].includes(ticket.status)
     );
+  }
+
+  /** สถานะที่โชว์ในตาราง (รวมขั้น ASSIGNED ตัวอย่าง) */
+  displayStatus(ticket: Ticket): TicketStatus {
+    this.demoOverlay.state();
+    return this.demoOverlay.effectiveStatus(ticket);
   }
 
   customerName(row: Ticket): string {
@@ -193,8 +210,8 @@ export class TicketsPageComponent implements OnInit {
     return this.projectsApi.getProject(row.projectId)?.name ?? null;
   }
 
-  statusLabel(status: Ticket['status']): string {
-    return this.statusLabels[status] ?? status;
+  statusLabel(status: TicketStatus | Ticket['status']): string {
+    return this.statusLabels[status as TicketStatus] ?? status;
   }
 
   priorityLabel(priority: TicketPriority): string {
@@ -208,7 +225,7 @@ export class TicketsPageComponent implements OnInit {
     }
     this.dialog
       .open(TicketFormDialogComponent, {
-        ...FORM_DIALOG,
+        ...FORM_DIALOG_WIDE,
         data: { ticket },
       })
       .afterClosed()
@@ -234,6 +251,28 @@ export class TicketsPageComponent implements OnInit {
           this.reload();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+      });
+    });
+  }
+
+  closeTicket(row: Ticket): void {
+    if (!this.canClose() || row.status === 'CLOSED') {
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ปิดงานใบแจ้งปัญหา',
+      message: `ต้องการปิดงาน「${row.title}」หรือไม่?\nใบจะออกจากคิวเปิด แต่เปิดรอบใหม่ได้ภายหลัง`,
+      confirmLabel: 'ปิดงาน',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.ticketsApi.close(row.id).subscribe({
+        next: () => {
+          this.snack.open('ปิดงานแล้ว', 'ปิด', { duration: 2500 });
+          this.reload();
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
       });
     });
   }

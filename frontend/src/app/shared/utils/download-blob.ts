@@ -89,22 +89,33 @@ export function blobHttpError(err: unknown): Observable<never> {
   return throwError(() => new Error(apiErrorMessage(err)));
 }
 
+/** ยิง GET blob (ไม่เซฟ) — แนบ Authorization ผ่าน interceptor อัตโนมัติ */
+export function fetchAuthorizedBlob(
+  http: HttpClient,
+  downloadUrl: string,
+  fileName: string
+): Observable<{ blob: Blob; fileName: string }> {
+  const url = resolveApiFileUrl(downloadUrl);
+  return http.get(url, { responseType: 'blob', observe: 'response' }).pipe(
+    map((res: HttpResponse<Blob>) => ({
+      blob: res.body as Blob,
+      fileName: fileNameFromContentDisposition(
+        res.headers.get('Content-Disposition'),
+        fileName || 'download'
+      ),
+    })),
+    catchError((err) => blobHttpError(err))
+  );
+}
+
 /** ยิง GET blob แล้วเซฟไฟล์ — แนบ Authorization ผ่าน interceptor อัตโนมัติ */
 export function downloadAuthorizedBlob(
   http: HttpClient,
   downloadUrl: string,
   fileName: string
 ): Observable<void> {
-  const url = resolveApiFileUrl(downloadUrl);
-  return http.get(url, { responseType: 'blob', observe: 'response' }).pipe(
-    tap((res: HttpResponse<Blob>) => {
-      const name = fileNameFromContentDisposition(
-        res.headers.get('Content-Disposition'),
-        fileName || 'download'
-      );
-      triggerBlobDownload(res.body as Blob, name);
-    }),
-    map(() => void 0),
-    catchError((err) => blobHttpError(err))
+  return fetchAuthorizedBlob(http, downloadUrl, fileName).pipe(
+    tap(({ blob, fileName: name }) => triggerBlobDownload(blob, name)),
+    map(() => void 0)
   );
 }
