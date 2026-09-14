@@ -381,6 +381,23 @@ export class CustomerDetailPageComponent implements OnInit {
     return (Number(lv.excludedCancelledValue) || 0) > 0 || (lv.excludedCancelledCount ?? 0) > 0;
   }
 
+  /** ข้อความเต็มตอน hover การ์ดมูลค่า (disclaimer / ยกเลิก / ซ้อน) */
+  lifetimeTooltip(lv: CustomerLifetimeValue): string {
+    const parts: string[] = [];
+    if (lv.disclaimer?.trim()) {
+      parts.push(lv.disclaimer.trim());
+    }
+    if (this.hasExcludedLifetime(lv)) {
+      const count =
+        lv.excludedCancelledCount > 0 ? ` (${lv.excludedCancelledCount} รายการ)` : '';
+      parts.push(`ไม่นับสัญญาที่ยกเลิก ${lv.excludedCancelledValue}${count}`);
+    }
+    if (lv.overlappingContractCount > 0) {
+      parts.push(`สัญญาซ้อน ${lv.overlappingContractCount} — ยอดอาจนับซ้ำ`);
+    }
+    return parts.join('\n');
+  }
+
   oneTimeCompletenessLabel(lv: CustomerLifetimeValue): string {
     return formatCompleteness(lv.oneTimeCompleteness);
   }

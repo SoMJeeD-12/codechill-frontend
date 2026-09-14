@@ -145,6 +145,8 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly deliveries = signal<Delivery[]>([]);
   readonly deliverySearch = signal('');
   readonly deliverySearchControl = this.fb.nonNullable.control('');
+  readonly warrantySearchControl = this.fb.nonNullable.control('');
+  readonly warrantySearch = signal('');
   readonly documents = signal<ApiProjectDocument[]>([]);
   readonly documentsTotal = signal(0);
   readonly documentsLoading = signal(false);
@@ -517,8 +519,27 @@ export class ProjectDetailPageComponent implements OnInit {
     );
   });
 
+  readonly filteredWarranties = computed(() => {
+    const q = this.warrantySearch().trim().toLowerCase();
+    const list = this.warranties();
+    if (!q) {
+      return list;
+    }
+    return list.filter((w) => {
+      return (
+        (w.code ?? '').toLowerCase().includes(q) ||
+        (w.delivery?.title ?? '').toLowerCase().includes(q) ||
+        this.warrantyStatusLabel(w.status).toLowerCase().includes(q) ||
+        this.warrantyMaLinkLabel(w).toLowerCase().includes(q) ||
+        (w.startDate ?? '').toLowerCase().includes(q) ||
+        (w.endDate ?? '').toLowerCase().includes(q)
+      );
+    });
+  });
+
   readonly tasksPager = createClientPager(this.filteredTasks);
   readonly deliveriesPager = createClientPager(this.filteredDeliveries);
+  readonly warrantiesPager = createClientPager(this.filteredWarranties);
   readonly followUpsPager = createClientPager(this.filteredFollowUps);
   readonly projectTicketsPager = createClientPager(this.filteredProjectTickets);
 
@@ -548,6 +569,10 @@ export class ProjectDetailPageComponent implements OnInit {
     });
     this.taskSearchControl.valueChanges.subscribe((v) => this.taskSearch.set(v));
     this.deliverySearchControl.valueChanges.subscribe((v) => this.deliverySearch.set(v));
+    this.warrantySearchControl.valueChanges.subscribe((v) => {
+      this.warrantySearch.set(v);
+      this.warrantiesPager.reset();
+    });
     this.followUpSearchControl.valueChanges.subscribe((v) => this.followUpSearch.set(v));
     this.ticketSearchControl.valueChanges.subscribe((v) => {
       this.ticketSearch.set(v);
@@ -1218,11 +1243,16 @@ export class ProjectDetailPageComponent implements OnInit {
       this.snack.open('ไม่มีสิทธิ์ตรวจรับการส่งมอบ', 'ปิด', { duration: 3000 });
       return;
     }
+    const project = this.project();
+    if (!project) {
+      return;
+    }
     const ref = this.dialog.open(DeliveryAcceptDialogComponent, {
       ...FORM_DIALOG_COMPACT,
       data: {
         delivery,
         contacts: this.contacts(),
+        projectId: project.id,
       },
     });
     ref.afterClosed().subscribe((result: DeliveryAcceptResult | undefined) => {
@@ -1466,6 +1496,7 @@ export class DeliveryFormDialogComponent {
 export interface DeliveryAcceptDialogData {
   delivery: Delivery;
   contacts: Contact[];
+  projectId: number;
 }
 
 export interface DeliveryAcceptResult {
@@ -1473,6 +1504,8 @@ export interface DeliveryAcceptResult {
   evidenceNote: string | null;
   isFinal: boolean;
 }
+
+type EvidenceMode = 'text' | 'file';
 
 @Component({
   selector: 'app-delivery-accept-dialog',
@@ -1485,6 +1518,7 @@ export interface DeliveryAcceptResult {
     MatSelectModule,
     MatButtonModule,
     MatCheckboxModule,
+    MatIconModule,
   ],
   template: `
     <h2 mat-dialog-title>ยอมรับการส่งมอบ</h2>
@@ -1504,16 +1538,58 @@ export interface DeliveryAcceptResult {
             }
           </mat-select>
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>หลักฐานการยอมรับ</mat-label>
-          <textarea
-            matInput
-            rows="3"
-            formControlName="evidenceNote"
-            placeholder='เช่น ข้อความจากลูกค้า "โอเคค่ะ"'
-          ></textarea>
-          <mat-hint>แนบไฟล์ยังไม่พร้อม — ใส่ข้อความหลักฐานชั่วคราวได้</mat-hint>
-        </mat-form-field>
+
+        <div class="evidence-block">
+          <p class="evidence-label">หลักฐานการยอมรับ</p>
+          <div class="evidence-modes" role="group" aria-label="รูปแบบหลักฐาน">
+            <button
+              type="button"
+              class="evidence-mode"
+              [class.is-active]="evidenceMode() === 'text'"
+              (click)="setEvidenceMode('text')"
+            >
+              <mat-icon>edit_note</mat-icon>
+              พิมพ์ข้อความ
+            </button>
+            <button
+              type="button"
+              class="evidence-mode"
+              [class.is-active]="evidenceMode() === 'file'"
+              (click)="setEvidenceMode('file')"
+            >
+              <mat-icon>attach_file</mat-icon>
+              แนบไฟล์
+            </button>
+          </div>
+
+          @if (evidenceMode() === 'text') {
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>ข้อความหลักฐาน</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                formControlName="evidenceNote"
+                placeholder='เช่น ข้อความจากลูกค้า "โอเคค่ะ"'
+              ></textarea>
+              <mat-hint>ใส่ข้อความ / ลิงก์ยืนยันจากลูกค้า</mat-hint>
+            </mat-form-field>
+          } @else {
+            <label class="file-pick">
+              <span>เลือกไฟล์หลักฐาน (ไม่เกิน 20 MB)</span>
+              <input type="file" [accept]="accept" (change)="onFilePicked($event)" />
+            </label>
+            @if (selectedFileName()) {
+              <p class="file-name">
+                <mat-icon>description</mat-icon>
+                {{ selectedFileName() }}
+              </p>
+            } @else {
+              <p class="file-empty">ยังไม่ได้เลือกไฟล์</p>
+            }
+            <p class="file-hint">ไฟล์จะถูกเก็บในเอกสารของโปรเจคนี้</p>
+          }
+        </div>
+
         <label class="final-check">
           <mat-checkbox formControlName="isFinal"></mat-checkbox>
           <span>
@@ -1521,17 +1597,22 @@ export interface DeliveryAcceptResult {
             <span class="final-hint">ติ๊กเฉพาะเมื่อปิดงานจริง — เฟส/เวอร์ชันทดลองไม่ต้องติ๊ก</span>
           </span>
         </label>
+
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button mat-button type="button" mat-dialog-close [disabled]="saving()">ยกเลิก</button>
       <button
         mat-flat-button
         color="primary"
         type="submit"
         form="delivery-accept-form"
+        [disabled]="saving()"
       >
-        ยืนยันยอมรับ
+        {{ saving() ? 'กำลังบันทึก…' : 'ยืนยันยอมรับ' }}
       </button>
     </mat-dialog-actions>
   `,
@@ -1548,6 +1629,80 @@ export interface DeliveryAcceptResult {
     }
     .full {
       width: 100%;
+    }
+    .evidence-block {
+      display: grid;
+      gap: 0.55rem;
+      margin: 0.15rem 0 0.35rem;
+    }
+    .evidence-label {
+      margin: 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .evidence-modes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .evidence-mode {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      min-height: 2.5rem;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid #cfe0db;
+      border-radius: 10px;
+      background: #fff;
+      color: #5b6762;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .evidence-mode mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+    .evidence-mode.is-active {
+      border-color: #0f766e;
+      background: #ecfdf5;
+      color: #0f766e;
+      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+    }
+    .file-pick {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.88rem;
+      color: #334155;
+    }
+    .file-name {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0;
+      font-size: 0.88rem;
+      color: #0f766e;
+      word-break: break-all;
+    }
+    .file-name mat-icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+    .file-empty {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+    .file-hint {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #64748b;
     }
     .final-check {
       display: flex;
@@ -1566,12 +1721,25 @@ export interface DeliveryAcceptResult {
       color: #64748b;
       font-weight: 400;
     }
+    .error {
+      margin: 0.25rem 0 0;
+      color: #b91c1c;
+      font-size: 0.88rem;
+    }
   `,
 })
 export class DeliveryAcceptDialogComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly docsApi = inject(DocumentService);
   private readonly ref = inject(MatDialogRef<DeliveryAcceptDialogComponent, DeliveryAcceptResult>);
   readonly data = inject<DeliveryAcceptDialogData>(MAT_DIALOG_DATA);
+
+  readonly accept = DOCUMENT_ACCEPT;
+  readonly evidenceMode = signal<EvidenceMode>('text');
+  readonly selectedFileName = signal('');
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+  private evidenceFile: File | null = null;
 
   readonly form = this.fb.group({
     acceptedByContactId: [
@@ -1582,17 +1750,77 @@ export class DeliveryAcceptDialogComponent {
     isFinal: [!!this.data.delivery.isFinal],
   });
 
+  setEvidenceMode(mode: EvidenceMode): void {
+    this.evidenceMode.set(mode);
+    this.error.set(null);
+  }
+
+  onFilePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.evidenceFile = file;
+    this.selectedFileName.set(file?.name ?? '');
+    this.error.set(null);
+    if (file && file.size > DOCUMENT_MAX_BYTES) {
+      this.evidenceFile = null;
+      this.selectedFileName.set('');
+      this.error.set('ไฟล์ใหญ่เกิน 20 MB');
+      input.value = '';
+    }
+  }
+
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
     const raw = this.form.getRawValue();
-    this.ref.close({
-      acceptedByContactId: Number(raw.acceptedByContactId),
-      evidenceNote: (raw.evidenceNote ?? '').trim() || null,
-      isFinal: !!raw.isFinal,
-    });
+    const acceptedByContactId = Number(raw.acceptedByContactId);
+    const isFinal = !!raw.isFinal;
+
+    if (this.evidenceMode() === 'text') {
+      this.ref.close({
+        acceptedByContactId,
+        evidenceNote: (raw.evidenceNote ?? '').trim() || null,
+        isFinal,
+      });
+      return;
+    }
+
+    if (!this.evidenceFile) {
+      this.error.set('กรุณาเลือกไฟล์หลักฐาน หรือสลับไปพิมพ์ข้อความ');
+      return;
+    }
+    if (this.evidenceFile.size > DOCUMENT_MAX_BYTES) {
+      this.error.set('ไฟล์ใหญ่เกิน 20 MB');
+      return;
+    }
+
+    const delivery = this.data.delivery;
+    const title = `หลักฐานยอมรับ · ${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
+    this.saving.set(true);
+    this.error.set(null);
+    this.docsApi
+      .uploadToProject(this.data.projectId, {
+        file: this.evidenceFile,
+        title,
+        note: `อ้างอิงการส่งมอบ #${delivery.id}`,
+      })
+      .subscribe({
+        next: (doc) => {
+          this.saving.set(false);
+          const fileLabel = doc.fileName || this.evidenceFile?.name || 'ไฟล์';
+          this.ref.close({
+            acceptedByContactId,
+            evidenceNote: `แนบไฟล์: ${fileLabel}`,
+            isFinal,
+          });
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message || 'อัปโหลดไฟล์ไม่สำเร็จ');
+        },
+      });
   }
 }
 

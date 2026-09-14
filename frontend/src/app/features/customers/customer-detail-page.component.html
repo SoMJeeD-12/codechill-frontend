@@ -77,28 +77,17 @@
           </span>
         </mat-card>
         @if (lifetimeValue(); as lv) {
-          <mat-card class="lifetime-card">
-            <strong>มูลค่าตามสัญญาตลอดอายุ</strong>
+          <mat-card
+            class="app-meta-card lifetime-meta"
+            [attr.title]="lifetimeTooltip(lv)"
+          >
+            <strong>มูลค่าตามสัญญา</strong>
             <span>{{ lv.totalContractValue | baht }}</span>
-            @if (lv.disclaimer) {
-              <small class="muted">{{ lv.disclaimer }}</small>
-            }
-            @if (hasExcludedLifetime(lv)) {
-              <small class="muted">
-                ไม่นับสัญญาที่ยกเลิก {{ lv.excludedCancelledValue | baht }}
-                @if (lv.excludedCancelledCount > 0) {
-                  ({{ lv.excludedCancelledCount }} รายการ)
-                }
-              </small>
+            @if (oneTimeCompletenessLabel(lv); as oneTimeLabel) {
+              <small class="lifetime-meta__note">{{ oneTimeLabel }}</small>
             }
             @if (lv.overlappingContractCount > 0) {
-              <small class="overlap-warn">
-                <mat-icon>warning</mat-icon>
-                สัญญาซ้อน {{ lv.overlappingContractCount }} — ยอดอาจนับซ้ำ
-              </small>
-            }
-            @if (oneTimeCompletenessLabel(lv); as oneTimeLabel) {
-              <small class="muted">{{ oneTimeLabel }}</small>
+              <small class="lifetime-meta__warn">ซ้อน {{ lv.overlappingContractCount }}</small>
             }
           </mat-card>
         }

@@ -57,36 +57,26 @@
   }
 }
 
-.lifetime-card {
-  grid-column: span 2;
-
+.lifetime-meta {
   span {
-    display: block;
-    font-size: 1.15rem;
     font-weight: 700;
+    color: #1c2b28;
   }
 
-  .muted {
+  .lifetime-meta__note {
     display: block;
     margin-top: 0.35rem;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
     color: #5b6762;
-    line-height: 1.4;
   }
 
-  .overlap-warn {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    margin-top: 0.35rem;
+  .lifetime-meta__warn {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.72rem;
+    font-weight: 600;
     color: #b45309;
-    font-size: 0.75rem;
-
-    mat-icon {
-      font-size: 0.95rem;
-      width: 0.95rem;
-      height: 0.95rem;
-    }
   }
 }
 
