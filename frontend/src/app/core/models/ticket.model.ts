@@ -108,6 +108,42 @@ export const RESOLUTION_RESULT_LABELS: Record<ResolutionResult, string> = {
   FAILED: 'ไม่สำเร็จ',
 };
 
+/** คำอธิบายผลลัพธ์รอบแก้ — ใช้ในฟอร์ม */
+export const RESOLUTION_RESULT_HINTS: Record<ResolutionResult, string> = {
+  SUCCESS: 'งานรอบนี้จบแล้ว — ใบจะไปขั้นรอปิดงาน',
+  PARTIAL: 'ยังไม่จบ / ส่งต่อได้ — ใบยังคงกำลังดำเนินการ บันทึกรอบถัดไปเมื่อทำต่อจนสำเร็จ',
+  FAILED: 'รอบนี้แก้ไม่สำเร็จ — ใบยังคงกำลังดำเนินการ ให้ทำต่อหรือส่งต่อ',
+};
+
+export function isIncompleteResolutionResult(result: ResolutionResult): boolean {
+  return result === 'PARTIAL' || result === 'FAILED';
+}
+
+/** รอบแก้ไขล่าสุด (เลขรอบสูงสุด) */
+export function latestTicketResolution(
+  ticket: Pick<Ticket, 'resolutions'> | null | undefined
+): TicketResolution | null {
+  const list = ticket?.resolutions ?? [];
+  if (!list.length) {
+    return null;
+  }
+  return [...list].sort((a, b) => b.round - a.round)[0] ?? null;
+}
+
+/**
+ * สถานะ workflow บน UI:
+ * ถ้า API ดันเป็น RESOLVED แต่รอบล่าสุดเป็น PARTIAL/FAILED → ถือว่ายัง IN_PROGRESS
+ */
+export function ticketWorkflowStatus(ticket: Ticket): TicketStatus {
+  if (ticket.status === 'RESOLVED') {
+    const last = latestTicketResolution(ticket);
+    if (last && isIncompleteResolutionResult(last.result)) {
+      return 'IN_PROGRESS';
+    }
+  }
+  return ticket.status;
+}
+
 /**
  * BE ต่อเหตุผล reopen ลง `description` เป็นบรรทัด
  * `[เปิดกลับมาอีกครั้ง] อาการ…`
@@ -198,11 +234,14 @@ export function buildTicketTimeline(input: {
   }
 
   if (ticket.resolvedAt && ticket.status !== 'CLOSED') {
-    events.push({
-      id: 'resolved',
-      at: ticket.resolvedAt,
-      label: 'แก้ไขเรียบร้อย (รอปิดงาน)',
-    });
+    const last = resolutions.length ? resolutions[resolutions.length - 1] : null;
+    if (!last || last.result === 'SUCCESS') {
+      events.push({
+        id: 'resolved',
+        at: ticket.resolvedAt,
+        label: 'แก้ไขเรียบร้อย (รอปิดงาน)',
+      });
+    }
   }
 
   if (ticket.closedAt) {

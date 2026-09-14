@@ -1,5 +1,11 @@
 import { Injectable, signal } from '@angular/core';
-import { Ticket, TicketStatus } from '../models/ticket.model';
+import {
+  Ticket,
+  TicketStatus,
+  isIncompleteResolutionResult,
+  latestTicketResolution,
+  ticketWorkflowStatus,
+} from '../models/ticket.model';
 
 /** หมวดหมู่ปัญหา — ตัวอย่างฝั่ง FE (BE ยังไม่มีฟิลด์) */
 export type TicketCategoryDemo =
@@ -25,6 +31,13 @@ export interface TicketDemoOverlay {
   assignedAt?: string;
   /** หมวดหมู่ตัวอย่าง — ไม่ส่งขึ้น API */
   category?: TicketCategoryDemo | null;
+  /**
+   * รอบล่าสุดเป็น PARTIAL/FAILED แต่ API อาจดันเป็น RESOLVED
+   * — ใช้กับหน้ารายการที่ไม่มี resolutions ใน payload
+   */
+  incompleteWork?: boolean;
+  /** ผลรอบล่าสุดที่ยังไม่จบ — สำหรับป้าย「แก้ไขบางส่วน」 */
+  incompleteResult?: 'PARTIAL' | 'FAILED';
 }
 
 const STORAGE_KEY = 'cpams_ticket_demo_overlay_v1';
@@ -73,10 +86,65 @@ export class TicketDemoOverlayService {
     this.patch(ticketId, { category });
   }
 
+  /** หลังบันทึกรอบ PARTIAL/FAILED — ใบยังไม่จบ */
+  markIncompleteWork(
+    ticketId: number,
+    result: 'PARTIAL' | 'FAILED' = 'PARTIAL'
+  ): void {
+    this.patch(ticketId, { incompleteWork: true, incompleteResult: result });
+  }
+
+  /** หลังบันทึกรอบ SUCCESS หรือ BE คืนสถานะถูกต้อง */
+  clearIncompleteWork(ticketId: number): void {
+    this.patch(ticketId, { incompleteWork: false, incompleteResult: undefined });
+  }
+
+  /** sync จาก ticket ที่มี resolutions (หน้ารายละเอียด) */
+  syncIncompleteWorkFromTicket(ticket: Ticket): void {
+    const last = latestTicketResolution(ticket);
+    if (last && isIncompleteResolutionResult(last.result)) {
+      this.markIncompleteWork(
+        ticket.id,
+        last.result === 'FAILED' ? 'FAILED' : 'PARTIAL'
+      );
+      return;
+    }
+    if (last?.result === 'SUCCESS' || ticket.status === 'CLOSED') {
+      this.clearIncompleteWork(ticket.id);
+    }
+  }
+
+  /** ป้ายสถานะเมื่อยังทำต่อหลัง PARTIAL/FAILED */
+  incompleteStatusLabel(ticket: Ticket): string | null {
+    if (!this.isStillInProgress(ticket)) {
+      return null;
+    }
+    const fromTicket = latestTicketResolution(ticket)?.result;
+    const result =
+      fromTicket === 'PARTIAL' || fromTicket === 'FAILED'
+        ? fromTicket
+        : this.snapshot(ticket.id).incompleteResult ?? 'PARTIAL';
+    return result === 'FAILED' ? 'ยังไม่สำเร็จ' : 'แก้ไขบางส่วน';
+  }
+
+  /** ค่า data-status สำหรับสีป้าย (PARTIAL / FAILED แยกจาก RESOLVED) */
+  statusAttr(ticket: Ticket): string {
+    if (!this.isStillInProgress(ticket)) {
+      return this.effectiveStatus(ticket);
+    }
+    const fromTicket = latestTicketResolution(ticket)?.result;
+    const result =
+      fromTicket === 'PARTIAL' || fromTicket === 'FAILED'
+        ? fromTicket
+        : this.snapshot(ticket.id).incompleteResult ?? 'PARTIAL';
+    return result;
+  }
+
   /**
    * สถานะที่โชว์บนหน้าจอ
    * waitingStart=true → ASSIGNED · waitingStart=false → ใช้สถานะ API
    * RECEIVED + มีผู้รับผิดชอบ (ยังไม่กดเริ่ม) → ASSIGNED
+   * RESOLVED แต่รอบล่าสุดไม่สำเร็จครบ / overlay incomplete → IN_PROGRESS
    */
   effectiveStatus(ticket: Ticket): TicketStatus {
     const o = this.snapshot(ticket.id);
@@ -85,17 +153,30 @@ export class TicketDemoOverlayService {
       ticket.assignedUserId &&
       (ticket.status === 'IN_PROGRESS' ||
         ticket.status === 'RECEIVED' ||
-        ticket.status === 'REOPENED')
+        ticket.status === 'REOPENED' ||
+        ticket.status === 'RESOLVED')
     ) {
       return 'ASSIGNED';
     }
-    if (o.waitingStart === false) {
-      return ticket.status;
+
+    let status: TicketStatus =
+      o.waitingStart === false
+        ? ticket.status
+        : ticket.status === 'RECEIVED' && ticket.assignedUserId
+          ? 'ASSIGNED'
+          : ticket.status;
+
+    if (status === 'RESOLVED' && this.isStillInProgress(ticket)) {
+      return 'IN_PROGRESS';
     }
-    if (ticket.status === 'RECEIVED' && ticket.assignedUserId) {
-      return 'ASSIGNED';
+    return status;
+  }
+
+  private isStillInProgress(ticket: Ticket): boolean {
+    if (ticketWorkflowStatus(ticket) === 'IN_PROGRESS') {
+      return true;
     }
-    return ticket.status;
+    return this.snapshot(ticket.id).incompleteWork === true;
   }
 
   private read(): Record<number, TicketDemoOverlay> {

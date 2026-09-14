@@ -19,6 +19,7 @@ import { MatTableModule } from '@angular/material/table';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
+  RESOLUTION_RESULT_HINTS,
   RESOLUTION_RESULT_LABELS,
   ResolutionResult,
   TICKET_STATUS_LABELS,
@@ -26,6 +27,8 @@ import {
   TicketResolution,
   TicketStatus,
   buildTicketTimeline,
+  isIncompleteResolutionResult,
+  latestTicketResolution,
   splitTicketDescription,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -44,7 +47,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { EMPTY, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-ticket-detail-page',
@@ -121,11 +124,30 @@ export class TicketDetailPageComponent implements OnInit {
   /** รอบถัดไปหลังเปิดกลับมา (resolutionCount เดิม + 1) */
   readonly nextRound = computed(() => (this.ticket()?.resolutionCount ?? 0) + 1);
 
-  /** สถานะที่โชว์ (รวมขั้น ASSIGNED ตัวอย่าง) */
+  /** สถานะที่โชว์ (รวมขั้น ASSIGNED ตัวอย่าง + PARTIAL/FAILED ยังไม่จบ) */
   readonly displayStatus = computed((): TicketStatus => {
     this.demoOverlay.state();
     const t = this.ticket();
     return t ? this.demoOverlay.effectiveStatus(t) : 'RECEIVED';
+  });
+
+  /** ป้ายสถานะ — เน้นแก้ไขบางส่วน / ยังไม่สำเร็จ เมื่อยังทำต่อ */
+  readonly statusBarLabel = computed(() => {
+    this.demoOverlay.state();
+    const t = this.ticket();
+    if (!t) {
+      return this.statusLabels['RECEIVED'];
+    }
+    return (
+      this.demoOverlay.incompleteStatusLabel(t) ??
+      this.statusLabels[this.displayStatus()]
+    );
+  });
+
+  readonly statusBarAttr = computed(() => {
+    this.demoOverlay.state();
+    const t = this.ticket();
+    return t ? this.demoOverlay.statusAttr(t) : this.displayStatus();
   });
 
   readonly categoryLabel = computed(() => {
@@ -208,7 +230,42 @@ export class TicketDetailPageComponent implements OnInit {
       };
     }
 
-    if (t.status === 'RESOLVED') {
+    if (shown === 'IN_PROGRESS') {
+      const last = latestTicketResolution(t);
+      if (last && isIncompleteResolutionResult(last.result)) {
+        const actions: {
+          id: 'add-resolution' | 'reassign';
+          label: string;
+          primary: boolean;
+        }[] = [];
+        if (this.canResolve()) {
+          actions.push({
+            id: 'add-resolution',
+            label: 'บันทึกงานแก้ไขต่อ',
+            primary: true,
+          });
+        }
+        if (this.canAssign()) {
+          actions.push({
+            id: 'reassign',
+            label: 'ส่งต่อผู้รับผิดชอบ',
+            primary: false,
+          });
+        }
+        return {
+          tone: 'warn' as const,
+          title:
+            last.result === 'PARTIAL'
+              ? 'แก้ไขบางส่วน — ยังไม่จบ'
+              : 'รอบล่าสุดยังไม่สำเร็จ',
+          detail:
+            'ใบยังเปิดอยู่ · ทำต่อแล้วบันทึกรอบใหม่เป็น「สำเร็จ」เมื่อจบ หรือส่งต่อให้อีกคน',
+          actions,
+        };
+      }
+    }
+
+    if (shown === 'RESOLVED') {
       const actions: {
         id: 'close' | 'print-last';
         label: string;
@@ -316,6 +373,7 @@ export class TicketDetailPageComponent implements OnInit {
         this.resolutions.set(
           [...(ticket.resolutions ?? [])].sort((a, b) => b.round - a.round)
         );
+        this.demoOverlay.syncIncompleteWorkFromTicket(ticket);
         this.showAllReopenNotes.set(false);
         this.notFound.set(false);
         this.loading.set(false);
@@ -356,16 +414,22 @@ export class TicketDetailPageComponent implements OnInit {
   statusDetail(t: Ticket): string {
     const n = t.resolutionCount || 0;
     const shown = this.displayStatus();
+    const last = latestTicketResolution(t);
     if (shown === 'ASSIGNED') {
       return 'ตัวอย่างขั้นมอบหมายแล้ว — กด「เริ่มงาน」เพื่อเข้ากำลังดำเนินการ';
     }
     if (t.status === 'REOPENED') {
       return `พร้อมเริ่มงานครั้งที่ ${this.nextRound()} — กด「รับงานรอบใหม่」ด้านล่าง`;
     }
-    if (t.status === 'IN_PROGRESS' && n > 0) {
+    if (shown === 'IN_PROGRESS' && last && isIncompleteResolutionResult(last.result)) {
+      return last.result === 'PARTIAL'
+        ? `แก้ไขบางส่วน — ยังทำต่อหรือส่งต่อได้ · รวมแก้ ${n} ครั้ง`
+        : `ยังไม่สำเร็จ — ทำต่อหรือส่งต่อได้ · รวมแก้ ${n} ครั้ง`;
+    }
+    if (shown === 'IN_PROGRESS' && n > 0) {
       return `กำลังทำงานครั้งที่ ${this.nextRound()} · แก้ไปแล้ว ${n} ครั้งก่อนหน้า`;
     }
-    if (t.status === 'RESOLVED') {
+    if (shown === 'RESOLVED') {
       return `งานล่าสุดเสร็จแล้ว · รวมแก้ ${n} ครั้ง — ขั้นถัดไปคือปิดงาน`;
     }
     if (t.status === 'CLOSED') {
@@ -374,7 +438,9 @@ export class TicketDetailPageComponent implements OnInit {
     return n > 0 ? `มีงานแก้ไขแล้ว ${n} ครั้ง` : 'ยังไม่เริ่มงานแก้ไข';
   }
 
-  runTicketHintAction(id: 'pickup' | 'close' | 'reopen' | 'print-last' | 'start'): void {
+  runTicketHintAction(
+    id: 'pickup' | 'close' | 'reopen' | 'print-last' | 'start' | 'add-resolution' | 'reassign'
+  ): void {
     if (id === 'start') {
       this.startAssignedWork();
       return;
@@ -389,6 +455,14 @@ export class TicketDetailPageComponent implements OnInit {
     }
     if (id === 'reopen') {
       this.openProblemReturned();
+      return;
+    }
+    if (id === 'add-resolution') {
+      this.openAddResolution();
+      return;
+    }
+    if (id === 'reassign') {
+      this.changeAssignee();
       return;
     }
     if (id === 'print-last') {
@@ -467,8 +541,10 @@ export class TicketDetailPageComponent implements OnInit {
       data: {
         ticketId: this.ticketId,
         canChangeResolver: this.canChangeResolver,
+        canHandoff: this.canAssign(),
         defaultResolverId:
           this.auth.currentUser()?.id ?? this.ticket()?.assignedUserId ?? 0,
+        currentAssigneeId: this.ticket()?.assignedUserId ?? null,
       },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -565,11 +641,20 @@ export class TicketDetailPageComponent implements OnInit {
       return;
     }
     const ticket = this.ticket();
-    if (!ticket || ticket.status !== 'RESOLVED') {
+    if (!ticket || this.displayStatus() !== 'RESOLVED') {
       this.snack.open(
-        'ปิดงานได้เมื่อสถานะเป็น「แก้ไขแล้ว」— ให้บันทึกการแก้ไขก่อน',
+        'ปิดงานได้เมื่อรอบล่าสุดเป็น「สำเร็จ」แล้ว — สำเร็จบางส่วน/ไม่สำเร็จยังต้องทำต่อ',
         'ปิด',
-        { duration: 4000 }
+        { duration: 4500 }
+      );
+      return;
+    }
+    const last = latestTicketResolution(ticket);
+    if (last && isIncompleteResolutionResult(last.result)) {
+      this.snack.open(
+        'รอบล่าสุดยังไม่สำเร็จครบ — บันทึกรอบ「สำเร็จ」ก่อนปิดงาน',
+        'ปิด',
+        { duration: 4500 }
       );
       return;
     }
@@ -581,6 +666,7 @@ export class TicketDetailPageComponent implements OnInit {
     }
     this.ticketsApi.close(this.ticketId).subscribe({
       next: () => {
+        this.demoOverlay.clearIncompleteWork(this.ticketId);
         this.snack.open('ปิดงานแล้ว — จะหายจากหน้ารอรับแก้ไข', 'ปิด', { duration: 3000 });
         this.loadTicket();
       },
@@ -669,7 +755,10 @@ export class TicketDetailPageComponent implements OnInit {
 export interface TicketResolutionFormData {
   ticketId: number;
   canChangeResolver: boolean;
+  /** ส่งต่อผู้รับผิดชอบได้เมื่อเลือกสำเร็จบางส่วน / ไม่สำเร็จ */
+  canHandoff: boolean;
   defaultResolverId: number;
+  currentAssigneeId: number | null;
 }
 
 @Component({
@@ -687,7 +776,11 @@ export interface TicketResolutionFormData {
   template: `
     <h2 mat-dialog-title>เพิ่มรอบการแก้ไข</h2>
     <mat-dialog-content>
-      <p class="hint">บันทึกเป็น<strong>งานแก้ไข</strong>ในใบปัญหานี้ · หลังปิดงานแล้วถ้าปัญหาเดิมกลับมา ให้กด「ปัญหาเดิมกลับมา」ในใบเดิม ไม่เปิดใบใหม่</p>
+      <p class="hint">
+        บันทึกเป็น<strong>งานแก้ไข</strong>ในใบปัญหานี้ ·
+        「สำเร็จ」= จบรอบนี้รอปิดงาน ·
+        「สำเร็จบางส่วน / ไม่สำเร็จ」= ยังทำต่อหรือส่งต่อได้ (ใบยังไม่ปิด)
+      </p>
       <form [formGroup]="form" class="dlg-form" id="ticket-resolution-form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>สาเหตุ</mat-label>
@@ -709,10 +802,11 @@ export interface TicketResolutionFormData {
                 <mat-option [value]="r">{{ resultLabels[r] }}</mat-option>
               }
             </mat-select>
+            <mat-hint>{{ resultHints[selectedResult()] }}</mat-hint>
           </mat-form-field>
         </div>
         <mat-form-field appearance="outline" class="full">
-          <mat-label>ผู้แก้ไข</mat-label>
+          <mat-label>ผู้แก้ไขรอบนี้</mat-label>
           <mat-select formControlName="resolvedByUserId">
             @for (u of users(); track u.id) {
               <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
@@ -722,6 +816,18 @@ export interface TicketResolutionFormData {
             <mat-hint>ล็อกเป็นผู้ใช้ที่ล็อกอิน — เปลี่ยนได้เฉพาะ Admin</mat-hint>
           }
         </mat-form-field>
+        @if (showHandoff()) {
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>ส่งต่องานให้ (ไม่บังคับ)</mat-label>
+            <mat-select formControlName="handoffUserId">
+              <mat-option [value]="null">— ไม่เปลี่ยนผู้รับผิดชอบ —</mat-option>
+              @for (u of users(); track u.id) {
+                <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>เลือกเมื่อต้องการส่งต่อให้อีกคนทำรอบถัดไป</mat-hint>
+          </mat-form-field>
+        }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -757,12 +863,14 @@ export class TicketResolutionFormDialogComponent {
   private readonly ticketsApi = inject(TicketService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<TicketResolutionFormDialogComponent, boolean>);
   readonly data = inject<TicketResolutionFormData>(MAT_DIALOG_DATA);
 
   readonly users = this.usersApi.users;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
+  readonly resultHints = RESOLUTION_RESULT_HINTS;
   readonly results = Object.keys(RESOLUTION_RESULT_LABELS) as ResolutionResult[];
 
   readonly form = this.fb.nonNullable.group({
@@ -777,7 +885,23 @@ export class TicketResolutionFormDialogComponent {
       },
       Validators.min(1),
     ],
+    handoffUserId: [null as number | null],
   });
+
+  readonly selectedResult = signal<ResolutionResult>(this.form.controls.result.value);
+  readonly showHandoff = computed(
+    () =>
+      this.data.canHandoff && isIncompleteResolutionResult(this.selectedResult())
+  );
+
+  constructor() {
+    this.form.controls.result.valueChanges.subscribe((value) => {
+      this.selectedResult.set(value);
+      if (!isIncompleteResolutionResult(value)) {
+        this.form.controls.handoffUserId.setValue(null);
+      }
+    });
+  }
 
   save(): void {
     if (this.form.invalid) {
@@ -789,6 +913,11 @@ export class TicketResolutionFormDialogComponent {
     const resolvedByUserId = this.data.canChangeResolver
       ? Number(raw.resolvedByUserId)
       : (me?.id ?? Number(raw.resolvedByUserId));
+    const incomplete = isIncompleteResolutionResult(raw.result);
+    const handoffUserId =
+      incomplete && this.data.canHandoff && raw.handoffUserId != null
+        ? Number(raw.handoffUserId)
+        : null;
 
     this.ticketsApi
       .addResolution(this.data.ticketId, {
@@ -799,16 +928,47 @@ export class TicketResolutionFormDialogComponent {
         resolvedByUserId,
         resolvedAt: new Date().toISOString(),
       })
+      .pipe(
+        switchMap(({ quota }) => {
+          if (incomplete) {
+            this.demoOverlay.markIncompleteWork(
+              this.data.ticketId,
+              raw.result === 'FAILED' ? 'FAILED' : 'PARTIAL'
+            );
+          } else {
+            this.demoOverlay.clearIncompleteWork(this.data.ticketId);
+          }
+          if (
+            handoffUserId != null &&
+            handoffUserId > 0 &&
+            handoffUserId !== this.data.currentAssigneeId
+          ) {
+            return this.ticketsApi.assign(this.data.ticketId, handoffUserId).pipe(
+              map(() => ({ quota, handedOff: true as const }))
+            );
+          }
+          return of({ quota, handedOff: false as const });
+        })
+      )
       .subscribe({
-        next: ({ quota }) => {
-          let msg = 'บันทึกรอบแล้ว';
+        next: ({ quota, handedOff }) => {
+          let msg = incomplete
+            ? raw.result === 'PARTIAL'
+              ? 'บันทึกสำเร็จบางส่วนแล้ว — ใบยังเปิดอยู่ ทำต่อหรือส่งต่อได้'
+              : 'บันทึกไม่สำเร็จแล้ว — ใบยังเปิดอยู่ ทำต่อหรือส่งต่อได้'
+            : 'บันทึกรอบสำเร็จแล้ว — รอปิดงาน';
+          if (handedOff) {
+            msg += ' · ส่งต่อผู้รับผิดชอบแล้ว';
+          }
           if (quota) {
             msg += ` · โควตา ${quota.periodStart}–${quota.periodEnd}: เหลือ ${quota.remaining}/${quota.quota}`;
             if (quota.isOverQuota) {
               msg += ' (เกินโควตา)';
             }
           }
-          this.snack.open(msg, 'ปิด', { duration: quota?.isOverQuota ? 5000 : 2500 });
+          this.snack.open(msg, 'ปิด', {
+            duration: quota?.isOverQuota || incomplete ? 5000 : 2800,
+          });
           this.ref.close(true);
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
 import { asList, asPage, fetchAllPages, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
@@ -16,6 +16,7 @@ import {
 } from '../models/ticket.model';
 import { TicketQuotaSummary } from '../models/ma.model';
 import { UserSummary } from '../models/user.model';
+import { TicketDemoOverlayService } from './ticket-demo-overlay.service';
 import { UserService } from './user.service';
 
 /** CreateTicketDto */
@@ -102,6 +103,7 @@ export interface ResolutionCreatedResult {
 export class TicketService {
   private readonly http = inject(HttpClient);
   private readonly usersApi = inject(UserService);
+  private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly base = `${environment.apiBaseUrl}/tickets`;
   private readonly items = signal<Ticket[]>([]);
 
@@ -153,15 +155,63 @@ export class TicketService {
     return fetchAllPages((page, limit) => this.listPage({ ...params, page, limit })).pipe(
       tap((rows) => {
         // merge — ห้าม set ทับทั้ง store (เช่นโหลดแค่ใบของโปรเจคเดียว)
+        // คง resolutions จาก cache ถ้า list ไม่ส่งมา
         this.items.update((all) => {
           const byId = new Map(all.map((t) => [t.id, t]));
           for (const row of rows) {
-            byId.set(row.id, row);
+            byId.set(row.id, this.mergePreservingResolutions(byId.get(row.id), row));
           }
           return Array.from(byId.values());
         });
       }),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /**
+   * รายการมักไม่มี resolutions — ดึงรายละเอียดใบ RESOLVED เพื่อรู้ว่า partial หรือสำเร็จจริง
+   * (ชั่วคราวจนกว่า BE จะคง IN_PROGRESS หลัง PARTIAL/FAILED)
+   */
+  enrichIncompleteWork(tickets: Ticket[]): Observable<Ticket[]> {
+    const needFetch = tickets.filter(
+      (t) =>
+        t.status === 'RESOLVED' &&
+        (t.resolutionCount ?? 0) > 0 &&
+        !(t.resolutions && t.resolutions.length > 0)
+    );
+    if (!needFetch.length) {
+      for (const t of tickets) {
+        if (t.resolutions?.length) {
+          this.demoOverlay.syncIncompleteWorkFromTicket(t);
+        }
+      }
+      return of(tickets);
+    }
+
+    const capped = needFetch.slice(0, 40);
+    return forkJoin(
+      capped.map((t) =>
+        this.get(t.id).pipe(
+          catchError(() => of(null as Ticket | null))
+        )
+      )
+    ).pipe(
+      map((details) => {
+        const byId = new Map(tickets.map((t) => [t.id, t]));
+        for (const d of details) {
+          if (!d) {
+            continue;
+          }
+          this.demoOverlay.syncIncompleteWorkFromTicket(d);
+          byId.set(d.id, d);
+        }
+        for (const t of byId.values()) {
+          if (t.resolutions?.length) {
+            this.demoOverlay.syncIncompleteWorkFromTicket(t);
+          }
+        }
+        return tickets.map((t) => byId.get(t.id) ?? t);
+      })
     );
   }
 
@@ -358,6 +408,7 @@ export class TicketService {
         map((body) => {
           const ticket = this.normalizeTicket(body.ticket);
           this.items.update((list) => upsertById(list, ticket));
+          this.demoOverlay.syncIncompleteWorkFromTicket(ticket);
           return {
             resolution: this.normalizeResolution(body.resolution),
             quota: body.quota ?? null,
@@ -370,7 +421,7 @@ export class TicketService {
   private normalizeTicket(row: ApiTicket): Ticket {
     this.syncUserSummaries(row);
     const resolutions = (row.resolutions ?? []).map((r) => this.normalizeResolution(r));
-    return {
+    const ticket: Ticket = {
       ...row,
       ticketNo: row.ticketNo ?? null,
       description: row.description ?? null,
@@ -388,6 +439,24 @@ export class TicketService {
       resolutionCount: row.resolutionCount ?? resolutions.length,
       resolutions,
     };
+    if (resolutions.length) {
+      this.demoOverlay.syncIncompleteWorkFromTicket(ticket);
+    }
+    return ticket;
+  }
+
+  /** list มักไม่ส่ง resolutions — อย่าทับของที่มีใน cache */
+  private mergePreservingResolutions(
+    previous: Ticket | undefined,
+    next: Ticket
+  ): Ticket {
+    if (
+      previous?.resolutions?.length &&
+      !(next.resolutions && next.resolutions.length)
+    ) {
+      return { ...next, resolutions: previous.resolutions };
+    }
+    return next;
   }
 
   private normalizeResolution(row: ApiResolution): TicketResolution {

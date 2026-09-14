@@ -292,6 +292,13 @@
     color: #9a3412;
   }
 
+  /* แก้ไขบางส่วน / ยังไม่สำเร็จ */
+  &[data-status='PARTIAL'],
+  &[data-status='FAILED'] {
+    background: #ffedd5;
+    color: #9a3412;
+  }
+
   /* เรียบร้อย */
   &[data-status='RESOLVED'],
   &[data-status='DONE'],

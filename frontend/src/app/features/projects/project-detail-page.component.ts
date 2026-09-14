@@ -23,7 +23,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
@@ -64,6 +64,7 @@ import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketService } from '../../core/services/ticket.service';
+import { TicketDemoOverlayService } from '../../core/services/ticket-demo-overlay.service';
 import { UserService } from '../../core/services/user.service';
 import { WarrantyService } from '../../core/services/warranty.service';
 import {
@@ -123,6 +124,7 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly followUpsApi = inject(FollowUpService);
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly ticketsApi = inject(TicketService);
+  private readonly ticketDemoOverlay = inject(TicketDemoOverlayService);
   private readonly maApi = inject(MaService);
   private readonly quickActions = inject(QuickActionsService);
   private readonly usersApi = inject(UserService);
@@ -858,19 +860,22 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     this.ticketsLoading.set(true);
     this.ticketsLoadError.set(null);
-    this.ticketsApi.listAll({ projectId: this.projectId }).subscribe({
-      next: (rows) => {
-        this.projectTickets.set(rows);
-        this.projectTicketsPager.reset();
-        this.ticketsLoading.set(false);
-      },
-      error: (err: Error) => {
-        this.projectTickets.set([]);
-        this.projectTicketsPager.reset();
-        this.ticketsLoading.set(false);
-        this.ticketsLoadError.set(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ');
-      },
-    });
+    this.ticketsApi
+      .listAll({ projectId: this.projectId })
+      .pipe(switchMap((rows) => this.ticketsApi.enrichIncompleteWork(rows)))
+      .subscribe({
+        next: (rows) => {
+          this.projectTickets.set(rows);
+          this.projectTicketsPager.reset();
+          this.ticketsLoading.set(false);
+        },
+        error: (err: Error) => {
+          this.projectTickets.set([]);
+          this.projectTicketsPager.reset();
+          this.ticketsLoading.set(false);
+          this.ticketsLoadError.set(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ');
+        },
+      });
   }
 
   /** ปิดงานใบปัญหา — แทนการลบ (ใบยัง reopen ได้) */
@@ -926,6 +931,20 @@ export class ProjectDetailPageComponent implements OnInit {
 
   ticketStatusLabel(status: Ticket['status']): string {
     return this.ticketStatusLabels[status] ?? status;
+  }
+
+  ticketStatusLabelFor(ticket: Ticket): string {
+    this.ticketDemoOverlay.state();
+    return (
+      this.ticketDemoOverlay.incompleteStatusLabel(ticket) ??
+      this.ticketStatusLabels[this.ticketDemoOverlay.effectiveStatus(ticket)] ??
+      ticket.status
+    );
+  }
+
+  ticketStatusAttr(ticket: Ticket): string {
+    this.ticketDemoOverlay.state();
+    return this.ticketDemoOverlay.statusAttr(ticket);
   }
 
   ticketPriorityLabel(priority: Ticket['priority']): string {

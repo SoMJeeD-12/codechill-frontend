@@ -78,6 +78,16 @@
   }
 }
 
+.status-bar[data-status='PARTIAL'],
+.status-bar[data-status='FAILED'] {
+  border-color: rgba(234, 88, 12, 0.4);
+  background: #fff7ed;
+
+  .status-bar__now {
+    color: #c2410c;
+  }
+}
+
 .status-bar[data-status='CLOSED'],
 .status-bar[data-status='CANCELLED'],
 .status-bar[data-status='EXPIRED'] {

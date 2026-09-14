@@ -105,8 +105,8 @@
     }
 
     <app-status-bar
-      [status]="displayStatus()"
-      [label]="ticketStatusLabel(displayStatus())"
+      [status]="statusBarAttr()"
+      [label]="statusBarLabel()"
       [detail]="statusDetail(t)"
       [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
     />

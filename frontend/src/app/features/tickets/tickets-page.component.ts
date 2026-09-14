@@ -9,7 +9,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, switchMap } from 'rxjs/operators';
 import {
   OPEN_TICKET_STATUSES,
   TICKET_PRIORITY_LABELS,
@@ -159,18 +159,21 @@ export class TicketsPageComponent implements OnInit {
     this.loading.set(true);
     const q = this.search().trim();
     const params = q.length >= 2 ? { search: q } : {};
-    this.ticketsApi.listAll(params).subscribe({
-      next: (list) => {
-        this.tickets.set(list);
-        this.loading.set(false);
-      },
-      error: (err: Error) => {
-        this.loading.set(false);
-        this.snack.open(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ', 'ปิด', {
-          duration: 4000,
-        });
-      },
-    });
+    this.ticketsApi
+      .listAll(params)
+      .pipe(switchMap((list) => this.ticketsApi.enrichIncompleteWork(list)))
+      .subscribe({
+        next: (list) => {
+          this.tickets.set(list);
+          this.loading.set(false);
+        },
+        error: (err: Error) => {
+          this.loading.set(false);
+          this.snack.open(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ', 'ปิด', {
+            duration: 4000,
+          });
+        },
+      });
   }
 
   setView(view: 'open' | 'all'): void {
@@ -178,20 +181,35 @@ export class TicketsPageComponent implements OnInit {
     this.pager.reset();
   }
 
-  /** ใช้ flag จาก API ก่อนเสมอ — รวมสถานะ ASSIGNED ตัวอย่างจาก overlay */
+  /** ใช้ flag จาก API ก่อนเสมอ — รวมสถานะ ASSIGNED / สำเร็จบางส่วนยังไม่จบ */
   private isOpen(ticket: Ticket): boolean {
     const shown = this.displayStatus(ticket);
     return (
       ticket.isPending ||
       OPEN_TICKET_STATUSES.includes(shown) ||
-      ['RECEIVED', 'IN_PROGRESS', 'REOPENED', 'ASSIGNED'].includes(ticket.status)
+      ['RECEIVED', 'IN_PROGRESS', 'REOPENED', 'ASSIGNED'].includes(ticket.status) ||
+      shown === 'IN_PROGRESS'
     );
   }
 
-  /** สถานะที่โชว์ในตาราง (รวมขั้น ASSIGNED ตัวอย่าง) */
+  /** สถานะที่โชว์ในตาราง (รวมขั้น ASSIGNED + PARTIAL/FAILED ยังไม่จบ) */
   displayStatus(ticket: Ticket): TicketStatus {
     this.demoOverlay.state();
     return this.demoOverlay.effectiveStatus(ticket);
+  }
+
+  statusLabelFor(ticket: Ticket): string {
+    this.demoOverlay.state();
+    return (
+      this.demoOverlay.incompleteStatusLabel(ticket) ??
+      this.statusLabels[this.displayStatus(ticket)] ??
+      this.displayStatus(ticket)
+    );
+  }
+
+  statusAttr(ticket: Ticket): string {
+    this.demoOverlay.state();
+    return this.demoOverlay.statusAttr(ticket);
   }
 
   customerName(row: Ticket): string {
@@ -259,6 +277,14 @@ export class TicketsPageComponent implements OnInit {
     if (!this.canClose() || row.status === 'CLOSED') {
       return;
     }
+    if (this.displayStatus(row) !== 'RESOLVED') {
+      this.snack.open(
+        'ปิดงานได้เมื่อรอบล่าสุดเป็น「สำเร็จ」แล้ว — สำเร็จบางส่วนยังต้องทำต่อ',
+        'ปิด',
+        { duration: 4500 }
+      );
+      return;
+    }
     openConfirmDialog(this.dialog, {
       title: 'ปิดงานใบแจ้งปัญหา',
       message: `ต้องการปิดงาน「${row.title}」หรือไม่?\nใบจะออกจากคิวเปิด แต่เปิดรอบใหม่ได้ภายหลัง`,
@@ -269,6 +295,7 @@ export class TicketsPageComponent implements OnInit {
       }
       this.ticketsApi.close(row.id).subscribe({
         next: () => {
+          this.demoOverlay.clearIncompleteWork(row.id);
           this.snack.open('ปิดงานแล้ว', 'ปิด', { duration: 2500 });
           this.reload();
         },
