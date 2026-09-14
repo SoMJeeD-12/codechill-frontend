@@ -32,14 +32,13 @@ export interface ProjectNewCustomerInput {
   note?: string;
 }
 
-/** CreateProjectDto / UpdateProjectDto */
+/** CreateProjectDto / UpdateProjectDto — `code` ออกโดย Backend ห้ามส่งจาก FE */
 export interface ProjectInput {
   /** เลือกลูกค้าที่มีอยู่ — อย่าส่งพร้อม newCustomer */
   customerId?: number;
   /** ลูกค้าใหม่ — ส่งแทน customerId */
   newCustomer?: ProjectNewCustomerInput;
   name?: string;
-  code?: string;
   description?: string;
   projectType?: string;
   status?: ProjectStatus;

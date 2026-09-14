@@ -303,13 +303,15 @@ export class ProjectDetailPageComponent implements OnInit {
     const items = this.deliveryReadiness();
     const blockers = items.filter((i) => !i.ok).map((i) => i.label);
 
-    if (status === 'DRAFT' && this.canUpdateProject()) {
+    if (status === 'DRAFT') {
+      // ปุ่มเริ่มอยู่ที่หัวหน้า「ขั้นถัดไป」แล้ว — แถบนี้แค่บอกเหตุผล ไม่ซ้ำปุ่ม
       return {
         title: 'โปรเจคยังเป็นร่าง',
-        detail: 'เริ่มดำเนินการก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
+        detail:
+          'กด「ขั้นถัดไป · กำลังดำเนินการ」ด้านบนก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
         blockers: [] as string[],
-        actionLabel: 'เริ่มดำเนินการ',
-        actionKind: 'advance' as const,
+        actionLabel: null,
+        actionKind: null,
       };
     }
 
@@ -678,10 +680,6 @@ export class ProjectDetailPageComponent implements OnInit {
   /** ปุ่มบนแถบขั้นถัดไปในแท็บส่งมอบ */
   onDeliveryNextHintAction(): void {
     const kind = this.deliveryNextHint()?.actionKind;
-    if (kind === 'advance') {
-      this.advanceProjectStatus();
-      return;
-    }
     if (kind === 'delivery') {
       this.openAddDelivery();
     }

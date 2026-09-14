@@ -211,6 +211,11 @@
 .delivery-panel {
   padding: 1rem 0 1.5rem;
   min-width: 0;
+
+  > .next-hint {
+    margin-top: 0;
+    margin-bottom: 0.85rem;
+  }
 }
 
 .report-strip {

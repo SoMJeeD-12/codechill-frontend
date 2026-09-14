@@ -14,10 +14,9 @@ import {
 } from '../models/customer.model';
 import { CustomerOverview } from '../models/customer-overview.model';
 
-/** CreateCustomerDto / UpdateCustomerDto */
+/** CreateCustomerDto / UpdateCustomerDto — `code` ออกโดย Backend ห้ามส่งจาก FE */
 export interface CustomerInput {
   name: string;
-  code?: string;
   taxId?: string;
   businessType?: string;
   address?: string;

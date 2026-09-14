@@ -307,7 +307,6 @@ export class ProjectFormDialogComponent {
 
   readonly form = this.fb.group({
     name: ['', Validators.required],
-    code: [''],
     customerId: [0],
     projectType: [''],
     contractValue: [null as number | null, Validators.min(0)],
@@ -577,10 +576,13 @@ export class ProjectFormDialogComponent {
         )
       )
       .subscribe({
-        next: ({ message }) => {
+        next: ({ project, message }) => {
           this.saving.set(false);
-          const text = message?.trim() || 'บันทึกโปรเจคแล้ว';
-          this.snack.open(text, 'ปิด', { duration: message ? 6000 : 2500 });
+          const codeHint = project.code?.trim() ? ` · รหัส ${project.code.trim()}` : '';
+          const text =
+            message?.trim() ||
+            (codeHint ? `สร้างโปรเจคแล้ว${codeHint}` : 'บันทึกโปรเจคแล้ว');
+          this.snack.open(text, 'ปิด', { duration: message || codeHint ? 5000 : 2500 });
           this.ref.close(true);
         },
         error: (err: Error) => {
@@ -634,7 +636,6 @@ export class ProjectFormDialogComponent {
     const raw = this.form.getRawValue();
     return {
       name: (raw.name ?? '').trim(),
-      code: (raw.code ?? '').trim() || undefined,
       projectType: (raw.projectType ?? '').trim() || undefined,
       contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
       startDate: toDateOnlyString(raw.startDate) || undefined,
@@ -851,7 +852,6 @@ export class ProjectFormDialogComponent {
   private patchEditProject(p: Project): void {
     this.form.patchValue({
       name: p.name,
-      code: p.code ?? '',
       customerId: p.customerId,
       projectType: p.projectType ?? '',
       contractValue: p.contractValue,

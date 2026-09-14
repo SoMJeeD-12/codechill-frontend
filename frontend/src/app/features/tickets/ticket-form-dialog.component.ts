@@ -446,7 +446,12 @@ export class TicketFormDialogComponent {
           this.demoOverlay.setCategory(created.id, cat);
         }
         this.saving.set(false);
-        this.snack.open('เปิดใบแจ้งปัญหาแล้ว', 'ปิด', { duration: 2800 });
+        const no = created.ticketNo?.trim();
+        this.snack.open(
+          no ? `เปิดใบแจ้งปัญหาแล้ว · ${no}` : 'เปิดใบแจ้งปัญหาแล้ว',
+          'ปิด',
+          { duration: no ? 5000 : 2800 }
+        );
         this.ref.close(true);
       },
       error: (err: Error) => {

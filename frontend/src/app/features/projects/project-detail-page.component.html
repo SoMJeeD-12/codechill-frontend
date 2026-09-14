@@ -99,6 +99,35 @@
           <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
         } @else {
           <div class="delivery-panel">
+            @if (deliveryNextHint(); as hint) {
+              <aside class="next-hint" aria-label="ขั้นถัดไปของการส่งมอบ">
+                <div class="next-hint__body">
+                  <p class="next-hint__title">{{ hint.title }}</p>
+                  @if (hint.blockers.length > 1) {
+                    <ul class="next-hint__list">
+                      @for (item of hint.blockers; track item) {
+                        <li>{{ item }}</li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="next-hint__detail">{{ hint.detail }}</p>
+                  }
+                </div>
+                @if (hint.actionLabel) {
+                  <div class="next-hint__actions">
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      (click)="onDeliveryNextHintAction()"
+                    >
+                      {{ hint.actionLabel }}
+                    </button>
+                  </div>
+                }
+              </aside>
+            }
+
             <div class="data-card">
               <div class="data-card__head">
                 <div class="data-card__row tab-toolbar">
@@ -302,34 +331,6 @@
               </div>
             }
 
-            @if (deliveryNextHint(); as hint) {
-              <aside class="next-hint" aria-label="ขั้นถัดไปของการส่งมอบ">
-                <div class="next-hint__body">
-                  <p class="next-hint__title">{{ hint.title }}</p>
-                  @if (hint.blockers.length > 1) {
-                    <ul class="next-hint__list">
-                      @for (item of hint.blockers; track item) {
-                        <li>{{ item }}</li>
-                      }
-                    </ul>
-                  } @else {
-                    <p class="next-hint__detail">{{ hint.detail }}</p>
-                  }
-                </div>
-                @if (hint.actionLabel) {
-                  <div class="next-hint__actions">
-                    <button
-                      mat-flat-button
-                      color="primary"
-                      type="button"
-                      (click)="onDeliveryNextHintAction()"
-                    >
-                      {{ hint.actionLabel }}
-                    </button>
-                  </div>
-                }
-              </aside>
-            }
           </div>
         }
       </mat-tab>
