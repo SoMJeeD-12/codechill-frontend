@@ -70,7 +70,7 @@ export class WarrantyService {
         `${environment.apiBaseUrl}/projects/${projectId}/warranties`
       )
       .pipe(
-        map((body) => asList(body)),
+        map((body) => asList(body).map((row) => this.normalize(row))),
         tap((rows) => {
           if (!syncCache) {
             return;
@@ -102,7 +102,7 @@ export class WarrantyService {
         }),
       })
       .pipe(
-        map((body) => asList(body)),
+        map((body) => asList(body).map((row) => this.normalize(row))),
         tap((rows) => {
           this.items.update((all) => {
             let next = [...all];
@@ -158,6 +158,7 @@ export class WarrantyService {
         })
       )
       .pipe(
+        map((row) => this.normalize(row)),
         tap((row) => this.items.update((list) => upsertById(list, row))),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
@@ -167,6 +168,7 @@ export class WarrantyService {
     return this.http
       .put<Warranty>(`${this.base}/${id}`, pruneUndefined(input))
       .pipe(
+        map((row) => this.normalize(row)),
         tap((row) => this.items.update((list) => upsertById(list, row))),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
@@ -179,9 +181,40 @@ export class WarrantyService {
     );
   }
 
+  private normalize(
+    row: Warranty & {
+      warrantyNo?: string | null;
+      warrantyCode?: string | null;
+    }
+  ): Warranty {
+    return {
+      ...row,
+      code: pickWarrantyCode(row),
+      scopeNote: row.scopeNote ?? null,
+      maContractId: row.maContractId ?? null,
+      maContract: row.maContract ?? null,
+      delivery: row.delivery ?? null,
+      project: row.project ?? null,
+    };
+  }
+
   private customerIdOf(w: Warranty): number | null {
     return w.project?.customerId ?? null;
   }
+}
+
+/** BE อาจส่ง `code` หรือ `warrantyNo` (สไตล์เดียวกับ ticketNo / deliveryNo) */
+function pickWarrantyCode(row: {
+  code?: string | null;
+  warrantyNo?: string | null;
+  warrantyCode?: string | null;
+}): string | null {
+  for (const value of [row.code, row.warrantyNo, row.warrantyCode]) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
 }
 
 function dedupeById(rows: Warranty[]): Warranty[] {

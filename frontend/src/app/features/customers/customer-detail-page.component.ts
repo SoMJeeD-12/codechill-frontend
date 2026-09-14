@@ -2,6 +2,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -31,7 +32,7 @@ import {
 } from '../../core/models/customer.model';
 import { CustomerOverview } from '../../core/models/customer-overview.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
-import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
+import { MA_STATUS_LABELS, MaContract, MaQuotaStatus } from '../../core/models/ma.model';
 import {
   FollowUp,
   followUpDisplayStatus,
@@ -112,6 +113,8 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly tickets = signal<Ticket[]>([]);
   readonly warranties = signal<Warranty[]>([]);
   readonly contracts = signal<MaContract[]>([]);
+  /** โควตาจาก GET /ma-contracts/:id/quota — ไม่คำนวณรอบเอง */
+  readonly maQuotasById = signal<Record<number, MaQuotaStatus>>({});
   readonly followUps = signal<FollowUp[]>([]);
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly channelLabels = CHANNEL_LABELS;
@@ -151,7 +154,7 @@ export class CustomerDetailPageComponent implements OnInit {
   ];
   readonly logColumns = ['occurredAt', 'channel', 'subject', 'contact', 'handler', 'actions'];
   readonly projectColumns = ['name', 'status', 'targetEndDate', 'actions'];
-  readonly warrantyColumns = ['title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
+  readonly warrantyColumns = ['code', 'title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly maColumns = ['id', 'plan', 'status', 'quota', 'actions'];
   readonly ticketColumns = ['title', 'status', 'priority', 'actions'];
@@ -211,6 +214,7 @@ export class CustomerDetailPageComponent implements OnInit {
     }
     return list.filter((w) =>
       [
+        w.code,
         w.delivery?.title,
         w.project?.name,
         String(w.durationMonth),
@@ -418,8 +422,15 @@ export class CustomerDetailPageComponent implements OnInit {
       error: () => this.tickets.set([]),
     });
     this.maApi.list({ customerId: this.customerId }).subscribe({
-      next: (rows) => this.contracts.set(rows),
-      error: () => this.contracts.set(this.maApi.getByCustomer(this.customerId)),
+      next: (rows) => {
+        this.contracts.set(rows);
+        this.loadMaQuotas(rows);
+      },
+      error: () => {
+        const fallback = this.maApi.getByCustomer(this.customerId);
+        this.contracts.set(fallback);
+        this.loadMaQuotas(fallback);
+      },
     });
     this.followUpsApi.list({ customerId: this.customerId }).subscribe({
       next: (rows) => this.followUps.set(rows),
@@ -427,8 +438,46 @@ export class CustomerDetailPageComponent implements OnInit {
     });
   }
 
-  remainingQuota(c: MaContract): number {
-    return this.maApi.remainingQuota(c);
+  remainingQuota(c: MaContract): number | null {
+    const q = this.maQuotasById()[c.id] ?? c.quota;
+    return q?.remaining ?? null;
+  }
+
+  maQuotaLabel(c: MaContract): string {
+    if (c.status === 'DRAFT' || c.status === 'CANCELLED') {
+      return '—';
+    }
+    const q = this.maQuotasById()[c.id] ?? c.quota;
+    if (!q) {
+      return '—';
+    }
+    return `${q.remaining}/${q.quota}`;
+  }
+
+  private loadMaQuotas(list: MaContract[]): void {
+    const targets = list.filter((c) => c.status !== 'DRAFT' && c.status !== 'CANCELLED');
+    if (!targets.length) {
+      this.maQuotasById.set({});
+      return;
+    }
+    forkJoin(
+      targets.map((c) =>
+        this.maApi.getQuota(c.id).pipe(
+          map((q) => [c.id, q] as const),
+          catchError(() => of([c.id, null] as const))
+        )
+      )
+    ).subscribe({
+      next: (pairs) => {
+        const next: Record<number, MaQuotaStatus> = {};
+        for (const [id, q] of pairs) {
+          if (q) {
+            next[id] = q;
+          }
+        }
+        this.maQuotasById.set(next);
+      },
+    });
   }
 
   isFollowUpOverdue(f: FollowUp): boolean {

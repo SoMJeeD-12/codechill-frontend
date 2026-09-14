@@ -128,9 +128,10 @@ export const MA_STATUS_LABELS: Record<MaContractStatus, string> = {
   RENEWED: 'ต่ออายุแล้ว',
 };
 
+/** รอบวางบิลเท่านั้น — โควตายังนับรายเดือนเสมอ */
 export const MA_BILLING_CYCLE_LABELS: Record<MaBillingCycle, string> = {
-  MONTHLY: 'รายเดือน',
-  YEARLY: 'รายปี',
+  MONTHLY: 'วางบิลรายเดือน',
+  YEARLY: 'วางบิลรายปี',
 };
 
 export function maPlanDisplayName(contract: MaContract): string {

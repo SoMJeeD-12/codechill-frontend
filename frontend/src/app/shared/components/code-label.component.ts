@@ -1,8 +1,10 @@
 import { Component, input } from '@angular/core';
+import { displayEntityCode } from '../../core/utils/entity-code.util';
 
 /**
- * แสดงรหัส (code / ticketNo ฯลฯ)
- * ค่าว่าง → "—" ตาม brief — ห้ามเว้นว่างเงียบ
+ * แสดงรหัส (code / ticketNo / contractNo / deliveryNo ฯลฯ)
+ * ค่าว่างหรือ null → "—" — รองรับรหัสเก่าที่ยังไม่มีค่า
+ * ห้าม generate รหัสฝั่ง FE
  */
 @Component({
   selector: 'app-code-label',
@@ -24,10 +26,6 @@ export class CodeLabelComponent {
   readonly empty = input('—');
 
   display(): string {
-    const raw = this.value();
-    if (raw == null || String(raw).trim() === '') {
-      return this.empty();
-    }
-    return String(raw).trim();
+    return displayEntityCode(this.value(), this.empty());
   }
 }

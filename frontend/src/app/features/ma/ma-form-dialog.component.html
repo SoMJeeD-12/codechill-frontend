@@ -1,146 +1,157 @@
 <h2 mat-dialog-title>{{ data ? 'แก้ไขสัญญา MA' : 'สร้างสัญญา MA' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="ma-form" (ngSubmit)="save()">
-    @if (!isEdit) {
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>ลูกค้า</mat-label>
-        <mat-select formControlName="customerId">
-          @for (c of customers(); track c.id) {
-            <mat-option [value]="c.id">{{ c.name }}</mat-option>
-          }
-        </mat-select>
-        <mat-hint>ใช้กรองโปรเจค — ระบบดึง customerId จากโปรเจคให้อัตโนมัติ</mat-hint>
-      </mat-form-field>
-    }
+    <div class="form-grid">
+      <section class="form-grid__col">
+        <h3 class="form-grid__title">คู่สัญญา</h3>
 
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>โปรเจค *</mat-label>
-      <mat-select formControlName="projectId">
-        @for (p of filteredProjects(); track p.id) {
-          <mat-option [value]="p.id">#{{ p.id }} · {{ p.name }}</mat-option>
+        @if (!isEdit) {
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>ลูกค้า</mat-label>
+            <mat-select formControlName="customerId">
+              @for (c of customers(); track c.id) {
+                <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>ใช้กรองโปรเจค — ระบบดึง customerId จากโปรเจคให้อัตโนมัติ</mat-hint>
+          </mat-form-field>
         }
-      </mat-select>
-      @if (isEdit) {
-        <mat-hint>ย้ายโปรเจคทีหลังไม่ได้</mat-hint>
-      }
-    </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>แผน MA *</mat-label>
-      <mat-select formControlName="planId">
-        @for (p of plans(); track p.id) {
-          <mat-option [value]="p.id">{{ p.name }}</mat-option>
-        }
-      </mat-select>
-      @if (planHint()) {
-        <mat-hint>{{ planHint() }}</mat-hint>
-      }
-    </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>โปรเจค *</mat-label>
+          <mat-select formControlName="projectId">
+            @for (p of filteredProjects(); track p.id) {
+              <mat-option [value]="p.id">
+                {{ p.code ? p.code + ' · ' : '#' + p.id + ' · ' }}{{ p.name }}
+              </mat-option>
+            }
+          </mat-select>
+          @if (isEdit) {
+            <mat-hint>ย้ายโปรเจคทีหลังไม่ได้</mat-hint>
+          }
+        </mat-form-field>
 
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>รอบวางบิล</mat-label>
-        <mat-select formControlName="billingCycle">
-          @for (b of billingCycles; track b) {
-            <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>แผน MA *</mat-label>
+          <mat-select formControlName="planId">
+            @for (p of plans(); track p.id) {
+              <mat-option [value]="p.id">{{ p.name }}</mat-option>
+            }
+          </mat-select>
+          @if (planHint()) {
+            <mat-hint>{{ planHint() }}</mat-hint>
           }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>ระยะสัญญา</mat-label>
-        <mat-select formControlName="durationMonths">
-          @for (opt of availableDurationOptions(); track opt.value) {
-            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-          }
-        </mat-select>
-        @if (billingCycle() === 'YEARLY') {
-          <mat-hint>รายปีใช้ได้ตั้งแต่ 12 เดือนขึ้นไป</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>สถานะ</mat-label>
+          <mat-select formControlName="status">
+            @for (s of statuses; track s) {
+              <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        @if (status() === 'ACTIVE') {
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>วันที่เซ็น</mat-label>
+            <input
+              matInput
+              [matDatepicker]="signedPicker"
+              formControlName="signedDate"
+              readonly
+              (click)="signedPicker.open()"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="signedPicker"></mat-datepicker-toggle>
+            <mat-datepicker #signedPicker></mat-datepicker>
+            <mat-hint>สัญญาต้องเซ็นก่อนถึงมีผล (BR-12) — กรณีคีย์สัญญากระดาษเก่าย้อนหลัง</mat-hint>
+          </mat-form-field>
         }
-      </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="3" formControlName="note"></textarea>
+        </mat-form-field>
+      </section>
+
+      <section class="form-grid__col">
+        <h3 class="form-grid__title">ระยะเวลาและมูลค่า</h3>
+
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>รอบวางบิล</mat-label>
+            <mat-select formControlName="billingCycle">
+              @for (b of billingCycles; track b) {
+                <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>ใช้วางบิลเท่านั้น · โควตานับรายเดือนเสมอ</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>ระยะสัญญา</mat-label>
+            <mat-select formControlName="durationMonths">
+              @for (opt of availableDurationOptions(); track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+              }
+            </mat-select>
+            @if (billingCycle() === 'YEARLY') {
+              <mat-hint>วางบิลรายปีใช้ได้ตั้งแต่ 12 เดือนขึ้นไป</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>วันเริ่ม *</mat-label>
+            <input
+              matInput
+              [matDatepicker]="startPicker"
+              formControlName="startDate"
+              readonly
+              (click)="startPicker.open()"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>วันสิ้นสุด *</mat-label>
+            <input
+              matInput
+              [matDatepicker]="endPicker"
+              formControlName="endDate"
+              [min]="minEndDate()"
+              readonly
+              (click)="isCustomDuration() && endPicker.open()"
+            />
+            <mat-datepicker-toggle
+              matIconSuffix
+              [for]="endPicker"
+              [disabled]="!isCustomDuration()"
+            ></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+            @if (isCustomDuration()) {
+              <mat-hint>ต้องอยู่หลังวันเริ่ม</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+
+        @if (form.hasError('endBeforeStart') && (form.touched || form.dirty)) {
+          <p class="error">วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา</p>
+        }
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>มูลค่ารวมตลอดอายุสัญญา (บาท) *</mat-label>
+          <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+          <mat-hint>
+            กรอกราคาที่ตกลงจริงทั้งสัญญา · ไม่คิดเป็นรายเดือน/ปีอัตโนมัติ
+            @if (durationMonthCount() > 0) {
+              · ระยะ {{ durationMonthCount() }} เดือน
+            }
+          </mat-hint>
+        </mat-form-field>
+        <p class="field-note">เลขที่สัญญา (contractNo) ระบบสร้างให้อัตโนมัติหลังบันทึก</p>
+      </section>
     </div>
-
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>วันเริ่ม *</mat-label>
-        <input
-          matInput
-          [matDatepicker]="startPicker"
-          formControlName="startDate"
-          readonly
-          (click)="startPicker.open()"
-        />
-        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
-        <mat-datepicker #startPicker></mat-datepicker>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>วันสิ้นสุด *</mat-label>
-        <input
-          matInput
-          [matDatepicker]="endPicker"
-          formControlName="endDate"
-          [min]="minEndDate()"
-          readonly
-          (click)="isCustomDuration() && endPicker.open()"
-        />
-        <mat-datepicker-toggle
-          matIconSuffix
-          [for]="endPicker"
-          [disabled]="!isCustomDuration()"
-        ></mat-datepicker-toggle>
-        <mat-datepicker #endPicker></mat-datepicker>
-        @if (isCustomDuration()) {
-          <mat-hint>ต้องอยู่หลังวันเริ่ม</mat-hint>
-        }
-      </mat-form-field>
-    </div>
-
-    @if (form.hasError('endBeforeStart') && (form.touched || form.dirty)) {
-      <p class="error">วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา</p>
-    }
-
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>{{ unitPriceLabel() }}</mat-label>
-      <input matInput appMoneyInput formControlName="unitPrice" inputmode="decimal" />
-      @if (durationMonthCount() > 0) {
-        <mat-hint>ใช้คำนวณมูลค่ารวม · ระยะ {{ durationMonthCount() }} เดือน</mat-hint>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>มูลค่ารวมตลอดอายุสัญญา (บาท) *</mat-label>
-      <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
-    </mat-form-field>
-    <p class="field-note">ส่งเฉพาะมูลค่ารวม · ราคาต่อเดือน/ปีเป็นตัวช่วยคำนวณเท่านั้น</p>
-
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>สถานะ</mat-label>
-      <mat-select formControlName="status">
-        @for (s of statuses; track s) {
-          <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-
-    @if (status() === 'ACTIVE') {
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>วันที่เซ็น</mat-label>
-        <input
-          matInput
-          [matDatepicker]="signedPicker"
-          formControlName="signedDate"
-          readonly
-          (click)="signedPicker.open()"
-        />
-        <mat-datepicker-toggle matIconSuffix [for]="signedPicker"></mat-datepicker-toggle>
-        <mat-datepicker #signedPicker></mat-datepicker>
-        <mat-hint>สัญญาต้องเซ็นก่อนถึงมีผล (BR-12) — กรณีคีย์สัญญากระดาษเก่าย้อนหลัง</mat-hint>
-      </mat-form-field>
-    }
-
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>หมายเหตุ</mat-label>
-      <textarea matInput rows="2" formControlName="note"></textarea>
-    </mat-form-field>
 
     @if (error()) {
       <p class="error">{{ error() }}</p>

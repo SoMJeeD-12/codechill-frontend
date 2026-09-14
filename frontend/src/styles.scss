@@ -117,15 +117,46 @@ button.back.mat-mdc-outlined-button {
 
 /* ฟอร์มกรอกข้อมูลใน dialog — ให้กว้างได้ตามที่กำหนด ไม่โดน Material จำกัดแคบ */
 .cdk-overlay-pane.mat-mdc-dialog-panel {
-  max-width: 96vw !important;
+  max-width: 98vw !important;
 }
 
 .mat-mdc-dialog-container {
-  --mat-dialog-container-max-width: 96vw;
+  --mat-dialog-container-max-width: 98vw;
 }
 
 .mat-mdc-dialog-surface {
-  max-height: 92vh;
+  max-height: 94vh;
+}
+
+/* panel ของฟอร์มกรอก (FORM_DIALOG*) — เนื้อหาเลื่อนใน content ไม่ตัดสูงเกินจอ */
+.cdk-overlay-pane.app-form-dialog {
+  max-width: 98vw !important;
+}
+
+.app-form-dialog .mat-mdc-dialog-surface {
+  display: flex;
+  flex-direction: column;
+  max-height: 94vh;
+  overflow: hidden;
+}
+
+.app-form-dialog .mat-mdc-dialog-title {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 1.1rem 1.35rem 0.5rem;
+}
+
+.app-form-dialog .mat-mdc-dialog-content {
+  flex: 1 1 auto;
+  max-height: none;
+  overflow: auto;
+  padding: 0.5rem 1.35rem 1rem;
+}
+
+.app-form-dialog .mat-mdc-dialog-actions {
+  flex: 0 0 auto;
+  padding: 0.65rem 1.35rem 1rem;
+  margin: 0;
 }
 
 /* กรองโครงการ — ซ่อนสกอลล์บาร์ของแผง autocomplete */

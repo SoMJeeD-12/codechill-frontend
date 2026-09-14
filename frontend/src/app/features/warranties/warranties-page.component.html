@@ -14,7 +14,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ลูกค้า / โปรเจค / การส่งมอบ"
+            placeholder="รหัส / ลูกค้า / โปรเจค / การส่งมอบ"
             aria-label="ค้นหาการรับประกัน"
           />
         </label>
@@ -38,6 +38,12 @@
 
     <div class="data-card__body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>รหัส</th>
+          <td mat-cell *matCellDef="let row">
+            <app-code-label [value]="row.code" />
+          </td>
+        </ng-container>
         <ng-container matColumnDef="project">
           <th mat-header-cell *matHeaderCellDef>โปรเจค / ลูกค้า</th>
           <td mat-cell *matCellDef="let row">

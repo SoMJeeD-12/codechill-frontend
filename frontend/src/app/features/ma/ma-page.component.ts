@@ -54,7 +54,7 @@ import { MoneyInputDirective } from '../../shared/directives/money-input.directi
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
@@ -222,9 +222,9 @@ export class MaPageComponent implements OnInit {
     return maPlanDisplayName(c);
   }
 
-  remaining(c: MaContract): number {
+  remaining(c: MaContract): number | null {
     const q = this.quotasById()[c.id] ?? c.quota;
-    return q?.remaining ?? this.api.remainingQuota(c);
+    return q?.remaining ?? null;
   }
 
   quotaLabel(c: MaContract): string {
@@ -247,7 +247,7 @@ export class MaPageComponent implements OnInit {
 
   openCreate(row?: MaContract): void {
     const ref = this.dialog.open(MaFormDialogComponent, {
-      ...FORM_DIALOG,
+      ...FORM_DIALOG_WIDE,
       data: row ?? null,
     });
     ref.afterClosed().subscribe((saved) => {
@@ -378,8 +378,7 @@ export class MaFormDialogComponent {
           ? 'ACTIVE'
           : (this.editRow?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>,
       ],
-      price: [parseMoneyValue(this.editRow?.price) ?? 0, Validators.min(0)],
-      unitPrice: [null as number | null],
+      price: [parseMoneyValue(this.editRow?.price) ?? 0, [Validators.required, Validators.min(0)]],
       billingCycle: [(this.editRow?.billingCycle ?? 'YEARLY') as MaBillingCycle],
       signedDate: [parseDateOnly(this.editRow?.signedDate) as Date | null],
       note: [this.editRow?.note ?? ''],
@@ -445,25 +444,16 @@ export class MaFormDialogComponent {
     this.form.controls.durationMonths.valueChanges.subscribe(() => {
       this.syncEndDateEditability();
       this.recalcEndFromDuration();
-      this.recalcTotalPrice();
     });
     this.form.controls.startDate.valueChanges.subscribe(() => {
       this.refreshMinEndDate();
       this.recalcEndFromDuration();
-      this.recalcTotalPrice();
-    });
-    this.form.controls.endDate.valueChanges.subscribe(() => {
-      this.recalcTotalPrice();
     });
     this.form.controls.billingCycle.valueChanges.subscribe((value) => {
       if (value) {
         this.billingCycle.set(value);
       }
       this.ensureDurationMatchesBilling();
-      this.recalcTotalPrice();
-    });
-    this.form.controls.unitPrice.valueChanges.subscribe(() => {
-      this.recalcTotalPrice();
     });
   }
 
@@ -479,15 +469,11 @@ export class MaFormDialogComponent {
       return '';
     }
     const sla = plan.responseTimeHour != null ? `SLA ${plan.responseTimeHour} ชม.` : 'ไม่มี SLA';
-    return `โควตา ${plan.bugQuotaPerMonth} เคส/รอบ · ${sla}`;
+    return `โควตา ${plan.bugQuotaPerMonth} เคส/เดือน · ${sla}`;
   }
 
   isCustomDuration(): boolean {
     return this.form.controls.durationMonths.value === 'CUSTOM';
-  }
-
-  unitPriceLabel(): string {
-    return this.form.controls.billingCycle.value === 'MONTHLY' ? 'ราคาต่อเดือน' : 'ราคาต่อปี';
   }
 
   durationMonthCount(): number {
@@ -567,10 +553,13 @@ export class MaFormDialogComponent {
       note: raw.note?.trim() || null,
     };
     this.api.create(payload).subscribe({
-      next: ({ message }) => {
+      next: ({ contract, message }) => {
         this.saving.set(false);
-        const text = message?.trim() || 'สร้างสัญญาแล้ว';
-        this.snack.open(text, 'ปิด', { duration: message ? 6000 : 2500 });
+        const no = contract.contractNo?.trim();
+        const text =
+          message?.trim() ||
+          (no ? `สร้างสัญญาแล้ว · ${no}` : 'สร้างสัญญาแล้ว');
+        this.snack.open(text, 'ปิด', { duration: message || no ? 5000 : 2500 });
         this.ref.close(true);
       },
       error: (err: Error) => {
@@ -613,19 +602,6 @@ export class MaFormDialogComponent {
     }
     const end = contractEndFromDuration(start, duration);
     this.form.controls.endDate.setValue(end, { emitEvent: false });
-  }
-
-  private recalcTotalPrice(): void {
-    const unitRaw = this.form.controls.unitPrice.value;
-    const unit =
-      typeof unitRaw === 'number' ? unitRaw : (parseMoneyValue(unitRaw as string | null) ?? 0);
-    const months = this.durationMonthCount();
-    if (unit <= 0 || months <= 0) {
-      return;
-    }
-    const cycle = this.form.controls.billingCycle.value;
-    const total = cycle === 'MONTHLY' ? unit * months : unit * (months / 12);
-    this.form.controls.price.setValue(total, { emitEvent: false });
   }
 
   private inferDurationPreset(

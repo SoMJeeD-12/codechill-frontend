@@ -89,9 +89,9 @@ export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
 export const BILLING_TYPE_LABELS: Record<BillingType, string> = {
   WARRANTY: 'ในประกัน',
   MA_QUOTA: 'ใช้โควตา MA',
-  ADDON: 'ใช้ Add-on',
-  ONE_TIME: 'คิดเป็นครั้ง',
-  FREE: 'ไม่คิดเงิน',
+  ADDON: 'เกี่ยวข้องกับ Add-on',
+  ONE_TIME: 'คิดค่าบริการเป็นครั้ง',
+  FREE: 'ช่วยฟรี (บันทึกไว้)',
 };
 
 export const REPORTED_CHANNEL_LABELS: Record<ReportedChannel, string> = {

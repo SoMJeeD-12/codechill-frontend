@@ -193,7 +193,7 @@ export class ProjectDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
-  readonly warrantyColumns = ['delivery', 'period', 'daysLeft', 'maLink', 'status'];
+  readonly warrantyColumns = ['code', 'delivery', 'period', 'daysLeft', 'maLink', 'status'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'period', 'status'];

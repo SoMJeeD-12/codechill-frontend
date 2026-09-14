@@ -36,6 +36,7 @@ import {
   WarrantyUpdateInput,
 } from '../../core/services/warranty.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { CodeLabelComponent } from '../../shared/components/code-label.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
@@ -47,7 +48,7 @@ import { MaFormDialogComponent } from '../ma/ma-page.component';
   standalone: true,
   imports: [
     ThaiDatePipe,
-        RouterLink,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -57,6 +58,7 @@ import { MaFormDialogComponent } from '../ma/ma-page.component';
     MatSnackBarModule,
     MatMenuModule,
     TablePaginatorComponent,
+    CodeLabelComponent,
   ],
   templateUrl: './warranties-page.component.html',
   styleUrl: './warranties-page.component.scss',
@@ -76,7 +78,7 @@ export class WarrantiesPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
-  readonly columns = ['project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
+  readonly columns = ['code', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
   readonly maLinkLabel = warrantyMaLinkLabel;
 
   readonly filtered = computed(() => {
@@ -100,6 +102,7 @@ export class WarrantiesPageComponent implements OnInit {
         projectName.includes(q) ||
         customerName.includes(q) ||
         deliveryTitle.includes(q) ||
+        (w.code ?? '').toLowerCase().includes(q) ||
         this.statusLabel(w.status).toLowerCase().includes(q) ||
         (w.scopeNote ?? '').toLowerCase().includes(q)
       );
@@ -485,13 +488,23 @@ export class WarrantyFormDialogComponent {
       ...(maContractId != null ? { maContractId } : {}),
     };
     this.api.createForDelivery(Number(raw.deliveryId), payload).subscribe({
-      next: () => this.onSaved(false),
+      next: (created) => this.onSaved(false, created),
       error: (err: Error) => this.onError(err),
     });
   }
 
-  private onSaved(isEdit: boolean): void {
+  private onSaved(isEdit: boolean, created?: Warranty): void {
     this.saving.set(false);
+    if (!isEdit && created) {
+      const code = created.code?.trim();
+      this.snack.open(
+        code ? `สร้างประกันแล้ว · ${code}` : 'สร้างประกันแล้ว',
+        'ปิด',
+        { duration: code ? 5000 : 2500 }
+      );
+      this.ref.close(created);
+      return;
+    }
     this.snack.open(isEdit ? 'บันทึกประกันแล้ว' : 'สร้างประกันแล้ว', 'ปิด', {
       duration: 2500,
     });

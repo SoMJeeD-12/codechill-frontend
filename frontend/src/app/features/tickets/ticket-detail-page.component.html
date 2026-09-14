@@ -42,41 +42,33 @@
         <p class="description">
           {{ descriptionParts().base || 'ไม่มีรายละเอียดเพิ่มเติม' }}
         </p>
+
         @if (reopenNoteRows().length) {
-          <aside class="reopen-notes" aria-label="อาการที่กลับมาอีกครั้ง">
-            <header class="reopen-notes__head">
-              <div>
-                <p class="reopen-notes__title">อาการที่กลับมาอีกครั้ง</p>
-                <p class="reopen-notes__count">{{ reopenNoteRows().length }} ครั้ง</p>
-              </div>
-              @if (reopenNoteRows().length > 1) {
-                <button
-                  mat-button
-                  type="button"
-                  class="reopen-notes__toggle"
-                  (click)="toggleReopenNotes()"
-                >
-                  {{ showAllReopenNotes() ? 'ย่อ' : 'ดูทั้งหมด' }}
-                </button>
-              }
-            </header>
-            <ul
-              class="reopen-notes__list"
-              [class.is-scroll]="showAllReopenNotes() && reopenNoteRows().length > 3"
-            >
-              @for (row of visibleReopenNotes(); track row.index) {
-                <li>
-                  <span class="reopen-notes__badge">ครั้งที่ {{ row.index }}</span>
-                  <span class="reopen-notes__text">{{ row.text }}</span>
-                </li>
-              }
-            </ul>
-          </aside>
+          <div class="reopen-chips" aria-label="อาการที่กลับมาอีกครั้ง">
+            @for (row of visibleReopenNotes(); track row.index) {
+              <button
+                type="button"
+                class="reopen-chip"
+                [class.is-expanded]="showAllReopenNotes()"
+                (click)="toggleReopenNotes()"
+                [attr.title]="row.text"
+              >
+                <span class="reopen-chip__label">กลับมา · ครั้งที่ {{ row.index }}</span>
+                <span class="reopen-chip__text">{{ shortText(row.text, showAllReopenNotes() ? 120 : 42) }}</span>
+              </button>
+            }
+            @if (reopenNoteRows().length > 1) {
+              <button
+                mat-button
+                type="button"
+                class="reopen-chips__more"
+                (click)="toggleReopenNotes()"
+              >
+                {{ showAllReopenNotes() ? 'ย่อ' : 'ดูทั้งหมด (' + reopenNoteRows().length + ')' }}
+              </button>
+            }
+          </div>
         }
-        <p class="hierarchy-note">
-          ใบนี้คือ<strong>หัวข้อปัญหา</strong> · ด้านล่างคือ<strong>งานแก้ไข</strong>ทีละครั้ง
-          (หลังปิดงานแล้ว ถ้าปัญหาเดิมกลับมา = เพิ่มงานในใบเดิม ไม่เปิดใบใหม่)
-        </p>
       </div>
       <div class="actions">
         @if (canAssign() && displayStatus() === 'RECEIVED') {
@@ -92,7 +84,11 @@
             เปลี่ยนผู้รับผิดชอบ
           </button>
         }
-        @if (canAssign() && displayStatus() === 'IN_PROGRESS') {
+        @if (
+          canAssign() &&
+          displayStatus() === 'IN_PROGRESS' &&
+          !isIncompleteWork()
+        ) {
           <button mat-stroked-button type="button" (click)="changeAssignee()">
             เปลี่ยนผู้รับผิดชอบ
           </button>
@@ -104,28 +100,21 @@
       <p class="demo-banner">{{ demoBanner() }}</p>
     }
 
-    <app-status-bar
-      [status]="statusBarAttr()"
-      [label]="statusBarLabel()"
-      [detail]="statusDetail(t)"
-      [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
-    />
-
-    @if (categoryLabel(); as cat) {
-      <p class="category-chip">
-        หมวดหมู่ · {{ cat }}
-        <span class="demo-tag">ตัวอย่าง</span>
-      </p>
-    }
-
-    <!-- ขั้นถัดไป — เน้นเฉพาะปุ่มที่ต้องกดตอนนี้ -->
-    @if (ticketNextHint(); as hint) {
-      <aside class="next-hint" [attr.data-tone]="hint.tone" aria-label="ขั้นถัดไปของใบปัญหา">
-        <div class="next-hint__body">
-          <p class="next-hint__title">{{ hint.title }}</p>
-          <p class="next-hint__detail">{{ hint.detail }}</p>
+    <!-- เคสแก้ไขบางส่วน / ยังไม่สำเร็จ: สถานะ + CTA ในแถบเดียว -->
+    @if (isIncompleteWork() && ticketNextHint(); as hint) {
+      <aside
+        class="ticket-workflow"
+        [attr.data-result]="statusBarAttr()"
+        aria-label="สถานะและการดำเนินการ"
+      >
+        <div class="ticket-workflow__main">
+          <span class="ticket-workflow__badge">{{ statusBarLabel() }}</span>
+          <span class="ticket-workflow__meta">
+            ผู้รับผิดชอบ {{ userName(t.assignedUserId) }}
+            · รวมแก้ {{ t.resolutionCount || 0 }} ครั้ง
+          </span>
         </div>
-        <div class="next-hint__actions">
+        <div class="ticket-workflow__actions">
           @for (action of hint.actions; track action.id) {
             @if (action.primary) {
               <button
@@ -148,6 +137,46 @@
           }
         </div>
       </aside>
+    } @else {
+      <app-status-bar
+        [status]="statusBarAttr()"
+        [label]="statusBarLabel()"
+        [detail]="statusDetail(t)"
+        [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
+      />
+
+      @if (ticketNextHint(); as hint) {
+        <aside class="next-hint" [attr.data-tone]="hint.tone" aria-label="ขั้นถัดไปของใบปัญหา">
+          <div class="next-hint__body">
+            <p class="next-hint__title">{{ hint.title }}</p>
+            @if (hint.detail) {
+              <p class="next-hint__detail">{{ hint.detail }}</p>
+            }
+          </div>
+          <div class="next-hint__actions">
+            @for (action of hint.actions; track action.id) {
+              @if (action.primary) {
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="runTicketHintAction(action.id)"
+                >
+                  {{ action.label }}
+                </button>
+              } @else {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="runTicketHintAction(action.id)"
+                >
+                  {{ action.label }}
+                </button>
+              }
+            }
+          </div>
+        </aside>
+      }
     }
 
     @if (timelineEvents().length) {
@@ -156,9 +185,6 @@
           <h3>ลำดับเหตุการณ์</h3>
           <span class="demo-tag">ตัวอย่าง</span>
         </header>
-        <p class="ticket-timeline__note">
-          สร้างจากข้อมูลที่มีบนใบ + ขั้นมอบหมายจำลอง — ยังไม่ใช่ API timeline จริง
-        </p>
         <ol class="ticket-timeline__list">
           @for (ev of timelineEvents(); track ev.id) {
             <li [class.is-demo]="ev.demo">
@@ -176,39 +202,19 @@
       </aside>
     }
 
-    <div class="meta-grid">
-      <mat-card>
-        <strong>รับแจ้ง</strong>
-        <span>{{ t.reportedAt | thaiDate }}</span>
-      </mat-card>
-      <mat-card>
-        <strong>ปิดงานเมื่อ</strong>
-        <span>{{ t.closedAt | thaiDate }}</span>
-      </mat-card>
-      <mat-card>
-        <strong>ผู้รับเรื่อง</strong>
-        <span>{{ userName(t.receivedByUserId) }}</span>
-      </mat-card>
-      <mat-card>
-        <strong>งานแก้ไขแล้ว</strong>
-        <span>{{ t.resolutionCount || 0 }} ครั้ง</span>
-      </mat-card>
-    </div>
-
     <div class="data-card">
       <div class="data-card__head">
         <div class="data-card__row tab-toolbar">
           <div class="section-title-wrap">
             <h3 class="tab-heading">ประวัติงานแก้ไข</h3>
-            <p class="section-sub">
-              คลิกแต่ละงานเพื่อดูรายละเอียด · สถานะด้านบนเป็นของใบทั้งใบ ไม่ใช่ของทุกงานพร้อมกัน
-            </p>
+            <p class="section-sub">คลิกดูรายละเอียดแต่ละรอบ</p>
           </div>
           @if (
             canResolve() &&
             displayStatus() !== 'CLOSED' &&
             displayStatus() !== 'RESOLVED' &&
-            displayStatus() !== 'ASSIGNED'
+            displayStatus() !== 'ASSIGNED' &&
+            !isIncompleteWork()
           ) {
             <button
               mat-flat-button
@@ -261,6 +267,32 @@
         }
       </div>
     </div>
+
+    <div class="meta-grid">
+      <mat-card>
+        <strong>รับแจ้ง</strong>
+        <span>{{ t.reportedAt | thaiDate }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ปิดงานเมื่อ</strong>
+        <span>{{ t.closedAt | thaiDate }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>ผู้รับเรื่อง</strong>
+        <span>{{ userName(t.receivedByUserId) }}</span>
+      </mat-card>
+      <mat-card>
+        <strong>งานแก้ไขแล้ว</strong>
+        <span>{{ t.resolutionCount || 0 }} ครั้ง</span>
+      </mat-card>
+    </div>
+
+    @if (categoryLabel(); as cat) {
+      <p class="category-chip">
+        หมวดหมู่ · {{ cat }}
+        <span class="demo-tag">ตัวอย่าง</span>
+      </p>
+    }
   </section>
   }
 }

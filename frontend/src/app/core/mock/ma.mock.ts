@@ -67,6 +67,7 @@ export function buildMockMaContracts(ctx: MaMockSeedContext): {
         responseTimeHour: 8,
       },
       contractNo: `MA-${year}-001`,
+      // รูปแบบมาตรฐาน: MA-2026-001 — FE ไม่ generate ตอนสร้างจริง
       price: '96000.00',
       billingCycle: 'YEARLY',
       startDate: start,

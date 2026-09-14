@@ -191,9 +191,20 @@ export class TicketDetailPageComponent implements OnInit {
     );
   });
 
+  /** PARTIAL/FAILED ล่าสุดแต่ใบยัง IN_PROGRESS — ใช้แถบ workflow รวมสถานะ+CTA */
+  readonly isIncompleteWork = computed(() => {
+    this.demoOverlay.state();
+    const t = this.ticket();
+    if (!t || this.displayStatus() !== 'IN_PROGRESS') {
+      return false;
+    }
+    const last = latestTicketResolution(t);
+    return !!(last && isIncompleteResolutionResult(last.result));
+  });
+
   /**
    * แถบขั้นถัดไป — โชว์เฉพาะตอนมีปุ่มที่ต้องกด
-   * (ปัญหาเดิมกลับมา / รับงานรอบใหม่ / ปิดงาน / เริ่มงาน)
+   * (ปัญหาเดิมกลับมา / รับงานรอบใหม่ / ปิดงาน / เริ่มงาน / ทำต่อหลัง partial)
    */
   readonly ticketNextHint = computed(() => {
     const t = this.ticket();

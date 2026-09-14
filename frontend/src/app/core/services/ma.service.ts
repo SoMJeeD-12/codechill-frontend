@@ -32,7 +32,7 @@ export interface MaPlanInput {
 /** UpdateMaPlanDto — ส่ง items = แทนที่ทั้งชุด */
 export interface MaPlanUpdateInput extends Partial<MaPlanInput> {}
 
-/** CreateMaContractDto — ไม่ส่ง customerId (backend ดึงจาก project) */
+/** CreateMaContractDto — ไม่ส่ง customerId (backend ดึงจาก project) · contractNo ออกโดย BE */
 export interface MaContractCreateInput {
   projectId: number;
   planId: number;
@@ -41,13 +41,12 @@ export interface MaContractCreateInput {
   endDate: string;
   billingCycle?: MaBillingCycle;
   status?: Exclude<MaContractStatus, 'RENEWED'>;
-  contractNo?: string | null;
   signedDate?: string | null;
   signedFileUrl?: string | null;
   note?: string | null;
 }
 
-/** UpdateMaContractDto — ไม่มี RENEWED / ไม่ย้าย project */
+/** UpdateMaContractDto — ไม่มี RENEWED / ไม่ย้าย project · ห้ามส่ง contractNo */
 export interface MaContractUpdateInput {
   planId?: number;
   price?: string;
@@ -55,7 +54,6 @@ export interface MaContractUpdateInput {
   startDate?: string;
   endDate?: string;
   status?: Exclude<MaContractStatus, 'RENEWED'>;
-  contractNo?: string | null;
   signedDate?: string | null;
   signedFileUrl?: string | null;
   note?: string | null;
@@ -67,7 +65,6 @@ export interface MaContractRenewInput {
   price: string;
   planId?: number;
   billingCycle?: MaBillingCycle;
-  contractNo?: string | null;
   note?: string | null;
 }
 
@@ -222,11 +219,8 @@ export class MaService {
       );
   }
 
-  remainingQuota(contract: MaContract): number {
-    if (contract.quota) {
-      return contract.quota.remaining;
-    }
-    return 0;
+  remainingQuota(contract: MaContract): number | null {
+    return contract.quota?.remaining ?? null;
   }
 
   create(input: MaContractCreateInput): Observable<{ contract: MaContract; message: string | null }> {

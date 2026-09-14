@@ -292,11 +292,11 @@
     color: #9a3412;
   }
 
-  /* แก้ไขบางส่วน / ยังไม่สำเร็จ */
+  /* แก้ไขบางส่วน / ยังไม่สำเร็จ — อำพัน ไม่ใช่แดง error */
   &[data-status='PARTIAL'],
   &[data-status='FAILED'] {
-    background: #ffedd5;
-    color: #9a3412;
+    background: #fef3c7;
+    color: #92400e;
   }
 
   /* เรียบร้อย */

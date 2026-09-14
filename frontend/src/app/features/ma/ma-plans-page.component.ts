@@ -145,7 +145,7 @@ export class MaPlansPageComponent implements OnInit {
     if (!this.canDelete) {
       return;
     }
-    if (!confirm(`ลบแผน "${plan.name}" ?`)) {
+    if (!confirm(`ลบแผน "${plan.name}" ?\nถ้าแผนถูกใช้ในสัญญาแล้ว ระบบจะไม่อนุญาต — ให้ปิดใช้งานแทน`)) {
       return;
     }
     this.api.deletePlan(plan.id).subscribe({
@@ -155,12 +155,12 @@ export class MaPlansPageComponent implements OnInit {
       },
       error: (err: Error & { status?: number }) => {
         if (err.status === 409 || this.looksLikeConflict(err.message)) {
-          const ref = this.snack.open(err.message, 'ปิดใช้งาน', { duration: 8000 });
-          ref.onAction().subscribe(() => {
-            if (confirm(`${err.message}\n\nต้องการปิดการใช้งานแผนนี้แทนหรือไม่?`)) {
-              this.deactivate(plan);
-            }
-          });
+          const ref = this.snack.open(
+            err.message || 'แผนถูกใช้ในสัญญาแล้ว — ปิดใช้งานแทนการลบ',
+            'ปิดใช้งาน',
+            { duration: 8000 }
+          );
+          ref.onAction().subscribe(() => this.deactivate(plan));
           return;
         }
         this.snack.open(err.message, 'ปิด', { duration: 3500 });
@@ -172,9 +172,25 @@ export class MaPlansPageComponent implements OnInit {
     if (!this.canUpdate && !this.canDelete) {
       return;
     }
+    if (!confirm(`ปิดการใช้งานแผน "${plan.name}" ?\nสัญญาที่ใช้แผนนี้อยู่แล้วไม่ถูกลบ`)) {
+      return;
+    }
     this.api.updatePlan(plan.id, { isActive: false }).subscribe({
       next: () => {
         this.snack.open('ปิดการใช้งานแผนแล้ว', 'ปิด', { duration: 2500 });
+        this.reload();
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+    });
+  }
+
+  activate(plan: MaPlan): void {
+    if (!this.canUpdate) {
+      return;
+    }
+    this.api.updatePlan(plan.id, { isActive: true }).subscribe({
+      next: () => {
+        this.snack.open('เปิดใช้งานแผนแล้ว', 'ปิด', { duration: 2500 });
         this.reload();
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),

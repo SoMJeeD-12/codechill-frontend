@@ -375,7 +375,7 @@
                   <input
                     type="search"
                     [formControl]="warrantySearchControl"
-                    placeholder="ค้นหารายการ / สถานะ / วันสิ้นสุด"
+                    placeholder="ค้นหารหัส / รายการ / สถานะ"
                     aria-label="ค้นหาประกัน"
                   />
                 </label>
@@ -383,6 +383,10 @@
             </div>
             <div class="data-card__body">
               <table mat-table [dataSource]="warrantiesPager.paged()" class="data-table">
+                <ng-container matColumnDef="code">
+                  <th mat-header-cell *matHeaderCellDef>รหัส</th>
+                  <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
+                </ng-container>
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>รายการ</th>
                   <td mat-cell *matCellDef="let row">
@@ -463,7 +467,7 @@
                 <ng-container matColumnDef="quota">
                   <th mat-header-cell *matHeaderCellDef>โควตาเหลือ</th>
                   <td mat-cell *matCellDef="let row">
-                    {{ remainingQuota(row) }}{{ row.quota ? '/' + row.quota.quota : '' }}
+                    {{ maQuotaLabel(row) }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="actions">

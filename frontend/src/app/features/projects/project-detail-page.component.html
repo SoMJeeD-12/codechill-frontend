@@ -288,6 +288,12 @@
                 </div>
                 <div class="data-card__body">
                   <table mat-table [dataSource]="warranties()" class="data-table">
+                    <ng-container matColumnDef="code">
+                      <th mat-header-cell *matHeaderCellDef>รหัส</th>
+                      <td mat-cell *matCellDef="let row">
+                        {{ row.code || '—' }}
+                      </td>
+                    </ng-container>
                     <ng-container matColumnDef="delivery">
                       <th mat-header-cell *matHeaderCellDef>จากการส่งมอบ</th>
                       <td mat-cell *matCellDef="let row">

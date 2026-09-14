@@ -115,10 +115,16 @@
                   <span>แก้ไข</span>
                 </button>
               }
-              @if (canDelete) {
-                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                  <mat-icon>delete</mat-icon>
-                  <span>ลบ</span>
+              @if (canUpdate && row.isActive) {
+                <button mat-menu-item type="button" (click)="deactivate(row)">
+                  <mat-icon>block</mat-icon>
+                  <span>ปิดใช้งาน</span>
+                </button>
+              }
+              @if (canUpdate && !row.isActive) {
+                <button mat-menu-item type="button" (click)="activate(row)">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>เปิดใช้งาน</span>
                 </button>
               }
             </mat-menu>

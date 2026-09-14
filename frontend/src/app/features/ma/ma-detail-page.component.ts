@@ -4,10 +4,17 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -15,6 +22,7 @@ import {
   MA_BILLING_CYCLE_LABELS,
   MA_STATUS_LABELS,
   MaAddon,
+  MaBillingCycle,
   MaContract,
   MaQuotaStatus,
   maPlanDisplayName,
@@ -22,7 +30,11 @@ import {
 } from '../../core/models/ma.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { MaContractPrintPayload, MaService } from '../../core/services/ma.service';
+import {
+  MaContractPrintPayload,
+  MaContractRenewInput,
+  MaService,
+} from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { navigateBack } from '../../core/utils/navigation.util';
@@ -33,6 +45,7 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 
 /** ค่า placeholder สำหรับหน้าพิมพ์ร่างสัญญา (แก้ที่ FE) */
 const COMPANY_PRINT = {
@@ -121,7 +134,11 @@ export class MaDetailPageComponent implements OnInit {
     title: ['', Validators.required],
     extraQuota: [1, [Validators.required, Validators.min(0)]],
     price: [0, Validators.min(0)],
+    note: [''],
+    effectiveYear: [null as number | null],
+    effectiveMonth: [null as number | null],
   });
+  readonly addonScoped = signal(false);
 
   goBack(): void {
     navigateBack(this.location, this.router, '/app/ma');
@@ -175,8 +192,22 @@ export class MaDetailPageComponent implements OnInit {
     return hours != null ? `SLA ${hours} ชม.` : 'ไม่มี SLA';
   }
 
-  remaining(): number {
-    return this.quota()?.remaining ?? this.api.remainingQuota(this.contract()!);
+  remaining(): number | null {
+    return this.quota()?.remaining ?? null;
+  }
+
+  toggleAddonScope(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.addonScoped.set(checked);
+    if (!checked) {
+      this.addonForm.patchValue({ effectiveYear: null, effectiveMonth: null });
+    } else {
+      const now = new Date();
+      this.addonForm.patchValue({
+        effectiveYear: now.getFullYear(),
+        effectiveMonth: now.getMonth() + 1,
+      });
+    }
   }
 
   saveAddon(): void {
@@ -186,11 +217,26 @@ export class MaDetailPageComponent implements OnInit {
       return;
     }
     const raw = this.addonForm.getRawValue();
+    const year = raw.effectiveYear;
+    const month = raw.effectiveMonth;
+    if (this.addonScoped()) {
+      if (year == null || month == null || month < 1 || month > 12) {
+        this.snack.open('กรุณาระบุปีและเดือนที่มีผลพร้อมกัน', 'ปิด', { duration: 3500 });
+        return;
+      }
+    } else if ((year == null) !== (month == null)) {
+      this.snack.open('ปีและเดือนต้องส่งคู่กัน หรือไม่ส่งทั้งคู่', 'ปิด', { duration: 3500 });
+      return;
+    }
     const payload = {
       title: raw.title.trim(),
       addonType: 'EXTRA_QUOTA' as const,
       extraQuota: Number(raw.extraQuota) || 0,
       price: toMoneyString(raw.price),
+      note: raw.note?.trim() || null,
+      ...(year != null && month != null
+        ? { effectiveYear: Number(year), effectiveMonth: Number(month) }
+        : {}),
     };
     this.savingAddon.set(true);
 
@@ -198,7 +244,15 @@ export class MaDetailPageComponent implements OnInit {
       next: () => {
         this.savingAddon.set(false);
         this.snack.open('เพิ่ม Add-on แล้ว', 'ปิด', { duration: 2500 });
-        this.addonForm.reset({ title: '', extraQuota: 1, price: 0 });
+        this.addonForm.reset({
+          title: '',
+          extraQuota: 1,
+          price: 0,
+          note: '',
+          effectiveYear: null,
+          effectiveMonth: null,
+        });
+        this.addonScoped.set(false);
         this.reload();
       },
       error: (err: Error) => {
@@ -267,30 +321,28 @@ export class MaDetailPageComponent implements OnInit {
     if (!c || !this.canRenew()) {
       return;
     }
-    const startDate = this.addOneYear(c.startDate);
-    const endDate = this.addOneYear(c.endDate);
-    const price = toMoneyString(c.price);
-    openConfirmDialog(this.dialog, {
-      title: 'ต่ออายุสัญญา MA',
-      message: [
-        `สร้างสัญญาใหม่จากสัญญา #${c.id}`,
-        `ระยะใหม่: ${startDate} – ${endDate}`,
-        `ราคา: ${formatMoneyDisplay(price)} บาท`,
-      ].join('\n'),
-      confirmLabel: 'ต่ออายุ',
-      danger: false,
-    }).subscribe((ok) => {
-      if (!ok) {
+    const ref = this.dialog.open(MaRenewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: {
+        contract: c,
+        defaultStartDate: this.addOneYear(c.startDate),
+        defaultEndDate: this.addOneYear(c.endDate),
+      },
+    });
+    ref.afterClosed().subscribe((input: MaContractRenewInput | undefined) => {
+      if (!input) {
         return;
       }
       this.renewing.set(true);
-      this.api.renew(c.id, { startDate, endDate, price }).subscribe({
+      this.api.renew(c.id, input).subscribe({
         next: (created) => {
           this.renewing.set(false);
           this.snack.open(
-            `ต่ออายุแล้ว · สัญญาใหม่ #${created.id}`,
+            created.contractNo?.trim()
+              ? `ต่ออายุแล้ว · ${created.contractNo.trim()} (สถานะแบบร่าง)`
+              : `ต่ออายุแล้ว · สัญญาใหม่ #${created.id} (สถานะแบบร่าง)`,
             'ปิด',
-            { duration: 3500 }
+            { duration: 4000 }
           );
           void this.router.navigate(['/app/ma', created.id]);
         },
@@ -334,7 +386,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <table>
 <thead><tr><th>รายการ</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
 <tbody>
-<tr><td>ค่าบริการ MA (${this.billingLabels[c.billingCycle]})</td><td>1</td><td>${formatMoneyDisplay(c.price)}</td><td>${formatMoneyDisplay(c.price)}</td></tr>
+<tr><td>มูลค่าสัญญา MA ทั้งสัญญา (${this.billingLabels[c.billingCycle]})</td><td>1</td><td>${formatMoneyDisplay(c.price)}</td><td>${formatMoneyDisplay(c.price)}</td></tr>
 ${addonLines}
 </tbody></table>
 <p class="total">รวมทั้งสิ้น ${formatMoneyDisplay(fee + addonTotal)} บาท</p>
@@ -423,7 +475,8 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:to
 
 <p>โปรเจค: ${escapeHtml(project.name)}<br>
 แผน: ${escapeHtml(plan.code ? `${plan.code} · ${plan.name}` : plan.name)} · โควตา ${plan.bugQuotaPerMonth} เคส/เดือน<br>
-ค่าบริการ: ${formatMoneyDisplay(contract.price)} บาท (${escapeHtml(this.billingLabels[contract.billingCycle])})</p>
+มูลค่ารวมตลอดอายุสัญญา: ${formatMoneyDisplay(contract.price)} บาท<br>
+รอบวางบิล: ${escapeHtml(this.billingLabels[contract.billingCycle])}</p>
 
 <h3>รายการในแผน</h3>
 <table>
@@ -465,4 +518,157 @@ function escapeHtml(value: string | number | null | undefined): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+export interface MaRenewDialogData {
+  contract: MaContract;
+  defaultStartDate: string;
+  defaultEndDate: string;
+}
+
+@Component({
+  selector: 'app-ma-renew-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatSelectModule,
+    MoneyInputDirective,
+  ],
+  template: `
+    <h2 mat-dialog-title>ต่ออายุสัญญา MA</h2>
+    <mat-dialog-content>
+      <p class="lead">
+        สร้างสัญญาฉบับใหม่จาก
+        {{ data.contract.contractNo?.trim() || '#' + data.contract.id }}
+        · สัญญาใหม่เริ่มเป็นแบบร่าง · ฉบับเดิมจะเป็น「ต่ออายุแล้ว」
+      </p>
+      <form [formGroup]="form" id="ma-renew-form" class="form" (ngSubmit)="submit()">
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>วันเริ่ม *</mat-label>
+            <input
+              matInput
+              [matDatepicker]="startPicker"
+              formControlName="startDate"
+              readonly
+              (click)="startPicker.open()"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>วันสิ้นสุด *</mat-label>
+            <input
+              matInput
+              [matDatepicker]="endPicker"
+              formControlName="endDate"
+              readonly
+              (click)="endPicker.open()"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>มูลค่ารวมตลอดอายุสัญญาใหม่ (บาท) *</mat-label>
+          <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+          <mat-hint>กรอกราคาที่ตกลงจริงของฉบับใหม่ · ไม่คิดอัตโนมัติจากฉบับเดิม</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>รอบวางบิล</mat-label>
+          <mat-select formControlName="billingCycle">
+            @for (b of billingCycles; track b) {
+              <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+      <button mat-flat-button color="primary" type="submit" form="ma-renew-form">
+        ต่ออายุ
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .lead {
+      margin: 0 0 0.75rem;
+      color: #5b6762;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .form {
+      display: grid;
+      gap: 0.35rem;
+      min-width: min(100%, 28rem);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem;
+    }
+    .full {
+      width: 100%;
+    }
+    .error {
+      color: #b91c1c;
+      margin: 0.25rem 0 0;
+    }
+  `,
+})
+export class MaRenewDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly ref = inject(MatDialogRef<MaRenewDialogComponent, MaContractRenewInput>);
+  readonly data = inject<MaRenewDialogData>(MAT_DIALOG_DATA);
+  readonly billingLabels = MA_BILLING_CYCLE_LABELS;
+  readonly billingCycles = Object.keys(MA_BILLING_CYCLE_LABELS) as MaBillingCycle[];
+  readonly error = signal<string | null>(null);
+
+  readonly form = this.fb.group({
+    startDate: [
+      parseDateOnly(this.data.defaultStartDate) as Date | null,
+      Validators.required,
+    ],
+    endDate: [parseDateOnly(this.data.defaultEndDate) as Date | null, Validators.required],
+    price: [
+      parseMoneyValue(this.data.contract.price) ?? 0,
+      [Validators.required, Validators.min(0)],
+    ],
+    billingCycle: [this.data.contract.billingCycle as MaBillingCycle],
+    note: [this.data.contract.note ?? ''],
+  });
+
+  submit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const raw = this.form.getRawValue();
+    const startDate = toDateOnlyString(raw.startDate);
+    const endDate = toDateOnlyString(raw.endDate);
+    if (!startDate || !endDate || endDate <= startDate) {
+      this.error.set('วันสิ้นสุดต้องอยู่หลังวันเริ่ม');
+      return;
+    }
+    this.ref.close({
+      startDate,
+      endDate,
+      price: toMoneyString(raw.price),
+      billingCycle: raw.billingCycle as MaBillingCycle,
+      note: raw.note?.trim() || null,
+    });
+  }
 }
