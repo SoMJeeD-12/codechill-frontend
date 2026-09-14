@@ -1,25 +1,26 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>โปรเจค</h1>
-      <p class="subtitle">โปรเจคคือศูนย์กลางของงาน — งานย่อย ส่งมอบ ประกัน และปัญหา อยู่ในนี้ทั้งหมด</p>
+      <h1 class="app-page-title">โปรเจค</h1>
+      <p class="app-subtitle">โปรเจคคือศูนย์กลางของงาน — งานย่อย ส่งมอบ ประกัน และปัญหา อยู่ในนี้ทั้งหมด</p>
     </div>
-    <button
-      mat-flat-button
-      color="primary"
-      type="button"
-      class="primary-action"
-      (click)="openCreate()"
-    >
-      <mat-icon>add</mat-icon>
-      สร้างโปรเจค
-    </button>
+    <div class="app-header-actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="openCreate()"
+      >
+        <mat-icon>add</mat-icon>
+        สร้างโปรเจค
+      </button>
+    </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -51,7 +52,7 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="code">
           <th mat-header-cell *matHeaderCellDef>รหัส</th>
@@ -62,7 +63,7 @@
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อโปรเจค</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/projects', row.id]" class="row-link">{{ row.name }}</a>
+            <a [routerLink]="['/app/projects', row.id]" class="app-link">{{ row.name }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="customer">

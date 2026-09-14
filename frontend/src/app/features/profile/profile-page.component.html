@@ -1,18 +1,20 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <p class="eyebrow">บัญชีของฉัน</p>
-      <h1>โปรไฟล์</h1>
-      <p class="subtitle">ข้อมูลบัญชี บทบาท และสิทธิ์ที่ใช้งานได้ · กดรีเฟรชหลังถูกแก้บทบาท</p>
+      <p class="app-eyebrow">บัญชีของฉัน</p>
+      <h1 class="app-page-title">โปรไฟล์</h1>
+      <p class="app-subtitle">ข้อมูลบัญชี บทบาท และสิทธิ์ที่ใช้งานได้ · กดรีเฟรชหลังถูกแก้บทบาท</p>
     </div>
-    <button mat-stroked-button type="button" (click)="refresh()">
-      <mat-icon>refresh</mat-icon>
-      รีเฟรช
-    </button>
+    <div class="app-header-actions">
+      <button mat-stroked-button type="button" (click)="refresh()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
   </header>
 
   @if (user(); as me) {
-    <article class="hero data-card">
+    <article class="hero app-panel">
       <div class="hero__body">
         <div class="hero__left">
           <div class="avatar" aria-hidden="true">
@@ -47,7 +49,7 @@
     </article>
 
     <div class="profile-grid">
-      <article class="data-card profile-card">
+      <article class="app-panel profile-card">
         <div class="card-head">
           <mat-icon>badge</mat-icon>
           <h3>ข้อมูลบัญชี</h3>
@@ -68,7 +70,7 @@
         </dl>
       </article>
 
-      <article class="data-card profile-card">
+      <article class="app-panel profile-card">
         <div class="card-head">
           <mat-icon>shield</mat-icon>
           <h3>บทบาทที่ได้รับ</h3>
@@ -99,7 +101,7 @@
         }
       </article>
 
-      <article class="data-card profile-card profile-card--wide">
+      <article class="app-panel profile-card profile-card--wide">
         <div class="card-head card-head--spread">
           <div class="card-head__title">
             <mat-icon>lock_open</mat-icon>

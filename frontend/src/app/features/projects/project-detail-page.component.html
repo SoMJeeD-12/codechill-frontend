@@ -8,8 +8,8 @@
   </mat-card>
 } @else {
   @if (project(); as p) {
-  <section class="page">
-    <header class="page-header">
+  <section class="app-page">
+    <header class="app-page-header">
       <div>
         <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
@@ -23,8 +23,8 @@
             {{ projectStatusLabel(p.status) }}
           </span>
         </div>
-        <h1>{{ p.name }}</h1>
-        <p class="subtitle">
+        <h1 class="app-page-title">{{ p.name }}</h1>
+        <p class="app-subtitle">
           รหัส {{ p.code || '—' }} ·
           {{ customerName() }} ·
           ประเภท {{ p.projectType || '—' }} ·
@@ -35,7 +35,7 @@
           ·
           ผู้จัดการ {{ p.manager?.fullName || userName(p.managerUserId) }}
         </p>
-        <p class="subtitle">
+        <p class="app-subtitle">
           วันเริ่ม {{ p.startDate ? (p.startDate | thaiDate: 'date') : '—' }} ·
           กำหนดส่ง {{ p.targetEndDate ? (p.targetEndDate | thaiDate: 'date') : '—' }} ·
           มูลค่าตามสัญญา {{ p.contractValue | baht }} ·
@@ -47,7 +47,7 @@
         <p class="description">{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
         <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | thaiDate }}</p>
       </div>
-      <div class="header-actions">
+      <div class="app-header-actions">
         @if (canViewTasks()) {
           <a mat-stroked-button routerLink="/app/tasks" [queryParams]="{ projectId: p.id }">
             <mat-icon>view_kanban</mat-icon>
@@ -128,11 +128,11 @@
               </aside>
             }
 
-            <div class="data-card">
-              <div class="data-card__head">
-                <div class="data-card__row tab-toolbar">
+            <div class="app-panel">
+              <div class="app-panel-toolbar">
+                <div class="app-panel-toolbar-row tab-toolbar">
                   <h3 class="tab-heading">รายการส่งมอบ</h3>
-                  <label class="ui-search">
+                  <label class="app-search">
                     <mat-icon>search</mat-icon>
                     <input
                       type="search"
@@ -164,7 +164,7 @@
                   }
                 </div>
               </div>
-              <div class="data-card__body">
+              <div class="app-panel-body">
                 <table mat-table [dataSource]="deliveriesPager.paged()" class="data-table">
                   <ng-container matColumnDef="title">
                     <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
@@ -280,13 +280,13 @@
 
             <!-- ประกันที่ออกจากการส่งมอบข้างบน — อยู่แท็บเดียวกัน ไม่ต้องเปลี่ยนเมนู -->
             @if (canViewWarranties()) {
-              <div class="data-card sub-card">
-                <div class="data-card__head">
-                  <div class="data-card__row tab-toolbar">
+              <div class="app-panel sub-card">
+                <div class="app-panel-toolbar">
+                  <div class="app-panel-toolbar-row tab-toolbar">
                     <h3 class="tab-heading">ประกันที่ออกแล้ว</h3>
                   </div>
                 </div>
-                <div class="data-card__body">
+                <div class="app-panel-body">
                   <table mat-table [dataSource]="warranties()" class="data-table">
                     <ng-container matColumnDef="code">
                       <th mat-header-cell *matHeaderCellDef>รหัส</th>
@@ -348,11 +348,11 @@
           <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
         } @else {
           <div class="tab-panel">
-            <div class="data-card">
-              <div class="data-card__head">
-                <div class="data-card__row tab-toolbar">
+            <div class="app-panel">
+              <div class="app-panel-toolbar">
+                <div class="app-panel-toolbar-row tab-toolbar">
                   <h3 class="tab-heading">เอกสาร</h3>
-                  <label class="ui-search">
+                  <label class="app-search">
                     <mat-icon>search</mat-icon>
                     <input
                       type="search"
@@ -375,7 +375,7 @@
                   }
                 </div>
               </div>
-              <div class="data-card__body">
+              <div class="app-panel-body">
                 <table mat-table [dataSource]="documents()" class="data-table">
                   <ng-container matColumnDef="title">
                     <th mat-header-cell *matHeaderCellDef>ชื่อเอกสาร</th>
@@ -464,16 +464,16 @@
       @if (canViewTickets()) {
         <mat-tab label="ปัญหาของโปรเจคนี้">
           <div class="tab-panel">
-            <div class="data-card">
-              <div class="data-card__head">
-                <div class="data-card__row tab-toolbar">
+            <div class="app-panel">
+              <div class="app-panel-toolbar">
+                <div class="app-panel-toolbar-row tab-toolbar">
                   <h3 class="tab-heading">
                     ใบแจ้งปัญหาของโปรเจคนี้
                     @if (filteredProjectTickets().length) {
                       <span class="muted"> · {{ filteredProjectTickets().length }} ใบ</span>
                     }
                   </h3>
-                  <label class="ui-search">
+                  <label class="app-search">
                     <mat-icon>search</mat-icon>
                     <input
                       type="search"
@@ -496,7 +496,7 @@
                   }
                 </div>
               </div>
-              <div class="data-card__body">
+              <div class="app-panel-body">
                 <table mat-table [dataSource]="projectTicketsPager.paged()" class="data-table">
                   <ng-container matColumnDef="ticketNo">
                     <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
@@ -581,11 +581,11 @@
 
       <mat-tab label="งานติดตาม">
         <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">งานติดตาม</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -608,7 +608,7 @@
                 }
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="followUpsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
@@ -671,13 +671,13 @@
       @if (canViewMa()) {
         <mat-tab label="สัญญา MA">
           <div class="tab-panel">
-            <div class="data-card">
-              <div class="data-card__head">
-                <div class="data-card__row tab-toolbar">
+            <div class="app-panel">
+              <div class="app-panel-toolbar">
+                <div class="app-panel-toolbar-row tab-toolbar">
                   <h3 class="tab-heading">สัญญา MA ของโปรเจคนี้</h3>
                 </div>
               </div>
-              <div class="data-card__body">
+              <div class="app-panel-body">
                 <table mat-table [dataSource]="maContracts()" class="data-table">
                   <ng-container matColumnDef="contractNo">
                     <th mat-header-cell *matHeaderCellDef>เลขสัญญา</th>

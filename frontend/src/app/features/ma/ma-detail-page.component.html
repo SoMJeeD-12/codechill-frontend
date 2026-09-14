@@ -1,6 +1,6 @@
 @if (notFound()) {
-  <mat-card class="missing">
-    <h1>ไม่พบสัญญา MA</h1>
+  <mat-card class="mx-auto max-w-md p-6 text-center">
+    <h1 class="app-page-title">ไม่พบสัญญา MA</h1>
     <button mat-stroked-button type="button" class="back" (click)="goBack()">
       <mat-icon>arrow_back</mat-icon>
       กลับรายการสัญญา
@@ -8,21 +8,21 @@
   </mat-card>
 } @else {
   @if (contract(); as c) {
-  <section class="page">
-    <header class="page-header">
+  <section class="app-page">
+    <header class="app-page-header">
       <div>
         <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <h1>
+        <h1 class="app-page-title">
           @if (c.contractNo?.trim()) {
             {{ c.contractNo }}
           } @else {
             สัญญา MA #{{ c.id }}
           }
         </h1>
-        <p class="subtitle">
+        <p class="app-subtitle">
           @if (c.contractNo?.trim()) {
             #{{ c.id }} ·
           }
@@ -32,7 +32,7 @@
           }
         </p>
       </div>
-      <div class="header-actions">
+      <div class="app-header-actions">
         <button mat-stroked-button type="button" (click)="printDraftContract()">
           <mat-icon>description</mat-icon>
           พิมพ์ร่างสัญญา
@@ -68,61 +68,70 @@
       </div>
     </header>
 
-    <div class="meta-grid">
-      <mat-card>
+    <div class="app-meta-grid">
+      <mat-card class="app-meta-card">
         <strong>ลูกค้า</strong>
         <a [routerLink]="['/app/customers', c.customerId]">{{ customerName(c) }}</a>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>โปรเจค</strong>
         <span>{{ projectLabel(c) }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>ระยะสัญญา</strong>
         <span>{{ c.startDate | thaiDate: 'date' }} – {{ c.endDate | thaiDate: 'date' }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>มูลค่ารวมตลอดอายุสัญญา</strong>
         <span>{{ c.price | baht }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>รอบวางบิล</strong>
         <span>{{ billingLabels[c.billingCycle] }}</span>
       </mat-card>
     </div>
 
-    <div class="quota-panel">
-      <mat-card>
-        <h2>โควตาเคสซ่อม (รอบปัจจุบัน)</h2>
+    <div class="mb-4">
+      <mat-card class="app-section-card">
+        <h2 class="app-section-title">โควตาเคสซ่อม (รอบปัจจุบัน)</h2>
         @if (quota(); as q) {
-          <p class="quota-period">
+          <p class="mb-0 text-sm text-muted">
             รอบ {{ q.periodStart | thaiDate: 'date' }} – {{ q.periodEnd | thaiDate: 'date' }}
           </p>
-          <p class="quota-big" [class.low]="q.remaining <= 2 && c.isCurrentlyActive">
+          <p
+            class="mb-0 mt-2 text-[1.35rem] font-bold"
+            [class.app-quota-low]="q.remaining <= 2 && c.isCurrentlyActive"
+          >
             ใช้แล้ว {{ q.used }} จากทั้งหมด {{ q.quota }}
-            <span>เหลือ {{ q.remaining }} เคส{{ q.isExhausted ? ' (หมดแล้ว)' : '' }}</span>
+            <span
+              class="mt-1 block text-[0.95rem] font-semibold"
+              [class.text-brand]="!(q.remaining <= 2 && c.isCurrentlyActive)"
+              [class.text-warn]="q.remaining <= 2 && c.isCurrentlyActive"
+            >
+              เหลือ {{ q.remaining }} เคส{{ q.isExhausted ? ' (หมดแล้ว)' : '' }}
+            </span>
           </p>
-          <ul class="quota-breakdown">
+          <ul class="mt-2.5 list-disc space-y-0.5 pl-5 text-sm leading-relaxed text-slate-700">
             <li>จากแผน {{ planQuota() }} เคส/เดือน</li>
             <li>
               จาก Add-on +{{ addonQuota() }}
               @if (addonQuota() > 0) {
-                <span class="muted">(รวมในโควตาทั้งหมดด้านบน)</span>
+                <span class="ml-1 text-[0.82rem] text-muted">(รวมในโควตาทั้งหมดด้านบน)</span>
               }
             </li>
-            <li class="muted">
+            <li class="text-muted">
               รวมที่แสดง = โควตาจากแผน + Add-on · รอบวันที่มาจาก Backend เท่านั้น
             </li>
           </ul>
         } @else {
-          <p class="hint">กำลังโหลดโควตา…</p>
+          <p class="mt-2.5 mb-0 text-sm text-muted">กำลังโหลดโควตา…</p>
         }
-        <p class="hint">
+        <p class="mt-2.5 mb-0 text-sm text-muted">
           ตัวเลข “ใช้แล้ว” เพิ่มเมื่อปิดใบปัญหาแบบใช้โควตา MA เท่านั้น ·
           บันทึก Add-on จะเพิ่มโควตาทั้งหมด (ตัวหลัง) ไม่เพิ่มจำนวนที่ใช้
         </p>
         @if (c.status === 'DRAFT') {
-          <p class="warn-banner">
+          <p class="app-warn-banner">
             สัญญานี้ยังเป็น「แบบร่าง」— ระบบจะไม่หักโควตาจากใบปัญหา
             จนกว่าจะเปลี่ยนสถานะเป็น「ใช้งาน」
             @if (canActivate()) {
@@ -130,7 +139,7 @@
                 mat-button
                 type="button"
                 color="primary"
-                class="warn-banner__action"
+                class="ml-auto"
                 (click)="activateContract()"
                 [disabled]="activating()"
               >
@@ -139,20 +148,20 @@
             }
           </p>
         } @else if (!c.isCurrentlyActive) {
-          <p class="warn-banner">
+          <p class="app-warn-banner">
             สัญญานี้ยังไม่ถือว่าใช้งานอยู่ตอนนี้ — การหักโควตาอาจไม่เกิดขึ้น
           </p>
         }
         @if (c.note) {
-          <p class="note">{{ c.note }}</p>
+          <p class="mt-2.5 mb-0 text-sm text-muted">{{ c.note }}</p>
         }
       </mat-card>
     </div>
 
-    <div class="two-col">
-      <mat-card>
-        <h2>Add-on</h2>
-        <table mat-table [dataSource]="addonsPager.paged()" class="full-table">
+    <div class="app-two-col">
+      <mat-card class="app-panel-card">
+        <h2 class="app-section-title">Add-on</h2>
+        <table mat-table [dataSource]="addonsPager.paged()" class="w-full">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>รายการ</th>
             <td mat-cell *matCellDef="let row">{{ row.title }}</td>
@@ -190,18 +199,18 @@
           (page)="addonsPager.onPage($event)"
         />
         @if (addons().length === 0) {
-          <p class="empty">ยังไม่มี Add-on</p>
+          <p class="mt-2.5 mb-0 text-sm text-muted">ยังไม่มี Add-on</p>
         }
       </mat-card>
 
-      <mat-card class="form-card">
-        <h2>เพิ่ม Add-on</h2>
-        <form [formGroup]="addonForm" (ngSubmit)="saveAddon()" class="form">
-          <mat-form-field appearance="outline" class="full">
+      <mat-card class="app-panel-card">
+        <h2 class="app-section-title">เพิ่ม Add-on</h2>
+        <form [formGroup]="addonForm" (ngSubmit)="saveAddon()" class="app-form-stack">
+          <mat-form-field appearance="outline" class="w-full">
             <mat-label>ชื่อแพ็ก</mat-label>
             <input matInput formControlName="title" placeholder="เช่น แพ็กโควตาเพิ่ม +3 เคส" />
           </mat-form-field>
-          <div class="row">
+          <div class="app-form-row">
             <mat-form-field appearance="outline">
               <mat-label>โควตาเพิ่ม</mat-label>
               <input matInput type="number" formControlName="extraQuota" />
@@ -211,16 +220,21 @@
               <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
             </mat-form-field>
           </div>
-          <mat-form-field appearance="outline" class="full">
+          <mat-form-field appearance="outline" class="w-full">
             <mat-label>หมายเหตุ</mat-label>
             <textarea matInput rows="2" formControlName="note"></textarea>
           </mat-form-field>
-          <label class="period-toggle">
-            <input type="checkbox" [checked]="addonScoped()" (change)="toggleAddonScope($event)" />
+          <label class="mt-1 mb-2 flex cursor-pointer items-start gap-2 text-sm text-[#3d4a46]">
+            <input
+              type="checkbox"
+              class="mt-0.5"
+              [checked]="addonScoped()"
+              (change)="toggleAddonScope($event)"
+            />
             จำกัดเฉพาะเดือน/ปี (ไม่ติ๊ก = มีผลตลอดอายุสัญญา)
           </label>
           @if (addonScoped()) {
-            <div class="row">
+            <div class="app-form-row">
               <mat-form-field appearance="outline">
                 <mat-label>ปีที่มีผล *</mat-label>
                 <input matInput type="number" formControlName="effectiveYear" min="2000" max="2100" />
@@ -231,7 +245,7 @@
               </mat-form-field>
             </div>
           }
-          <div class="form-actions">
+          <div class="mt-1 flex justify-end gap-2">
             <button mat-flat-button color="primary" type="submit" [disabled]="savingAddon()">
               บันทึก Add-on
             </button>

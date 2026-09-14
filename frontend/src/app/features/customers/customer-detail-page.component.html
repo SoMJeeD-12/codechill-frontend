@@ -8,23 +8,23 @@
   </mat-card>
 } @else {
   @if (customer(); as c) {
-  <section class="page">
-    <header class="page-header">
+  <section class="app-page">
+    <header class="app-page-header">
       <div>
         <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูลลูกค้า' }}</p>
-        <h1>{{ c.name }}</h1>
-        <p class="subtitle">
+        <p class="app-eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูลลูกค้า' }}</p>
+        <h1 class="app-page-title">{{ c.name }}</h1>
+        <p class="app-subtitle">
           รหัส {{ c.code || '—' }} ·
           {{ statusLabel(c.status) }} ·
           ผู้ดูแล {{ c.owner?.fullName || '—' }}
         </p>
       </div>
       @if (!is360Mode) {
-        <div class="header-actions">
+        <div class="app-header-actions">
           <a
             mat-flat-button
             color="primary"
@@ -37,33 +37,33 @@
       }
     </header>
 
-    <div class="meta-grid">
-      <mat-card>
+    <div class="app-meta-grid">
+      <mat-card class="app-meta-card">
         <strong>เลขผู้เสียภาษี</strong>
         <span>{{ c.taxId || '—' }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>ที่อยู่</strong>
         <span>{{ c.address || '—' }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>หมายเหตุ</strong>
         <span>{{ c.note || '—' }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>ผู้ติดต่อ</strong>
         <span>{{ contacts().length }} คน</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>LINE Official</strong>
         <span>{{ c.lineOfficialId || '—' }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>Facebook</strong>
         <span>{{ c.facebookUrl || '—' }}</span>
       </mat-card>
       @if (is360Mode) {
-        <mat-card>
+        <mat-card class="app-meta-card">
           <strong>ติดต่อล่าสุด</strong>
           <span>
             @if (lastContactedAt(c); as contacted) {
@@ -112,11 +112,11 @@
     >
       <mat-tab label="ผู้ติดต่อ">
         <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">ผู้ติดต่อ</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -131,7 +131,7 @@
                 </button>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="contactsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>ชื่อ-นามสกุล</th>
@@ -217,11 +217,11 @@
 
       <mat-tab label="ประวัติการติดต่อ">
         <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">ประวัติการติดต่อ</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -236,7 +236,7 @@
                 </button>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="logsPager.paged()" class="data-table">
                 <ng-container matColumnDef="occurredAt">
                   <th mat-header-cell *matHeaderCellDef>วันเวลา</th>
@@ -309,11 +309,11 @@
       @if (is360Mode) {
       <mat-tab label="โปรเจค">
         <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">โปรเจค</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -324,7 +324,7 @@
                 </label>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="projectsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>ชื่อโปรเจค</th>
@@ -366,11 +366,11 @@
 
       <mat-tab label="ประกัน / สัญญา">
         <div class="tab-panel stacked">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">การรับประกัน</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -381,7 +381,7 @@
                 </label>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="warrantiesPager.paged()" class="data-table">
                 <ng-container matColumnDef="code">
                   <th mat-header-cell *matHeaderCellDef>รหัส</th>
@@ -433,11 +433,11 @@
             </div>
           </div>
 
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">สัญญา MA</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -448,7 +448,7 @@
                 </label>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="contractsPager.paged()" class="data-table">
                 <ng-container matColumnDef="id">
                   <th mat-header-cell *matHeaderCellDef>สัญญา</th>
@@ -498,11 +498,11 @@
 
       <mat-tab label="ปัญหา">
         <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">ปัญหา</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -513,7 +513,7 @@
                 </label>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="ticketsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
@@ -559,11 +559,11 @@
 
       <mat-tab label="การติดตาม">
         <div class="tab-panel">
-          <div class="data-card">
-            <div class="data-card__head">
-              <div class="data-card__row tab-toolbar">
+          <div class="app-panel">
+            <div class="app-panel-toolbar">
+              <div class="app-panel-toolbar-row tab-toolbar">
                 <h3 class="tab-heading">การติดตาม</h3>
-                <label class="ui-search">
+                <label class="app-search">
                   <mat-icon>search</mat-icon>
                   <input
                     type="search"
@@ -574,7 +574,7 @@
                 </label>
               </div>
             </div>
-            <div class="data-card__body">
+            <div class="app-panel-body">
               <table mat-table [dataSource]="followUpsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>

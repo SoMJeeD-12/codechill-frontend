@@ -1,4 +1,7 @@
-/* Shared list-page shell — CPAMS */
+/* Shared list-page shell — CPAMS
+ * Hybrid (แบบ A): โครงแผง/ค้นหาใช้ app-panel* / app-search จาก Tailwind
+ * .data-card / .ui-search เหลือเป็น fallback ชั่วคราว — ตารางยังเป็น Material
+ */
 
 .page {
   max-width: none;
@@ -11,26 +14,32 @@
   gap: 1rem;
   align-items: flex-start;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 
   h1 {
     margin: 0.15rem 0;
-    font-size: 1.6rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
   }
 }
 
 .eyebrow {
   margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
+  max-width: 42rem;
   color: var(--app-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .header-actions {
@@ -44,15 +53,15 @@
   background: var(--app-surface);
   border: 1px solid var(--app-line);
   border-radius: var(--app-radius-card);
-  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.06);
+  box-shadow: 0 4px 18px rgba(28, 43, 40, 0.04);
   overflow: hidden;
 }
 
 .data-card__head {
   display: grid;
-  gap: 0.85rem;
-  padding: 1rem 1.1rem;
-  background: linear-gradient(180deg, #f3faf8 0%, #ffffff 100%);
+  gap: 0.75rem;
+  padding: 0.95rem 1.15rem;
+  background: linear-gradient(180deg, #f7fbf9 0%, #ffffff 88%);
   border-bottom: 1px solid var(--app-line-soft);
 }
 
@@ -67,6 +76,7 @@
   overflow-x: auto;
 }
 
+.app-panel-body app-table-paginator,
 .data-card__body app-table-paginator,
 .table-wrap app-table-paginator {
   display: block;
@@ -138,31 +148,33 @@
 .ui-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  border: 1px solid #d5e3df;
+  gap: 0.35rem;
+  border: 1px solid #d7e4e0;
   background: #fff;
-  color: #34524c;
+  color: #3f534e;
   border-radius: 999px;
-  padding: 0.4rem 0.8rem;
+  padding: 0.38rem 0.85rem;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 
   &:hover {
-    border-color: #0f766e;
-    color: #0f766e;
+    border-color: rgba(15, 118, 110, 0.45);
+    color: var(--app-accent-dark);
+    background: var(--app-accent-soft);
   }
 
   &.is-active {
-    background: #0f766e;
-    border-color: #0f766e;
-    color: #fff;
+    background: var(--app-accent-soft);
+    border-color: rgba(15, 118, 110, 0.4);
+    color: var(--app-accent-dark);
+    font-weight: 600;
 
     .ui-chip__count {
-      background: rgba(255, 255, 255, 0.22);
-      color: #fff;
+      background: rgba(15, 118, 110, 0.14);
+      color: var(--app-accent-dark);
     }
   }
 }
@@ -185,29 +197,32 @@
   width: 100%;
 
   .mat-mdc-header-row {
-    background: #f7faf9;
+    background: #f8faf9;
   }
 
   .mat-mdc-header-cell {
-    color: #5b6762;
+    color: var(--app-muted);
     font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    border-bottom-color: #e4eeeb !important;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    border-bottom-color: var(--app-line-soft) !important;
+    padding-top: 0.7rem !important;
+    padding-bottom: 0.7rem !important;
   }
 
   .mat-mdc-row:hover {
-    background: #f8fbfa;
+    background: #f7faf9;
   }
 
   .mat-mdc-cell {
-    border-bottom-color: #eef3f1 !important;
-    padding-top: 0.55rem;
-    padding-bottom: 0.55rem;
+    border-bottom-color: #eef2f0 !important;
+    padding-top: 0.72rem !important;
+    padding-bottom: 0.72rem !important;
+    vertical-align: middle;
   }
 
   a {
-    color: #0f766e;
+    color: var(--app-accent);
     text-decoration: none;
     font-weight: 600;
 
@@ -223,12 +238,12 @@
 
 /* ปุ่มหลักของหน้า — ต้องมีปุ่มเดียวที่เด่นกว่าปุ่มอื่นเสมอ */
 .primary-action {
-  height: 46px !important;
-  padding: 0 1.25rem !important;
+  height: 44px !important;
+  padding: 0 1.15rem !important;
   border-radius: 12px !important;
   font-weight: 600 !important;
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.22) !important;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.16) !important;
 }
 
 /* คอลัมน์รหัส — ค่าว่างแสดง "—" */
@@ -357,10 +372,11 @@
 .data-empty,
 .empty {
   margin: 0;
-  padding: 2.5rem 1rem;
+  padding: 2.75rem 1.25rem;
   text-align: center;
-  color: #5b6762;
-  font-size: 0.92rem;
+  color: var(--app-muted);
+  font-size: 0.94rem;
+  line-height: 1.5;
 }
 
 .actions {
@@ -440,15 +456,15 @@
 
 /* แถบขั้นถัดไป — ใช้ร่วมโปรเจค / ใบปัญหา (โทนเดิม) */
 .next-hint {
-  margin: 1rem 0;
-  padding: 0.85rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1.05rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.85rem;
   flex-wrap: wrap;
   border-radius: var(--app-radius-control);
-  border: 1px solid rgb(180 83 9 / 0.28);
+  border: 1px solid rgb(180 83 9 / 0.22);
   background: #fffbeb;
 
   &[data-tone='ok'] {

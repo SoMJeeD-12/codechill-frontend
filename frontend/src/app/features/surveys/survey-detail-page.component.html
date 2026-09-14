@@ -8,15 +8,15 @@
   </mat-card>
 } @else {
   @if (survey(); as s) {
-  <section class="page">
-    <header class="page-header">
+  <section class="app-page">
+    <header class="app-page-header">
       <div>
         <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <h1>{{ s.title }}</h1>
-        <p class="subtitle">
+        <h1 class="app-page-title">{{ s.title }}</h1>
+        <p class="app-subtitle">
           {{ statusLabel(s.status) }}
           · {{ s.description || 'ไม่มีคำอธิบาย' }}
           @if (s.status === 'ACTIVE' && !s.isCurrentlyUsable) {
@@ -27,16 +27,16 @@
     </header>
 
     @if (summary(); as sum) {
-      <div class="meta-grid">
-        <mat-card>
+      <div class="app-meta-grid">
+        <mat-card class="app-meta-card">
           <strong>จำนวนคำตอบ</strong>
           <span>{{ sum.responseCount }}</span>
         </mat-card>
-        <mat-card>
+        <mat-card class="app-meta-card">
           <strong>อัตราตอบกลับ</strong>
           <span>{{ sum.responseRate }}%</span>
         </mat-card>
-        <mat-card>
+        <mat-card class="app-meta-card">
           <strong>คะแนนเฉลี่ย</strong>
           <span>{{ scoreDisplay(sum.averageScore) }}</span>
         </mat-card>

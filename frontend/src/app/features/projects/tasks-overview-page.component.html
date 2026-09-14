@@ -1,12 +1,12 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>ภาพรวมงาน</h1>
-      <p class="subtitle">
+      <h1 class="app-page-title">ภาพรวมงาน</h1>
+      <p class="app-subtitle">
         ดูว่างานติดที่ขั้นไหน · เกินกำหนด / ใกล้ครบกำหนด · กรองตามสถานะและผู้รับผิดชอบ
       </p>
     </div>
-    <div class="header-actions">
+    <div class="app-header-actions">
       <a mat-stroked-button routerLink="/app/projects">รายการโปรเจค</a>
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
@@ -64,12 +64,12 @@
       </div>
 
       <div class="panels">
-        <div class="data-card">
-          <div class="data-card__head">
+        <div class="app-panel">
+          <div class="app-panel-toolbar">
             <h3 class="panel-title">งานตามสถานะ</h3>
             <p class="panel-hint">กดแถวเพื่อเจาะดูรายการ · ตัวเลขแดง = เกินกำหนดในขั้นนั้น</p>
           </div>
-          <div class="data-card__body pad">
+          <div class="app-panel-body pad">
             @for (bar of statusBars(); track bar.status) {
               <button type="button" class="status-row" (click)="drillStatus(bar.status)">
                 <span class="status-name">{{ bar.label }}</span>
@@ -85,12 +85,12 @@
           </div>
         </div>
 
-        <div class="data-card">
-          <div class="data-card__head">
+        <div class="app-panel">
+          <div class="app-panel-toolbar">
             <h3 class="panel-title">งานค้างตามผู้รับผิดชอบ</h3>
             <p class="panel-hint">เรียงจากคนที่มีงานเกินกำหนดมากก่อน</p>
           </div>
-          <div class="data-card__body">
+          <div class="app-panel-body">
             <table mat-table [dataSource]="assigneePager.paged()" class="data-table">
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
@@ -147,10 +147,10 @@
     }
 
     @if (view() === 'list') {
-      <div class="data-card list-filters">
-        <div class="data-card__head">
-          <div class="data-card__row">
-            <label class="ui-search">
+      <div class="app-panel list-filters">
+        <div class="app-panel-toolbar">
+          <div class="app-panel-toolbar-row">
+            <label class="app-search">
               <mat-icon>search</mat-icon>
               <input
                 type="search"
@@ -190,8 +190,8 @@
       </div>
     }
 
-    <div class="data-card">
-      <div class="data-card__body">
+    <div class="app-panel">
+      <div class="app-panel-body">
         <table mat-table [dataSource]="rowsPager.paged()" class="data-table">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>งาน</th>

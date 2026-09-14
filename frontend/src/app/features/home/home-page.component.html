@@ -2,8 +2,8 @@
   <!-- ปุ่ม "เปิดใบแจ้งปัญหา" อยู่บนแถบบนแล้ว (ทุกหน้า) จึงไม่ซ้ำในหน้านี้อีก -->
   <header class="home-header">
     <div>
-      <h1>{{ greeting() }} {{ user()?.nickname || user()?.fullName }}</h1>
-      <p class="subtitle">
+      <h1 class="app-page-title">{{ greeting() }} {{ user()?.nickname || user()?.fullName }}</h1>
+      <p class="app-subtitle">
         @if (loading()) {
           กำลังโหลดงานของวันนี้…
         } @else if (hasUrgentWork()) {
@@ -16,7 +16,7 @@
   </header>
 
   <!-- ——— ต้องทำวันนี้ ——— -->
-  <h2 class="section-title">ต้องทำวันนี้</h2>
+  <h2 class="app-section-label">ต้องทำวันนี้</h2>
 
   @if (loading()) {
     <div class="loading-row">
@@ -49,7 +49,7 @@
 
   <!-- ——— งานของฉัน ——— -->
   @if (hasAnyMySection()) {
-    <h2 class="section-title">
+    <h2 class="app-section-label">
       งานของฉัน
       @if (!loading() && myWorkTotal() > 0) {
         <span class="section-count">{{ myWorkTotal() }}</span>

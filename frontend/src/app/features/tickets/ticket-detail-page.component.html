@@ -10,16 +10,16 @@
   <p class="empty">กำลังโหลด...</p>
 } @else {
   @if (ticket(); as t) {
-  <section class="page">
-    <header class="page-header">
+  <section class="app-page">
+    <header class="app-page-header">
       <div>
         <button mat-stroked-button type="button" class="back" (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="eyebrow">ปัญหา · {{ t.ticketNo || 'ใบ #' + t.id }}</p>
-        <h1>{{ t.title }}</h1>
-        <p class="subtitle">
+        <p class="app-eyebrow">ปัญหา · {{ t.ticketNo || 'ใบ #' + t.id }}</p>
+        <h1 class="app-page-title">{{ t.title }}</h1>
+        <p class="app-subtitle">
           {{ customerName() }} · {{ projectName() }} ·
           {{ billingLabel(t.billingType) }}
           @if (t.billingType === 'ONE_TIME' && t.extraCharge != null) {
@@ -30,10 +30,10 @@
           @if (t.maContractId) {
             <p class="ma-link">
               ผูกสัญญา MA
-              <a [routerLink]="['/app/ma', t.maContractId]">#{{ t.maContractId }}</a>
+              <a class="app-link" [routerLink]="['/app/ma', t.maContractId]">#{{ t.maContractId }}</a>
             </p>
           } @else {
-            <p class="warn-banner">
+            <p class="app-warn-banner">
               ใบนี้ตั้งเป็น「ใช้โควตา MA」แต่ยังไม่ผูกสัญญา
               — ตรวจว่ามีสัญญาสถานะ「ใช้งาน」ของลูกค้า/โปรเจคนี้ หรือเปลี่ยนสถานะสัญญาจากแบบร่างก่อน
             </p>
@@ -202,9 +202,9 @@
       </aside>
     }
 
-    <div class="data-card">
-      <div class="data-card__head">
-        <div class="data-card__row tab-toolbar">
+    <div class="app-panel">
+      <div class="app-panel-toolbar">
+        <div class="app-panel-toolbar-row tab-toolbar">
           <div class="section-title-wrap">
             <h3 class="tab-heading">ประวัติงานแก้ไข</h3>
             <p class="section-sub">คลิกดูรายละเอียดแต่ละรอบ</p>
@@ -229,7 +229,7 @@
           }
         </div>
       </div>
-      <div class="data-card__body">
+      <div class="app-panel-body">
         @if (!filteredResolutions().length) {
           <p class="data-empty">
             ยังไม่มีงานแก้ไข — เมื่อผู้รับผิดชอบแก้เสร็จ ให้บันทึกสาเหตุ / วิธีแก้ / ผลลัพธ์ที่นี่
@@ -268,20 +268,20 @@
       </div>
     </div>
 
-    <div class="meta-grid">
-      <mat-card>
+    <div class="app-meta-grid">
+      <mat-card class="app-meta-card">
         <strong>รับแจ้ง</strong>
         <span>{{ t.reportedAt | thaiDate }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>ปิดงานเมื่อ</strong>
         <span>{{ t.closedAt | thaiDate }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>ผู้รับเรื่อง</strong>
         <span>{{ userName(t.receivedByUserId) }}</span>
       </mat-card>
-      <mat-card>
+      <mat-card class="app-meta-card">
         <strong>งานแก้ไขแล้ว</strong>
         <span>{{ t.resolutionCount || 0 }} ครั้ง</span>
       </mat-card>

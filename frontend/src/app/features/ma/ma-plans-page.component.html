@@ -1,10 +1,10 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>แผน MA</h1>
-      <p class="subtitle">แม่แบบโควตา · SLA · รายการบริการย่อย</p>
+      <h1 class="app-page-title">แผน MA</h1>
+      <p class="app-subtitle">แม่แบบโควตา · SLA · รายการบริการย่อย</p>
     </div>
-    <div class="header-actions">
+    <div class="app-header-actions">
       <a mat-stroked-button routerLink="/app/ma">
         <mat-icon>arrow_back</mat-icon>
         สัญญา MA
@@ -12,10 +12,10 @@
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -65,14 +65,14 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อแผน</th>
           <td mat-cell *matCellDef="let row">
-            <div class="plan-name">{{ row.name }}</div>
+            <div class="font-semibold">{{ row.name }}</div>
             @if (row.description) {
-              <small class="plan-desc">{{ row.description }}</small>
+              <small class="mt-0.5 block text-muted">{{ row.description }}</small>
             }
           </td>
         </ng-container>
@@ -87,7 +87,7 @@
         <ng-container matColumnDef="isActive">
           <th mat-header-cell *matHeaderCellDef>สถานะ</th>
           <td mat-cell *matCellDef="let row">
-            <span class="status" [attr.data-active]="row.isActive">
+            <span [class.app-status-active]="row.isActive" [class.app-status-muted]="!row.isActive">
               {{ row.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}
             </span>
           </td>
@@ -98,7 +98,7 @@
         </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let row" class="actions">
+          <td mat-cell *matCellDef="let row" class="whitespace-nowrap text-right">
             <button
               mat-stroked-button
               type="button"

@@ -1,17 +1,17 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>ผู้ใช้</h1>
-      <p class="subtitle">
+      <h1 class="app-page-title">ผู้ใช้</h1>
+      <p class="app-subtitle">
         Admin / Super Admin เพิ่มผู้ใช้และผูกบทบาทได้ · สร้าง/แก้บทบาททำได้เฉพาะ Super Admin
       </p>
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -41,7 +41,7 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="fullName">
           <th mat-header-cell *matHeaderCellDef>ชื่อ</th>

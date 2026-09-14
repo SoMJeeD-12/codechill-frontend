@@ -1,16 +1,16 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <!-- ปุ่ม "เปิดใบแจ้งปัญหา" อยู่บนแถบบนแล้ว (ทุกหน้า) จึงไม่ซ้ำในหน้านี้อีก -->
     <div>
-      <h1>ปัญหา / ซัพพอร์ต</h1>
-      <p class="subtitle">
+      <h1 class="app-page-title">ปัญหา / ซัพพอร์ต</h1>
+      <p class="app-subtitle">
         รับเรื่องจากลูกค้า · คิว「รอรับการแก้ไข」เรียงตามความเร่งด่วนก่อน แล้วค่อยตามวันรับแจ้ง
       </p>
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
       <div class="ui-chips" role="tablist" aria-label="มุมมองปัญหา">
         <button
           type="button"
@@ -37,7 +37,7 @@
         </button>
       </div>
 
-      <label class="ui-search">
+      <label class="app-search">
         <mat-icon>search</mat-icon>
         <input
           type="search"
@@ -48,7 +48,7 @@
       </label>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="ticketNo">
           <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
@@ -60,9 +60,9 @@
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/tickets', row.id]" class="row-link">{{ row.title }}</a>
+            <a [routerLink]="['/app/tickets', row.id]" class="app-link">{{ row.title }}</a>
             @if (projectName(row); as project) {
-              <small class="row-sub">{{ project }}</small>
+              <small class="mt-0.5 block text-[0.82rem] text-muted">{{ project }}</small>
             }
           </td>
         </ng-container>

@@ -1,13 +1,15 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>รายงาน</h1>
-      <p class="subtitle">สรุปมูลค่าตามสัญญา การดำเนินงาน และความพึงพอใจจากข้อมูลในระบบ</p>
+      <h1 class="app-page-title">รายงาน</h1>
+      <p class="app-subtitle">สรุปมูลค่าตามสัญญา การดำเนินงาน และความพึงพอใจจากข้อมูลในระบบ</p>
     </div>
-    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
-      <mat-icon>refresh</mat-icon>
-      รีเฟรช
-    </button>
+    <div class="app-header-actions">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
   </header>
 
   @if (report(); as r) {

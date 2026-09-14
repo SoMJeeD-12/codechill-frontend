@@ -9,11 +9,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1.4rem;
-
-  h1 {
-    margin: 0;
-    font-size: 1.6rem;
-  }
+  /* ชื่อ/คำอธิบายใช้ app-page-title / app-subtitle จาก Tailwind */
 }
 
 .section-title {
@@ -67,11 +63,11 @@
   align-items: center;
   gap: 0.15rem 0.6rem;
   padding: 1.1rem 1.2rem 0.9rem;
-  border: 1px solid #d8e5e1;
-  border-left: 5px solid #cbd5d1;
+  border: 1px solid var(--app-line);
+  border-left: 4px solid #cbd5d1;
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.06);
+  box-shadow: 0 4px 16px rgba(28, 43, 40, 0.04);
   text-align: left;
   font: inherit;
   cursor: pointer;
@@ -81,8 +77,8 @@
     border-color 0.14s ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(28, 43, 40, 0.12);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(28, 43, 40, 0.08);
   }
 
   &:focus-visible {
@@ -178,10 +174,10 @@
 .mywork-card {
   display: flex;
   flex-direction: column;
-  border: 1px solid #d8e5e1;
+  border: 1px solid var(--app-line);
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.06);
+  box-shadow: 0 4px 16px rgba(28, 43, 40, 0.04);
   overflow: hidden;
 }
 
@@ -190,8 +186,8 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.9rem 1.05rem;
-  background: linear-gradient(180deg, #f3faf8 0%, #ffffff 100%);
-  border-bottom: 1px solid #e4eeeb;
+  background: linear-gradient(180deg, #f7fbf9 0%, #ffffff 88%);
+  border-bottom: 1px solid var(--app-line-soft);
 
   mat-icon {
     color: #0f766e;

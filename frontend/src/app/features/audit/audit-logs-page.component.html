@@ -1,15 +1,15 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>ประวัติการใช้งาน</h1>
-      <p class="subtitle">ใครสร้าง แก้ไข หรือลบข้อมูลใด เมื่อใด และจากเครื่องไหน</p>
+      <h1 class="app-page-title">ประวัติการใช้งาน</h1>
+      <p class="app-subtitle">ใครสร้าง แก้ไข หรือลบข้อมูลใด เมื่อใด และจากเครื่องไหน</p>
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -23,7 +23,7 @@
           รีเฟรช
         </button>
       </div>
-      <div class="data-card__row">
+      <div class="app-panel-toolbar-row">
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
           <mat-label>การกระทำ</mat-label>
           <mat-select
@@ -48,7 +48,7 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef>เวลา</th>

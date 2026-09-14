@@ -1,9 +1,9 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <p class="eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูล' }}</p>
-      <h1>{{ is360Mode ? 'มุมมอง 360°' : 'ลูกค้า' }}</h1>
-      <p class="subtitle">
+      <p class="app-eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูล' }}</p>
+      <h1 class="app-page-title">{{ is360Mode ? 'มุมมอง 360°' : 'ลูกค้า' }}</h1>
+      <p class="app-subtitle">
         {{
           is360Mode
             ? 'เลือกลูกค้า 1 ราย แล้วดูโปรเจค ประกัน MA ปัญหา ติดตาม ในหน้าเดียว'
@@ -13,10 +13,10 @@
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อลูกค้า</th>
@@ -62,11 +62,11 @@
             @if (is360Mode) {
               <a [routerLink]="['/app/customer-360', row.id]">{{ row.name }}</a>
             } @else {
-              <button type="button" class="name-link" (click)="openDetail(row)">
+              <button type="button" class="app-link border-0 bg-transparent p-0 text-left cursor-pointer" (click)="openDetail(row)">
                 {{ row.name }}
               </button>
             }
-            <div class="muted">รหัส {{ row.code || '—' }}</div>
+            <div class="app-muted text-sm">รหัส {{ row.code || '—' }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="phone">

@@ -1,15 +1,15 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>เอกสารโปรเจค</h1>
-      <p class="subtitle">อัปโหลดและควบคุมเวอร์ชัน — โครงรอ /api/files (Phase 9) + mock เปิดดูได้</p>
+      <h1 class="app-page-title">เอกสารโปรเจค</h1>
+      <p class="app-subtitle">อัปโหลดและควบคุมเวอร์ชัน — โครงรอ /api/files (Phase 9) + mock เปิดดูได้</p>
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -51,7 +51,7 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>เอกสาร</th>

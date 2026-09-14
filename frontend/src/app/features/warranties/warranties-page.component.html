@@ -1,15 +1,15 @@
-<section class="page">
-  <header class="page-header">
+<section class="app-page">
+  <header class="app-page-header">
     <div>
-      <h1>การรับประกัน</h1>
-      <p class="subtitle">ระยะประกันหลังส่งมอบ และรายการที่ใกล้หมดอายุภายใน {{ nearDays }} วัน</p>
+      <h1 class="app-page-title">การรับประกัน</h1>
+      <p class="app-subtitle">ระยะประกันหลังส่งมอบ และรายการที่ใกล้หมดอายุภายใน {{ nearDays }} วัน</p>
     </div>
   </header>
 
-  <div class="data-card">
-    <div class="data-card__head">
-      <div class="data-card__row">
-        <label class="ui-search">
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
           <mat-icon>search</mat-icon>
           <input
             type="search"
@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div class="data-card__body">
+    <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="code">
           <th mat-header-cell *matHeaderCellDef>รหัส</th>
@@ -48,11 +48,11 @@
           <th mat-header-cell *matHeaderCellDef>โปรเจค / ลูกค้า</th>
           <td mat-cell *matCellDef="let row">
             @if (row.projectId) {
-              <a class="project-link" [routerLink]="['/app/projects', row.projectId]">{{ projectName(row) }}</a>
+              <a class="app-link block leading-snug" [routerLink]="['/app/projects', row.projectId]">{{ projectName(row) }}</a>
             } @else {
-              <span class="project-link">{{ projectName(row) }}</span>
+              <span class="block font-semibold leading-snug text-brand">{{ projectName(row) }}</span>
             }
-            <div class="customer-sub">{{ customerName(row) }}</div>
+            <div class="mt-0.5 text-[0.82rem] leading-snug text-slate-500">{{ customerName(row) }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="title">
