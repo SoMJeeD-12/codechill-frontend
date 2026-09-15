@@ -161,7 +161,7 @@
     <div class="app-two-col">
       <mat-card class="app-panel-card">
         <h2 class="app-section-title">Add-on</h2>
-        <table mat-table [dataSource]="addonsPager.paged()" class="w-full">
+        <table mat-table [dataSource]="addonsPager.paged()" class="data-table w-full">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>รายการ</th>
             <td mat-cell *matCellDef="let row">{{ row.title }}</td>

@@ -2,7 +2,9 @@ import { CdkDragDrop, DragDropModule, transferArrayItem } from '@angular/cdk/dra
 import { Component, Input, OnChanges, OnInit, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
@@ -23,6 +25,8 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { TaskEditDialogComponent } from './task-edit-dialog.component';
 
 const PRIORITY_RANK: Record<TaskPriority, number> = {
   URGENT: 0,
@@ -42,6 +46,7 @@ const OTHER_LIMIT = 100;
     DragDropModule,
     MatButtonModule,
     MatFormFieldModule,
+    MatIconModule,
     MatSelectModule,
     MatSnackBarModule,
   ],
@@ -53,6 +58,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   /** null = งานทั้งบริษัท */
   @Input() projectId: number | null = null;
@@ -87,6 +93,15 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
     this.auth.session();
     return this.auth.hasPermissionCode('task.update');
   });
+
+  readonly canCreateTask = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('task.create') || this.auth.hasPermissionCode('task.update')
+    );
+  });
+
+  readonly activeProjectId = computed(() => this.effectiveProjectId());
 
   ngOnInit(): void {
     this.usersApi.loadForPicker(this.auth.currentUser()).subscribe({ error: () => undefined });
@@ -221,6 +236,27 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
 
   trackTask(_: number, task: TaskItem): number {
     return task.id;
+  }
+
+  openCreateTask(): void {
+    const projectId = this.activeProjectId();
+    if (!projectId) {
+      this.snack.open('เลือกโปรเจคก่อนจึงเพิ่มงานได้', 'ปิด', { duration: 3000 });
+      return;
+    }
+    if (!this.canCreateTask()) {
+      this.snack.open('ไม่มีสิทธิ์เพิ่มงาน', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(TaskEditDialogComponent, {
+      ...FORM_DIALOG,
+      data: { projectId, task: null },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.reload();
+      }
+    });
   }
 
   private loadSummary(): void {

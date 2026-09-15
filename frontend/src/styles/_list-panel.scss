@@ -195,6 +195,9 @@
 
 .data-table {
   width: 100%;
+  min-width: 36rem;
+  border-collapse: separate;
+  border-spacing: 0;
 
   .mat-mdc-header-row {
     background: #f8faf9;
@@ -208,9 +211,18 @@
     border-bottom-color: var(--app-line-soft) !important;
     padding-top: 0.7rem !important;
     padding-bottom: 0.7rem !important;
+    white-space: nowrap;
+    vertical-align: middle;
   }
 
   .mat-mdc-row:hover {
+    background: #f7faf9;
+  }
+
+  .mat-mdc-row:hover .mat-mdc-cell:first-of-type,
+  .mat-mdc-row:hover .mat-mdc-cell:last-of-type,
+  .mat-mdc-row:hover .mat-mdc-cell.col-sticky-start,
+  .mat-mdc-row:hover .mat-mdc-cell.col-sticky-end {
     background: #f7faf9;
   }
 
@@ -219,6 +231,78 @@
     padding-top: 0.72rem !important;
     padding-bottom: 0.72rem !important;
     vertical-align: middle;
+    max-width: 16rem;
+  }
+
+  /* คอลัมน์แรกติดซ้าย — ทุกตาราง */
+  .mat-mdc-header-cell:first-of-type,
+  .mat-mdc-cell:first-of-type,
+  .col-sticky-start {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: 1px 0 0 #eef2f0;
+  }
+
+  .mat-mdc-header-cell:first-of-type,
+  .mat-mdc-header-cell.col-sticky-start {
+    background: #f8faf9;
+    z-index: 3;
+  }
+
+  /* คอลัมน์สุดท้ายติดขวา — ปุ่ม actions ฯลฯ */
+  .mat-mdc-header-cell:last-of-type,
+  .mat-mdc-cell:last-of-type,
+  .col-sticky-end {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: -1px 0 0 #eef2f0;
+    text-align: right;
+    white-space: nowrap;
+    max-width: none;
+  }
+
+  .mat-mdc-header-cell:last-of-type,
+  .mat-mdc-header-cell.col-sticky-end {
+    background: #f8faf9;
+    z-index: 3;
+  }
+
+  /* ข้อความยาวตัด … ทั้งระบบ */
+  .cell-clip,
+  .mat-mdc-cell a,
+  .mat-mdc-cell .app-link,
+  .mat-mdc-cell strong,
+  .mat-mdc-cell .linkish {
+    display: inline-block;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .cell-clip--sm {
+    max-width: 9rem;
+  }
+
+  .cell-clip--lg,
+  .mat-mdc-cell a.cell-clip--lg {
+    max-width: 18rem;
+  }
+
+  /* คอลัมน์สถานะ/ป้าย ไม่จำกัดความกว้าง */
+  .mat-column-status,
+  .mat-column-priority,
+  .mat-column-actions,
+  .mat-column-isActive,
+  .mat-column-active,
+  .mat-column-isOverdue {
+    max-width: none;
+    white-space: nowrap;
   }
 
   a {
@@ -229,6 +313,146 @@
     &:hover {
       text-decoration: underline;
     }
+  }
+}
+
+/* ซ่อนคอลัมน์รองบนจอแคบ — ใช้ mat-column-* จาก Material ครอบทุกหน้า */
+@media (max-width: 1280px) {
+  .data-table {
+    .mat-column-description,
+    .mat-column-startDate,
+    .mat-column-completedAt,
+    .mat-column-fileSize,
+    .mat-column-uploadedBy,
+    .mat-column-ip,
+    .mat-column-sortOrder,
+    .mat-column-responseTimeHour,
+    .mat-column-bugQuotaPerMonth,
+    .mat-column-extraQuota,
+    .mat-column-permissions,
+    .mat-column-accountType,
+    .mat-column-nickname,
+    .mat-column-lineId,
+    .mat-column-position,
+    .mat-column-note,
+    .mat-column-acceptance,
+    .mat-column-acceptedBy,
+    .mat-column-deliveredBy,
+    .mat-column-version {
+      display: none !important;
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .data-table {
+    .mat-column-isOverdue,
+    .mat-column-reportedAt,
+    .mat-column-targetEndDate,
+    .mat-column-createdAt,
+    .mat-column-updatedAt,
+    .mat-column-occurredAt,
+    .mat-column-sentAt,
+    .mat-column-answeredAt,
+    .mat-column-deliveredAt,
+    .mat-column-daysLeft,
+    .mat-column-period,
+    .mat-column-quota,
+    .mat-column-fee,
+    .mat-column-price,
+    .mat-column-progress,
+    .mat-column-manager,
+    .mat-column-assignee,
+    .mat-column-owner,
+    .mat-column-handler,
+    .mat-column-contact,
+    .mat-column-email,
+    .mat-column-phone,
+    .mat-column-username,
+    .mat-column-roles,
+    .mat-column-users,
+    .mat-column-questions,
+    .mat-column-responses,
+    .mat-column-avg,
+    .mat-column-score,
+    .mat-column-count,
+    .mat-column-category,
+    .mat-column-file,
+    .mat-column-fileName,
+    .mat-column-actor,
+    .mat-column-table,
+    .mat-column-record,
+    .mat-column-channel,
+    .mat-column-subject,
+    .mat-column-maLink,
+    .mat-column-delivery,
+    .mat-column-deliveryNo,
+    .mat-column-plan,
+    .mat-column-effective {
+      display: none !important;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .data-table {
+    min-width: 28rem;
+
+    .mat-mdc-header-cell,
+    .mat-mdc-cell {
+      padding-left: 0.55rem !important;
+      padding-right: 0.55rem !important;
+      font-size: 0.84rem;
+    }
+
+    .mat-column-priority,
+    .mat-column-customer,
+    .mat-column-project,
+    .mat-column-dueDate,
+    .mat-column-contractNo,
+    .mat-column-isPrimary,
+    .mat-column-open,
+    .mat-column-overdue {
+      display: none !important;
+    }
+
+    .cell-clip,
+    .cell-clip--lg,
+    .mat-mdc-cell a,
+    .mat-mdc-cell .app-link {
+      max-width: 10rem;
+    }
+
+    .cell-clip--sm {
+      max-width: 7rem;
+    }
+  }
+
+  .app-panel-body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ui-chips {
+    max-width: 100%;
+  }
+}
+
+/* ซ่อนคอลัมน์รองแบบใส่ class เอง (ถ้ามีในบางหน้า) */
+.col-hide-xl {
+  @media (max-width: 1280px) {
+    display: none !important;
+  }
+}
+
+.col-hide-lg {
+  @media (max-width: 1024px) {
+    display: none !important;
+  }
+}
+
+.col-hide-md {
+  @media (max-width: 768px) {
+    display: none !important;
   }
 }
 
@@ -451,6 +675,11 @@
 
   .ui-filter {
     width: 100%;
+  }
+
+  .app-panel-toolbar-row .app-search {
+    flex: 1 1 100%;
+    max-width: none;
   }
 }
 

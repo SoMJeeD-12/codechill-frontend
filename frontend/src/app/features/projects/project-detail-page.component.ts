@@ -324,8 +324,6 @@ export class ProjectDetailPageComponent implements OnInit {
         detail:
           'กด「ขั้นถัดไป · กำลังดำเนินการ」ด้านบนก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
         blockers: [] as string[],
-        actionLabel: null,
-        actionKind: null,
       };
     }
 
@@ -333,17 +331,11 @@ export class ProjectDetailPageComponent implements OnInit {
       if (blockers.length === 0) {
         return null;
       }
-      const missingDelivery = items.some((i) => i.id === 'delivery' && !i.ok);
+      // ปุ่ม「บันทึกการส่งมอบ」อยู่ที่ toolbar รายการแล้ว — แถบนี้แค่บอกสิ่งที่ค้าง ไม่ซ้ำปุ่ม
       return {
         title: 'สิ่งที่ยังค้างก่อนส่งมอบครบ',
         detail: blockers[0],
         blockers,
-        actionLabel:
-          this.canRecordDelivery() && missingDelivery ? 'บันทึกการส่งมอบ' : null,
-        actionKind:
-          this.canRecordDelivery() && missingDelivery
-            ? ('delivery' as const)
-            : null,
       };
     }
 
@@ -712,14 +704,6 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     this.changeProjectStatus(next);
-  }
-
-  /** ปุ่มบนแถบขั้นถัดไปในแท็บส่งมอบ */
-  onDeliveryNextHintAction(): void {
-    const kind = this.deliveryNextHint()?.actionKind;
-    if (kind === 'delivery') {
-      this.openAddDelivery();
-    }
   }
 
   changeProjectStatus(status: ProjectStatus): void {

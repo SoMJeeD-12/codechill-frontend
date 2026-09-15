@@ -8,7 +8,21 @@ import { MenuItem } from '../models/permission.model';
  *
  * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles)
  * เมนูงานย่อยแยกจากโปรเจค — ไม่ปนกับรายการส่งมอบ
+ * มุมมองย่อยของ「งานของฉัน」เป็นหัวข้อในหน้า ไม่ใส่เมนูซ้อนใน sidebar
  */
+
+/** แบนเมนูรวม children — ใช้ตอนเช็คสิทธิ์ / รหัสเมนู */
+export function flattenMenuItems(items: MenuItem[]): MenuItem[] {
+  const out: MenuItem[] = [];
+  for (const item of items) {
+    out.push(item);
+    if (item.children?.length) {
+      out.push(...flattenMenuItems(item.children));
+    }
+  }
+  return out;
+}
+
 export const MENU_ITEMS: MenuItem[] = [
   // —— งานหลัก ——
   {
@@ -28,14 +42,6 @@ export const MENU_ITEMS: MenuItem[] = [
     group: 'main',
   },
   {
-    code: 'tasks',
-    label: 'งานทั้งหมด',
-    description: 'งานย่อยทุกโปรเจค',
-    icon: 'list_alt',
-    route: '/app/tasks',
-    group: 'main',
-  },
-  {
     code: 'tasks-me',
     label: 'งานของฉัน',
     description: 'งานที่ได้รับมอบหมาย',
@@ -44,35 +50,11 @@ export const MENU_ITEMS: MenuItem[] = [
     group: 'main',
   },
   {
-    code: 'tasks-unassigned',
-    label: 'งานที่ยังไม่มอบหมาย',
-    description: 'รอเลือกผู้รับผิดชอบ',
-    icon: 'person_off',
-    route: '/app/tasks/unassigned',
-    group: 'main',
-  },
-  {
-    code: 'tasks-doing',
-    label: 'งานกำลังดำเนินการ',
-    description: 'สถานะกำลังทำ',
-    icon: 'play_circle',
-    route: '/app/tasks/doing',
-    group: 'main',
-  },
-  {
     code: 'tasks-review',
     label: 'งานรอตรวจ',
-    description: 'สถานะรอตรวจ',
+    description: 'รออนุมัติจากผู้ตรวจ',
     icon: 'rate_review',
     route: '/app/tasks/review',
-    group: 'main',
-  },
-  {
-    code: 'tasks-overdue',
-    label: 'งานเกินกำหนด',
-    description: 'เลย due date แล้วยังไม่เสร็จ',
-    icon: 'warning_amber',
-    route: '/app/tasks/overdue',
     group: 'main',
   },
   {

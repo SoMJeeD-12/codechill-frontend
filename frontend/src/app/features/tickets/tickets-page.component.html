@@ -11,6 +11,17 @@
 
   <div class="app-panel">
     <div class="app-panel-toolbar">
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ค้นหา เลขใบ · หัวข้อ · ชื่อลูกค้า · ชื่อโปรเจค"
+            aria-label="ค้นหาปัญหา"
+          />
+        </label>
+      </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองปัญหา">
         <button
           type="button"
@@ -36,23 +47,13 @@
           ทั้งหมด
         </button>
       </div>
-
-      <label class="app-search">
-        <mat-icon>search</mat-icon>
-        <input
-          type="search"
-          [formControl]="searchControl"
-          placeholder="ค้นหา เลขใบ · หัวข้อ · ชื่อลูกค้า · ชื่อโปรเจค"
-          aria-label="ค้นหาปัญหา"
-        />
-      </label>
     </div>
 
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="ticketNo">
-          <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
-          <td mat-cell *matCellDef="let row" class="col-code">
+          <th mat-header-cell *matHeaderCellDef class="col-sticky-start">เลขใบ</th>
+          <td mat-cell *matCellDef="let row" class="col-code col-sticky-start">
             {{ row.ticketNo || '—' }}
           </td>
         </ng-container>
@@ -60,16 +61,22 @@
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
           <td mat-cell *matCellDef="let row">
-            <a [routerLink]="['/app/tickets', row.id]" class="app-link">{{ row.title }}</a>
+            <a
+              [routerLink]="['/app/tickets', row.id]"
+              class="app-link cell-clip cell-clip--lg"
+              [title]="row.title"
+            >{{ row.title }}</a>
             @if (projectName(row); as project) {
-              <small class="mt-0.5 block text-[0.82rem] text-muted">{{ project }}</small>
+              <small class="mt-0.5 block cell-clip cell-clip--sm text-[0.82rem] text-muted" [title]="project">{{ project }}</small>
             }
           </td>
         </ng-container>
 
         <ng-container matColumnDef="customer">
-          <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
-          <td mat-cell *matCellDef="let row">{{ customerName(row) }}</td>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-md">ลูกค้า</th>
+          <td mat-cell *matCellDef="let row" class="col-hide-md">
+            <span class="cell-clip cell-clip--sm">{{ customerName(row) }}</span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="status">
@@ -91,13 +98,13 @@
         </ng-container>
 
         <ng-container matColumnDef="reportedAt">
-          <th mat-header-cell *matHeaderCellDef>รับแจ้ง</th>
-          <td mat-cell *matCellDef="let row">{{ row.reportedAt | thaiDate }}</td>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-lg">รับแจ้ง</th>
+          <td mat-cell *matCellDef="let row" class="col-hide-lg">{{ row.reportedAt | thaiDate }}</td>
         </ng-container>
 
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let row" class="actions">
+          <th mat-header-cell *matHeaderCellDef class="col-sticky-end"></th>
+          <td mat-cell *matCellDef="let row" class="actions col-sticky-end">
             <button
               mat-icon-button
               type="button"

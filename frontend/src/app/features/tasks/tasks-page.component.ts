@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -36,13 +36,17 @@ export type TasksPageMode =
   | 'board';
 
 /** มุมมองย่อยในหน้างานของฉัน */
-export type MyTasksView =
-  | 'all'
-  | 'todo'
-  | 'doing'
-  | 'review'
-  | 'done'
-  | 'overdue';
+export type MyTasksView = 'all' | 'todo' | 'doing' | 'review' | 'done' | 'overdue';
+
+const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
+  todo: 'todo',
+  unassigned: 'todo',
+  doing: 'doing',
+  review: 'review',
+  done: 'done',
+  overdue: 'overdue',
+  all: 'all',
+};
 
 const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   all: {
@@ -51,7 +55,7 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   },
   me: {
     title: 'งานของฉัน',
-    subtitle: 'งานที่ได้รับมอบหมาย — กรองตามผู้ใช้ที่ล็อกอินอยู่',
+    subtitle: 'งานที่ระบบมอบหมายให้คุณ — ไม่สามารถเลือกดูงานของคนอื่นจากหน้านี้',
   },
   unassigned: {
     title: 'งานที่ยังไม่มอบหมาย',
@@ -63,7 +67,7 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   },
   review: {
     title: 'งานรอตรวจ',
-    subtitle: 'สถานะ「รอตรวจ」ทั้งระบบ',
+    subtitle: 'รายการสถานะ REVIEW ทั้งระบบ — อนุมัติหรือส่งกลับแก้ไข',
   },
   overdue: {
     title: 'งานเกินกำหนด',
@@ -95,6 +99,7 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
 })
 export class TasksPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly projectsApi = inject(ProjectService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
@@ -118,6 +123,12 @@ export class TasksPageComponent implements OnInit {
   readonly canUpdateTask = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('task.update');
+  });
+
+  /** ผู้ตรวจ / SUPER_ADMIN — ใช้ accountType หรือ permission ไม่ใช้ roles.length */
+  readonly canReviewTasks = computed(() => {
+    this.auth.session();
+    return this.auth.canAccessTaskReviewQueue();
   });
 
   readonly meta = computed(() => PAGE_META[this.mode()]);
@@ -156,6 +167,9 @@ export class TasksPageComponent implements OnInit {
   });
 
   readonly columns = computed(() => {
+    if (this.mode() === 'review') {
+      return ['title', 'assignee', 'project', 'dueDate', 'status', 'actions'];
+    }
     if (this.mode() === 'me') {
       return [
         'title',
@@ -164,6 +178,7 @@ export class TasksPageComponent implements OnInit {
         'assignee',
         'status',
         'priority',
+        'startDate',
         'dueDate',
         'isOverdue',
         'completedAt',
@@ -185,18 +200,56 @@ export class TasksPageComponent implements OnInit {
     this.route.data.subscribe((data) => {
       const mode = (data['taskMode'] as TasksPageMode) || 'all';
       this.mode.set(mode);
-      this.myView.set('all');
       const qProject = Number(this.route.snapshot.queryParamMap.get('projectId'));
       this.filterProjectId.set(
         Number.isFinite(qProject) && qProject > 0 ? qProject : null
       );
+      if (mode === 'me') {
+        const fromData = data['myView'] as MyTasksView | undefined;
+        const fromQuery = this.route.snapshot.queryParamMap.get('view');
+        this.applyViewFromQuery(fromQuery ?? fromData ?? null);
+      } else {
+        this.myView.set('all');
+      }
       this.reload();
+    });
+
+    this.route.queryParamMap.subscribe((params) => {
+      if (this.mode() !== 'me') {
+        return;
+      }
+      this.applyViewFromQuery(params.get('view'));
+      this.pager.reset();
     });
   }
 
   setMyView(view: MyTasksView): void {
     this.myView.set(view);
     this.pager.reset();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: view === 'all' ? {} : { view },
+      replaceUrl: true,
+    });
+  }
+
+  private applyViewFromQuery(raw: string | null): void {
+    if (!raw) {
+      this.myView.set('all');
+      return;
+    }
+    if (
+      raw === 'todo' ||
+      raw === 'doing' ||
+      raw === 'review' ||
+      raw === 'done' ||
+      raw === 'overdue' ||
+      raw === 'all'
+    ) {
+      this.myView.set(raw);
+      return;
+    }
+    this.myView.set(MY_VIEW_FROM_QUERY[raw] ?? 'all');
   }
 
   reload(): void {
@@ -208,21 +261,13 @@ export class TasksPageComponent implements OnInit {
     this.loading.set(true);
     const q = this.search().trim() || undefined;
     const projectId = this.filterProjectId() ?? undefined;
-    const meId = this.auth.currentUser()?.id;
 
     let req;
     if (mode === 'me') {
-      if (!meId) {
-        this.tasks.set([]);
-        this.loading.set(false);
-        this.snack.open('ไม่พบผู้ใช้ที่ล็อกอิน', 'ปิด', { duration: 3000 });
-        return;
-      }
-      // ตาม contract ล่าสุด: GET /api/tasks?assignedUserId={currentUserId}
-      req = this.projectsApi.listAllTasks({
+      // GET /api/tasks/me — ห้ามส่ง userId จาก client
+      req = this.projectsApi.listMyTasks({
         limit: 100,
         search: q,
-        assignedUserId: meId,
       });
     } else if (mode === 'overdue') {
       req = this.projectsApi.listOverdueTasks({ limit: 100, projectId });
@@ -241,8 +286,10 @@ export class TasksPageComponent implements OnInit {
         status: 'DOING',
       });
     } else if (mode === 'review') {
+      // ผู้ตรวจ / SUPER_ADMIN — ห้ามใช้ /tasks/me
       req = this.projectsApi.listAllTasks({
-        limit: 100,
+        page: 1,
+        limit: 20,
         projectId,
         search: q,
         status: 'REVIEW',
@@ -298,11 +345,52 @@ export class TasksPageComponent implements OnInit {
     return this.projectStatusLabels[status as ProjectStatus] ?? status;
   }
 
-  /** ปุ่มเปลี่ยนสถานะ — เฉพาะผู้มี task.update */
+  /**
+   * ปุ่มเปลี่ยนสถานะ
+   * - หน้างานของฉัน (ผู้รับผิดชอบ): ส่งตรวจได้ ห้ามทำเสร็จเอง
+   * - หน้างานรอตรวจ (ผู้ตรวจ): อนุมัติ/ทำเสร็จ หรือ ส่งกลับแก้ไข
+   */
   statusActions(task: TaskItem): { label: string; status: TaskStatus }[] {
     if (!this.canUpdateTask()) {
       return [];
     }
+
+    if (this.mode() === 'review') {
+      if (task.status !== 'REVIEW' || !this.canReviewTasks()) {
+        return [];
+      }
+      return [
+        { label: 'อนุมัติ/ทำเสร็จ', status: 'DONE' },
+        { label: 'ส่งกลับแก้ไข', status: 'DOING' },
+      ];
+    }
+
+    if (this.mode() === 'me') {
+      // ผู้รับผิดชอบ — ไม่มีปุ่มทำเสร็จ
+      switch (task.status) {
+        case 'TODO':
+          return [
+            { label: 'เริ่มงาน', status: 'DOING' },
+            { label: 'ส่งตรวจ', status: 'REVIEW' },
+          ];
+        case 'DOING':
+          return [
+            { label: 'พักงาน', status: 'WAITING' },
+            { label: 'ส่งตรวจ', status: 'REVIEW' },
+          ];
+        case 'WAITING':
+          return [
+            { label: 'กลับมาทำ', status: 'DOING' },
+            { label: 'ส่งตรวจ', status: 'REVIEW' },
+          ];
+        case 'REVIEW':
+        case 'DONE':
+        default:
+          return [];
+      }
+    }
+
+    // โหมดอื่น (งานทั้งหมด ฯลฯ) — ตามสิทธิ์ทั่วไป
     switch (task.status) {
       case 'TODO':
         return [{ label: 'เริ่มงาน', status: 'DOING' }];
@@ -317,9 +405,12 @@ export class TasksPageComponent implements OnInit {
           { label: 'ส่งตรวจ', status: 'REVIEW' },
         ];
       case 'REVIEW':
+        if (!this.canReviewTasks()) {
+          return [];
+        }
         return [
-          { label: 'ทำเสร็จ', status: 'DONE' },
-          { label: 'กลับไปแก้ไข', status: 'DOING' },
+          { label: 'อนุมัติ/ทำเสร็จ', status: 'DONE' },
+          { label: 'ส่งกลับแก้ไข', status: 'DOING' },
         ];
       default:
         return [];
@@ -331,19 +422,33 @@ export class TasksPageComponent implements OnInit {
       this.snack.open('ไม่มีสิทธิ์เปลี่ยนสถานะงาน (task.update)', 'ปิด', { duration: 3000 });
       return;
     }
+    if (this.mode() === 'me' && status === 'DONE') {
+      this.snack.open('ผู้รับผิดชอบส่งตรวจได้เท่านั้น — รอผู้ตรวจอนุมัติ', 'ปิด', {
+        duration: 3500,
+      });
+      return;
+    }
+    if (this.mode() === 'review' && !this.canReviewTasks()) {
+      this.snack.open('ไม่มีสิทธิ์ตรวจงาน', 'ปิด', { duration: 3000 });
+      return;
+    }
     if (task.status === status) {
       return;
     }
     this.savingId.set(task.id);
     this.projectsApi.updateTaskStatus(task.id, status).subscribe({
-      next: (updated) => {
+      next: () => {
         this.savingId.set(null);
-        this.tasks.update((list) =>
-          list.map((t) => (t.id === updated.id ? updated : t))
-        );
-        this.snack.open(`เปลี่ยนสถานะเป็น「${this.statusLabel(status)}」แล้ว`, 'ปิด', {
-          duration: 2500,
-        });
+        const msg =
+          status === 'REVIEW'
+            ? 'ส่งตรวจแล้ว — สถานะรอตรวจ'
+            : status === 'DONE'
+              ? 'อนุมัติแล้ว — งานเสร็จสมบูรณ์'
+              : status === 'DOING' && task.status === 'REVIEW'
+                ? 'ส่งกลับแก้ไขแล้ว'
+                : `เปลี่ยนสถานะเป็น「${this.statusLabel(status)}」แล้ว`;
+        this.snack.open(msg, 'ปิด', { duration: 2500 });
+        this.reload();
       },
       error: (err: Error) => {
         this.savingId.set(null);
@@ -353,12 +458,21 @@ export class TasksPageComponent implements OnInit {
   }
 
   openTask(task: TaskItem): void {
+    const workflow =
+      this.mode() === 'review'
+        ? 'reviewer'
+        : this.mode() === 'me'
+          ? 'assignee'
+          : this.canReviewTasks() && task.status === 'REVIEW'
+            ? 'reviewer'
+            : 'assignee';
     const ref = this.dialog.open(TaskEditDialogComponent, {
       ...FORM_DIALOG,
       data: {
         projectId: task.projectId,
         task,
         readOnly: !this.canUpdateTask(),
+        workflow,
       },
     });
     ref.afterClosed().subscribe((saved) => {

@@ -1335,7 +1335,7 @@ export class TicketProblemReturnedDialogComponent {
           this.saving.set(false);
           if (result.assigned) {
             this.snack.open(
-              'เปิดรอบใหม่แล้ว — สถานะกำลังดำเนินการ พร้อมบันทึกรอบถัดไป',
+              'เปิดรอบใหม่แล้ว — สถานะส่งงานแล้ว พร้อมเริ่มรอบถัดไป',
               'ปิด',
               { duration: 3500 }
             );

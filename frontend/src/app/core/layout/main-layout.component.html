@@ -13,13 +13,55 @@
         <div class="nav-group-label">{{ group.label }}</div>
         <mat-nav-list>
           @for (item of group.items; track item.code) {
-            <a mat-list-item [routerLink]="item.route" routerLinkActive="active">
-              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-              <span matListItemTitle>{{ item.label }}</span>
-              @if (item.description) {
-                <span matListItemLine class="nav-item-desc">{{ item.description }}</span>
-              }
-            </a>
+            @if (hasChildren(item)) {
+              <div class="nav-branch" [class.is-expanded]="isExpanded(item.code)">
+                <div class="nav-branch__parent">
+                  <a
+                    mat-list-item
+                    [routerLink]="item.route"
+                    [queryParams]="{}"
+                    [class.active]="isNavActive(item)"
+                    class="nav-branch__link"
+                  >
+                    <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+                    <span matListItemTitle>{{ item.label }}</span>
+                  </a>
+                  <button
+                    type="button"
+                    class="nav-branch__toggle"
+                    [attr.aria-expanded]="isExpanded(item.code)"
+                    [attr.aria-label]="'ขยาย ' + item.label"
+                    (click)="toggleExpand(item.code, $event)"
+                  >
+                    <mat-icon>{{ isExpanded(item.code) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  </button>
+                </div>
+                @if (isExpanded(item.code)) {
+                  <div class="nav-branch__children" role="group" [attr.aria-label]="item.label">
+                    @for (child of item.children; track child.code) {
+                      <a
+                        mat-list-item
+                        class="nav-child"
+                        [routerLink]="child.route"
+                        [queryParams]="child.queryParams ?? {}"
+                        [class.active]="isNavActive(child)"
+                      >
+                        <mat-icon matListItemIcon>{{ child.icon }}</mat-icon>
+                        <span matListItemTitle>{{ child.label }}</span>
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <a mat-list-item [routerLink]="item.route" routerLinkActive="active">
+                <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+                <span matListItemTitle>{{ item.label }}</span>
+                @if (item.description) {
+                  <span matListItemLine class="nav-item-desc">{{ item.description }}</span>
+                }
+              </a>
+            }
           }
         </mat-nav-list>
       </div>

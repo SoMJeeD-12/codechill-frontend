@@ -151,11 +151,11 @@ export const PRIORITY_LABELS: Record<ProjectPriority, string> = {
 export const PROJECT_PRIORITIES: ProjectPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  TODO: 'รอดำเนินการ',
+  TODO: 'กำลังทำ',
   DOING: 'กำลังทำ',
-  WAITING: 'รอข้อมูล',
+  WAITING: 'กำลังทำ',
   REVIEW: 'รอตรวจ',
-  DONE: 'เสร็จ',
+  DONE: 'ตรวจผ่านและเสร็จสมบูรณ์',
 };
 
 export const TASK_STATUSES: TaskStatus[] = ['TODO', 'DOING', 'WAITING', 'REVIEW', 'DONE'];

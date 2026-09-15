@@ -95,17 +95,17 @@ export const routes: Routes = [
       },
       {
         path: 'tasks/unassigned',
-        canActivate: [permissionGuard('tasks-unassigned')],
+        canActivate: [permissionGuard('tasks-me')],
         loadComponent: () =>
           import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
-        data: { taskMode: 'unassigned' },
+        data: { taskMode: 'me', myView: 'todo' },
       },
       {
         path: 'tasks/doing',
-        canActivate: [permissionGuard('tasks-doing')],
+        canActivate: [permissionGuard('tasks-me')],
         loadComponent: () =>
           import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
-        data: { taskMode: 'doing' },
+        data: { taskMode: 'me', myView: 'doing' },
       },
       {
         path: 'tasks/review',
@@ -116,10 +116,10 @@ export const routes: Routes = [
       },
       {
         path: 'tasks/overdue',
-        canActivate: [permissionGuard('tasks-overdue')],
+        canActivate: [permissionGuard('tasks-me')],
         loadComponent: () =>
           import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
-        data: { taskMode: 'overdue' },
+        data: { taskMode: 'me', myView: 'overdue' },
       },
       {
         path: 'tasks/board',

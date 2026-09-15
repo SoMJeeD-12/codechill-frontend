@@ -108,7 +108,7 @@
           </div>
           <div>
             <h3>รายลูกค้า</h3>
-            <table mat-table [dataSource]="breakdownByCustomerPager.paged()" class="full-table">
+            <table mat-table [dataSource]="breakdownByCustomerPager.paged()" class="data-table full-table">
               <ng-container matColumnDef="customer">
                 <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
                 <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>
@@ -148,7 +148,7 @@
       <div class="left-stack">
         <mat-card>
           <h2>การส่งแบบประเมิน</h2>
-          <table mat-table [dataSource]="assignmentsPager.paged()" class="full-table">
+          <table mat-table [dataSource]="assignmentsPager.paged()" class="data-table full-table">
             <ng-container matColumnDef="customer">
               <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
               <td mat-cell *matCellDef="let row">
@@ -187,7 +187,7 @@
 
         <mat-card>
           <h2>คำตอบล่าสุด</h2>
-          <table mat-table [dataSource]="responsesPager.paged()" class="full-table">
+          <table mat-table [dataSource]="responsesPager.paged()" class="data-table full-table">
             <ng-container matColumnDef="customer">
               <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
               <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>

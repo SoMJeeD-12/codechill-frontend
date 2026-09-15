@@ -59,14 +59,8 @@
             กระดานงาน
           </a>
         }
-        @if (canCreateTask()) {
-          <button mat-flat-button color="primary" type="button" (click)="openCreateTask()">
-            <mat-icon>add_task</mat-icon>
-            เพิ่มงาน
-          </button>
-        }
-        @if (canUpdateTask()) {
-          <button mat-stroked-button type="button" (click)="openAssignTask()">
+        @if (canUpdateTask() || canCreateTask()) {
+          <button mat-flat-button color="primary" type="button" (click)="openAssignTask()">
             <mat-icon>person_add</mat-icon>
             มอบหมายงาน
           </button>
@@ -130,18 +124,6 @@
                     <p class="next-hint__detail">{{ hint.detail }}</p>
                   }
                 </div>
-                @if (hint.actionLabel) {
-                  <div class="next-hint__actions">
-                    <button
-                      mat-flat-button
-                      color="primary"
-                      type="button"
-                      (click)="onDeliveryNextHintAction()"
-                    >
-                      {{ hint.actionLabel }}
-                    </button>
-                  </div>
-                }
               </aside>
             }
 

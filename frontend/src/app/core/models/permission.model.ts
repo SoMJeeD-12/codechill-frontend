@@ -60,6 +60,10 @@ export interface MenuItem {
   description?: string;
   icon: string;
   route: string;
+  /** query string บน route (เช่น มุมมองย่อยของงานของฉัน) */
+  queryParams?: Record<string, string>;
   /** กลุ่มใน sidebar — งานหลัก / ข้อมูล / ตั้งค่า */
   group: 'main' | 'support' | 'settings';
+  /** เมนูย่อย (เช่น ตัวกรองภายใต้งานของฉัน) */
+  children?: MenuItem[];
 }

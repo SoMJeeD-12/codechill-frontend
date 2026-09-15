@@ -18,7 +18,7 @@ import {
   moduleAliases,
 } from '../auth/permission-codes';
 import { apiErrorMessage } from '../http/api-error';
-import { MENU_ITEMS } from '../nav/menu-items';
+import { MENU_ITEMS, flattenMenuItems } from '../nav/menu-items';
 import { MenuCode, PermissionAction } from '../models/permission.model';
 import {
   AuthProfile,
@@ -278,6 +278,11 @@ export class AuthService {
         this.hasPermissionCode('project.view')
       );
     }
+    // คิวงานรอตรวจ — SUPER_ADMIN/ADMIN จาก accountType หรือ task.update จาก /auth/me
+    // ห้ามใช้ roles.length
+    if (menuCode === 'tasks-review') {
+      return this.canAccessTaskReviewQueue();
+    }
     // SUPER_ADMIN / ADMIN เห็นและใช้ทุกเมนูอื่น
     if (
       session.user.accountType === 'SUPER_ADMIN' ||
@@ -336,22 +341,39 @@ export class AuthService {
   }
 
   getVisibleMenuCodes(): MenuCode[] {
+    const flat = flattenMenuItems(MENU_ITEMS);
     if (this.isSuperAdmin()) {
-      return MENU_ITEMS.map((item) => item.code);
+      return flat.map((item) => item.code);
     }
     // Admin เห็นทุกเมนูยกเว้นบทบาทและสิทธิ์
     if (this.isAdminLevel()) {
-      return MENU_ITEMS.filter((item) => item.code !== 'roles').map(
-        (item) => item.code,
-      );
+      return flat.filter((item) => item.code !== 'roles').map((item) => item.code);
     }
     const perms = this.sessionSignal()?.permissions ?? [];
     if (!perms.length) {
       return [];
     }
-    return MENU_ITEMS.filter((item) =>
-      this.hasPermission(item.code, 'view'),
-    ).map((item) => item.code);
+    return flat
+      .filter((item) => {
+        if (item.code === 'tasks-review') {
+          // เมนูรอตรวจ: accountType SUPER_ADMIN/ADMIN หรือมีสิทธิ์ task.* จาก /auth/me
+          // ห้ามใช้ roles.length (SUPER_ADMIN มักไม่มี role)
+          return this.canAccessTaskReviewQueue();
+        }
+        return this.hasPermission(item.code, 'view');
+      })
+      .map((item) => item.code);
+  }
+
+  /**
+   * เข้าคิวงานรอตรวจได้เมื่อเป็น SUPER_ADMIN/ADMIN (accountType)
+   * หรือมีสิทธิ์ task.update จาก /auth/me — ห้ามใช้ roles.length
+   */
+  canAccessTaskReviewQueue(): boolean {
+    if (this.isAdminLevel()) {
+      return true;
+    }
+    return this.hasPermissionCode('task.update');
   }
 
   /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — Admin ระดับระบบเข้าเมนูได้แม้ permissions จาก API ไม่ครบ */
@@ -370,7 +392,7 @@ export class AuthService {
     if (codes.includes('dashboard')) {
       return '/app/home';
     }
-    const first = MENU_ITEMS.find((item) => codes.includes(item.code));
+    const first = flattenMenuItems(MENU_ITEMS).find((item) => codes.includes(item.code));
     return first?.route ?? '/app/no-access';
   }
 

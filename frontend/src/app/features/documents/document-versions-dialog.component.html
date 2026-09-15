@@ -1,6 +1,6 @@
 <h2 mat-dialog-title>เวอร์ชัน · {{ doc.title }}</h2>
 <mat-dialog-content>
-  <table mat-table [dataSource]="versions()" class="full-table">
+  <table mat-table [dataSource]="versions()" class="data-table full-table">
     <ng-container matColumnDef="version">
       <th mat-header-cell *matHeaderCellDef>เวอร์ชัน</th>
       <td mat-cell *matCellDef="let row"><strong>{{ row.version }}</strong></td>

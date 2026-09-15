@@ -93,6 +93,56 @@ a.mat-mdc-list-item {
   }
 }
 
+.nav-branch {
+  margin-bottom: 2px;
+}
+
+.nav-branch__parent {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+  gap: 0.15rem;
+}
+
+.nav-branch__link {
+  min-width: 0;
+}
+
+.nav-branch__toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  margin: 2px 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    opacity: 1;
+    background: rgba(15, 118, 110, 0.08);
+  }
+}
+
+.nav-branch__children {
+  padding: 0.1rem 0 0.35rem 0.55rem;
+  margin-left: 0.85rem;
+  border-left: 2px solid rgba(15, 118, 110, 0.18);
+}
+
+a.nav-child.mat-mdc-list-item {
+  min-height: 40px !important;
+  font-size: 0.92rem;
+}
+
 .nav-item-desc {
   display: none; /* ลดความรกในเมนู — เหลือชื่อเมนูชัด ๆ */
 }

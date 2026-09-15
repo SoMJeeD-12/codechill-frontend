@@ -33,6 +33,8 @@ export interface TaskDialogData {
   parentTaskId?: number | null;
   /** มีแค่ task.view — ดูอย่างเดียว */
   readOnly?: boolean;
+  /** ผู้รับผิดชอบ vs ผู้ตรวจ — กำหนดปุ่มสถานะ */
+  workflow?: 'assignee' | 'reviewer';
 }
 
 @Component({
@@ -81,6 +83,22 @@ export class TaskEditDialogComponent {
     return this.auth.hasPermissionCode('task.update');
   });
 
+  readonly canReview = computed(() => {
+    this.auth.session();
+    return this.auth.canAccessTaskReviewQueue();
+  });
+
+  readonly workflow = computed<'assignee' | 'reviewer'>(() => {
+    if (this.data.workflow) {
+      return this.data.workflow;
+    }
+    const task = this.currentTask();
+    if (task?.status === 'REVIEW' && this.canReview()) {
+      return 'reviewer';
+    }
+    return 'assignee';
+  });
+
   readonly form = this.fb.group({
     title: [this.data.task?.title ?? '', Validators.required],
     description: [this.data.task?.description ?? ''],
@@ -102,6 +120,9 @@ export class TaskEditDialogComponent {
     });
     if (!this.canUpdate()) {
       this.form.disable({ emitEvent: false });
+    } else if (this.data.workflow === 'assignee' || !this.data.workflow) {
+      // ผู้รับผิดชอบเปลี่ยนสถานะผ่านปุ่มเท่านั้น — ไม่เลือก DONE จากดรอปดาวน์
+      this.form.controls.status.disable({ emitEvent: false });
     }
   }
 
@@ -109,9 +130,24 @@ export class TaskEditDialogComponent {
     if (!this.canUpdate() || !this.currentTask()) {
       return [];
     }
-    switch (this.status()) {
+    const st = this.status();
+    if (this.workflow() === 'reviewer') {
+      if (st !== 'REVIEW' || !this.canReview()) {
+        return [];
+      }
+      return [
+        { label: 'อนุมัติ/ทำเสร็จ', status: 'DONE' },
+        { label: 'ส่งกลับแก้ไข', status: 'DOING' },
+      ];
+    }
+
+    // ผู้รับผิดชอบ — ส่งตรวจได้ ห้ามทำเสร็จเอง
+    switch (st) {
       case 'TODO':
-        return [{ label: 'เริ่มงาน', status: 'DOING' }];
+        return [
+          { label: 'เริ่มงาน', status: 'DOING' },
+          { label: 'ส่งตรวจ', status: 'REVIEW' },
+        ];
       case 'DOING':
         return [
           { label: 'พักงาน', status: 'WAITING' },
@@ -123,10 +159,7 @@ export class TaskEditDialogComponent {
           { label: 'ส่งตรวจ', status: 'REVIEW' },
         ];
       case 'REVIEW':
-        return [
-          { label: 'ทำเสร็จ', status: 'DONE' },
-          { label: 'กลับไปแก้ไข', status: 'DOING' },
-        ];
+      case 'DONE':
       default:
         return [];
     }
@@ -135,6 +168,10 @@ export class TaskEditDialogComponent {
   changeStatus(next: TaskStatus): void {
     const task = this.currentTask();
     if (!task || !this.canUpdate() || task.status === next) {
+      return;
+    }
+    if (this.workflow() === 'assignee' && next === 'DONE') {
+      this.error.set('ผู้รับผิดชอบส่งตรวจได้เท่านั้น — รอผู้ตรวจอนุมัติ');
       return;
     }
     this.saving.set(true);
@@ -152,11 +189,13 @@ export class TaskEditDialogComponent {
           },
           { emitEvent: false }
         );
-        this.snack.open(
-          `เปลี่ยนสถานะเป็น「${this.taskStatusLabels[updated.status]}」แล้ว`,
-          'ปิด',
-          { duration: 2500 }
-        );
+        const msg =
+          next === 'REVIEW'
+            ? 'ส่งตรวจแล้ว — สถานะรอตรวจ'
+            : next === 'DONE'
+              ? 'อนุมัติแล้ว — งานเสร็จสมบูรณ์'
+              : `เปลี่ยนสถานะเป็น「${this.taskStatusLabels[updated.status]}」แล้ว`;
+        this.snack.open(msg, 'ปิด', { duration: 2500 });
       },
       error: (err: Error) => {
         this.saving.set(false);

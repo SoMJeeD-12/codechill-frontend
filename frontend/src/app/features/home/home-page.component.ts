@@ -224,12 +224,11 @@ export class HomePageComponent implements OnInit {
               .listPending({ assigneeId: userId, limit: 100 })
               .pipe(catchError(() => of([] as Ticket[])))
           : of([] as Ticket[]),
-      myTasks:
-        this.canTasks() && userId
-          ? this.projectsApi
-              .listAllTasks({ assignedUserId: userId, limit: 100 })
-              .pipe(catchError(() => of([] as TaskItem[])))
-          : of([] as TaskItem[]),
+      myTasks: this.canTasks()
+        ? this.projectsApi
+            .listMyTasks({ limit: 100 })
+            .pipe(catchError(() => of([] as TaskItem[])))
+        : of([] as TaskItem[]),
       myFollowUps:
         this.canFollowUps() && userId
           ? this.followUpsApi
