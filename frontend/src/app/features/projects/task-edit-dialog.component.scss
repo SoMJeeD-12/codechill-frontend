@@ -1,26 +1,132 @@
-.task-meta {
-  margin: 0 0 0.75rem;
-  color: #5b6762;
-  font-size: 0.9rem;
+/* เลย์เอาต์ป็อปอัปรายละเอียด — แนวเดียวกับ customer-preview-dialog */
+
+.preview-card__head {
+  margin-bottom: 0.85rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .meta {
+    margin: 0.25rem 0 0;
+    color: #5b6762;
+    font-size: 0.88rem;
+  }
+
+  .overdue {
+    color: #c2410c;
+    font-weight: 600;
+  }
 }
 
-.task-meta .overdue {
-  color: #c2410c;
-  font-weight: 600;
+.preview-card__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid rgb(15 23 42 / 0.06);
+
+  div {
+    min-width: 0;
+  }
+
+  .full {
+    grid-column: 1 / -1;
+  }
+
+  dt {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+
+  dd {
+    margin: 0.15rem 0 0;
+    font-size: 0.92rem;
+    word-break: break-word;
+  }
+
+  dd.desc {
+    white-space: pre-wrap;
+    line-height: 1.45;
+  }
+
+  .is-overdue {
+    color: #c2410c;
+    font-weight: 600;
+  }
+}
+
+.preview-card__contacts {
+  h4 {
+    margin: 0 0 0.45rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  li {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    border: 1px solid rgb(15 23 42 / 0.06);
+    background: #fff;
+  }
+
+  .doc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .doc-meta {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .sub {
+    color: #5b6762;
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .empty {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
 }
 
 .status-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.85rem;
+  margin: 0.85rem 0 0;
 }
 
 .form {
   display: grid;
   gap: 0.15rem;
-  min-width: min(1040px, 92vw);
-  margin-top: 0.5rem;
+  min-width: min(640px, 86vw);
+  margin-top: 0.35rem;
 }
 
 .row {
@@ -33,17 +139,31 @@
   width: 100%;
 }
 
-/* วันที่ readonly — พิมพ์ไม่ได้ เลือกจากปฏิทินอย่างเดียว */
 .row input[matInput][readonly] {
   cursor: pointer;
 }
 
 .error {
   color: #991b1b;
+  margin: 0.5rem 0 0;
+}
+
+mat-dialog-actions mat-icon {
+  margin-right: 0.25rem;
+  font-size: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  vertical-align: middle;
 }
 
 @media (max-width: 560px) {
+  .preview-card__grid,
   .row {
     grid-template-columns: 1fr;
+  }
+
+  .preview-card__contacts .doc-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

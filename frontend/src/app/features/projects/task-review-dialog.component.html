@@ -1,0 +1,174 @@
+<h2 mat-dialog-title>ตรวจงาน</h2>
+
+<mat-dialog-content>
+  @if (loading() && !task()) {
+    <div class="loading">
+      <mat-spinner diameter="36" />
+    </div>
+  } @else if (task()) {
+    @if (task(); as t) {
+    <article class="preview-card">
+      <header class="preview-card__head">
+        <h3>{{ t.title }}</h3>
+        <p class="meta">
+          {{ statusLabels[t.status] }}
+          · {{ projectLabel(t) }}
+          @if (t.isOverdue) {
+            · <span class="overdue">เกินกำหนด</span>
+          }
+        </p>
+      </header>
+
+      <dl class="preview-card__grid">
+        <div>
+          <dt>โปรเจค</dt>
+          <dd>{{ projectLabel(t) }}</dd>
+        </div>
+        <div>
+          <dt>สถานะ</dt>
+          <dd>
+            <span class="status" [attr.data-status]="t.status">{{ statusLabels[t.status] }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>ผู้รับผิดชอบ</dt>
+          <dd>{{ assigneeLabel(t) }}</dd>
+        </div>
+        <div>
+          <dt>ผู้มอบหมาย</dt>
+          <dd>{{ assignerLabel(t) }}</dd>
+        </div>
+        <div>
+          <dt>ความสำคัญ</dt>
+          <dd>
+            <span class="priority-badge" [attr.data-priority]="t.priority">
+              {{ priorityLabels[t.priority] }}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>วันครบกำหนด</dt>
+          <dd [class.is-overdue]="t.isOverdue">
+            {{ t.dueDate ? (t.dueDate | thaiDate: 'date') : '—' }}
+          </dd>
+        </div>
+        <div class="full">
+          <dt>รายละเอียดงาน</dt>
+          <dd class="desc">{{ t.description || '—' }}</dd>
+        </div>
+      </dl>
+
+      <section class="section">
+        <h4>รายงานจากผู้รับผิดชอบ</h4>
+        @if (pendingSubmission(); as sub) {
+          <article class="submission">
+            <dl class="preview-card__grid submission__grid">
+              <div class="full">
+                <dt>รายงาน</dt>
+                <dd class="desc">{{ sub.report || '—' }}</dd>
+              </div>
+              <div>
+                <dt>ชั่วโมงที่ใช้</dt>
+                <dd>{{ hoursLabel(sub.actualHours) }}</dd>
+              </div>
+              <div>
+                <dt>ส่งเมื่อ</dt>
+                <dd>{{ sub.submittedAt ? (sub.submittedAt | thaiDate) : '—' }}</dd>
+              </div>
+              <div>
+                <dt>สถานะรายงาน</dt>
+                <dd>{{ sub.status || 'PENDING' }}</dd>
+              </div>
+            </dl>
+            @if (sub.downloadUrl) {
+              <ul class="file-list">
+                <li>
+                  <div class="file-meta">
+                    <strong>{{ sub.fileName || 'ไฟล์รายงาน' }}</strong>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="downloadingKey() === 'pending-main'"
+                    (click)="downloadSubmissionUrl(sub.downloadUrl!, sub.fileName || 'download', 'pending-main')"
+                  >
+                    <mat-icon>download</mat-icon>
+                    ดาวน์โหลด
+                  </button>
+                </li>
+              </ul>
+            } @else if (sub.files.length) {
+              <ul class="file-list">
+                @for (file of sub.files; track file.downloadUrl + file.fileName; let fi = $index) {
+                  <li>
+                    <div class="file-meta">
+                      <strong>{{ file.fileName }}</strong>
+                    </div>
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      [disabled]="downloadingKey() === 'pending-file-' + fi"
+                      (click)="downloadSubmissionUrl(file.downloadUrl, file.fileName, 'pending-file-' + fi)"
+                    >
+                      <mat-icon>download</mat-icon>
+                      ดาวน์โหลด
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </article>
+        } @else {
+          <p class="empty">ยังไม่มีรายงานสถานะ PENDING — อนุมัติจะไม่ได้จนกว่าผู้รับผิดชอบจะส่งรายงาน</p>
+        }
+      </section>
+
+      @if (canDecide()) {
+        <section class="section review-actions">
+          <h4>ผลการตรวจ</h4>
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>หมายเหตุเมื่อส่งกลับแก้ไข</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [formControl]="reviewNoteControl"
+              placeholder="กรุณาแก้ไขรายละเอียดเพิ่มเติม"
+            ></textarea>
+          </mat-form-field>
+          <div class="action-row">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              [disabled]="saving() || !pendingSubmission()"
+              (click)="approve()"
+            >
+              อนุมัติ/ทำเสร็จ
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="saving() || !pendingSubmission()"
+              (click)="sendBack()"
+            >
+              ส่งกลับแก้ไข
+            </button>
+          </div>
+        </section>
+      } @else if (isOwnAssignment()) {
+        <p class="hint">คุณเป็นผู้รับผิดชอบงานนี้ — ห้ามอนุมัติหรือส่งกลับงานของตัวเอง</p>
+      }
+    </article>
+    }
+  } @else {
+    <p class="empty">{{ error() || 'ไม่พบงาน' }}</p>
+  }
+
+  @if (error() && task()) {
+    <p class="error">{{ error() }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="dismiss()" [disabled]="saving()">ปิด</button>
+</mat-dialog-actions>

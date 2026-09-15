@@ -52,6 +52,31 @@ export interface Project {
   updatedAt: string;
 }
 
+/** ไฟล์รายงานที่ผู้รับผิดชอบแนบตอนส่งตรวจ */
+export interface TaskSubmissionFile {
+  id?: number;
+  fileName: string;
+  downloadUrl: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+}
+
+/** สถานะรายงานส่งตรวจ — ต้องมี PENDING ก่อน submit-review / review */
+export type TaskSubmissionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+
+/** รายงานจากผู้รับผิดชอบ (submissions บน GET /tasks/:id) */
+export interface TaskSubmission {
+  id?: number;
+  status: TaskSubmissionStatus | null;
+  report: string | null;
+  actualHours: number | null;
+  submittedAt: string | null;
+  /** ไฟล์รายงานหลัก — ดาวน์โหลดด้วย Authorization ห้ามใช้ fileUrl */
+  downloadUrl: string | null;
+  fileName: string | null;
+  files: TaskSubmissionFile[];
+}
+
 /** TaskResponseDto (subTasks ถูก flatten เก็บใน store) */
 export interface TaskItem {
   id: number;
@@ -63,6 +88,9 @@ export interface TaskItem {
   priority: TaskPriority;
   assignedUserId: number | null;
   assignedUser: UserSummary | null;
+  /** ผู้มอบหมายงาน (ถ้า BE ส่งมา) */
+  assignedByUserId: number | null;
+  assignedBy: UserSummary | null;
   startDate: string | null;
   dueDate: string | null;
   completedAt: string | null;
@@ -72,6 +100,8 @@ export interface TaskItem {
   isOverdue: boolean;
   /** มีตอน GET /tasks ทั้งบริษัท */
   project?: TaskProjectRef | null;
+  /** รายงานส่งตรวจ — มักมากับ GET /tasks/:id */
+  submissions?: TaskSubmission[];
 }
 
 /** โครงการย่อที่พ่วงในรายการงานทั้งบริษัท */

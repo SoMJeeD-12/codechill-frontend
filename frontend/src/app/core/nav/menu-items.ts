@@ -44,7 +44,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'tasks-me',
     label: 'งานของฉัน',
-    description: 'งานที่ได้รับมอบหมาย',
+    description: 'งานที่มอบหมายให้คุณ',
     icon: 'person',
     route: '/app/tasks/me',
     group: 'main',
@@ -52,7 +52,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'tasks-review',
     label: 'งานรอตรวจ',
-    description: 'รออนุมัติจากผู้ตรวจ',
+    description: 'คิว REVIEW ทั้งระบบ — ผู้ตรวจอนุมัติ',
     icon: 'rate_review',
     route: '/app/tasks/review',
     group: 'main',

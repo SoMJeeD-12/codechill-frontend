@@ -24,7 +24,9 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { createClientPager } from '../../shared/utils/client-pager';
 import { TaskKanbanBoardComponent } from '../projects/task-kanban-board.component';
 import { TaskEditDialogComponent } from '../projects/task-edit-dialog.component';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { TaskReviewDialogComponent } from '../projects/task-review-dialog.component';
+import { TaskSubmitReportDialogComponent } from '../projects/task-submit-report-dialog.component';
+import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 
 export type TasksPageMode =
@@ -55,8 +57,8 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
     subtitle: 'งานย่อยทุกโปรเจค — แยกจากหน้ารายละเอียดโปรเจคและการส่งมอบ',
   },
   me: {
-    title: 'งานของฉัน',
-    subtitle: 'งานที่ระบบมอบหมายให้คุณ — ไม่สามารถเลือกดูงานของคนอื่นจากหน้านี้',
+    title: 'งานที่มอบหมาย',
+    subtitle: 'งานที่ระบบมอบหมายให้คุณ — ส่งตรวจเมื่อทำเสร็จ ห้ามทำเสร็จเอง',
   },
   unassigned: {
     title: 'งานที่ยังไม่มอบหมาย',
@@ -68,7 +70,7 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   },
   review: {
     title: 'งานรอตรวจ',
-    subtitle: 'รายการสถานะ REVIEW ทั้งระบบ — อนุมัติหรือส่งกลับแก้ไข',
+    subtitle: 'GET /tasks?status=REVIEW — กด「ตรวจงาน」เพื่อดูรายงานและอนุมัติ',
   },
   overdue: {
     title: 'งานเกินกำหนด',
@@ -147,7 +149,7 @@ export class TasksPageComponent implements OnInit {
   });
 
   readonly tableSort = createTableSort<
-    'title' | 'project' | 'assignee' | 'status' | 'priority' | 'dueDate' | 'startDate'
+    'title' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
   >('dueDate');
 
   readonly displayedTasks = computed(() => {
@@ -187,6 +189,8 @@ export class TasksPageComponent implements OnInit {
           return this.projectLabel(row);
         case 'assignee':
           return this.assigneeName(row);
+        case 'assigner':
+          return this.assignerName(row);
         case 'status':
           return this.statusLabel(row.status);
         case 'priority':
@@ -201,22 +205,10 @@ export class TasksPageComponent implements OnInit {
 
   readonly columns = computed(() => {
     if (this.mode() === 'review') {
-      return ['title', 'assignee', 'project', 'dueDate', 'status', 'actions'];
+      return ['title', 'description', 'project', 'assignee', 'assigner', 'dueDate', 'status', 'actions'];
     }
     if (this.mode() === 'me') {
-      return [
-        'title',
-        'project',
-        'description',
-        'assignee',
-        'status',
-        'priority',
-        'startDate',
-        'dueDate',
-        'isOverdue',
-        'completedAt',
-        'actions',
-      ];
+      return ['title', 'description', 'project', 'assigner', 'dueDate', 'status', 'actions'];
     }
     return ['title', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   });
@@ -267,14 +259,14 @@ export class TasksPageComponent implements OnInit {
   }
 
   toggleSort(
-    key: 'title' | 'project' | 'assignee' | 'status' | 'priority' | 'dueDate' | 'startDate'
+    key: 'title' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
   ): void {
     this.tableSort.toggleSort(key);
     this.pager.reset();
   }
 
   sortIcon(
-    key: 'title' | 'project' | 'assignee' | 'status' | 'priority' | 'dueDate' | 'startDate'
+    key: 'title' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
   ): string {
     return this.tableSort.sortIcon(key);
   }
@@ -380,6 +372,22 @@ export class TasksPageComponent implements OnInit {
     return this.usersApi.getById(task.assignedUserId)?.fullName ?? `#${task.assignedUserId}`;
   }
 
+  assignerName(task: TaskItem): string {
+    if (task.assignedBy?.fullName) {
+      return task.assignedBy.fullName;
+    }
+    if (task.assignedByUserId) {
+      return this.usersApi.getById(task.assignedByUserId)?.fullName ?? `#${task.assignedByUserId}`;
+    }
+    return '—';
+  }
+
+  /** ผู้รับผิดชอบงานนี้คือตัวเองหรือไม่ — ห้ามอนุมัติงานตัวเอง */
+  isOwnAssignment(task: TaskItem): boolean {
+    const uid = this.auth.currentUser()?.id;
+    return uid != null && task.assignedUserId === uid;
+  }
+
   projectLabel(task: TaskItem): string {
     if (task.project) {
       return `${task.project.code ? task.project.code + ' · ' : ''}${task.project.name}`;
@@ -392,80 +400,84 @@ export class TasksPageComponent implements OnInit {
   }
 
   /**
-   * ปุ่มเปลี่ยนสถานะ
-   * - หน้างานของฉัน (ผู้รับผิดชอบ): ส่งตรวจได้ ห้ามทำเสร็จเอง
-   * - หน้างานรอตรวจ (ผู้ตรวจ): อนุมัติ/ทำเสร็จ หรือ ส่งกลับแก้ไข
+   * ปุ่มเปลี่ยนสถานะในตาราง
+   * - หน้างานรอตรวจ: ไม่มีปุ่มสถานะในแถว (ใช้「ตรวจงาน」อย่างเดียว)
+   * - หน้างานที่มอบหมาย: ส่งตรวจได้ ห้ามทำเสร็จ/อนุมัติเอง
    */
-  statusActions(task: TaskItem): { label: string; status: TaskStatus }[] {
+  statusActions(task: TaskItem): { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] {
+    if (this.mode() === 'review') {
+      return [];
+    }
+
     if (!this.canUpdateTask()) {
       return [];
     }
 
-    if (this.mode() === 'review') {
-      if (task.status !== 'REVIEW' || !this.canReviewTasks()) {
-        return [];
-      }
-      return [
-        { label: 'อนุมัติ/ทำเสร็จ', status: 'DONE' },
-        { label: 'ส่งกลับแก้ไข', status: 'DOING' },
-      ];
-    }
-
     if (this.mode() === 'me') {
-      // ผู้รับผิดชอบ — ไม่มีปุ่มทำเสร็จ
+      const actions: { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] = [];
       switch (task.status) {
         case 'TODO':
-          return [
-            { label: 'เริ่มงาน', status: 'DOING' },
-            { label: 'ส่งตรวจ', status: 'REVIEW' },
-          ];
+          actions.push({ label: 'เริ่มงาน', status: 'DOING', kind: 'status' });
+          break;
         case 'DOING':
-          return [
-            { label: 'พักงาน', status: 'WAITING' },
-            { label: 'ส่งตรวจ', status: 'REVIEW' },
-          ];
+          actions.push({ label: 'พักงาน', status: 'WAITING', kind: 'status' });
+          break;
         case 'WAITING':
-          return [
-            { label: 'กลับมาทำ', status: 'DOING' },
-            { label: 'ส่งตรวจ', status: 'REVIEW' },
-          ];
-        case 'REVIEW':
-        case 'DONE':
+          actions.push({ label: 'กลับมาทำ', status: 'DOING', kind: 'status' });
+          break;
         default:
-          return [];
+          break;
       }
+      if (task.status !== 'REVIEW' && task.status !== 'DONE') {
+        actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
+      }
+      return actions;
     }
 
-    // โหมดอื่น (งานทั้งหมด ฯลฯ) — ตามสิทธิ์ทั่วไป
     switch (task.status) {
       case 'TODO':
-        return [{ label: 'เริ่มงาน', status: 'DOING' }];
-      case 'DOING':
-        return [
-          { label: 'พักงาน', status: 'WAITING' },
-          { label: 'ส่งตรวจ', status: 'REVIEW' },
-        ];
-      case 'WAITING':
-        return [
-          { label: 'กลับมาทำ', status: 'DOING' },
-          { label: 'ส่งตรวจ', status: 'REVIEW' },
-        ];
-      case 'REVIEW':
-        if (!this.canReviewTasks()) {
+        if (!this.isOwnAssignment(task) && this.canReviewTasks()) {
           return [];
         }
-        return [
-          { label: 'อนุมัติ/ทำเสร็จ', status: 'DONE' },
-          { label: 'ส่งกลับแก้ไข', status: 'DOING' },
-        ];
+        return [{ label: 'เริ่มงาน', status: 'DOING', kind: 'status' }];
+      case 'DOING':
+      case 'WAITING': {
+        if (!this.isOwnAssignment(task)) {
+          return [];
+        }
+        const actions: { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] =
+          task.status === 'DOING'
+            ? [{ label: 'พักงาน', status: 'WAITING', kind: 'status' }]
+            : [{ label: 'กลับมาทำ', status: 'DOING', kind: 'status' }];
+        actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
+        return actions;
+      }
+      case 'REVIEW':
+        return [];
       default:
         return [];
     }
   }
 
-  changeStatus(task: TaskItem, status: TaskStatus): void {
+  changeStatus(
+    task: TaskItem,
+    status: TaskStatus,
+    kind: 'status' | 'submit' | 'review' = 'status'
+  ): void {
+    if (this.mode() === 'review') {
+      return;
+    }
     if (!this.canUpdateTask()) {
       this.snack.open('ไม่มีสิทธิ์เปลี่ยนสถานะงาน (task.update)', 'ปิด', { duration: 3000 });
+      return;
+    }
+    if (kind === 'review') {
+      this.openReview(task);
+      return;
+    }
+    // ส่งตรวจต้องผ่านฟอร์มรายงานเท่านั้น — ห้าม PATCH submit-review / status=REVIEW ตรง ๆ
+    if (kind === 'submit' || status === 'REVIEW') {
+      this.openSubmitReport(task);
       return;
     }
     if (this.mode() === 'me' && status === 'DONE') {
@@ -474,26 +486,17 @@ export class TasksPageComponent implements OnInit {
       });
       return;
     }
-    if (this.mode() === 'review' && !this.canReviewTasks()) {
-      this.snack.open('ไม่มีสิทธิ์ตรวจงาน', 'ปิด', { duration: 3000 });
-      return;
-    }
     if (task.status === status) {
       return;
     }
+
     this.savingId.set(task.id);
     this.projectsApi.updateTaskStatus(task.id, status).subscribe({
       next: () => {
         this.savingId.set(null);
-        const msg =
-          status === 'REVIEW'
-            ? 'ส่งตรวจแล้ว — สถานะรอตรวจ'
-            : status === 'DONE'
-              ? 'อนุมัติแล้ว — งานเสร็จสมบูรณ์'
-              : status === 'DOING' && task.status === 'REVIEW'
-                ? 'ส่งกลับแก้ไขแล้ว'
-                : `เปลี่ยนสถานะเป็น「${this.statusLabel(status)}」แล้ว`;
-        this.snack.open(msg, 'ปิด', { duration: 2500 });
+        this.snack.open(`เปลี่ยนสถานะเป็น「${this.statusLabel(status)}」แล้ว`, 'ปิด', {
+          duration: 2500,
+        });
         this.reload();
       },
       error: (err: Error) => {
@@ -503,15 +506,58 @@ export class TasksPageComponent implements OnInit {
     });
   }
 
+  /** เปิดฟอร์มรายงานผลการทำงาน (ผู้รับผิดชอบ) — ห้ามเรียก PATCH /review */
+  openSubmitReport(task: TaskItem): void {
+    if (task.status === 'REVIEW' || task.status === 'DONE') {
+      return;
+    }
+    const ref = this.dialog.open(TaskSubmitReportDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: { task },
+    });
+    ref.afterClosed().subscribe((ok) => {
+      if (ok) {
+        this.reload();
+      }
+    });
+  }
+
+  /** เปิด dialog ตรวจงาน — GET /tasks/:id แล้วอนุมัติ/ส่งกลับ */
+  openReview(task: TaskItem): void {
+    if (!this.canReviewTasks()) {
+      this.snack.open('ไม่มีสิทธิ์ตรวจงาน', 'ปิด', { duration: 3000 });
+      return;
+    }
+    if (this.isOwnAssignment(task)) {
+      this.snack.open('ผู้รับผิดชอบห้ามตรวจงานตัวเอง', 'ปิด', { duration: 3500 });
+      return;
+    }
+    const ref = this.dialog.open(TaskReviewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: { taskId: task.id, seed: task },
+    });
+    ref.afterClosed().subscribe((changed) => {
+      if (changed) {
+        this.reload();
+      }
+    });
+  }
+
   openTask(task: TaskItem): void {
+    if (this.mode() === 'review') {
+      this.openReview(task);
+      return;
+    }
     const workflow =
-      this.mode() === 'review'
-        ? 'reviewer'
-        : this.mode() === 'me'
-          ? 'assignee'
-          : this.canReviewTasks() && task.status === 'REVIEW'
-            ? 'reviewer'
-            : 'assignee';
+      this.mode() === 'me'
+        ? 'assignee'
+        : this.canReviewTasks() && task.status === 'REVIEW' && !this.isOwnAssignment(task)
+          ? 'reviewer'
+          : 'assignee';
+    if (workflow === 'reviewer') {
+      this.openReview(task);
+      return;
+    }
     const ref = this.dialog.open(TaskEditDialogComponent, {
       ...FORM_DIALOG,
       data: {

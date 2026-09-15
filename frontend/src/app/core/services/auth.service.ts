@@ -278,7 +278,8 @@ export class AuthService {
         this.hasPermissionCode('project.view')
       );
     }
-    // คิวงานรอตรวจ — SUPER_ADMIN/ADMIN จาก accountType หรือ task.update จาก /auth/me
+    // คิวงานรอตรวจ — SUPER_ADMIN/ADMIN จาก accountType หรือ task.review จาก /auth/me
+    // ห้ามใช้ task.update (ผู้รับผิดชอบมี update เพื่อส่งตรวจ แต่ยังไม่ใช่ผู้ตรวจ)
     // ห้ามใช้ roles.length
     if (menuCode === 'tasks-review') {
       return this.canAccessTaskReviewQueue();
@@ -356,8 +357,8 @@ export class AuthService {
     return flat
       .filter((item) => {
         if (item.code === 'tasks-review') {
-          // เมนูรอตรวจ: accountType SUPER_ADMIN/ADMIN หรือมีสิทธิ์ task.* จาก /auth/me
-          // ห้ามใช้ roles.length (SUPER_ADMIN มักไม่มี role)
+          // เมนูรอตรวจ: accountType SUPER_ADMIN/ADMIN หรือมีสิทธิ์ task.review
+          // ห้ามใช้ task.update / roles.length
           return this.canAccessTaskReviewQueue();
         }
         return this.hasPermission(item.code, 'view');
@@ -367,13 +368,15 @@ export class AuthService {
 
   /**
    * เข้าคิวงานรอตรวจได้เมื่อเป็น SUPER_ADMIN/ADMIN (accountType)
-   * หรือมีสิทธิ์ task.update จาก /auth/me — ห้ามใช้ roles.length
+   * หรือมีสิทธิ์ task.review จาก /auth/me
+   * ห้ามใช้ task.update — ผู้รับผิดชอบมักมี update เพื่อส่งรายงาน แต่ยังไม่ใช่ผู้ตรวจ
+   * ห้ามใช้ roles.length
    */
   canAccessTaskReviewQueue(): boolean {
     if (this.isAdminLevel()) {
       return true;
     }
-    return this.hasPermissionCode('task.update');
+    return this.hasPermissionCode('task.review');
   }
 
   /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — Admin ระดับระบบเข้าเมนูได้แม้ permissions จาก API ไม่ครบ */

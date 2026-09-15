@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, throwError } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
 import { ApiEnvelopeService } from '../http/api-envelope.service';
@@ -17,8 +17,11 @@ import {
   TaskPriority,
   TaskProjectRef,
   TaskStatus,
+  TaskSubmission,
+  TaskSubmissionFile,
   TaskSummary,
 } from '../models/project.model';
+import { UserSummary } from '../models/user.model';
 
 /** newCustomer บน CreateProjectDto — สร้างลูกค้าพร้อมโปรเจค (ไม่มี customerId) */
 export interface ProjectNewCustomerInput {
@@ -112,12 +115,57 @@ export interface DeliveryInput {
 
 /** รูปดิบจาก API — contractValue/estimatedHours เป็น decimal string, subTasks ซ้อนกัน */
 type ApiProject = Omit<Project, 'contractValue'> & { contractValue: string | number | null };
-type ApiTask = Omit<TaskItem, 'estimatedHours' | 'actualHours' | 'project'> & {
+type ApiTask = Omit<
+  TaskItem,
+  | 'estimatedHours'
+  | 'actualHours'
+  | 'project'
+  | 'assignedBy'
+  | 'assignedByUserId'
+  | 'submissions'
+> & {
   estimatedHours: string | number | null;
   actualHours: string | number | null;
   subTasks?: ApiTask[];
   project?: TaskProjectRef | null;
+  /** ชื่อฟิลด์ผู้มอบหมายที่ BE อาจส่งมาต่างกัน */
+  assignedByUserId?: number | null;
+  assignedBy?: UserSummary | null;
+  createdByUserId?: number | null;
+  createdBy?: UserSummary | null;
+  createdByUser?: UserSummary | null;
+  submissions?: ApiTaskSubmission[] | null;
 };
+
+type ApiTaskSubmissionFile = {
+  id?: number;
+  fileName?: string;
+  name?: string;
+  downloadUrl?: string;
+  url?: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+};
+
+type ApiTaskSubmission = {
+  id?: number;
+  status?: string | null;
+  report?: string | null;
+  actualHours?: string | number | null;
+  submittedAt?: string | null;
+  downloadUrl?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  name?: string | null;
+  files?: ApiTaskSubmissionFile[] | null;
+  attachments?: ApiTaskSubmissionFile[] | null;
+};
+
+export interface TaskSubmissionInput {
+  report: string;
+  actualHours?: string | number | null;
+  file?: File | null;
+}
 
 function toNumber(value: string | number | null | undefined): number | null {
   if (value == null || value === '') {
@@ -267,6 +315,87 @@ export class ProjectService {
   updateTaskStatus(taskId: number, status: TaskStatus): Observable<TaskItem> {
     return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/status`, { status }).pipe(
       map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
+      tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /**
+   * POST /tasks/{id}/submissions — multipart: report, actualHours?, file?
+   * ต้องใช้ task id เดียวกับงานที่เปิดอยู่
+   * ห้ามตั้ง Content-Type เอง — ให้ browser ใส่ boundary
+   */
+  createTaskSubmission(taskId: number, input: TaskSubmissionInput): Observable<TaskItem> {
+    const form = new FormData();
+    form.append('report', input.report.trim());
+    if (input.actualHours != null && String(input.actualHours).trim() !== '') {
+      form.append('actualHours', String(input.actualHours).trim());
+    }
+    if (input.file) {
+      form.append('file', input.file, input.file.name);
+    }
+    return this.http
+      .post<ApiTask | { submissions?: ApiTaskSubmission[] } | ApiTaskSubmission>(
+        `${this.tasksBase}/${taskId}/submissions`,
+        form
+      )
+      .pipe(
+        map((body) => this.normalizeSubmissionResponse(taskId, body)),
+        tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /**
+   * ผู้รับผิดชอบส่งตรวจ — ลำดับบังคับ:
+   * 1) POST /tasks/:id/submissions (multipart)
+   * 2) เมื่อสำเร็จเท่านั้น → PATCH /tasks/:id/submit-review
+   * ห้ามเรียก submit-review เดี่ยว ๆ / ห้ามเรียก PATCH /review
+   */
+  submitTaskWithReport(taskId: number, input: TaskSubmissionInput): Observable<TaskItem> {
+    const report = input.report?.trim() ?? '';
+    if (!report) {
+      return throwError(() => new Error('กรุณากรอกรายงานผลการทำงาน'));
+    }
+    return this.createTaskSubmission(taskId, { ...input, report }).pipe(
+      switchMap(() => this.submitTaskReview(taskId))
+    );
+  }
+
+  /** PATCH /tasks/{id}/submit-review — เรียกหลัง POST submissions สำเร็จเท่านั้น */
+  private submitTaskReview(taskId: number): Observable<TaskItem> {
+    return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/submit-review`, null).pipe(
+      map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
+      tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /**
+   * PATCH /tasks/{id}/review
+   * - DONE: อนุมัติ
+   * - DOING + reviewNote: ส่งกลับแก้ไข
+   */
+  reviewTask(
+    taskId: number,
+    status: 'DONE' | 'DOING',
+    reviewNote?: string | null
+  ): Observable<TaskItem> {
+    const body =
+      status === 'DOING'
+        ? { status, reviewNote: (reviewNote ?? '').trim() }
+        : { status };
+    return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/review`, body).pipe(
+      map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
+      tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /** GET /tasks/{id} — รายละเอียดงาน (รวม submissions) */
+  getTask(taskId: number): Observable<TaskItem> {
+    return this.http.get<ApiTask>(`${this.tasksBase}/${taskId}`).pipe(
+      map((row) => this.normalizeTask(row, row.projectId ?? 0)),
       tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
@@ -478,6 +607,10 @@ export class ProjectService {
   }
 
   private normalizeTask(row: ApiTask, projectId: number): TaskItem {
+    const assignedBy =
+      row.assignedBy ?? row.createdBy ?? row.createdByUser ?? null;
+    const assignedByUserId =
+      row.assignedByUserId ?? row.createdByUserId ?? assignedBy?.id ?? null;
     return {
       id: row.id,
       projectId: row.projectId ?? projectId,
@@ -488,6 +621,8 @@ export class ProjectService {
       priority: row.priority,
       assignedUserId: row.assignedUserId ?? null,
       assignedUser: row.assignedUser ?? null,
+      assignedByUserId,
+      assignedBy,
       startDate: row.startDate ?? null,
       dueDate: row.dueDate ?? null,
       completedAt: row.completedAt ?? null,
@@ -496,7 +631,119 @@ export class ProjectService {
       sortOrder: row.sortOrder ?? 0,
       isOverdue: row.isOverdue ?? false,
       project: row.project ?? null,
+      submissions: this.normalizeSubmissions(row.submissions),
     };
+  }
+
+  private normalizeSubmissionResponse(
+    taskId: number,
+    body: ApiTask | { submissions?: ApiTaskSubmission[] } | ApiTaskSubmission
+  ): TaskItem {
+    const asTask = body as ApiTask;
+    if (asTask && typeof asTask === 'object' && 'title' in asTask && asTask.id != null) {
+      return this.normalizeTask(asTask, asTask.projectId ?? this.projectIdOf(taskId, asTask));
+    }
+    const withSubs = body as { submissions?: ApiTaskSubmission[] };
+    if (withSubs?.submissions) {
+      const existing = this.tasksSignal().find((t) => t.id === taskId);
+      return {
+        id: taskId,
+        projectId: existing?.projectId ?? 0,
+        parentTaskId: existing?.parentTaskId ?? null,
+        title: existing?.title ?? '',
+        description: existing?.description ?? null,
+        status: existing?.status ?? 'DOING',
+        priority: existing?.priority ?? 'NORMAL',
+        assignedUserId: existing?.assignedUserId ?? null,
+        assignedUser: existing?.assignedUser ?? null,
+        assignedByUserId: existing?.assignedByUserId ?? null,
+        assignedBy: existing?.assignedBy ?? null,
+        startDate: existing?.startDate ?? null,
+        dueDate: existing?.dueDate ?? null,
+        completedAt: existing?.completedAt ?? null,
+        estimatedHours: existing?.estimatedHours ?? null,
+        actualHours: existing?.actualHours ?? null,
+        sortOrder: existing?.sortOrder ?? 0,
+        isOverdue: existing?.isOverdue ?? false,
+        project: existing?.project ?? null,
+        submissions: this.normalizeSubmissions(withSubs.submissions) ?? [],
+      };
+    }
+    // ตอบกลับเป็น submission เดี่ยว
+    const single = body as ApiTaskSubmission;
+    const existing = this.tasksSignal().find((t) => t.id === taskId);
+    const subs = this.normalizeSubmissions([single]) ?? [];
+    return {
+      id: taskId,
+      projectId: existing?.projectId ?? 0,
+      parentTaskId: existing?.parentTaskId ?? null,
+      title: existing?.title ?? '',
+      description: existing?.description ?? null,
+      status: existing?.status ?? 'DOING',
+      priority: existing?.priority ?? 'NORMAL',
+      assignedUserId: existing?.assignedUserId ?? null,
+      assignedUser: existing?.assignedUser ?? null,
+      assignedByUserId: existing?.assignedByUserId ?? null,
+      assignedBy: existing?.assignedBy ?? null,
+      startDate: existing?.startDate ?? null,
+      dueDate: existing?.dueDate ?? null,
+      completedAt: existing?.completedAt ?? null,
+      estimatedHours: existing?.estimatedHours ?? null,
+      actualHours: existing?.actualHours ?? null,
+      sortOrder: existing?.sortOrder ?? 0,
+      isOverdue: existing?.isOverdue ?? false,
+      project: existing?.project ?? null,
+      submissions: [...(existing?.submissions ?? []).filter((s) => s.id !== single.id), ...subs],
+    };
+  }
+
+  private normalizeSubmissions(
+    rows: ApiTaskSubmission[] | null | undefined
+  ): TaskSubmission[] | undefined {
+    if (!rows?.length) {
+      return rows == null ? undefined : [];
+    }
+    return rows.map((s) => {
+      // ห้ามใช้ fileUrl เป็น downloadUrl
+      const downloadUrl = (s.downloadUrl || '').trim() || null;
+      const fileName =
+        (s.fileName || s.name || '').trim() ||
+        (downloadUrl ? 'download' : null);
+      const files = this.normalizeSubmissionFiles(s.files ?? s.attachments);
+      if (downloadUrl && !files.some((f) => f.downloadUrl === downloadUrl)) {
+        files.unshift({
+          fileName: fileName || 'download',
+          downloadUrl,
+        });
+      }
+      return {
+        id: s.id,
+        status: s.status ?? null,
+        report: s.report ?? null,
+        actualHours: toNumber(s.actualHours),
+        submittedAt: s.submittedAt ?? null,
+        downloadUrl,
+        fileName,
+        files,
+      };
+    });
+  }
+
+  private normalizeSubmissionFiles(
+    rows: ApiTaskSubmissionFile[] | null | undefined
+  ): TaskSubmissionFile[] {
+    if (!rows?.length) {
+      return [];
+    }
+    return rows
+      .map((f) => ({
+        id: f.id,
+        fileName: (f.fileName || f.name || 'download').trim() || 'download',
+        downloadUrl: (f.downloadUrl || f.url || '').trim(),
+        mimeType: f.mimeType ?? null,
+        fileSize: f.fileSize ?? null,
+      }))
+      .filter((f) => !!f.downloadUrl);
   }
 
   private computeProgress(tasks: TaskItem[]): number {

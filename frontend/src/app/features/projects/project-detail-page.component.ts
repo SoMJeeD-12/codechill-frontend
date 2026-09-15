@@ -78,6 +78,7 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
+import { DeliveryPreviewDialogComponent } from './delivery-preview-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
@@ -1189,7 +1190,7 @@ export class ProjectDetailPageComponent implements OnInit {
 
   openEditTask(task: TaskItem): void {
     const ref = this.dialog.open(TaskEditDialogComponent, {
-      ...FORM_DIALOG,
+      ...FORM_DIALOG_COMPACT,
       data: {
         projectId: this.projectId,
         task,
@@ -1238,23 +1239,14 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   openDeliveryDetail(d: Delivery): void {
-    openConfirmDialog(this.dialog, {
-      title: d.title,
-      message: [
-        `ส่งมอบ #${d.id}`,
-        `เวอร์ชัน: ${d.version || '—'}`,
-        `วันเวลาส่ง: ${d.deliveredAt}`,
-        `ผู้ส่งมอบ: ${this.userName(d.deliveredByUserId)}`,
-        `ผู้รับมอบ: ${this.contactName(d.acceptedByContactId)}`,
-        `สถานะยอมรับ: ${this.acceptanceLabels[d.acceptanceStatus]}`,
-        `ครั้งสุดท้าย: ${d.isFinal ? 'ใช่' : 'ไม่ใช่'}`,
-        `ออกประกันได้: ${d.canIssueWarranty ? 'ได้' : 'ไม่ได้'}`,
-        `รายละเอียด: ${d.description || '—'}`,
-        `หมายเหตุ: ${d.note || '—'}`,
-      ].join('\n'),
-      confirmLabel: 'ปิด',
-      hideCancel: true,
-    }).subscribe();
+    this.dialog.open(DeliveryPreviewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: {
+        delivery: d,
+        deliveredByName: this.userName(d.deliveredByUserId),
+        acceptedByName: this.contactName(d.acceptedByContactId),
+      },
+    });
   }
 
   openAcceptDelivery(delivery: Delivery): void {
