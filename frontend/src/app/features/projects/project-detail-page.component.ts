@@ -595,6 +595,15 @@ export class ProjectDetailPageComponent implements OnInit {
     return id ? this.customersApi.getCustomer(id)?.name ?? `#${id}` : '—';
   }
 
+  /** ซ่อนค่าว่าง / ตัวเลขเดี่ยวที่มักใส่ผิด เช่น "0" */
+  projectDescription(project: Project): string | null {
+    const text = project.description?.trim() ?? '';
+    if (!text || text === '0' || text === '-' || text === '—') {
+      return null;
+    }
+    return text;
+  }
+
   contacts() {
     const id = this.project()?.customerId;
     return id ? this.customersApi.getContacts(id) : [];
@@ -805,7 +814,7 @@ export class ProjectDetailPageComponent implements OnInit {
     this.projectsApi.fetchProject(this.projectId).subscribe({
       next: (project) => {
         this.project.set(project);
-        this.progress.set(project.progress?.percent ?? 0);
+        this.progress.set(this.projectsApi.progressPercentOf(project));
       },
       error: () => undefined,
     });
@@ -815,7 +824,10 @@ export class ProjectDetailPageComponent implements OnInit {
       this.projectsApi.listTasks(this.projectId, undefined, { optional: true }).subscribe({
         next: (tasks) => {
           this.tasks.set(tasks);
-          this.progress.set(this.projectsApi.progressPercent(this.projectId));
+          this.progress.set(
+            this.projectsApi.progressPercentOf(this.project()) ??
+              this.projectsApi.progressPercent(this.projectId)
+          );
         },
         error: () => {
           this.tasks.set([]);

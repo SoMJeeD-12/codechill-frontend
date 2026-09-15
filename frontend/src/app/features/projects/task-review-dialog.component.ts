@@ -152,7 +152,7 @@ export class TaskReviewDialogComponent implements OnInit {
     if (task.assignedByUserId) {
       return this.usersApi.getById(task.assignedByUserId)?.fullName ?? `#${task.assignedByUserId}`;
     }
-    return '—';
+    return 'ไม่ระบุ';
   }
 
   hoursLabel(value: number | null | undefined): string {

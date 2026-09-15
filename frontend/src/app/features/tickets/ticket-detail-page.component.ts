@@ -41,12 +41,16 @@ import { TicketService } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
+import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { EMPTY, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+
+const TIMELINE_PREVIEW_COUNT = 5;
+const RESOLUTION_PAGE_SIZE = 5;
 
 @Component({
   selector: 'app-ticket-detail-page',
@@ -63,6 +67,7 @@ import { catchError, map, switchMap } from 'rxjs/operators';
     MatTableModule,
     MatDialogModule,
     StatusBarComponent,
+    TablePaginatorComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -226,6 +231,20 @@ export class TicketDetailPageComponent implements OnInit {
     );
   });
 
+  /** ย่อไทม์ไลน์ — โชว์เหตุการณ์ล่าสุดก่อน ไม่ให้หน้ายาวเกิน */
+  readonly timelinePreviewCount = TIMELINE_PREVIEW_COUNT;
+  readonly timelineExpanded = signal(false);
+  readonly visibleTimelineEvents = computed(() => {
+    const all = this.timelineEvents();
+    if (this.timelineExpanded() || all.length <= TIMELINE_PREVIEW_COUNT) {
+      return all;
+    }
+    return all.slice(-TIMELINE_PREVIEW_COUNT);
+  });
+  readonly hiddenTimelineCount = computed(() =>
+    Math.max(0, this.timelineEvents().length - TIMELINE_PREVIEW_COUNT)
+  );
+
   /** PARTIAL/FAILED ล่าสุดแต่ใบยัง IN_PROGRESS — ใช้แถบ workflow รวมสถานะ+CTA */
   readonly isIncompleteWork = computed(() => {
     this.demoOverlay.state();
@@ -239,7 +258,8 @@ export class TicketDetailPageComponent implements OnInit {
 
   /**
    * แถบขั้นถัดไป — โชว์เฉพาะตอนมีปุ่มที่ต้องกด
-   * (ปัญหาเดิมกลับมา / รับงานรอบใหม่ / ปิดงาน / เริ่มงาน / ทำต่อหลัง partial)
+   * (รับงานรอบใหม่ / ปิดงาน / ทำต่อหลัง partial)
+   * CLOSED / เริ่มดำเนินการ: ใช้ปุ่มที่หัวหน้าเท่านั้น ไม่ซ้ำแถบเหลือง
    */
   readonly ticketNextHint = computed(() => {
     const t = this.ticket();
@@ -249,13 +269,9 @@ export class TicketDetailPageComponent implements OnInit {
     const shown = this.displayStatus();
 
     if (shown === 'ASSIGNED') {
+      // ผู้รับผิดชอบมีปุ่ม「เริ่มดำเนินการ」ที่หัวแล้ว — ไม่ซ้ำแถบเหลือง
       if (this.canStartTicket()) {
-        return {
-          tone: 'warn' as const,
-          title: 'ส่งงานแล้ว — รอเริ่มดำเนินการ',
-          detail: 'คุณเป็นผู้รับผิดชอบ ต้องกด「เริ่มดำเนินการ」เองก่อนบันทึกการแก้ไข',
-          actions: [{ id: 'start' as const, label: 'เริ่มดำเนินการ', primary: true }],
-        };
+        return null;
       }
       return {
         tone: 'warn' as const,
@@ -349,18 +365,6 @@ export class TicketDetailPageComponent implements OnInit {
       };
     }
 
-    if (t.status === 'CLOSED' && this.canReopen()) {
-      return {
-        tone: 'warn' as const,
-        title: 'ใบนี้ปิดแล้ว — ถ้าปัญหาเดิมกลับมา',
-        detail:
-          'อย่าเปิดใบใหม่ · กดด้านขวาเพื่อเปิดงานครั้งใหม่ในใบเดิม พร้อมดูวิธีแก้รอบก่อน',
-        actions: [
-          { id: 'reopen' as const, label: 'ปัญหาเดิมกลับมา', primary: true },
-        ],
-      };
-    }
-
     return null;
   });
 
@@ -395,7 +399,11 @@ export class TicketDetailPageComponent implements OnInit {
     );
   });
 
-  readonly resolutionsPager = createClientPager(this.filteredResolutions);
+  readonly resolutionsPager = createClientPager(
+    this.filteredResolutions,
+    RESOLUTION_PAGE_SIZE,
+    [5, 10, 20]
+  );
 
   private ticketId = 0;
 
@@ -407,6 +415,10 @@ export class TicketDetailPageComponent implements OnInit {
     this.showAllReopenNotes.update((v) => !v);
   }
 
+  toggleTimelineExpanded(): void {
+    this.timelineExpanded.update((v) => !v);
+  }
+
   ngOnInit(): void {
     this.ticketId = Number(this.route.snapshot.paramMap.get('id'));
     if (!this.ticketId) {
@@ -414,7 +426,10 @@ export class TicketDetailPageComponent implements OnInit {
       this.loading.set(false);
       return;
     }
-    this.resolutionSearchControl.valueChanges.subscribe((v) => this.resolutionSearch.set(v));
+    this.resolutionSearchControl.valueChanges.subscribe((v) => {
+      this.resolutionSearch.set(v);
+      this.resolutionsPager.reset();
+    });
     this.usersApi
       .loadForPicker(this.auth.currentUser(), { capability: 'TICKET' })
       .subscribe();
@@ -433,6 +448,8 @@ export class TicketDetailPageComponent implements OnInit {
         );
         this.demoOverlay.syncIncompleteWorkFromTicket(ticket);
         this.showAllReopenNotes.set(false);
+        this.timelineExpanded.set(false);
+        this.resolutionsPager.reset();
         this.notFound.set(false);
         this.loading.set(false);
       },

@@ -11,6 +11,7 @@ import {
   Delivery,
   DeliveryAcceptance,
   Project,
+  ProjectProgress,
   ProjectPriority,
   ProjectStatus,
   TaskItem,
@@ -113,8 +114,21 @@ export interface DeliveryInput {
   note?: string | null;
 }
 
-/** รูปดิบจาก API — contractValue/estimatedHours เป็น decimal string, subTasks ซ้อนกัน */
-type ApiProject = Omit<Project, 'contractValue'> & { contractValue: string | number | null };
+/** รูปดิบจาก API — contractValue/percent อาจเป็น decimal string */
+type ApiProjectProgress = Partial<
+  Omit<ProjectProgress, 'percent' | 'totalTasks' | 'doneTasks' | 'overdueTasks'>
+> & {
+  percent?: string | number | null;
+  totalTasks?: string | number | null;
+  doneTasks?: string | number | null;
+  overdueTasks?: string | number | null;
+};
+
+type ApiProject = Omit<Project, 'contractValue' | 'progress'> & {
+  contractValue: string | number | null;
+  progress?: ApiProjectProgress | null;
+  progressPercent?: string | number | null;
+};
 type ApiTask = Omit<
   TaskItem,
   | 'estimatedHours'
@@ -130,10 +144,18 @@ type ApiTask = Omit<
   project?: TaskProjectRef | null;
   /** ชื่อฟิลด์ผู้มอบหมายที่ BE อาจส่งมาต่างกัน */
   assignedByUserId?: number | null;
+  assignedById?: number | null;
+  assigned_by_user_id?: number | null;
+  assignerUserId?: number | null;
+  assignerId?: number | null;
   assignedBy?: UserSummary | null;
+  assigner?: UserSummary | null;
   createdByUserId?: number | null;
+  created_by_user_id?: number | null;
+  createdById?: number | null;
   createdBy?: UserSummary | null;
   createdByUser?: UserSummary | null;
+  created_by?: UserSummary | null;
   submissions?: ApiTaskSubmission[] | null;
 };
 
@@ -196,7 +218,12 @@ export class ProjectService {
       })
       .pipe(
         map((body) => asList(body).map((row) => this.normalizeProject(row))),
-        tap((list) => this.projectsSignal.set(list)),
+        tap((list) => {
+          this.projectsSignal.update((prev) => {
+            const prevById = new Map(prev.map((p) => [p.id, p]));
+            return list.map((p) => this.mergeProjectRow(p, prevById.get(p.id)));
+          });
+        }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }
@@ -278,10 +305,26 @@ export class ProjectService {
       );
   }
 
-  /** % จาก progress ของ project ที่ API ส่งมาเท่านั้น — ไม่มีค่า = null (ห้ามโชว์เป็น 0) */
+  /** % ความคืบหน้า — จาก progress ของ project (รองรับคำนวณจาก done/total) */
   progressPercent(projectId: number): number | null {
-    const percent = this.getProject(projectId)?.progress?.percent;
-    return typeof percent === 'number' ? percent : null;
+    return this.progressPercentOf(this.getProject(projectId));
+  }
+
+  progressPercentOf(project: Project | null | undefined): number | null {
+    const progress = project?.progress;
+    if (!progress) {
+      return null;
+    }
+    const totalTasks = progress.totalTasks ?? 0;
+    const doneTasks = progress.doneTasks ?? 0;
+    let percent = progress.percent;
+    if (!Number.isFinite(percent) && totalTasks > 0) {
+      percent = Math.round((doneTasks / totalTasks) * 100);
+    }
+    if (!Number.isFinite(percent)) {
+      return null;
+    }
+    return Math.max(0, Math.min(100, Math.round(percent)));
   }
 
   createTask(projectId: number, input: TaskInput): Observable<TaskItem> {
@@ -507,10 +550,57 @@ export class ProjectService {
     this.tasksSignal.update((all) => {
       const byId = new Map(all.map((t) => [t.id, t]));
       for (const row of rows) {
-        byId.set(row.id, row);
+        const prev = byId.get(row.id);
+        byId.set(row.id, this.mergeTaskRow(row, prev));
       }
       return Array.from(byId.values());
     });
+  }
+
+  /** รายการงานบางครั้งไม่ส่งผู้มอบหมาย — เก็บค่าที่เคยมีจาก GET รายตัว / ตอนสร้าง */
+  private mergeTaskRow(incoming: TaskItem, existing?: TaskItem): TaskItem {
+    if (!existing) {
+      return incoming;
+    }
+    const assignedByUserId = incoming.assignedByUserId ?? existing.assignedByUserId;
+    const assignedBy = incoming.assignedBy ?? existing.assignedBy;
+    if (
+      assignedByUserId === incoming.assignedByUserId &&
+      assignedBy === incoming.assignedBy
+    ) {
+      return incoming;
+    }
+    return {
+      ...incoming,
+      assignedByUserId,
+      assignedBy: assignedBy ?? (assignedByUserId ? existing.assignedBy : null),
+    };
+  }
+
+  /**
+   * ตอนสร้าง/แก้ไขงาน ถ้า API ไม่คืนผู้มอบหมาย ให้ใส่คนที่กดบันทึกไว้ในแคช FE
+   * (รายการงานมักไม่ส่ง assignedBy)
+   */
+  stampAssignerIfMissing(taskId: number, user: UserSummary | null | undefined): void {
+    if (!user?.id) {
+      return;
+    }
+    this.tasksSignal.update((list) =>
+      list.map((t) => {
+        if (t.id !== taskId || t.assignedByUserId) {
+          return t;
+        }
+        return {
+          ...t,
+          assignedByUserId: user.id,
+          assignedBy: {
+            id: user.id,
+            username: user.username,
+            fullName: user.fullName,
+          },
+        };
+      })
+    );
   }
 
   /* ——— Deliveries ——— */
@@ -589,7 +679,45 @@ export class ProjectService {
   }
 
   private normalizeProject(row: ApiProject): Project {
-    return { ...row, contractValue: toNumber(row.contractValue) };
+    const { progressPercent, progress: rawProgress, ...rest } = row;
+    return {
+      ...rest,
+      contractValue: toNumber(row.contractValue),
+      progress: this.normalizeProgress(rawProgress, progressPercent),
+    };
+  }
+
+  /** รายการโปรเจคบางครั้งไม่ส่ง progress — เก็บค่าที่เคยโหลดจาก GET รายตัวไว้ */
+  private mergeProjectRow(incoming: Project, existing?: Project): Project {
+    if (!existing?.progress || incoming.progress) {
+      return incoming;
+    }
+    return { ...incoming, progress: existing.progress };
+  }
+
+  private normalizeProgress(
+    raw: ApiProjectProgress | null | undefined,
+    progressPercent?: string | number | null
+  ): ProjectProgress | null {
+    if (!raw && progressPercent == null) {
+      return null;
+    }
+    const totalTasks = toNumber(raw?.totalTasks ?? undefined) ?? 0;
+    const doneTasks = toNumber(raw?.doneTasks ?? undefined) ?? 0;
+    let percent = toNumber(raw?.percent ?? progressPercent ?? undefined);
+    if (percent == null && totalTasks > 0) {
+      percent = Math.round((doneTasks / totalTasks) * 100);
+    }
+    if (percent == null && totalTasks === 0 && doneTasks === 0) {
+      return null;
+    }
+    return {
+      totalTasks,
+      doneTasks,
+      percent: percent ?? 0,
+      overdueTasks: toNumber(raw?.overdueTasks ?? undefined) ?? 0,
+      byStatus: raw?.byStatus ?? {},
+    };
   }
 
   private flattenTasks(nodes: ApiTask[], projectId: number): TaskItem[] {
@@ -608,9 +736,23 @@ export class ProjectService {
 
   private normalizeTask(row: ApiTask, projectId: number): TaskItem {
     const assignedBy =
-      row.assignedBy ?? row.createdBy ?? row.createdByUser ?? null;
+      row.assignedBy ??
+      row.assigner ??
+      row.createdBy ??
+      row.createdByUser ??
+      row.created_by ??
+      null;
     const assignedByUserId =
-      row.assignedByUserId ?? row.createdByUserId ?? assignedBy?.id ?? null;
+      row.assignedByUserId ??
+      row.assignedById ??
+      row.assigned_by_user_id ??
+      row.assignerUserId ??
+      row.assignerId ??
+      row.createdByUserId ??
+      row.createdById ??
+      row.created_by_user_id ??
+      assignedBy?.id ??
+      null;
     return {
       id: row.id,
       projectId: row.projectId ?? projectId,

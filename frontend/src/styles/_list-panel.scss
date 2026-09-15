@@ -231,6 +231,7 @@
 .data-table {
   width: 100%;
   min-width: 36rem;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 
@@ -266,10 +267,11 @@
     padding-top: 0.72rem !important;
     padding-bottom: 0.72rem !important;
     vertical-align: middle;
-    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* คอลัมน์แรกติดซ้าย — ทุกตาราง */
+  /* คอลัมน์แรกกินพื้นที่เหลือ — ตารางกว้างเต็มแผง */
   .mat-mdc-header-cell:first-of-type,
   .mat-mdc-cell:first-of-type,
   .col-sticky-start {
@@ -278,6 +280,7 @@
     z-index: 2;
     background: #fff;
     box-shadow: 1px 0 0 #eef2f0;
+    width: auto;
   }
 
   .mat-mdc-header-cell:first-of-type,
@@ -297,7 +300,8 @@
     box-shadow: -1px 0 0 #eef2f0;
     text-align: right;
     white-space: nowrap;
-    max-width: none;
+    width: 1%;
+    overflow: visible;
   }
 
   .mat-mdc-header-cell:last-of-type,
@@ -306,14 +310,14 @@
     z-index: 3;
   }
 
-  /* ข้อความยาวตัด … ทั้งระบบ */
+  /* ข้อความยาวตัด … ตามความกว้างคอลัมน์ */
   .cell-clip,
   .mat-mdc-cell a,
   .mat-mdc-cell .app-link,
   .mat-mdc-cell strong,
   .mat-mdc-cell .linkish {
     display: inline-block;
-    max-width: 14rem;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -321,23 +325,26 @@
   }
 
   .cell-clip--sm {
-    max-width: 9rem;
+    max-width: min(100%, 9rem);
   }
 
   .cell-clip--lg,
   .mat-mdc-cell a.cell-clip--lg {
-    max-width: 18rem;
+    max-width: 100%;
   }
 
-  /* คอลัมน์สถานะ/ป้าย ไม่จำกัดความกว้าง */
+  /* คอลัมน์สถานะ/ป้าย/ปุ่ม — กว้างตามเนื้อหา ไม่ยืด */
   .mat-column-status,
   .mat-column-priority,
   .mat-column-actions,
   .mat-column-isActive,
   .mat-column-active,
-  .mat-column-isOverdue {
-    max-width: none;
+  .mat-column-isOverdue,
+  .mat-column-phone,
+  .mat-column-owner {
+    width: 1%;
     white-space: nowrap;
+    overflow: visible;
   }
 
   a {

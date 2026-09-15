@@ -3,6 +3,55 @@
   width: 100%;
 }
 
+:host {
+  .app-page-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    align-items: flex-start;
+    gap: 0.75rem 1rem;
+  }
+
+  .app-page-title {
+    margin-top: 0.15rem;
+    font-size: 1.45rem;
+  }
+
+  .app-eyebrow {
+    margin-top: 0.45rem;
+  }
+
+  .app-subtitle {
+    margin-top: 0.35rem;
+    max-width: none;
+  }
+
+  .back {
+    margin-bottom: 0;
+  }
+
+  app-status-bar,
+  .next-hint,
+  .ticket-workflow {
+    margin-top: 0.65rem;
+    margin-bottom: 0.65rem;
+  }
+
+  app-status-bar .status-bar {
+    margin-bottom: 0;
+    padding: 0.65rem 0.9rem;
+  }
+
+  .next-hint {
+    margin-bottom: 0.65rem;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .ticket-timeline {
+    margin-bottom: 0.75rem;
+    padding: 0.7rem 0.85rem;
+  }
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -39,9 +88,9 @@
   display: flex;
   align-items: center;
   gap: 0;
-  margin: 0 0 1rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
   background: #f3f7f6;
   border: 1px solid #d7e5e1;
   overflow-x: auto;
@@ -98,7 +147,7 @@
 }
 
 .ma-link {
-  margin: 0.35rem 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.9rem;
   color: #5b6762;
 
@@ -165,6 +214,7 @@
   align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.2rem;
+  flex-wrap: wrap;
 
   h3 {
     margin: 0;
@@ -173,6 +223,31 @@
 
   .demo-tag {
     margin-left: 0;
+  }
+}
+
+.list-count {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.list-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  margin: 0.35rem 0 0.15rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px dashed rgb(15 118 110 / 0.35);
+  border-radius: 8px;
+  background: rgb(15 118 110 / 0.06);
+  color: #0f766e;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: rgb(15 118 110 / 0.12);
   }
 }
 
@@ -247,13 +322,14 @@
 }
 
 .description {
-  margin: 0.65rem 0 0;
+  margin: 0.4rem 0 0;
   color: #1c2b28;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
-  line-height: 1.5;
-  max-width: 72ch;
+  line-height: 1.45;
+  max-width: none;
+  font-size: 0.92rem;
 }
 
 .reopen-chips {
@@ -261,8 +337,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem;
-  margin: 0.75rem 0 0;
-  max-width: 42rem;
+  margin: 0.5rem 0 0;
+  max-width: none;
 }
 
 .reopen-chip {

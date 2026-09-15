@@ -83,8 +83,11 @@ export class TicketsPageComponent implements OnInit {
     );
   });
   readonly canDelete = computed(() => {
-    // BE ยังไม่มี DELETE /api/tickets/:id — ซ่อน · ใช้「ปิดงาน」แทน
-    return false;
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('ticket.delete') ||
+      this.auth.hasPermission('tickets', 'delete')
+    );
   });
   readonly canClose = computed(() => {
     this.auth.session();
@@ -282,6 +285,9 @@ export class TicketsPageComponent implements OnInit {
   }
 
   remove(row: Ticket): void {
+    if (!this.canDelete()) {
+      return;
+    }
     openConfirmDialog(this.dialog, {
       title: 'ลบใบแจ้งปัญหา',
       message: `ต้องการลบ「${row.title}」หรือไม่?`,

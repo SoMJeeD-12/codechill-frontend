@@ -22,31 +22,20 @@
           >
             {{ projectStatusLabel(p.status) }}
           </span>
-        </div>
-        <h1 class="app-page-title">{{ p.name }}</h1>
-        <p class="app-subtitle">
-          รหัส {{ p.code || '—' }} ·
-          {{ customerName() }} ·
-          ประเภท {{ p.projectType || '—' }} ·
-          ความสำคัญ
           <span class="priority-badge" [attr.data-priority]="p.priority">
             {{ projectPriorityLabel(p.priority) }}
           </span>
-          ·
-          ผู้จัดการ {{ p.manager?.fullName || userName(p.managerUserId) }}
-        </p>
+        </div>
+        <h1 class="app-page-title">{{ p.name }}</h1>
         <p class="app-subtitle">
-          วันเริ่ม {{ p.startDate ? (p.startDate | thaiDate: 'date') : '—' }} ·
-          กำหนดส่ง {{ p.targetEndDate ? (p.targetEndDate | thaiDate: 'date') : '—' }} ·
-          มูลค่าตามสัญญา {{ p.contractValue | baht }} ·
-          ความคืบหน้า {{ progress() == null ? '—' : progress() + '%' }} ·
-          จำนวนงาน {{ p.progress?.totalTasks ?? '—' }}
-          @if (p.actualEndDate) {
-            · ปิดจริง {{ p.actualEndDate | thaiDate: 'date' }}
+          รหัส {{ p.code || '—' }}
+          @if (p.customerId) {
+            ·
+            <a class="app-link" [routerLink]="['/app/customers', p.customerId]">
+              {{ customerName() }}
+            </a>
           }
         </p>
-        <p class="description">{{ p.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
-        <p class="meta-note">อัปเดตล่าสุด {{ p.updatedAt | thaiDate }}</p>
       </div>
       <div class="app-header-actions">
         @if (canViewTasks()) {
@@ -102,6 +91,89 @@
         }
       </div>
     </header>
+
+    <section class="project-summary" aria-label="สรุปโปรเจค">
+      <div class="project-summary__spotlight">
+        <article class="summary-hero">
+          <div class="summary-hero__top">
+            <span class="summary-kicker">ความคืบหน้า</span>
+            <strong class="summary-hero__value">
+              {{ progress() == null ? '—' : progress() + '%' }}
+            </strong>
+          </div>
+          @if (progress() != null) {
+            <div
+              class="summary-hero__track"
+              role="progressbar"
+              [attr.aria-valuenow]="progress()"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div class="summary-hero__fill" [style.width.%]="progress()"></div>
+            </div>
+          } @else {
+            <p class="summary-hero__empty">ยังไม่มีข้อมูลความคืบหน้า</p>
+          }
+        </article>
+
+        <div class="summary-key-grid">
+          <article class="summary-key">
+            <mat-icon aria-hidden="true">event</mat-icon>
+            <div>
+              <span class="summary-kicker">กำหนดส่ง</span>
+              <strong>{{ p.targetEndDate ? (p.targetEndDate | thaiDate: 'date') : '—' }}</strong>
+            </div>
+          </article>
+          <article class="summary-key">
+            <mat-icon aria-hidden="true">checklist</mat-icon>
+            <div>
+              <span class="summary-kicker">จำนวนงาน</span>
+              <strong>{{ p.progress?.totalTasks ?? '—' }}</strong>
+            </div>
+          </article>
+          <article class="summary-key">
+            <mat-icon aria-hidden="true">payments</mat-icon>
+            <div>
+              <span class="summary-kicker">มูลค่าตามสัญญา</span>
+              <strong>{{ p.contractValue | baht }}</strong>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <div class="project-summary__facts">
+        <article class="summary-fact">
+          <span class="summary-kicker">วันเริ่ม</span>
+          <strong>{{ p.startDate ? (p.startDate | thaiDate: 'date') : '—' }}</strong>
+        </article>
+        @if (p.actualEndDate) {
+          <article class="summary-fact">
+            <span class="summary-kicker">ปิดจริง</span>
+            <strong>{{ p.actualEndDate | thaiDate: 'date' }}</strong>
+          </article>
+        }
+        <article class="summary-fact">
+          <span class="summary-kicker">ผู้จัดการ</span>
+          <strong>{{ p.manager?.fullName || userName(p.managerUserId) }}</strong>
+        </article>
+        <article class="summary-fact">
+          <span class="summary-kicker">ประเภท</span>
+          <strong>{{ p.projectType || '—' }}</strong>
+        </article>
+        <article class="summary-fact">
+          <span class="summary-kicker">อัปเดตล่าสุด</span>
+          <strong>{{ p.updatedAt | thaiDate }}</strong>
+        </article>
+      </div>
+
+      <aside class="project-summary__note" [class.is-empty]="!projectDescription(p)">
+        <div class="project-summary__note-head">
+          <mat-icon aria-hidden="true">notes</mat-icon>
+          <span>รายละเอียดโปรเจค</span>
+        </div>
+        <p>{{ projectDescription(p) || 'ยังไม่มีรายละเอียดเพิ่มเติม' }}</p>
+      </aside>
+    </section>
 
     <mat-tab-group animationDuration="150ms">
       @if (canViewDeliveries()) {

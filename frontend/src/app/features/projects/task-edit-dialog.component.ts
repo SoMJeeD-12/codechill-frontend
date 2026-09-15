@@ -213,7 +213,7 @@ export class TaskEditDialogComponent implements OnInit {
     if (task.assignedByUserId) {
       return this.usersApi.getById(task.assignedByUserId)?.fullName ?? `#${task.assignedByUserId}`;
     }
-    return '—';
+    return 'ไม่ระบุ';
   }
 
   assigneeLabel(task: TaskItem): string {
@@ -372,6 +372,17 @@ export class TaskEditDialogComponent implements OnInit {
 
     req.subscribe({
       next: (saved) => {
+        const me = this.auth.currentUser();
+        if (me && !saved.assignedByUserId) {
+          this.projectsApi.stampAssignerIfMissing(saved.id, {
+            id: me.id,
+            username: me.username,
+            fullName: me.fullName,
+          });
+          this.usersApi.upsertLocal(me);
+        } else if (saved.assignedBy) {
+          this.usersApi.upsertLocal(saved.assignedBy);
+        }
         this.saving.set(false);
         this.currentTask.set(saved);
         const assigneeName =

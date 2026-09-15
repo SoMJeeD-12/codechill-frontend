@@ -1,6 +1,181 @@
 /* ป้ายสถานะ / ความเร่งด่วน ใช้สไตล์กลางจาก styles/_list-panel.scss */
 
 .app-panel-toolbar {
-  /* แท็บอยู่บรรทัดบน ช่องค้นหาอยู่บรรทัดล่าง */
   gap: 0.75rem;
+}
+
+.tickets-table {
+  width: 100%;
+  table-layout: fixed;
+
+  /* คอลัมน์สั้น — กว้างตามเนื้อหา */
+  .mat-column-ticketNo.mat-mdc-header-cell,
+  .mat-column-ticketNo.mat-mdc-cell {
+    width: 8.5rem;
+  }
+
+  .mat-column-priority.mat-mdc-header-cell,
+  .mat-column-priority.mat-mdc-cell {
+    width: 7.5rem;
+  }
+
+  .mat-column-status.mat-mdc-header-cell,
+  .mat-column-status.mat-mdc-cell {
+    width: 8rem;
+  }
+
+  .mat-column-customer.mat-mdc-header-cell,
+  .mat-column-customer.mat-mdc-cell {
+    width: 10rem;
+  }
+
+  .mat-column-reportedAt.mat-mdc-header-cell,
+  .mat-column-reportedAt.mat-mdc-cell {
+    width: 10.5rem;
+  }
+
+  .mat-column-actions.mat-mdc-header-cell,
+  .mat-column-actions.mat-mdc-cell {
+    width: 7.5rem;
+  }
+
+  /* หัวข้อกินพื้นที่ที่เหลือ — เต็มแผง */
+  .mat-column-title.mat-mdc-header-cell,
+  .mat-column-title.mat-mdc-cell {
+    width: auto;
+  }
+
+  .ticket-row {
+    .mat-mdc-cell:first-of-type {
+      box-shadow:
+        1px 0 0 #eef2f0,
+        inset 3px 0 0 transparent;
+    }
+
+    &[data-priority='NORMAL'] .mat-mdc-cell:first-of-type {
+      box-shadow:
+        1px 0 0 #eef2f0,
+        inset 3px 0 0 #eab308;
+    }
+
+    &[data-priority='HIGH'] .mat-mdc-cell:first-of-type {
+      box-shadow:
+        1px 0 0 #eef2f0,
+        inset 3px 0 0 #ea580c;
+    }
+
+    &[data-priority='URGENT'] .mat-mdc-cell:first-of-type {
+      box-shadow:
+        1px 0 0 #eef2f0,
+        inset 3px 0 0 #dc2626;
+    }
+
+    &[data-priority='LOW'] .mat-mdc-cell:first-of-type {
+      box-shadow:
+        1px 0 0 #eef2f0,
+        inset 3px 0 0 #22c55e;
+    }
+
+    &:hover .mat-mdc-cell {
+      background: #f4faf8;
+    }
+  }
+
+  .ticket-code {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.28rem 0.55rem;
+    border-radius: 0.55rem;
+    border: 1px solid #d7e4df;
+    background: linear-gradient(180deg, #fff 0%, #f3faf7 100%);
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ticket-title {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .ticket-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    margin-top: 0.28rem;
+  }
+
+  .ticket-meta__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #6b7f79;
+    font-size: 0.78rem;
+
+    mat-icon {
+      flex: 0 0 auto;
+      width: 0.95rem;
+      height: 0.95rem;
+      font-size: 0.95rem;
+      color: #0f766e;
+      opacity: 0.85;
+    }
+  }
+
+  .ticket-customer {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: #243330;
+  }
+
+  .ticket-date {
+    color: #5b6762;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .ticket-open-btn {
+    min-width: 3.5rem;
+    height: 2rem;
+    line-height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.82rem;
+  }
+
+  .actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.2rem;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 700px) {
+  .tickets-table .ticket-open-btn {
+    display: none;
+  }
+
+  .tickets-table .mat-column-actions {
+    width: 3.5rem;
+  }
 }

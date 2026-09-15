@@ -62,7 +62,7 @@ import { Customer } from '../../core/models/customer.model';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
-import { Observable, of, switchMap } from 'rxjs';
+import { Observable, forkJoin, of, switchMap } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 
 @Component({
@@ -155,7 +155,7 @@ export class ProjectsPageComponent implements OnInit {
         case 'status':
           return statusRank[row.status];
         case 'progress':
-          return this.progress(row.id) ?? -1;
+          return this.progressOf(row) ?? -1;
         case 'manager':
           return row.manager?.fullName || '';
         case 'targetEndDate':
@@ -200,15 +200,38 @@ export class ProjectsPageComponent implements OnInit {
   reload(): void {
     const q = this.search().trim();
     const params = q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
-    this.projectsApi.listProjects(params).subscribe((list) => this.projects.set(list));
+    this.projectsApi.listProjects(params).subscribe((list) => {
+      this.projects.set(list);
+      this.loadMissingProgress(list);
+    });
+  }
+
+  /** GET /projects มักไม่ส่ง progress — ดึงรายตัวเฉพาะที่ยังไม่มี (เหมือนหน้ารายละเอียด) */
+  private loadMissingProgress(list: Project[]): void {
+    const missing = list.filter((p) => this.projectsApi.progressPercentOf(p) == null);
+    if (!missing.length) {
+      return;
+    }
+    forkJoin(
+      missing.map((p) =>
+        this.projectsApi.fetchProject(p.id).pipe(catchError(() => of(null)))
+      )
+    ).subscribe((rows) => {
+      if (!rows.some(Boolean)) {
+        return;
+      }
+      this.projects.update((current) =>
+        current.map((p) => this.projectsApi.getProject(p.id) ?? p)
+      );
+    });
   }
 
   customerName(id: number): string {
     return this.customersApi.getCustomer(id)?.name ?? `#${id}`;
   }
 
-  progress(id: number): number | null {
-    return this.projectsApi.progressPercent(id);
+  progressOf(row: Project): number | null {
+    return this.projectsApi.progressPercentOf(row);
   }
 
   statusLabel(status: ProjectStatus): string {

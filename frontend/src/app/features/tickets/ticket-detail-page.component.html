@@ -43,9 +43,12 @@
             </p>
           }
         }
-        <p class="description">
-          {{ descriptionParts().base || 'ไม่มีรายละเอียดเพิ่มเติม' }}
-        </p>
+        @if (
+          descriptionParts().base &&
+          descriptionParts().base.trim() !== t.title.trim()
+        ) {
+          <p class="description">{{ descriptionParts().base }}</p>
+        }
 
         @if (reopenNoteRows().length) {
           <div class="reopen-chips" aria-label="อาการที่กลับมาอีกครั้ง">
@@ -97,11 +100,6 @@
         ) {
           <button mat-stroked-button type="button" (click)="changeAssignee()">
             เปลี่ยนผู้รับผิดชอบ
-          </button>
-        }
-        @if (canResolve() && displayStatus() === 'IN_PROGRESS') {
-          <button mat-stroked-button type="button" (click)="openAddResolution()">
-            บันทึกผลการแก้ไข
           </button>
         }
         @if (canResolve() && displayStatus() === 'RESOLVED') {
@@ -224,10 +222,20 @@
       <aside class="ticket-timeline" aria-label="ลำดับเหตุการณ์ของใบปัญหา">
         <header class="ticket-timeline__head">
           <h3>ลำดับเหตุการณ์</h3>
+          <span class="list-count">{{ timelineEvents().length }} รายการ</span>
           <span class="demo-tag">ตัวอย่าง</span>
         </header>
+        @if (!timelineExpanded() && hiddenTimelineCount() > 0) {
+          <button
+            type="button"
+            class="list-expand-btn"
+            (click)="toggleTimelineExpanded()"
+          >
+            แสดงเหตุการณ์เก่ากว่าอีก {{ hiddenTimelineCount() }} รายการ
+          </button>
+        }
         <ol class="ticket-timeline__list">
-          @for (ev of timelineEvents(); track ev.id) {
+          @for (ev of visibleTimelineEvents(); track ev.id) {
             <li [class.is-demo]="ev.demo">
               <span class="ticket-timeline__dot" aria-hidden="true"></span>
               <div class="ticket-timeline__body">
@@ -240,6 +248,15 @@
             </li>
           }
         </ol>
+        @if (timelineExpanded() && hiddenTimelineCount() > 0) {
+          <button
+            type="button"
+            class="list-expand-btn"
+            (click)="toggleTimelineExpanded()"
+          >
+            ย่อเหลือล่าสุด {{ timelinePreviewCount }} รายการ
+          </button>
+        }
       </aside>
     }
 
@@ -248,7 +265,12 @@
         <div class="app-panel-toolbar-row tab-toolbar">
           <div class="section-title-wrap">
             <h3 class="tab-heading">ประวัติงานแก้ไข</h3>
-            <p class="section-sub">คลิกดูรายละเอียดแต่ละรอบ</p>
+            <p class="section-sub">
+              คลิกดูรายละเอียด · แสดงหน้าละ {{ resolutionsPager.pageSize() }} รอบ
+              @if (resolutionsPager.length() > 0) {
+                (ทั้งหมด {{ resolutionsPager.length() }})
+              }
+            </p>
           </div>
           @if (
             canResolve() &&
@@ -277,7 +299,7 @@
           </p>
         } @else {
           <ul class="round-list">
-            @for (row of filteredResolutions(); track row.id) {
+            @for (row of resolutionsPager.paged(); track row.id) {
               <li>
                 <button type="button" class="round-row" (click)="openResolutionDetail(row)">
                   <div class="round-row__main">
@@ -305,6 +327,13 @@
               </li>
             }
           </ul>
+          <app-table-paginator
+            [length]="resolutionsPager.length()"
+            [pageIndex]="resolutionsPager.pageIndex()"
+            [pageSize]="resolutionsPager.pageSize()"
+            [pageSizeOptions]="resolutionsPager.pageSizeOptions"
+            (page)="resolutionsPager.onPage($event)"
+          />
         }
       </div>
     </div>

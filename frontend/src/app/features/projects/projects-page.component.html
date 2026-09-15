@@ -121,7 +121,7 @@
             </button>
           </th>
           <td mat-cell *matCellDef="let row" class="col-hide-md">
-            @if (progress(row.id); as pct) {
+            @if (progressOf(row); as pct) {
               <span class="progress-cell">
                 <span class="progress-track">
                   <span class="progress-fill" [style.width.%]="pct"></span>

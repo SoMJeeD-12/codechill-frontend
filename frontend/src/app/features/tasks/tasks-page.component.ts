@@ -28,6 +28,8 @@ import { TaskReviewDialogComponent } from '../projects/task-review-dialog.compon
 import { TaskSubmitReportDialogComponent } from '../projects/task-submit-report-dialog.component';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 export type TasksPageMode =
   | 'all'
@@ -346,15 +348,58 @@ export class TasksPageComponent implements OnInit {
 
     req.subscribe({
       next: (rows) => {
+        for (const row of rows) {
+          if (row.assignedBy) {
+            this.usersApi.upsertLocal(row.assignedBy);
+          }
+          if (row.assignedUser) {
+            this.usersApi.upsertLocal(row.assignedUser);
+          }
+        }
         this.tasks.set(rows);
         this.pager.reset();
         this.loading.set(false);
+        this.enrichMissingAssigners(rows);
       },
       error: (err: Error) => {
         this.tasks.set([]);
         this.loading.set(false);
         this.snack.open(err.message || 'โหลดงานไม่สำเร็จ', 'ปิด', { duration: 4000 });
       },
+    });
+  }
+
+  /** รายการงานมักไม่ส่งผู้มอบหมาย — ดึง GET /tasks/:id เฉพาะแถวที่ยังว่าง (จำกัดจำนวน) */
+  private enrichMissingAssigners(rows: TaskItem[]): void {
+    const missing = rows.filter((t) => !t.assignedByUserId && !t.assignedBy).slice(0, 15);
+    if (!missing.length) {
+      return;
+    }
+    forkJoin(
+      missing.map((t) => this.projectsApi.getTask(t.id).pipe(catchError(() => of(null))))
+    ).subscribe((details) => {
+      const found = details.filter((d): d is TaskItem => !!d?.assignedByUserId || !!d?.assignedBy);
+      if (!found.length) {
+        return;
+      }
+      for (const task of found) {
+        if (task.assignedBy) {
+          this.usersApi.upsertLocal(task.assignedBy);
+        }
+      }
+      this.tasks.update((current) =>
+        current.map((t) => {
+          const detail = found.find((d) => d.id === t.id);
+          if (!detail) {
+            return t;
+          }
+          return {
+            ...t,
+            assignedByUserId: detail.assignedByUserId ?? t.assignedByUserId,
+            assignedBy: detail.assignedBy ?? t.assignedBy,
+          };
+        })
+      );
     });
   }
 
@@ -381,9 +426,13 @@ export class TasksPageComponent implements OnInit {
       return task.assignedBy.fullName;
     }
     if (task.assignedByUserId) {
-      return this.usersApi.getById(task.assignedByUserId)?.fullName ?? `#${task.assignedByUserId}`;
+      const cached = this.usersApi.getById(task.assignedByUserId);
+      if (cached?.fullName) {
+        return cached.fullName;
+      }
+      return `#${task.assignedByUserId}`;
     }
-    return '—';
+    return 'ไม่ระบุ';
   }
 
   /** ผู้รับผิดชอบงานนี้คือตัวเองหรือไม่ — ห้ามอนุมัติงานตัวเอง */
