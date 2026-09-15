@@ -272,6 +272,29 @@ export class ProjectService {
     );
   }
 
+  /**
+   * GET /tasks/me — งานของฉัน (server ใช้ user จาก JWT)
+   * ห้ามส่ง userId จาก client
+   */
+  listMyTasks(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    status?: TaskStatus;
+  } = {}): Observable<TaskItem[]> {
+    return this.http
+      .get<ApiTask[] | { items: ApiTask[] }>(`${this.tasksBase}/me`, {
+        params: toHttpParams({ limit: 100, ...params }),
+      })
+      .pipe(
+        map((body) => asList(body).map((t) => this.normalizeTask(t, t.projectId))),
+        tap((rows) => this.mergeTasks(rows)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   /** PATCH /tasks/{id}/order */
   updateTaskOrder(taskId: number, sortOrder: number): Observable<TaskItem> {
     return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/order`, { sortOrder }).pipe(

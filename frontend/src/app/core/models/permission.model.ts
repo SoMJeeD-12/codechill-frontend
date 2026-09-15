@@ -2,6 +2,11 @@
 export type MenuCode =
   | 'dashboard'
   | 'tasks'
+  | 'tasks-me'
+  | 'tasks-unassigned'
+  | 'tasks-doing'
+  | 'tasks-review'
+  | 'tasks-overdue'
   | 'users'
   | 'roles'
   | 'customers'

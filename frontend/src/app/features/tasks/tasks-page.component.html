@@ -1,0 +1,178 @@
+<section class="app-page">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">{{ meta().title }}</h1>
+      <p class="app-subtitle">{{ meta().subtitle }}</p>
+    </div>
+    <div class="app-header-actions">
+      @if (filterProjectId(); as pid) {
+        <a mat-stroked-button [routerLink]="['/app/projects', pid]">กลับโปรเจค</a>
+      }
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
+  </header>
+
+  @if (mode() === 'board') {
+    <app-task-kanban-board
+      [projectId]="filterProjectId()"
+      [showProjectFilter]="filterProjectId() == null"
+    />
+  } @else {
+    @if (mode() === 'me') {
+      <div class="ui-chips" role="tablist" aria-label="มุมมองงานของฉัน">
+        <button type="button" class="ui-chip" [class.is-active]="myView() === 'all'" (click)="setMyView('all')">
+          งานทั้งหมด
+          <span class="ui-chip__count">{{ myViewCounts().all }}</span>
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="myView() === 'todo'" (click)="setMyView('todo')">
+          งานที่ต้องทำ
+          <span class="ui-chip__count">{{ myViewCounts().todo }}</span>
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="myView() === 'doing'" (click)="setMyView('doing')">
+          กำลังดำเนินการ
+          <span class="ui-chip__count">{{ myViewCounts().doing }}</span>
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="myView() === 'review'" (click)="setMyView('review')">
+          รอตรวจ
+          <span class="ui-chip__count">{{ myViewCounts().review }}</span>
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="myView() === 'done'" (click)="setMyView('done')">
+          เสร็จแล้ว
+          <span class="ui-chip__count">{{ myViewCounts().done }}</span>
+        </button>
+        <button
+          type="button"
+          class="ui-chip"
+          [class.is-active]="myView() === 'overdue'"
+          (click)="setMyView('overdue')"
+        >
+          เกินกำหนด
+          <span class="ui-chip__count">{{ myViewCounts().overdue }}</span>
+        </button>
+      </div>
+    }
+
+    <div class="app-panel">
+      <div class="app-panel-toolbar">
+        <div class="app-panel-toolbar-row">
+          <label class="app-search">
+            <mat-icon>search</mat-icon>
+            <input
+              type="search"
+              [formControl]="searchControl"
+              placeholder="ค้นหาชื่องาน / รายละเอียด"
+              aria-label="ค้นหางาน"
+            />
+          </label>
+        </div>
+      </div>
+      <div class="app-panel-body">
+        @if (loading()) {
+          <p class="data-empty">กำลังโหลด…</p>
+        } @else {
+          <table mat-table [dataSource]="pager.paged()" class="data-table">
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>ชื่องาน</th>
+              <td mat-cell *matCellDef="let row">
+                <button type="button" class="linkish" (click)="openTask(row)">
+                  <strong>{{ row.title }}</strong>
+                </button>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="project">
+              <th mat-header-cell *matHeaderCellDef>โปรเจค</th>
+              <td mat-cell *matCellDef="let row">
+                <a class="app-link" [routerLink]="['/app/projects', row.projectId]">
+                  {{ projectLabel(row) }}
+                </a>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>รายละเอียด</th>
+              <td mat-cell *matCellDef="let row" class="desc-cell">
+                {{ row.description || '—' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="assignee">
+              <th mat-header-cell *matHeaderCellDef>ผู้มอบหมาย/ผู้รับผิดชอบ</th>
+              <td mat-cell *matCellDef="let row">{{ assigneeName(row) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="status" [attr.data-status]="row.status">
+                  {{ statusLabel(row.status) }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef>ความสำคัญ</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="priority-badge" [attr.data-priority]="row.priority">
+                  {{ priorityLabel(row.priority) }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="dueDate">
+              <th mat-header-cell *matHeaderCellDef>วันครบกำหนด</th>
+              <td mat-cell *matCellDef="let row" [class.is-overdue]="row.isOverdue">
+                {{ row.dueDate ? (row.dueDate | thaiDate: 'date') : '—' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="isOverdue">
+              <th mat-header-cell *matHeaderCellDef>เกินกำหนด</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.isOverdue) {
+                  <span class="overdue-tag">เกินกำหนด</span>
+                } @else {
+                  —
+                }
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="completedAt">
+              <th mat-header-cell *matHeaderCellDef>เสร็จเมื่อ</th>
+              <td mat-cell *matCellDef="let row">
+                {{ row.completedAt ? (row.completedAt | thaiDate) : '—' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row" class="row-actions">
+                @for (action of statusActions(row); track action.label + action.status) {
+                  <button
+                    mat-button
+                    type="button"
+                    color="primary"
+                    [disabled]="savingId() === row.id"
+                    (click)="changeStatus(row, action.status)"
+                  >
+                    {{ action.label }}
+                  </button>
+                }
+                <button mat-button type="button" (click)="openTask(row)">
+                  {{ canUpdateTask() ? 'แก้ไข' : 'รายละเอียด' }}
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+          </table>
+          <app-table-paginator
+            [length]="pager.length()"
+            [pageIndex]="pager.pageIndex()"
+            [pageSize]="pager.pageSize()"
+            [pageSizeOptions]="pager.pageSizeOptions"
+            (page)="pager.onPage($event)"
+          />
+          @if (displayedTasks().length === 0) {
+            <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
+          }
+        }
+      </div>
+    </div>
+  }
+</section>

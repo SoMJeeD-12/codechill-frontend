@@ -7,10 +7,7 @@ import { MenuItem } from '../models/permission.model';
  *   ตั้งค่า    = นาน ๆ ใช้ที
  *
  * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles)
- *
- * หมายเหตุ:
- * - "งานของฉัน" ไม่แยกเมนูแล้ว — รวมอยู่ในหน้าแรก
- * - "การแจ้งเตือน" ถอดออก เพราะ backend ยังไม่มี endpoint (ดู docs/be-requests.md)
+ * เมนูงานย่อยแยกจากโปรเจค — ไม่ปนกับรายการส่งมอบ
  */
 export const MENU_ITEMS: MenuItem[] = [
   // —— งานหลัก ——
@@ -32,10 +29,50 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tasks',
-    label: 'กระดานงานย่อย',
-    description: 'งานย่อยของโปรเจคแบบกระดาน',
-    icon: 'view_kanban',
+    label: 'งานทั้งหมด',
+    description: 'งานย่อยทุกโปรเจค',
+    icon: 'list_alt',
     route: '/app/tasks',
+    group: 'main',
+  },
+  {
+    code: 'tasks-me',
+    label: 'งานของฉัน',
+    description: 'งานที่ได้รับมอบหมาย',
+    icon: 'person',
+    route: '/app/tasks/me',
+    group: 'main',
+  },
+  {
+    code: 'tasks-unassigned',
+    label: 'งานที่ยังไม่มอบหมาย',
+    description: 'รอเลือกผู้รับผิดชอบ',
+    icon: 'person_off',
+    route: '/app/tasks/unassigned',
+    group: 'main',
+  },
+  {
+    code: 'tasks-doing',
+    label: 'งานกำลังดำเนินการ',
+    description: 'สถานะกำลังทำ',
+    icon: 'play_circle',
+    route: '/app/tasks/doing',
+    group: 'main',
+  },
+  {
+    code: 'tasks-review',
+    label: 'งานรอตรวจ',
+    description: 'สถานะรอตรวจ',
+    icon: 'rate_review',
+    route: '/app/tasks/review',
+    group: 'main',
+  },
+  {
+    code: 'tasks-overdue',
+    label: 'งานเกินกำหนด',
+    description: 'เลย due date แล้วยังไม่เสร็จ',
+    icon: 'warning_amber',
+    route: '/app/tasks/overdue',
     group: 'main',
   },
   {

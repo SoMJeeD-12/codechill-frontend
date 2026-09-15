@@ -344,6 +344,18 @@ export class TicketService {
       );
   }
 
+  /**
+   * PATCH /tickets/:id/start
+   * ผู้รับผิดชอบเท่านั้น — หลังสถานะ ASSIGNED → IN_PROGRESS
+   */
+  start(id: number): Observable<Ticket> {
+    return this.http.patch<ApiTicket>(`${this.base}/${id}/start`, {}).pipe(
+      map((row) => this.normalizeTicket(row)),
+      tap((row) => this.items.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
   reopen(id: number, reason?: string | null): Observable<Ticket> {
     return this.http
       .patch<ApiTicket>(`${this.base}/${id}/reopen`, pruneUndefined({

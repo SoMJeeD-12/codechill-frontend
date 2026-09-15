@@ -40,9 +40,9 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/home/home-page.component').then((m) => m.HomePageComponent),
       },
-      // ลิงก์เดิม — "งานของฉัน" รวมอยู่ในหน้าแรกแล้ว
+      // ลิงก์เดิม
       { path: 'dashboard', redirectTo: 'home', pathMatch: 'full' },
-      { path: 'my-work', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'my-work', redirectTo: 'tasks/me', pathMatch: 'full' },
       {
         path: 'customers',
         canActivate: [permissionGuard('customers')],
@@ -80,17 +80,64 @@ export const routes: Routes = [
           import('./features/projects/projects-page.component').then((m) => m.ProjectsPageComponent),
       },
       {
-        path: 'projects/board',
-        redirectTo: '/app/tasks',
-        pathMatch: 'full',
-      },
-      {
         path: 'tasks',
         canActivate: [permissionGuard('tasks')],
         loadComponent: () =>
-          import('./features/projects/tasks-overview-page.component').then(
-            (m) => m.TasksOverviewPageComponent
-          ),
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'all' },
+      },
+      {
+        path: 'tasks/me',
+        canActivate: [permissionGuard('tasks-me')],
+        loadComponent: () =>
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'me' },
+      },
+      {
+        path: 'tasks/unassigned',
+        canActivate: [permissionGuard('tasks-unassigned')],
+        loadComponent: () =>
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'unassigned' },
+      },
+      {
+        path: 'tasks/doing',
+        canActivate: [permissionGuard('tasks-doing')],
+        loadComponent: () =>
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'doing' },
+      },
+      {
+        path: 'tasks/review',
+        canActivate: [permissionGuard('tasks-review')],
+        loadComponent: () =>
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'review' },
+      },
+      {
+        path: 'tasks/overdue',
+        canActivate: [permissionGuard('tasks-overdue')],
+        loadComponent: () =>
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'overdue' },
+      },
+      {
+        path: 'tasks/board',
+        canActivate: [permissionGuard('tasks')],
+        loadComponent: () =>
+          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
+        data: { taskMode: 'board' },
+      },
+      // ลิงก์เก่าจากหน้าภาพรวมงาน
+      {
+        path: 'tasks/overview',
+        redirectTo: 'tasks',
+        pathMatch: 'full',
+      },
+      {
+        path: 'projects/board',
+        redirectTo: '/app/tasks/board',
+        pathMatch: 'full',
       },
       {
         path: 'projects/:id',

@@ -7,6 +7,11 @@ import { MenuCode, PermissionAction } from '../models/permission.model';
 export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   dashboard: 'dashboard',
   tasks: 'task',
+  'tasks-me': 'task',
+  'tasks-unassigned': 'task',
+  'tasks-doing': 'task',
+  'tasks-review': 'task',
+  'tasks-overdue': 'task',
   customers: 'customer',
   'customer-360': 'customer',
   projects: 'project',

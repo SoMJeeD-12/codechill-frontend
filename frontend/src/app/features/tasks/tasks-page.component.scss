@@ -1,0 +1,43 @@
+.desc-cell {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #5b6762;
+  font-size: 0.88rem;
+}
+
+.linkish {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover strong {
+    color: #0f766e;
+    text-decoration: underline;
+  }
+}
+
+.is-overdue {
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.overdue-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c2410c;
+  background: #fff7ed;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.row-actions {
+  white-space: nowrap;
+  text-align: right;
+}

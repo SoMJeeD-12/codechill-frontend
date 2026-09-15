@@ -100,7 +100,7 @@
           <ul class="mywork-list">
             @for (task of myTasks(); track task.id) {
               <li>
-                <a [routerLink]="['/app/tasks']" [queryParams]="{ taskId: task.id }">
+                <a [routerLink]="['/app/tasks/me']">
                   <span class="item-title">{{ task.title }}</span>
                   <span class="item-meta">
                     @if (task.project?.name; as projectName) {
@@ -119,7 +119,7 @@
               <li class="mywork-empty">ไม่มีงานที่ค้างอยู่กับคุณ</li>
             }
           </ul>
-          <a class="mywork-card__more" routerLink="/app/tasks">เปิดกระดานงาน</a>
+          <a class="mywork-card__more" routerLink="/app/tasks/me">เปิดงานของฉัน</a>
         </article>
       }
 

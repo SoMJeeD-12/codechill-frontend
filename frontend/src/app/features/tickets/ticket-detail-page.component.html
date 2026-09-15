@@ -71,15 +71,17 @@
         }
       </div>
       <div class="actions">
-        @if (canAssign() && displayStatus() === 'RECEIVED') {
+        @if (canAssign() && (displayStatus() === 'RECEIVED' || ticket()?.status === 'REOPENED')) {
           <button mat-flat-button color="primary" type="button" (click)="assignWork()">
             มอบหมายงาน
           </button>
         }
-        @if (canAssign() && displayStatus() === 'ASSIGNED') {
+        @if (canStartTicket()) {
           <button mat-flat-button color="primary" type="button" (click)="startAssignedWork()">
-            เริ่มงาน
+            เริ่มดำเนินการ
           </button>
+        }
+        @if (canAssign() && displayStatus() === 'ASSIGNED' && !canStartTicket()) {
           <button mat-stroked-button type="button" (click)="changeAssignee()">
             เปลี่ยนผู้รับผิดชอบ
           </button>
@@ -93,8 +95,43 @@
             เปลี่ยนผู้รับผิดชอบ
           </button>
         }
+        @if (canResolve() && displayStatus() === 'IN_PROGRESS') {
+          <button mat-stroked-button type="button" (click)="openAddResolution()">
+            บันทึกผลการแก้ไข
+          </button>
+        }
+        @if (canResolve() && displayStatus() === 'RESOLVED') {
+          <button mat-flat-button color="primary" type="button" (click)="closeTicket()">
+            ปิดงาน
+          </button>
+        }
+        @if (canReopen() && ticket()?.status === 'CLOSED') {
+          <button mat-stroked-button type="button" (click)="openProblemReturned()">
+            เปิดปัญหาเดิมกลับมา
+          </button>
+        }
       </div>
     </header>
+
+    <nav class="ticket-stepper" aria-label="ขั้นตอนใบปัญหา">
+      @for (step of stepperSteps(); track step.status; let last = $last) {
+        <div
+          class="ticket-stepper__item"
+          [class.is-done]="step.state === 'done'"
+          [class.is-current]="step.state === 'current'"
+        >
+          <span class="ticket-stepper__dot" aria-hidden="true"></span>
+          <span class="ticket-stepper__label">{{ step.label }}</span>
+        </div>
+        @if (!last) {
+          <span
+            class="ticket-stepper__rail"
+            [class.is-done]="step.state === 'done'"
+            aria-hidden="true"
+          ></span>
+        }
+      }
+    </nav>
 
     @if (demoBanner()) {
       <p class="demo-banner">{{ demoBanner() }}</p>

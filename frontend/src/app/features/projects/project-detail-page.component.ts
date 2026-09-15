@@ -213,6 +213,16 @@ export class ProjectDetailPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('task.view');
   });
+  readonly canCreateTask = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('task.create') || this.auth.hasPermissionCode('task.update')
+    );
+  });
+  readonly canUpdateTask = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('task.update');
+  });
   readonly canViewDeliveries = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('delivery.view');
@@ -1161,6 +1171,27 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   openCreateTask(): void {
+    if (!this.canCreateTask()) {
+      this.snack.open('ไม่มีสิทธิ์เพิ่มงาน', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(TaskEditDialogComponent, {
+      ...FORM_DIALOG,
+      data: { projectId: this.projectId, task: null },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.refresh();
+      }
+    });
+  }
+
+  /** มอบหมาย = เปิดฟอร์มสร้างงาน พร้อมเลือกผู้รับผิดชอบจาก /users/assignable */
+  openAssignTask(): void {
+    if (!this.canUpdateTask() && !this.canCreateTask()) {
+      this.snack.open('ไม่มีสิทธิ์มอบหมายงาน (task.update)', 'ปิด', { duration: 3000 });
+      return;
+    }
     const ref = this.dialog.open(TaskEditDialogComponent, {
       ...FORM_DIALOG,
       data: { projectId: this.projectId, task: null },
@@ -1175,7 +1206,11 @@ export class ProjectDetailPageComponent implements OnInit {
   openEditTask(task: TaskItem): void {
     const ref = this.dialog.open(TaskEditDialogComponent, {
       ...FORM_DIALOG,
-      data: { projectId: this.projectId, task },
+      data: {
+        projectId: this.projectId,
+        task,
+        readOnly: !this.canUpdateTask(),
+      },
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {

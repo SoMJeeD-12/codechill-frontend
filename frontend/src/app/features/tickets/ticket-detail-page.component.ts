@@ -93,9 +93,27 @@ export class TicketDetailPageComponent implements OnInit {
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
   readonly users = this.usersApi.users;
   readonly canResolve = computed(() => this.auth.hasPermission('tickets', 'resolve'));
-  readonly canAssign = computed(() => this.auth.hasPermissionCode('ticket.assign'));
-  readonly canReopen = computed(() => this.auth.hasPermissionCode('ticket.reopen'));
+  readonly canAssign = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.assign');
+  });
+  readonly canReopen = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.reopen');
+  });
   readonly canChangeResolver = this.auth.isAdminLevel();
+
+  /** ผู้รับผิดชอบใบนี้เท่านั้นที่กดเริ่มได้ (BE ตรวจอีกชั้น) */
+  readonly canStartTicket = computed(() => {
+    this.auth.session();
+    this.demoOverlay.state();
+    const t = this.ticket();
+    const me = this.auth.currentUser();
+    if (!t || !me || !t.assignedUserId || t.assignedUserId !== me.id) {
+      return false;
+    }
+    return this.demoOverlay.effectiveStatus(t) === 'ASSIGNED';
+  });
 
   /** แยก description ออกจากบรรทัด「เปิดกลับมาอีกครั้ง」ที่ BE ต่อมา */
   readonly descriptionParts = computed(() =>
@@ -160,11 +178,20 @@ export class TicketDetailPageComponent implements OnInit {
     return cat ? TICKET_CATEGORY_DEMO_LABELS[cat] : null;
   });
 
-  readonly demoBanner = computed(() => {
-    if (this.displayStatus() === 'ASSIGNED') {
-      return 'ตัวอย่าง: สถานะ「ส่งให้ผู้รับผิดชอบแล้ว」จำลองฝั่ง FE — กด「เริ่มงาน」เพื่อเข้ากำลังดำเนินการ (BE ยังไม่มี ASSIGNED)';
-    }
-    return null;
+  readonly demoBanner = computed(() => null);
+
+  readonly stepperSteps = computed(() => {
+    const shown = this.displayStatus();
+    const order = ['RECEIVED', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
+    const idx =
+      shown === 'REOPENED'
+        ? order.indexOf('RECEIVED')
+        : Math.max(0, order.indexOf(shown as (typeof order)[number]));
+    return order.map((status, i) => ({
+      status,
+      label: this.statusLabels[status],
+      state: i < idx ? 'done' : i === idx ? 'current' : 'todo',
+    }));
   });
 
   readonly timelineEvents = computed(() => {
@@ -213,16 +240,26 @@ export class TicketDetailPageComponent implements OnInit {
     }
     const shown = this.displayStatus();
 
-    if (shown === 'ASSIGNED' && this.canAssign()) {
+    if (shown === 'ASSIGNED') {
+      if (this.canStartTicket()) {
+        return {
+          tone: 'warn' as const,
+          title: 'ส่งงานแล้ว — รอเริ่มดำเนินการ',
+          detail: 'คุณเป็นผู้รับผิดชอบ ต้องกด「เริ่มดำเนินการ」เองก่อนบันทึกการแก้ไข',
+          actions: [{ id: 'start' as const, label: 'เริ่มดำเนินการ', primary: true }],
+        };
+      }
       return {
         tone: 'warn' as const,
-        title: 'ส่งงานให้ผู้รับผิดชอบแล้ว',
-        detail: 'รอผู้รับผิดชอบกด「เริ่มงาน」แล้วค่อยบันทึกการแก้ไข',
-        actions: [{ id: 'start' as const, label: 'เริ่มงาน', primary: true }],
+        title: 'ส่งงานแล้ว',
+        detail: `รอ ${this.userName(t.assignedUserId)} กดเริ่มดำเนินการ`,
+        actions: this.canAssign()
+          ? [{ id: 'reassign' as const, label: 'เปลี่ยนผู้รับผิดชอบ', primary: false }]
+          : [],
       };
     }
 
-    if (t.status === 'REOPENED' && shown !== 'ASSIGNED') {
+    if (t.status === 'REOPENED') {
       if (this.canAssign()) {
         return {
           tone: 'warn' as const,
@@ -685,43 +722,42 @@ export class TicketDetailPageComponent implements OnInit {
     });
   }
 
-  /** RECEIVED → มอบหมาย (โชว์ ASSIGNED ตัวอย่างก่อนเริ่มงาน) */
+  /** RECEIVED / REOPENED → มอบหมาย → Backend คืน ASSIGNED */
   assignWork(): void {
-    this.pickAssigneeAndAssign('มอบหมายแล้ว — สถานะตัวอย่าง「ส่งให้ผู้รับผิดชอบแล้ว」', {
-      markAssignedDemo: true,
-    });
+    this.pickAssigneeAndAssign('มอบหมายแล้ว — สถานะ「ส่งงานแล้ว」รอผู้รับผิดชอบเริ่มดำเนินการ');
   }
 
-  /** ASSIGNED ตัวอย่าง → เริ่มงาน (ใช้สถานะ API จริง) */
+  /** ASSIGNED → PATCH /tickets/:id/start (ผู้รับผิดชอบเท่านั้น) */
   startAssignedWork(): void {
-    const t = this.ticket();
-    if (!t) {
+    if (!this.canStartTicket()) {
+      this.snack.open('เฉพาะผู้รับผิดชอบเท่านั้นที่เริ่มงานได้', 'ปิด', { duration: 3500 });
       return;
     }
-    this.demoOverlay.markStarted(t.id);
-    this.snack.open('เริ่มงานแล้ว — สถานะเป็นกำลังดำเนินการ', 'ปิด', {
-      duration: 2500,
+    this.ticketsApi.start(this.ticketId).subscribe({
+      next: () => {
+        this.demoOverlay.markStarted(this.ticketId);
+        this.snack.open('เริ่มดำเนินการแล้ว', 'ปิด', { duration: 2500 });
+        this.loadTicket();
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4500 }),
     });
   }
 
   /** REOPENED → รับงานรอบใหม่ (ส่งคนเดิมก็ได้) */
   pickupReopened(): void {
-    this.pickAssigneeAndAssign('รับงานรอบใหม่แล้ว — รอ「เริ่มงาน」', {
-      markAssignedDemo: true,
+    this.pickAssigneeAndAssign('รับงานรอบใหม่แล้ว — สถานะ「ส่งงานแล้ว」รอเริ่มดำเนินการ', {
       preferCurrent: true,
     });
   }
 
-  /** IN_PROGRESS → เปลี่ยนผู้รับผิดชอบ */
+  /** IN_PROGRESS / ASSIGNED → เปลี่ยนผู้รับผิดชอบ */
   changeAssignee(): void {
-    this.pickAssigneeAndAssign('เปลี่ยนผู้รับผิดชอบแล้ว', {
-      markAssignedDemo: this.displayStatus() === 'ASSIGNED',
-    });
+    this.pickAssigneeAndAssign('เปลี่ยนผู้รับผิดชอบแล้ว');
   }
 
   private pickAssigneeAndAssign(
     successMsg: string,
-    opts?: { preferCurrent?: boolean; markAssignedDemo?: boolean }
+    opts?: { preferCurrent?: boolean }
   ): void {
     if (!this.canAssign()) {
       this.snack.open('ไม่มีสิทธิ์มอบหมายงาน', 'ปิด', { duration: 3000 });
@@ -748,9 +784,12 @@ export class TicketDetailPageComponent implements OnInit {
         return;
       }
       this.ticketsApi.assign(this.ticketId, userId).subscribe({
-        next: () => {
-          if (opts?.markAssignedDemo) {
+        next: (ticket) => {
+          if (ticket.status !== 'ASSIGNED') {
+            // fallback ถ้า BE เก่าข้ามสถานะ
             this.demoOverlay.markAssigned(this.ticketId);
+          } else {
+            this.demoOverlay.markStarted(this.ticketId);
           }
           this.snack.open(successMsg, 'ปิด', { duration: 2800 });
           this.loadTicket();

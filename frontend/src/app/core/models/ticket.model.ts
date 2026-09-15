@@ -70,14 +70,23 @@ export interface TicketResolution {
 
 export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   RECEIVED: 'รับเรื่อง',
-  /** ตัวอย่าง FE — BE ยังไม่มี enum นี้ */
-  ASSIGNED: 'ส่งให้ผู้รับผิดชอบแล้ว',
+  /** BE: หลังมอบหมาย — ยังไม่เริ่มดำเนินการ */
+  ASSIGNED: 'ส่งงานแล้ว',
   IN_PROGRESS: 'กำลังดำเนินการ',
-  RESOLVED: 'แก้ไขเรียบร้อย',
+  RESOLVED: 'แก้ไขแล้ว',
   /** ปัญหาเดิมกลับมาแล้ว แต่ยังไม่มีคนรับงานรอบใหม่ */
   REOPENED: 'รอรับงานรอบใหม่',
   CLOSED: 'ปิดงาน',
 };
+
+/** ลำดับ stepper หลักของใบปัญหา (ไม่รวม REOPENED) */
+export const TICKET_STEPPER_STATUSES: TicketStatus[] = [
+  'RECEIVED',
+  'ASSIGNED',
+  'IN_PROGRESS',
+  'RESOLVED',
+  'CLOSED',
+];
 
 export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
   LOW: 'ต่ำ',

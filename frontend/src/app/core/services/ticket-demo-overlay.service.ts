@@ -141,35 +141,24 @@ export class TicketDemoOverlayService {
   }
 
   /**
-   * สถานะที่โชว์บนหน้าจอ
-   * waitingStart=true → ASSIGNED · waitingStart=false → ใช้สถานะ API
-   * RECEIVED + มีผู้รับผิดชอบ (ยังไม่กดเริ่ม) → ASSIGNED
-   * RESOLVED แต่รอบล่าสุดไม่สำเร็จครบ / overlay incomplete → IN_PROGRESS
+   * สถานะที่โชว์บนหน้าจอ — ใช้สถานะจาก Backend เป็นหลัก
+   * waitingStart เหลือเป็น fallback เฉพาะเมื่อ API ข้าม ASSIGNED ไป IN_PROGRESS ทันที
    */
   effectiveStatus(ticket: Ticket): TicketStatus {
+    if (ticket.status === 'ASSIGNED') {
+      return 'ASSIGNED';
+    }
     const o = this.snapshot(ticket.id);
     if (
       o.waitingStart === true &&
       ticket.assignedUserId &&
       (ticket.status === 'IN_PROGRESS' ||
         ticket.status === 'RECEIVED' ||
-        ticket.status === 'REOPENED' ||
-        ticket.status === 'RESOLVED')
+        ticket.status === 'REOPENED')
     ) {
       return 'ASSIGNED';
     }
-
-    let status: TicketStatus =
-      o.waitingStart === false
-        ? ticket.status
-        : ticket.status === 'RECEIVED' && ticket.assignedUserId
-          ? 'ASSIGNED'
-          : ticket.status;
-
-    if (status === 'RESOLVED' && this.isStillInProgress(ticket)) {
-      return 'IN_PROGRESS';
-    }
-    return status;
+    return ticketWorkflowStatus(ticket);
   }
 
   private isStillInProgress(ticket: Ticket): boolean {
