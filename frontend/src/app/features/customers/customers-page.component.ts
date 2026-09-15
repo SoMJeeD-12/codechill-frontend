@@ -26,6 +26,7 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { createTableSort } from '../../shared/utils/table-sort';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
@@ -86,9 +87,23 @@ export class CustomersPageComponent implements OnInit {
     );
   });
 
+  readonly tableSort = createTableSort<'name' | 'phone' | 'owner' | 'status'>('name');
+
   readonly filtered = computed(() => {
     const status = this.statusFilter();
-    return this.customers().filter((c) => status === 'ALL' || c.status === status);
+    const list = this.customers().filter((c) => status === 'ALL' || c.status === status);
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'name':
+          return row.name;
+        case 'phone':
+          return row.phone ?? '';
+        case 'owner':
+          return row.owner?.fullName ?? '';
+        case 'status':
+          return this.statusLabel(row.status);
+      }
+    });
   });
 
   readonly pager = createClientPager(this.filtered);
@@ -154,6 +169,15 @@ export class CustomersPageComponent implements OnInit {
 
   statusLabel(status: CustomerStatus): string {
     return this.statusLabels[status];
+  }
+
+  toggleSort(key: 'name' | 'phone' | 'owner' | 'status'): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(key: 'name' | 'phone' | 'owner' | 'status'): string {
+    return this.tableSort.sortIcon(key);
   }
 
   private openForm(customer?: Customer): void {

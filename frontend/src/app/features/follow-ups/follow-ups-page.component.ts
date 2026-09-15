@@ -47,6 +47,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 /** preset เมื่อสร้างจากหน้าโปรเจค/ลูกค้า */
@@ -118,44 +119,67 @@ export class FollowUpsPageComponent implements OnInit {
   );
   readonly canDelete = computed(() => this.auth.hasPermission('follow-ups', 'delete'));
 
-  /** งานที่ค้างนานสุดอยู่บนสุด — ใช้ isOverdue จาก API ห้ามคำนวณเองจากวันที่ */
-  private sortOldestFirst(list: FollowUp[]): FollowUp[] {
-    const rank = (f: FollowUp) => {
-      if (f.status === 'DONE' || f.status === 'CANCELLED') {
-        return 2;
-      }
-      return f.isOverdue ? 0 : 1;
-    };
-    return [...list].sort((a, b) => {
-      const byRank = rank(a) - rank(b);
-      if (byRank !== 0) {
-        return byRank;
-      }
-      // ครบกำหนดก่อน = ค้างนานกว่า = อยู่บนสุด
-      return a.dueDate.localeCompare(b.dueDate);
-    });
+  readonly tableSort = createTableSort<
+    'title' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
+  >('dueDate');
+
+  private overdueRank(f: FollowUp): number {
+    if (f.status === 'DONE' || f.status === 'CANCELLED') {
+      return 2;
+    }
+    return f.isOverdue ? 0 : 1;
   }
 
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
-    const list = this.sortOldestFirst(this.items());
-    if (!q) {
-      return list;
+    let list = this.items();
+    if (q) {
+      list = list.filter((f) => {
+        const customer = this.customerName(f).toLowerCase();
+        const project = this.projectLabel(f).toLowerCase();
+        const assignee = this.userName(f).toLowerCase();
+        return (
+          f.title.toLowerCase().includes(q) ||
+          (f.detail ?? '').toLowerCase().includes(q) ||
+          (f.resultNote ?? '').toLowerCase().includes(q) ||
+          customer.includes(q) ||
+          project.includes(q) ||
+          assignee.includes(q) ||
+          this.statusLabel(f).toLowerCase().includes(q) ||
+          f.dueDate.toLowerCase().includes(q)
+        );
+      });
     }
-    return list.filter((f) => {
-      const customer = this.customerName(f).toLowerCase();
-      const project = this.projectLabel(f).toLowerCase();
-      const assignee = this.userName(f).toLowerCase();
-      return (
-        f.title.toLowerCase().includes(q) ||
-        (f.detail ?? '').toLowerCase().includes(q) ||
-        (f.resultNote ?? '').toLowerCase().includes(q) ||
-        customer.includes(q) ||
-        project.includes(q) ||
-        assignee.includes(q) ||
-        this.statusLabel(f).toLowerCase().includes(q) ||
-        f.dueDate.toLowerCase().includes(q)
-      );
+
+    // เรียง dueDate: วันที่หลัก · ค้างนาน/overdue เป็นรอง
+    if (this.tableSort.sortKey() === 'dueDate') {
+      const dir = this.tableSort.sortDir() === 'asc' ? 1 : -1;
+      return [...list].sort((a, b) => {
+        const byDate = this.tableSort.cmp(a.dueDate, b.dueDate) * dir;
+        if (byDate !== 0) {
+          return byDate;
+        }
+        return this.overdueRank(a) - this.overdueRank(b);
+      });
+    }
+
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'title':
+          return row.title;
+        case 'project':
+          return this.projectLabel(row);
+        case 'customer':
+          return this.customerName(row);
+        case 'dueDate':
+          return row.dueDate;
+        case 'daysLeft':
+          return this.api.daysUntilDue(row);
+        case 'assignee':
+          return this.userName(row);
+        case 'status':
+          return this.statusLabel(row);
+      }
     });
   });
 
@@ -177,6 +201,19 @@ export class FollowUpsPageComponent implements OnInit {
   setView(view: 'all' | 'overdue' | 'planned' | 'mine'): void {
     this.view.set(view);
     this.reload();
+  }
+
+  toggleSort(
+    key: 'title' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'title' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   reload(): void {

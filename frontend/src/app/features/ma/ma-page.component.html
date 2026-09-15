@@ -42,30 +42,55 @@
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="id">
-          <th mat-header-cell *matHeaderCellDef>เลขที่สัญญา</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('id')">
+              เลขที่สัญญา
+              <mat-icon>{{ sortIcon('id') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <a class="app-link" [routerLink]="['/app/ma', row.id]">{{ contractLabel(row) }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="project">
-          <th mat-header-cell *matHeaderCellDef>โปรเจค / ลูกค้า</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('project')">
+              โปรเจค / ลูกค้า
+              <mat-icon>{{ sortIcon('project') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <a class="app-link block leading-snug" [routerLink]="['/app/ma', row.id]">{{ projectName(row) }}</a>
             <div class="mt-0.5 text-[0.82rem] leading-snug text-slate-500">{{ customerName(row) }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="plan">
-          <th mat-header-cell *matHeaderCellDef>แผน</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('plan')">
+              แผน
+              <mat-icon>{{ sortIcon('plan') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ planName(row) }}</td>
         </ng-container>
         <ng-container matColumnDef="period">
-          <th mat-header-cell *matHeaderCellDef>ระยะสัญญา</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('period')">
+              ระยะสัญญา
+              <mat-icon>{{ sortIcon('period') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             {{ row.startDate | thaiDate: 'date' }} – {{ row.endDate | thaiDate: 'date' }}
           </td>
         </ng-container>
         <ng-container matColumnDef="quota">
-          <th mat-header-cell *matHeaderCellDef>โควตา (รอบปัจจุบัน)</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('quota')">
+              โควตา (รอบปัจจุบัน)
+              <mat-icon>{{ sortIcon('quota') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <span [class.app-quota-low]="(remaining(row) ?? 999) <= 2 && row.isCurrentlyActive">
               {{ quotaLabel(row) }}
@@ -73,11 +98,21 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="fee">
-          <th mat-header-cell *matHeaderCellDef>มูลค่ารวมสัญญา</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('fee')">
+              มูลค่ารวมสัญญา
+              <mat-icon>{{ sortIcon('fee') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.price | baht }}</td>
         </ng-container>
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('status')">
+              สถานะ
+              <mat-icon>{{ sortIcon('status') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <span
               [class.app-status-active]="row.status === 'ACTIVE'"

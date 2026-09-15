@@ -1,5 +1,5 @@
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,13 +20,14 @@ import {
 import { AuditService } from '../../core/services/audit.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { createTableSort } from '../../shared/utils/table-sort';
 
 @Component({
   selector: 'app-audit-logs-page',
   standalone: true,
   imports: [
     ThaiDatePipe,
-        ReactiveFormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -55,7 +56,28 @@ export class AuditLogsPageComponent implements OnInit {
   readonly tables = AUDIT_TABLES;
   readonly actionLabels = AUDIT_ACTION_LABELS;
 
-  readonly pager = createClientPager(this.logs);
+  readonly tableSort = createTableSort<
+    'createdAt' | 'actor' | 'action' | 'table' | 'ip'
+  >('createdAt', 'desc');
+
+  readonly sorted = computed(() =>
+    this.tableSort.apply(this.logs(), (row, key) => {
+      switch (key) {
+        case 'createdAt':
+          return new Date(row.createdAt).getTime();
+        case 'actor':
+          return this.actorName(row);
+        case 'action':
+          return this.actionLabel(row.action);
+        case 'table':
+          return this.tableLabel(row.tableName);
+        case 'ip':
+          return row.ipAddress ?? '';
+      }
+    })
+  );
+
+  readonly pager = createClientPager(this.sorted);
 
   ngOnInit(): void {
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
@@ -79,6 +101,7 @@ export class AuditLogsPageComponent implements OnInit {
         next: (list) => {
           this.logs.set(list);
           this.loading.set(false);
+          this.pager.reset();
         },
         error: () => this.loading.set(false),
       });
@@ -92,6 +115,15 @@ export class AuditLogsPageComponent implements OnInit {
   setTableFilter(tableName: string | 'ALL'): void {
     this.tableFilter.set(tableName);
     this.reload();
+  }
+
+  toggleSort(key: 'createdAt' | 'actor' | 'action' | 'table' | 'ip'): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(key: 'createdAt' | 'actor' | 'action' | 'table' | 'ip'): string {
+    return this.tableSort.sortIcon(key);
   }
 
   actionLabel(action: AuditAction): string {

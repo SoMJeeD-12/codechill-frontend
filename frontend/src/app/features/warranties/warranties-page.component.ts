@@ -41,6 +41,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
+import { createTableSort } from '../../shared/utils/table-sort';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
 
 @Component({
@@ -81,6 +82,10 @@ export class WarrantiesPageComponent implements OnInit {
   readonly columns = ['code', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
   readonly maLinkLabel = warrantyMaLinkLabel;
 
+  readonly tableSort = createTableSort<
+    'code' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
+  >('daysLeft');
+
   readonly filtered = computed(() => {
     const list = this.warranties();
     const view = this.view();
@@ -91,21 +96,38 @@ export class WarrantiesPageComponent implements OnInit {
       rows = list.filter((w) => w.isCurrentlyActive);
     }
     const q = this.search().trim().toLowerCase();
-    if (!q) {
-      return rows;
+    if (q) {
+      rows = rows.filter((w) => {
+        const projectName = (w.project?.name ?? '').toLowerCase();
+        const customerName = (w.project?.customerName ?? this.customerName(w)).toLowerCase();
+        const deliveryTitle = (w.delivery?.title ?? '').toLowerCase();
+        return (
+          projectName.includes(q) ||
+          customerName.includes(q) ||
+          deliveryTitle.includes(q) ||
+          (w.code ?? '').toLowerCase().includes(q) ||
+          this.statusLabel(w.status).toLowerCase().includes(q) ||
+          (w.scopeNote ?? '').toLowerCase().includes(q)
+        );
+      });
     }
-    return rows.filter((w) => {
-      const projectName = (w.project?.name ?? '').toLowerCase();
-      const customerName = (w.project?.customerName ?? this.customerName(w)).toLowerCase();
-      const deliveryTitle = (w.delivery?.title ?? '').toLowerCase();
-      return (
-        projectName.includes(q) ||
-        customerName.includes(q) ||
-        deliveryTitle.includes(q) ||
-        (w.code ?? '').toLowerCase().includes(q) ||
-        this.statusLabel(w.status).toLowerCase().includes(q) ||
-        (w.scopeNote ?? '').toLowerCase().includes(q)
-      );
+    return this.tableSort.apply(rows, (row, key) => {
+      switch (key) {
+        case 'code':
+          return row.code ?? '';
+        case 'project':
+          return this.projectName(row);
+        case 'title':
+          return `${row.delivery?.title || 'ประกัน'} · ${row.durationMonth}`;
+        case 'period':
+          return row.endDate ?? row.startDate ?? '';
+        case 'daysLeft':
+          return this.api.daysUntilExpiry(row);
+        case 'maLink':
+          return this.maLinkLabel(row);
+        case 'status':
+          return this.statusLabel(row.status);
+      }
     });
   });
 
@@ -184,6 +206,19 @@ export class WarrantiesPageComponent implements OnInit {
 
   statusLabel(status: Warranty['status']): string {
     return this.statusLabels[status];
+  }
+
+  toggleSort(
+    key: 'code' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'code' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   openCreate(row?: Warranty): void {

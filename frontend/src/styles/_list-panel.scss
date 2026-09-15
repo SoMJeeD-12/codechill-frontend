@@ -193,6 +193,41 @@
   font-weight: 700;
 }
 
+/* ปุ่มจัดเรียงที่หัวคอลัมน์ */
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+
+  mat-icon,
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    opacity: 0.55;
+  }
+
+  &:hover {
+    color: var(--app-accent-dark);
+
+    mat-icon,
+    .mat-icon {
+      opacity: 0.9;
+      color: var(--app-accent);
+    }
+  }
+}
+
 .data-table {
   width: 100%;
   min-width: 36rem;

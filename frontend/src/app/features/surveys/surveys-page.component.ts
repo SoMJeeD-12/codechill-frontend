@@ -28,6 +28,7 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { createTableSort } from '../../shared/utils/table-sort';
 
 @Component({
   selector: 'app-surveys-page',
@@ -60,18 +61,35 @@ export class SurveysPageComponent implements OnInit {
   readonly columns = ['title', 'status', 'questions', 'responses', 'avg', 'updatedAt', 'actions'];
   readonly statusLabels = SURVEY_STATUS_LABELS;
 
+  readonly tableSort = createTableSort<
+    'title' | 'status' | 'questions' | 'responses' | 'updatedAt'
+  >('updatedAt', 'desc');
+
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
-    const list = this.surveys();
-    if (!q) {
-      return list;
+    let list = this.surveys();
+    if (q) {
+      list = list.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          (s.description ?? '').toLowerCase().includes(q) ||
+          this.statusLabels[s.status].toLowerCase().includes(q)
+      );
     }
-    return list.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        (s.description ?? '').toLowerCase().includes(q) ||
-        this.statusLabels[s.status].toLowerCase().includes(q)
-    );
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'title':
+          return row.title;
+        case 'status':
+          return this.statusLabel(row.status);
+        case 'questions':
+          return row.questions.length;
+        case 'responses':
+          return row.responseCount;
+        case 'updatedAt':
+          return new Date(row.updatedAt).getTime();
+      }
+    });
   });
 
   readonly pager = createClientPager(this.filtered);
@@ -90,6 +108,15 @@ export class SurveysPageComponent implements OnInit {
 
   statusLabel(status: SurveyStatus): string {
     return this.statusLabels[status];
+  }
+
+  toggleSort(key: 'title' | 'status' | 'questions' | 'responses' | 'updatedAt'): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(key: 'title' | 'status' | 'questions' | 'responses' | 'updatedAt'): string {
+    return this.tableSort.sortIcon(key);
   }
 
   openCreate(): void {

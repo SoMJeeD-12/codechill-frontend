@@ -16,6 +16,7 @@ import { RoleEditorDialogComponent } from './role-editor-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 
 @Component({
   selector: 'app-roles-page',
@@ -54,17 +55,30 @@ export class RolesPageComponent implements OnInit {
       : (['name', 'description', 'permissions', 'users', 'active'] as const)
   );
 
+  readonly tableSort = createTableSort<'name' | 'description' | 'users' | 'active'>('name');
+
   readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
-    const list = this.roles();
-    if (!q) {
-      return list;
+    let list = this.roles();
+    if (q) {
+      list = list.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          (r.description ?? '').toLowerCase().includes(q)
+      );
     }
-    return list.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        (r.description ?? '').toLowerCase().includes(q)
-    );
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'name':
+          return row.name;
+        case 'description':
+          return row.description ?? '';
+        case 'users':
+          return row.userCount;
+        case 'active':
+          return row.isActive ? 0 : 1;
+      }
+    });
   });
 
   readonly pager = createClientPager(this.filtered);
@@ -91,6 +105,15 @@ export class RolesPageComponent implements OnInit {
 
   moduleCount(role: Role): number {
     return new Set(role.permissions.map((p) => p.module)).size;
+  }
+
+  toggleSort(key: 'name' | 'description' | 'users' | 'active'): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(key: 'name' | 'description' | 'users' | 'active'): string {
+    return this.tableSort.sortIcon(key);
   }
 
   openCreate(): void {

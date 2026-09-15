@@ -51,19 +51,39 @@
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="createdAt">
-          <th mat-header-cell *matHeaderCellDef>เวลา</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('createdAt')">
+              เวลา
+              <mat-icon>{{ sortIcon('createdAt') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.createdAt | thaiDate }}</td>
         </ng-container>
         <ng-container matColumnDef="actor">
-          <th mat-header-cell *matHeaderCellDef>ผู้ทำ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('actor')">
+              ผู้ทำ
+              <mat-icon>{{ sortIcon('actor') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ actorName(row) }}</td>
         </ng-container>
         <ng-container matColumnDef="action">
-          <th mat-header-cell *matHeaderCellDef>การกระทำ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('action')">
+              การกระทำ
+              <mat-icon>{{ sortIcon('action') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ actionLabel(row.action) }}</td>
         </ng-container>
         <ng-container matColumnDef="table">
-          <th mat-header-cell *matHeaderCellDef>ตารางข้อมูล</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('table')">
+              ตารางข้อมูล
+              <mat-icon>{{ sortIcon('table') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             {{ tableLabel(row.tableName) }}
             @if (row.recordId != null) {
@@ -78,7 +98,12 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="ip">
-          <th mat-header-cell *matHeaderCellDef>IP</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('ip')">
+              IP
+              <mat-icon>{{ sortIcon('ip') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.ipAddress || '—' }}</td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

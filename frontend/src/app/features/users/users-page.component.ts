@@ -23,6 +23,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 
 @Component({
   selector: 'app-users-page',
@@ -69,6 +70,10 @@ export class UsersPageComponent implements OnInit {
     'actions',
   ];
 
+  readonly tableSort = createTableSort<
+    'fullName' | 'nickname' | 'username' | 'email' | 'phone' | 'accountType' | 'status'
+  >('fullName');
+
   readonly filteredUsers = computed(() => {
     const filter = this.statusFilter();
     let list = this.users();
@@ -76,20 +81,37 @@ export class UsersPageComponent implements OnInit {
       list = list.filter((u) => u.status === filter);
     }
     const q = this.search().trim().toLowerCase();
-    if (!q) {
-      return list;
+    if (q) {
+      list = list.filter((u) => {
+        return (
+          u.fullName.toLowerCase().includes(q) ||
+          (u.nickname ?? '').toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q) ||
+          (u.email ?? '').toLowerCase().includes(q) ||
+          (u.phone ?? '').includes(q) ||
+          this.accountLabel(u.accountType).toLowerCase().includes(q) ||
+          this.roleNames(u).toLowerCase().includes(q) ||
+          this.statusLabel(u.status).toLowerCase().includes(q)
+        );
+      });
     }
-    return list.filter((u) => {
-      return (
-        u.fullName.toLowerCase().includes(q) ||
-        (u.nickname ?? '').toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q) ||
-        (u.email ?? '').toLowerCase().includes(q) ||
-        (u.phone ?? '').includes(q) ||
-        this.accountLabel(u.accountType).toLowerCase().includes(q) ||
-        this.roleNames(u).toLowerCase().includes(q) ||
-        this.statusLabel(u.status).toLowerCase().includes(q)
-      );
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'fullName':
+          return row.fullName;
+        case 'nickname':
+          return row.nickname ?? '';
+        case 'username':
+          return row.username;
+        case 'email':
+          return row.email ?? '';
+        case 'phone':
+          return row.phone ?? '';
+        case 'accountType':
+          return this.accountLabel(row.accountType);
+        case 'status':
+          return this.statusLabel(row.status);
+      }
     });
   });
 
@@ -127,6 +149,19 @@ export class UsersPageComponent implements OnInit {
 
   statusLabel(status: UserStatus): string {
     return USER_STATUS_LABELS[status];
+  }
+
+  toggleSort(
+    key: 'fullName' | 'nickname' | 'username' | 'email' | 'phone' | 'accountType' | 'status'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'fullName' | 'nickname' | 'username' | 'email' | 'phone' | 'accountType' | 'status'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   openCreate(): void {

@@ -25,6 +25,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
 import { TaskKanbanBoardComponent } from '../projects/task-kanban-board.component';
 import { TaskEditDialogComponent } from '../projects/task-edit-dialog.component';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 
 export type TasksPageMode =
   | 'all'
@@ -145,25 +146,57 @@ export class TasksPageComponent implements OnInit {
     };
   });
 
+  readonly tableSort = createTableSort<
+    'title' | 'project' | 'assignee' | 'status' | 'priority' | 'dueDate' | 'startDate'
+  >('dueDate');
+
   readonly displayedTasks = computed(() => {
-    const rows = this.tasks();
-    if (this.mode() !== 'me') {
-      return rows;
+    let rows = this.tasks();
+    if (this.mode() === 'me') {
+      switch (this.myView()) {
+        case 'todo':
+          rows = rows.filter((t) => t.status === 'TODO');
+          break;
+        case 'doing':
+          rows = rows.filter((t) => t.status === 'DOING' || t.status === 'WAITING');
+          break;
+        case 'review':
+          rows = rows.filter((t) => t.status === 'REVIEW');
+          break;
+        case 'done':
+          rows = rows.filter((t) => t.status === 'DONE');
+          break;
+        case 'overdue':
+          rows = rows.filter((t) => !!t.isOverdue);
+          break;
+        default:
+          break;
+      }
     }
-    switch (this.myView()) {
-      case 'todo':
-        return rows.filter((t) => t.status === 'TODO');
-      case 'doing':
-        return rows.filter((t) => t.status === 'DOING' || t.status === 'WAITING');
-      case 'review':
-        return rows.filter((t) => t.status === 'REVIEW');
-      case 'done':
-        return rows.filter((t) => t.status === 'DONE');
-      case 'overdue':
-        return rows.filter((t) => !!t.isOverdue);
-      default:
-        return rows;
-    }
+    const priorityRank: Record<TaskPriority, number> = {
+      URGENT: 0,
+      HIGH: 1,
+      NORMAL: 2,
+      LOW: 3,
+    };
+    return this.tableSort.apply(rows, (row, key) => {
+      switch (key) {
+        case 'title':
+          return row.title;
+        case 'project':
+          return this.projectLabel(row);
+        case 'assignee':
+          return this.assigneeName(row);
+        case 'status':
+          return this.statusLabel(row.status);
+        case 'priority':
+          return priorityRank[row.priority];
+        case 'dueDate':
+          return row.dueDate ? new Date(row.dueDate).getTime() : null;
+        case 'startDate':
+          return row.startDate ? new Date(row.startDate).getTime() : null;
+      }
+    });
   });
 
   readonly columns = computed(() => {
@@ -231,6 +264,19 @@ export class TasksPageComponent implements OnInit {
       queryParams: view === 'all' ? {} : { view },
       replaceUrl: true,
     });
+  }
+
+  toggleSort(
+    key: 'title' | 'project' | 'assignee' | 'status' | 'priority' | 'dueDate' | 'startDate'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'title' | 'project' | 'assignee' | 'status' | 'priority' | 'dueDate' | 'startDate'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   private applyViewFromQuery(raw: string | null): void {

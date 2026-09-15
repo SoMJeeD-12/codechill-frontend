@@ -55,6 +55,7 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
@@ -109,6 +110,10 @@ export class MaPageComponent implements OnInit {
     'actions',
   ];
 
+  readonly tableSort = createTableSort<
+    'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'
+  >('id');
+
   readonly filtered = computed(() => {
     const list = this.contracts();
     let rows =
@@ -116,19 +121,36 @@ export class MaPageComponent implements OnInit {
         ? list.filter((c) => this.isActiveViewRow(c))
         : list;
     const q = this.search().trim().toLowerCase();
-    if (!q) {
-      return rows;
+    if (q) {
+      rows = rows.filter((c) => {
+        return (
+          String(c.id).includes(q) ||
+          (c.contractNo ?? '').toLowerCase().includes(q) ||
+          maPlanDisplayName(c).toLowerCase().includes(q) ||
+          this.customerName(c).toLowerCase().includes(q) ||
+          this.projectName(c).toLowerCase().includes(q) ||
+          this.statusLabel(c.status).toLowerCase().includes(q) ||
+          (c.note ?? '').toLowerCase().includes(q)
+        );
+      });
     }
-    return rows.filter((c) => {
-      return (
-        String(c.id).includes(q) ||
-        (c.contractNo ?? '').toLowerCase().includes(q) ||
-        maPlanDisplayName(c).toLowerCase().includes(q) ||
-        this.customerName(c).toLowerCase().includes(q) ||
-        this.projectName(c).toLowerCase().includes(q) ||
-        this.statusLabel(c.status).toLowerCase().includes(q) ||
-        (c.note ?? '').toLowerCase().includes(q)
-      );
+    return this.tableSort.apply(rows, (row, key) => {
+      switch (key) {
+        case 'id':
+          return row.contractNo?.trim() || String(row.id);
+        case 'project':
+          return this.projectName(row);
+        case 'plan':
+          return this.planName(row);
+        case 'period':
+          return row.endDate ?? row.startDate ?? '';
+        case 'quota':
+          return this.remaining(row);
+        case 'fee':
+          return Number(row.price) || 0;
+        case 'status':
+          return this.statusLabel(row.status);
+      }
     });
   });
 
@@ -243,6 +265,15 @@ export class MaPageComponent implements OnInit {
 
   statusLabel(status: MaContract['status']): string {
     return this.statusLabels[status];
+  }
+
+  toggleSort(key: 'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(key: 'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'): string {
+    return this.tableSort.sortIcon(key);
   }
 
   openCreate(row?: MaContract): void {

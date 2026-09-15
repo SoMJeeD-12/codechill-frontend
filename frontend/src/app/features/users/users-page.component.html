@@ -44,27 +44,57 @@
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="fullName">
-          <th mat-header-cell *matHeaderCellDef>ชื่อ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('fullName')">
+              ชื่อ
+              <mat-icon>{{ sortIcon('fullName') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.fullName }}</td>
         </ng-container>
         <ng-container matColumnDef="nickname">
-          <th mat-header-cell *matHeaderCellDef>ชื่อเล่น</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('nickname')">
+              ชื่อเล่น
+              <mat-icon>{{ sortIcon('nickname') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.nickname || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="username">
-          <th mat-header-cell *matHeaderCellDef>ชื่อผู้ใช้</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('username')">
+              ชื่อผู้ใช้
+              <mat-icon>{{ sortIcon('username') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.username }}</td>
         </ng-container>
         <ng-container matColumnDef="email">
-          <th mat-header-cell *matHeaderCellDef>อีเมล</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('email')">
+              อีเมล
+              <mat-icon>{{ sortIcon('email') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.email || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef>โทรศัพท์</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('phone')">
+              โทรศัพท์
+              <mat-icon>{{ sortIcon('phone') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.phone || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="accountType">
-          <th mat-header-cell *matHeaderCellDef>ระดับบัญชี</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('accountType')">
+              ระดับบัญชี
+              <mat-icon>{{ sortIcon('accountType') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <span
               class="pill"
@@ -80,7 +110,12 @@
           <td mat-cell *matCellDef="let row">{{ roleNames(row) }}</td>
         </ng-container>
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('status')">
+              สถานะ
+              <mat-icon>{{ sortIcon('status') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             @if (row.accountType === 'SUPER_ADMIN') {
               <span class="status-badge" [attr.data-status]="row.status">

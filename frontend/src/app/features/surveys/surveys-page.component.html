@@ -28,14 +28,24 @@
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="title">
-          <th mat-header-cell *matHeaderCellDef>แบบประเมิน</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('title')">
+              แบบประเมิน
+              <mat-icon>{{ sortIcon('title') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <a class="app-link" [routerLink]="['/app/surveys', row.id]"><strong>{{ row.title }}</strong></a>
             <div class="app-muted text-sm">{{ row.description || '—' }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('status')">
+              สถานะ
+              <mat-icon>{{ sortIcon('status') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <span class="status" [attr.data-status]="row.status">{{ statusLabel(row.status) }}</span>
             @if (row.status === 'ACTIVE' && !row.isCurrentlyUsable) {
@@ -44,11 +54,21 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="questions">
-          <th mat-header-cell *matHeaderCellDef>คำถาม</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('questions')">
+              คำถาม
+              <mat-icon>{{ sortIcon('questions') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.questions.length }}</td>
         </ng-container>
         <ng-container matColumnDef="responses">
-          <th mat-header-cell *matHeaderCellDef>คำตอบ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('responses')">
+              คำตอบ
+              <mat-icon>{{ sortIcon('responses') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.responseCount }}</td>
         </ng-container>
         <ng-container matColumnDef="avg">
@@ -56,7 +76,12 @@
           <td mat-cell *matCellDef="let row" class="muted">ดูในรายละเอียด</td>
         </ng-container>
         <ng-container matColumnDef="updatedAt">
-          <th mat-header-cell *matHeaderCellDef>อัปเดต</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('updatedAt')">
+              อัปเดต
+              <mat-icon>{{ sortIcon('updatedAt') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.updatedAt | thaiDate: 'date' }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">

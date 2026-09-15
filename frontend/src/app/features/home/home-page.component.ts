@@ -247,7 +247,11 @@ export class HomePageComponent implements OnInit {
             : null
         );
 
-        this.myTickets.set(data.myTickets);
+        this.myTickets.set(
+          [...data.myTickets]
+            .sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue))
+            .slice(0, 8)
+        );
         // งานที่ยังไม่เสร็จ — เรียงงานเลยกำหนดขึ้นก่อน
         this.myTasks.set(
           data.myTasks

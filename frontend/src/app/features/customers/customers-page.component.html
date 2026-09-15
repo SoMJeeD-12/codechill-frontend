@@ -57,7 +57,12 @@
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>ชื่อลูกค้า</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('name')">
+              ชื่อลูกค้า
+              <mat-icon>{{ sortIcon('name') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             @if (is360Mode) {
               <a [routerLink]="['/app/customer-360', row.id]">{{ row.name }}</a>
@@ -70,15 +75,30 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef>โทรศัพท์</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('phone')">
+              โทรศัพท์
+              <mat-icon>{{ sortIcon('phone') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.phone || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="owner">
-          <th mat-header-cell *matHeaderCellDef>ผู้ดูแล</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('owner')">
+              ผู้ดูแล
+              <mat-icon>{{ sortIcon('owner') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ row.owner?.fullName || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('status')">
+              สถานะ
+              <mat-icon>{{ sortIcon('status') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">{{ statusLabel(row.status) }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">

@@ -37,6 +37,7 @@ import { openConfirmDialog } from '../../shared/components/confirm-dialog.compon
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 
 const MAX_LOCAL_FILE_BYTES = 1_500_000;
 
@@ -167,6 +168,10 @@ export class DocumentsPageComponent implements OnInit {
     );
   });
 
+  readonly tableSort = createTableSort<
+    'title' | 'project' | 'category' | 'file' | 'version' | 'updatedAt'
+  >('updatedAt', 'desc');
+
   readonly filtered = computed(() => {
     const filter = this.projectFilter();
     const q = this.search().trim().toLowerCase();
@@ -174,27 +179,42 @@ export class DocumentsPageComponent implements OnInit {
     if (filter !== 'ALL') {
       list = list.filter((d) => d.projectId === filter);
     }
-    if (!q) {
-      return list;
+    if (q) {
+      list = list.filter((d) => {
+        const project = this.projectsApi.getProject(d.projectId);
+        const projectText = project ? project.name.toLowerCase() : '';
+        const versions = this.api.getVersions(d.id);
+        const fileMatch = versions.some(
+          (v) =>
+            v.fileName.toLowerCase().includes(q) ||
+            v.version.toLowerCase().includes(q) ||
+            (v.note ?? '').toLowerCase().includes(q)
+        );
+        return (
+          d.title.toLowerCase().includes(q) ||
+          this.customerName(d.customerId).toLowerCase().includes(q) ||
+          projectText.includes(q) ||
+          this.categoryLabels[d.category].toLowerCase().includes(q) ||
+          d.currentVersion.toLowerCase().includes(q) ||
+          fileMatch
+        );
+      });
     }
-    return list.filter((d) => {
-      const project = this.projectsApi.getProject(d.projectId);
-      const projectText = project ? project.name.toLowerCase() : '';
-      const versions = this.api.getVersions(d.id);
-      const fileMatch = versions.some(
-        (v) =>
-          v.fileName.toLowerCase().includes(q) ||
-          v.version.toLowerCase().includes(q) ||
-          (v.note ?? '').toLowerCase().includes(q)
-      );
-      return (
-        d.title.toLowerCase().includes(q) ||
-        this.customerName(d.customerId).toLowerCase().includes(q) ||
-        projectText.includes(q) ||
-        this.categoryLabels[d.category].toLowerCase().includes(q) ||
-        d.currentVersion.toLowerCase().includes(q) ||
-        fileMatch
-      );
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'title':
+          return row.title;
+        case 'project':
+          return this.projectLabel(row.projectId);
+        case 'category':
+          return this.categoryLabel(row.category);
+        case 'file':
+          return this.currentFileName(row);
+        case 'version':
+          return row.currentVersion;
+        case 'updatedAt':
+          return new Date(row.updatedAt).getTime();
+      }
     });
   });
 
@@ -293,6 +313,19 @@ export class DocumentsPageComponent implements OnInit {
 
   categoryLabel(category: ProjectDocument['category']): string {
     return this.categoryLabels[category];
+  }
+
+  toggleSort(
+    key: 'title' | 'project' | 'category' | 'file' | 'version' | 'updatedAt'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'title' | 'project' | 'category' | 'file' | 'version' | 'updatedAt'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   currentFileName(doc: ProjectDocument): string {

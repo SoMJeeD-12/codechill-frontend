@@ -55,6 +55,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 import { ApiToastService } from '../../shared/services/api-toast.service';
 import { Router } from '@angular/router';
 import { Customer } from '../../core/models/customer.model';
@@ -116,6 +117,11 @@ export class ProjectsPageComponent implements OnInit {
     'actions',
   ];
 
+  /** คอลัมน์ที่จัดเรียงได้ */
+  readonly tableSort = createTableSort<
+    'code' | 'name' | 'customer' | 'status' | 'progress' | 'manager' | 'targetEndDate'
+  >('code');
+
   readonly canUpdate = computed(() => {
     this.auth.session();
     return (
@@ -138,14 +144,25 @@ export class ProjectsPageComponent implements OnInit {
       CLOSED: 3,
       CANCELLED: 4,
     };
-    return [...list].sort((a, b) => {
-      const byStatus = statusRank[a.status] - statusRank[b.status];
-      if (byStatus !== 0) {
-        return byStatus;
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'code':
+          return row.code || '';
+        case 'name':
+          return row.name;
+        case 'customer':
+          return this.customerName(row.customerId);
+        case 'status':
+          return statusRank[row.status];
+        case 'progress':
+          return this.progress(row.id) ?? -1;
+        case 'manager':
+          return row.manager?.fullName || '';
+        case 'targetEndDate':
+          return row.targetEndDate
+            ? new Date(row.targetEndDate).getTime()
+            : Number.MAX_SAFE_INTEGER;
       }
-      const aEnd = a.targetEndDate ? new Date(a.targetEndDate).getTime() : Number.MAX_SAFE_INTEGER;
-      const bEnd = b.targetEndDate ? new Date(b.targetEndDate).getTime() : Number.MAX_SAFE_INTEGER;
-      return aEnd - bEnd;
     });
   });
 
@@ -160,6 +177,24 @@ export class ProjectsPageComponent implements OnInit {
         this.pager.reset();
         this.reload();
       });
+  }
+
+  setStatusFilter(status: ProjectStatus | 'ALL'): void {
+    this.statusFilter.set(status);
+    this.pager.reset();
+  }
+
+  toggleSort(
+    key: 'code' | 'name' | 'customer' | 'status' | 'progress' | 'manager' | 'targetEndDate'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'code' | 'name' | 'customer' | 'status' | 'progress' | 'manager' | 'targetEndDate'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   reload(): void {

@@ -30,6 +30,7 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
+import { createTableSort } from '../../shared/utils/table-sort';
 import { TicketFormDialogComponent } from './ticket-form-dialog.component';
 
 @Component({
@@ -100,6 +101,10 @@ export class TicketsPageComponent implements OnInit {
     'actions',
   ];
 
+  readonly tableSort = createTableSort<
+    'ticketNo' | 'priority' | 'title' | 'status' | 'customer' | 'reportedAt'
+  >('priority');
+
   readonly openCount = computed(
     () => this.tickets().filter((t) => this.isOpen(t)).length
   );
@@ -116,12 +121,21 @@ export class TicketsPageComponent implements OnInit {
       NORMAL: 2,
       LOW: 3,
     };
-    return [...list].sort((a, b) => {
-      const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
-      if (byPriority !== 0) {
-        return byPriority;
+    return this.tableSort.apply(list, (row, key) => {
+      switch (key) {
+        case 'ticketNo':
+          return row.ticketNo ?? '';
+        case 'priority':
+          return priorityRank[row.priority];
+        case 'title':
+          return row.title;
+        case 'status':
+          return this.statusLabelFor(row);
+        case 'customer':
+          return this.customerName(row);
+        case 'reportedAt':
+          return new Date(row.reportedAt).getTime();
       }
-      return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
     });
   });
 
@@ -179,6 +193,19 @@ export class TicketsPageComponent implements OnInit {
   setView(view: 'open' | 'all'): void {
     this.view.set(view);
     this.pager.reset();
+  }
+
+  toggleSort(
+    key: 'ticketNo' | 'priority' | 'title' | 'status' | 'customer' | 'reportedAt'
+  ): void {
+    this.tableSort.toggleSort(key);
+    this.pager.reset();
+  }
+
+  sortIcon(
+    key: 'ticketNo' | 'priority' | 'title' | 'status' | 'customer' | 'reportedAt'
+  ): string {
+    return this.tableSort.sortIcon(key);
   }
 
   /** ใช้ flag จาก API ก่อนเสมอ — รวมสถานะ ASSIGNED / สำเร็จบางส่วนยังไม่จบ */

@@ -35,7 +35,7 @@
           type="button"
           class="ui-chip"
           [class.is-active]="statusFilter() === 'ALL'"
-          (click)="statusFilter.set('ALL')"
+          (click)="setStatusFilter('ALL')"
         >
           ทั้งหมด
         </button>
@@ -44,7 +44,7 @@
             type="button"
             class="ui-chip"
             [class.is-active]="statusFilter() === s"
-            (click)="statusFilter.set(s)"
+            (click)="setStatusFilter(s)"
           >
             {{ statusLabels[s] }}
           </button>
@@ -55,13 +55,23 @@
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
         <ng-container matColumnDef="code">
-          <th mat-header-cell *matHeaderCellDef class="col-sticky-start">รหัส</th>
+          <th mat-header-cell *matHeaderCellDef class="col-sticky-start">
+            <button type="button" class="sort-header" (click)="toggleSort('code')">
+              รหัส
+              <mat-icon>{{ sortIcon('code') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row" class="col-sticky-start">
             <app-code-label [value]="row.code" />
           </td>
         </ng-container>
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>ชื่อโปรเจค</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('name')">
+              ชื่อโปรเจค
+              <mat-icon>{{ sortIcon('name') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <a
               [routerLink]="['/app/projects', row.id]"
@@ -71,25 +81,45 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="customer">
-          <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('customer')">
+              ลูกค้า
+              <mat-icon>{{ sortIcon('customer') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <span class="cell-clip cell-clip--sm">{{ customerName(row.customerId) }}</span>
           </td>
         </ng-container>
         <ng-container matColumnDef="manager">
-          <th mat-header-cell *matHeaderCellDef class="col-hide-md">ผู้จัดการ</th>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-md">
+            <button type="button" class="sort-header" (click)="toggleSort('manager')">
+              ผู้จัดการ
+              <mat-icon>{{ sortIcon('manager') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row" class="col-hide-md">
             <span class="cell-clip cell-clip--sm">{{ row.manager?.fullName || '—' }}</span>
           </td>
         </ng-container>
         <ng-container matColumnDef="targetEndDate">
-          <th mat-header-cell *matHeaderCellDef class="col-hide-lg">กำหนดส่ง</th>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-lg">
+            <button type="button" class="sort-header" (click)="toggleSort('targetEndDate')">
+              กำหนดส่ง
+              <mat-icon>{{ sortIcon('targetEndDate') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row" class="col-hide-lg">
             {{ row.targetEndDate ? (row.targetEndDate | thaiDate: 'date') : '—' }}
           </td>
         </ng-container>
         <ng-container matColumnDef="progress">
-          <th mat-header-cell *matHeaderCellDef class="col-hide-md">ความคืบหน้า</th>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-md">
+            <button type="button" class="sort-header" (click)="toggleSort('progress')">
+              ความคืบหน้า
+              <mat-icon>{{ sortIcon('progress') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row" class="col-hide-md">
             @if (progress(row.id); as pct) {
               <span class="progress-cell">
@@ -104,7 +134,12 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <th mat-header-cell *matHeaderCellDef>
+            <button type="button" class="sort-header" (click)="toggleSort('status')">
+              สถานะ
+              <mat-icon>{{ sortIcon('status') }}</mat-icon>
+            </button>
+          </th>
           <td mat-cell *matCellDef="let row">
             <span class="status" [attr.data-status]="row.status">{{ statusLabel(row.status) }}</span>
           </td>
