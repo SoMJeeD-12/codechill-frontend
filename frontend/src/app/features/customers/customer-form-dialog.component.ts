@@ -16,6 +16,7 @@ import {
   Customer,
   CustomerStatus,
 } from '../../core/models/customer.model';
+import { AuthService } from '../../core/services/auth.service';
 import { CustomerInput, CustomerService } from '../../core/services/customer.service';
 import { UserService } from '../../core/services/user.service';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
@@ -41,6 +42,7 @@ export class CustomerFormDialogComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(CustomerService);
   private readonly usersApi = inject(UserService);
+  private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<CustomerFormDialogComponent, boolean | Customer>);
   readonly data = inject<{ customer: Customer | null; returnCustomer?: boolean }>(MAT_DIALOG_DATA);
@@ -72,7 +74,9 @@ export class CustomerFormDialogComponent {
   });
 
   constructor() {
-    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({ error: () => undefined });
+    this.usersApi
+      .loadForPicker(this.auth.currentUser(), { capability: 'TASK' })
+      .subscribe({ error: () => undefined });
     const c = this.data.customer;
     if (c) {
       this.form.patchValue({

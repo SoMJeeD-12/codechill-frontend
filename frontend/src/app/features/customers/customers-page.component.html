@@ -55,7 +55,12 @@
     </div>
 
     <div class="app-panel-body">
-      <table mat-table [dataSource]="pager.paged()" class="data-table">
+      <table
+        mat-table
+        [dataSource]="pager.paged()"
+        class="data-table customers-table"
+        [class.is-360]="is360Mode"
+      >
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('name')">

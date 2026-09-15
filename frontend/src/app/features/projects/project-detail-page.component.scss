@@ -19,7 +19,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   margin: 0.35rem 0 0;
 }
 
@@ -362,29 +362,45 @@
 }
 
 .project-status-badge {
-  &[data-project-status='DRAFT'] {
-    background: #f1f5f4;
-    color: #5b6762;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 0.34rem 0.85rem;
+  border: 1px solid transparent;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.04);
+
+  &[data-project-status='DRAFT'],
+  &[data-status='DRAFT'] {
+    background: #e2e8f0;
+    color: #1e293b;
+    border-color: #94a3b8;
   }
 
-  &[data-project-status='IN_PROGRESS'] {
-    background: #eff6ff;
-    color: #1d4ed8;
+  &[data-project-status='IN_PROGRESS'],
+  &[data-status='IN_PROGRESS'] {
+    background: #bae6fd;
+    color: #0c4a6e;
+    border-color: #38bdf8;
   }
 
-  &[data-project-status='DELIVERED'] {
-    background: #ecfdf5;
-    color: #0f766e;
+  &[data-project-status='DELIVERED'],
+  &[data-status='DELIVERED'] {
+    background: #bbf7d0;
+    color: #14532d;
+    border-color: #4ade80;
   }
 
-  &[data-project-status='CLOSED'] {
-    background: #eef2ff;
-    color: #4338ca;
+  &[data-project-status='CLOSED'],
+  &[data-status='CLOSED'] {
+    background: #c7d2fe;
+    color: #312e81;
+    border-color: #818cf8;
   }
 
-  &[data-project-status='CANCELLED'] {
-    background: #fef2f2;
-    color: #b91c1c;
+  &[data-project-status='CANCELLED'],
+  &[data-status='CANCELLED'] {
+    background: #fecaca;
+    color: #7f1d1d;
+    border-color: #f87171;
   }
 }
 

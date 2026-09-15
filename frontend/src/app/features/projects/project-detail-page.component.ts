@@ -319,11 +319,11 @@ export class ProjectDetailPageComponent implements OnInit {
     const blockers = items.filter((i) => !i.ok).map((i) => i.label);
 
     if (status === 'DRAFT') {
-      // ปุ่มเริ่มอยู่ที่หัวหน้า「ขั้นถัดไป」แล้ว — แถบนี้แค่บอกเหตุผล ไม่ซ้ำปุ่ม
+      // ปุ่มเริ่มอยู่ที่หัวหน้า「เริ่มงาน」แล้ว — แถบนี้แค่บอกเหตุผล ไม่ซ้ำปุ่ม
       return {
         title: 'โปรเจคยังเป็นร่าง',
         detail:
-          'กด「ขั้นถัดไป · กำลังดำเนินการ」ด้านบนก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
+          'กด「เริ่มงาน」ด้านบนก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
         blockers: [] as string[],
       };
     }
@@ -1223,7 +1223,7 @@ export class ProjectDetailPageComponent implements OnInit {
         this.snack.open('ไม่มีสิทธิ์บันทึกการส่งมอบ', 'ปิด', { duration: 3000 });
       } else if (status === 'DRAFT') {
         this.snack.open(
-          'โปรเจคยังเป็นร่าง — กด「ขั้นถัดไป · กำลังดำเนินการ」ก่อนจึงบันทึกการส่งมอบได้',
+          'โปรเจคยังเป็นร่าง — กด「เริ่มงาน」ก่อนจึงบันทึกการส่งมอบได้',
           'ปิด',
           { duration: 4500 }
         );

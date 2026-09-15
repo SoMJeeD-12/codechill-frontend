@@ -395,7 +395,9 @@ export class ProjectFormDialogComponent {
   private selectedCustomerSnapshot: Customer | null = null;
 
   constructor() {
-    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({ error: () => undefined });
+    this.usersApi
+      .loadForPicker(this.auth.currentUser(), { capability: 'TASK' })
+      .subscribe({ error: () => undefined });
 
     if (!this.isEdit && this.canViewCustomer()) {
       this.customerSearchControl.valueChanges

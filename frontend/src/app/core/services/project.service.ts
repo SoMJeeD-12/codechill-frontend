@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
@@ -354,12 +354,34 @@ export class ProjectService {
     );
   }
 
-  /** PATCH /tasks/{id}/status */
+  /** PATCH /tasks/{id}/status — เริ่มงาน (DOING) ครั้งแรกจะดันโปรเจคจากร่าง → กำลังดำเนินการ */
   updateTaskStatus(taskId: number, status: TaskStatus): Observable<TaskItem> {
     return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/status`, { status }).pipe(
       map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
       tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
+      switchMap((task) => this.promoteDraftProjectIfStarting(task, status)),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /** กดเริ่มงานแล้ว โปรเจคยังเป็นร่าง → เปลี่ยนเป็นกำลังดำเนินการอัตโนมัติ */
+  private promoteDraftProjectIfStarting(
+    task: TaskItem,
+    status: TaskStatus
+  ): Observable<TaskItem> {
+    if (status !== 'DOING') {
+      return of(task);
+    }
+    const cached = this.getProject(task.projectId);
+    const draft =
+      cached?.status === 'DRAFT' ||
+      (!cached && task.project?.status === 'DRAFT');
+    if (!draft) {
+      return of(task);
+    }
+    return this.updateProject(task.projectId, { status: 'IN_PROGRESS' }).pipe(
+      map(() => task),
+      catchError((err) => throwError(() => err))
     );
   }
 

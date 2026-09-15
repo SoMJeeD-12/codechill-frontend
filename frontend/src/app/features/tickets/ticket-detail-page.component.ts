@@ -269,18 +269,8 @@ export class TicketDetailPageComponent implements OnInit {
     const shown = this.displayStatus();
 
     if (shown === 'ASSIGNED') {
-      // ผู้รับผิดชอบมีปุ่ม「เริ่มดำเนินการ」ที่หัวแล้ว — ไม่ซ้ำแถบเหลือง
-      if (this.canStartTicket()) {
-        return null;
-      }
-      return {
-        tone: 'warn' as const,
-        title: 'ส่งงานแล้ว',
-        detail: `รอ ${this.userName(t.assignedUserId)} กดเริ่มดำเนินการ`,
-        actions: this.canAssign()
-          ? [{ id: 'reassign' as const, label: 'เปลี่ยนผู้รับผิดชอบ', primary: false }]
-          : [],
-      };
+      // ปุ่ม「เริ่มดำเนินการ」/「เปลี่ยนผู้รับผิดชอบ」อยู่ที่หัวแล้ว — ไม่ซ้ำแถบเหลือง
+      return null;
     }
 
     if (t.status === 'REOPENED') {
@@ -690,7 +680,7 @@ export class TicketDetailPageComponent implements OnInit {
       return;
     }
     const last = [...this.resolutions()].sort((a, b) => b.round - a.round)[0] ?? null;
-    this.usersApi.listAssignable('TICKET').subscribe({
+    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TICKET' }).subscribe({
       next: (users) => {
         const ref = this.dialog.open(TicketProblemReturnedDialogComponent, {
           ...FORM_DIALOG,
@@ -802,8 +792,16 @@ export class TicketDetailPageComponent implements OnInit {
       me?.id ??
       null;
 
-    this.usersApi.listAssignable('TICKET').subscribe({
+    this.usersApi.loadForPicker(me, { capability: 'TICKET' }).subscribe({
       next: (users) => {
+        if (!users.length) {
+          this.snack.open(
+            'ยังไม่มีรายชื่อผู้รับผิดชอบในระบบ — เพิ่มผู้ใช้ที่มีสิทธิ์รับใบปัญหาก่อน',
+            'ปิด',
+            { duration: 4500 }
+          );
+          return;
+        }
         const ref = this.dialog.open(TicketAssignDialogComponent, {
           ...FORM_DIALOG_COMPACT,
           data: {

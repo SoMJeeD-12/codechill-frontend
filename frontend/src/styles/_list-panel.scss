@@ -289,7 +289,7 @@
     z-index: 3;
   }
 
-  /* คอลัมน์สุดท้ายติดขวา — ปุ่ม actions ฯลฯ */
+  /* คอลัมน์สุดท้ายติดขวา — ปุ่ม actions ฯลฯ · ต้องกว้างพอไม่ให้ปุ่มล้นทับคอลัมน์ก่อน */
   .mat-mdc-header-cell:last-of-type,
   .mat-mdc-cell:last-of-type,
   .col-sticky-end {
@@ -300,7 +300,8 @@
     box-shadow: -1px 0 0 #eef2f0;
     text-align: right;
     white-space: nowrap;
-    width: 1%;
+    width: 12rem;
+    min-width: 10rem;
     overflow: visible;
   }
 
@@ -333,16 +334,33 @@
     max-width: 100%;
   }
 
-  /* คอลัมน์สถานะ/ป้าย/ปุ่ม — กว้างตามเนื้อหา ไม่ยืด */
+  /* คอลัมน์สั้น — กว้างพออ่านได้ ไม่ยุบจนเนื้อหาล้นทับคอลัมน์ข้าง */
   .mat-column-status,
   .mat-column-priority,
-  .mat-column-actions,
   .mat-column-isActive,
   .mat-column-active,
-  .mat-column-isOverdue,
-  .mat-column-phone,
+  .mat-column-isOverdue {
+    width: 9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mat-column-phone {
+    width: 8.5rem;
+    white-space: nowrap;
+  }
+
   .mat-column-owner {
-    width: 1%;
+    width: 9.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mat-column-actions {
+    width: 12rem;
+    min-width: 10rem;
     white-space: nowrap;
     overflow: visible;
   }
@@ -597,10 +615,11 @@
     color: #64748b;
   }
 
-  /* ร่าง */
+  /* ร่าง — ต้องมองเห็นชัด ไม่กลืนกับพื้นหลัง */
   &[data-status='DRAFT'] {
-    background: #f8fafc;
-    color: #94a3b8;
+    background: #e2e8f0;
+    color: #1e293b;
+    box-shadow: inset 0 0 0 1px #94a3b8;
   }
 }
 

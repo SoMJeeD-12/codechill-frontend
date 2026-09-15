@@ -474,15 +474,14 @@ export class TasksPageComponent implements OnInit {
           break;
         case 'DOING':
           actions.push({ label: 'พักงาน', status: 'WAITING', kind: 'status' });
+          // ส่งตรวจได้หลังเข้าเฟสกำลังทำเท่านั้น
+          actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
           break;
         case 'WAITING':
           actions.push({ label: 'กลับมาทำ', status: 'DOING', kind: 'status' });
           break;
         default:
           break;
-      }
-      if (task.status !== 'REVIEW' && task.status !== 'DONE') {
-        actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
       }
       return actions;
     }
@@ -493,17 +492,20 @@ export class TasksPageComponent implements OnInit {
           return [];
         }
         return [{ label: 'เริ่มงาน', status: 'DOING', kind: 'status' }];
-      case 'DOING':
+      case 'DOING': {
+        if (!this.isOwnAssignment(task)) {
+          return [];
+        }
+        return [
+          { label: 'พักงาน', status: 'WAITING', kind: 'status' },
+          { label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' },
+        ];
+      }
       case 'WAITING': {
         if (!this.isOwnAssignment(task)) {
           return [];
         }
-        const actions: { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] =
-          task.status === 'DOING'
-            ? [{ label: 'พักงาน', status: 'WAITING', kind: 'status' }]
-            : [{ label: 'กลับมาทำ', status: 'DOING', kind: 'status' }];
-        actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
-        return actions;
+        return [{ label: 'กลับมาทำ', status: 'DOING', kind: 'status' }];
       }
       case 'REVIEW':
         return [];
@@ -559,9 +561,12 @@ export class TasksPageComponent implements OnInit {
     });
   }
 
-  /** เปิดฟอร์มรายงานผลการทำงาน (ผู้รับผิดชอบ) — ห้ามเรียก PATCH /review */
+  /** เปิดฟอร์มรายงานผลการทำงาน (ผู้รับผิดชอบ) — เฉพาะสถานะกำลังทำ (DOING) */
   openSubmitReport(task: TaskItem): void {
-    if (task.status === 'REVIEW' || task.status === 'DONE') {
+    if (task.status !== 'DOING') {
+      this.snack.open('ส่งตรวจได้เมื่อเข้าเฟสกำลังทำแล้วเท่านั้น — กด「เริ่มงาน」ก่อน', 'ปิด', {
+        duration: 3500,
+      });
       return;
     }
     const ref = this.dialog.open(TaskSubmitReportDialogComponent, {

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, of, throwError } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
 import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
@@ -103,20 +103,55 @@ export class UserService {
   }
 
   /**
-   * สำหรับดรอปดาวน์มอบหมาย — ต้องระบุ capability ตามประเภทงาน
-   * seed ใส่แคชชื่อแสดงผลก่อน แล้วดึงรายการ assignable ทับในแมป capability
+   * สำหรับดรอปดาวน์มอบหมาย / ผู้จัดการ / ผู้ดูแล
+   * - ใส่ seed (เช่น user ที่ล็อกอิน) ในรายการเสมอ
+   * - ถ้า /users/assignable ว่าง → ใช้รายชื่อ ACTIVE จาก /users เป็นทางเลือก
    */
   loadForPicker(
     seed?: User | UserSummary | null,
     opts?: { capability: AssignableCapability }
   ): Observable<User[]> {
+    const capability = opts?.capability ?? 'TASK';
     if (seed) {
       this.upsertLocal(seed);
     }
-    const capability = opts?.capability ?? 'TASK';
     return this.listAssignable(capability).pipe(
-      catchError(() => of(this.assignableMap()[capability] ?? []))
+      switchMap((list) => {
+        if (list.length > 0) {
+          return of(this.mergeSeedIntoAssignable(capability, list, seed));
+        }
+        return this.list({ status: 'ACTIVE', limit: 100 }).pipe(
+          map((users) => this.mergeSeedIntoAssignable(capability, users, seed)),
+          catchError(() => of(this.mergeSeedIntoAssignable(capability, [], seed)))
+        );
+      }),
+      catchError(() =>
+        this.list({ status: 'ACTIVE', limit: 100 }).pipe(
+          map((users) => this.mergeSeedIntoAssignable(capability, users, seed)),
+          catchError(() => of(this.mergeSeedIntoAssignable(capability, [], seed)))
+        )
+      )
     );
+  }
+
+  /** รวม seed เข้า assignable map — ให้ดรอปดาวน์มีอย่างน้อยคนที่ล็อกอินอยู่ */
+  private mergeSeedIntoAssignable(
+    capability: AssignableCapability,
+    list: User[],
+    seed?: User | UserSummary | null
+  ): User[] {
+    let merged = list;
+    if (seed) {
+      const u = this.toUser(seed);
+      if (!merged.some((x) => x.id === u.id)) {
+        merged = [u, ...merged];
+      }
+    }
+    this.assignableMap.update((prev) => ({ ...prev, [capability]: merged }));
+    for (const user of merged) {
+      this.upsertLocal(user);
+    }
+    return merged;
   }
 
   clearCache(): void {

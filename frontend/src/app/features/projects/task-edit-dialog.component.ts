@@ -1,5 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
@@ -31,6 +38,20 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { TaskSubmitReportDialogComponent } from './task-submit-report-dialog.component';
+
+/** วันครบกำหนดต้องไม่ก่อนวันเริ่มงาน */
+const dueNotBeforeStartValidator: ValidatorFn = (
+  control: AbstractControl
+): ValidationErrors | null => {
+  const due = control.value as Date | null | undefined;
+  const start = control.parent?.get('startDate')?.value as Date | null | undefined;
+  if (!start || !due) {
+    return null;
+  }
+  const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const dueDay = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+  return dueDay < startDay ? { dueBeforeStart: true } : null;
+};
 
 export interface TaskDialogData {
   projectId: number;
@@ -120,19 +141,25 @@ export class TaskEditDialogComponent implements OnInit {
     priority: [(this.data.task?.priority ?? 'NORMAL') as TaskPriority, Validators.required],
     assignedUserId: [this.data.task?.assignedUserId ?? (null as number | null)],
     startDate: [parseDateOnly(this.data.task?.startDate) as Date | null],
-    dueDate: [parseDateOnly(this.data.task?.dueDate) as Date | null],
+    dueDate: [
+      parseDateOnly(this.data.task?.dueDate) as Date | null,
+      dueNotBeforeStartValidator,
+    ],
     actualHours: [this.data.task?.actualHours ?? (null as number | null)],
   });
 
   constructor() {
     // GET /users/assignable?capability=TASK — ไม่กรอง Role ฝั่ง FE
-    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({
+    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TASK' }).subscribe({
       error: () => undefined,
     });
     this.form.controls.status.valueChanges.subscribe((value) => {
       if (value) {
         this.status.set(value);
       }
+    });
+    this.form.controls.startDate.valueChanges.subscribe(() => {
+      this.form.controls.dueDate.updateValueAndValidity({ emitEvent: false });
     });
     if (!this.canUpdate()) {
       this.form.disable({ emitEvent: false });
@@ -242,7 +269,7 @@ export class TaskEditDialogComponent implements OnInit {
       ];
     }
 
-    // ผู้รับผิดชอบ — ส่งตรวจได้ ห้ามทำเสร็จเอง
+    // ผู้รับผิดชอบ — ส่งตรวจได้หลังเริ่มงาน (DOING) เท่านั้น ห้ามทำเสร็จเอง
     const actions: { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] = [];
     switch (st) {
       case 'TODO':
@@ -250,15 +277,13 @@ export class TaskEditDialogComponent implements OnInit {
         break;
       case 'DOING':
         actions.push({ label: 'พักงาน', status: 'WAITING', kind: 'status' });
+        actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
         break;
       case 'WAITING':
         actions.push({ label: 'กลับมาทำ', status: 'DOING', kind: 'status' });
         break;
       default:
         break;
-    }
-    if (st !== 'REVIEW' && st !== 'DONE') {
-      actions.push({ label: 'ส่งตรวจ', status: 'REVIEW', kind: 'submit' });
     }
     return actions;
   }
@@ -311,6 +336,10 @@ export class TaskEditDialogComponent implements OnInit {
   }
 
   private openSubmitReport(task: TaskItem): void {
+    if (task.status !== 'DOING') {
+      this.error.set('ส่งตรวจได้เมื่อเข้าเฟสกำลังทำแล้วเท่านั้น — กด「เริ่มงาน」ก่อน');
+      return;
+    }
     const ref = this.dialog.open(TaskSubmitReportDialogComponent, {
       ...FORM_DIALOG_COMPACT,
       data: { task },

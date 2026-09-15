@@ -17,7 +17,8 @@
         </button>
         <div class="status-row">
           <span
-            class="cell-badge status-badge project-status-badge"
+            class="status project-status-badge"
+            [attr.data-status]="p.status"
             [attr.data-project-status]="p.status"
           >
             {{ projectStatusLabel(p.status) }}
@@ -62,8 +63,12 @@
               type="button"
               (click)="advanceProjectStatus()"
             >
-              <mat-icon>trending_flat</mat-icon>
-              ขั้นถัดไป · {{ statusLabels[nextStatus] }}
+              <mat-icon>{{ nextStatus === 'IN_PROGRESS' ? 'play_arrow' : 'trending_flat' }}</mat-icon>
+              @if (nextStatus === 'IN_PROGRESS') {
+                เริ่มงาน
+              } @else {
+                ขั้นถัดไป · {{ statusLabels[nextStatus] }}
+              }
             </button>
           }
           <button

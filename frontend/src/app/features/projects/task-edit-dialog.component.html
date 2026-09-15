@@ -195,11 +195,15 @@
             matInput
             [matDatepicker]="duePicker"
             formControlName="dueDate"
+            [min]="form.controls.startDate.value"
             readonly
             (click)="canUpdate() && duePicker.open()"
           />
           <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
           <mat-datepicker #duePicker></mat-datepicker>
+          @if (form.controls.dueDate.hasError('dueBeforeStart')) {
+            <mat-error>ต้องไม่ก่อนวันเริ่มงาน</mat-error>
+          }
         </mat-form-field>
       </div>
       @if (status() === 'DONE') {
