@@ -79,6 +79,11 @@
     @apply flex flex-wrap items-center gap-3;
   }
 
+  /* ปุ่มสร้าง/เพิ่ม — ชิดขวาสุดของแถบ ไม่ติดช่องค้นหา */
+  .app-panel-toolbar-row > .ui-add-btn {
+    @apply ml-auto;
+  }
+
   .app-panel-body {
     @apply overflow-x-auto;
   }

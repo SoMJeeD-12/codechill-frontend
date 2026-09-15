@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -45,7 +45,7 @@ import {
   parseDateOnly,
   toTimeString,
 } from '../../core/utils/date.util';
-import { MaQuotaStatus, MaContract } from '../../core/models/ma.model';
+import { MaContract, MaPlan, MaPlanItem, MaQuotaStatus } from '../../core/models/ma.model';
 import { Warranty } from '../../core/models/warranty.model';
 import {
   EntityPickerComponent,
@@ -146,6 +146,16 @@ export class TicketFormDialogComponent {
   readonly maQuota = signal<MaQuotaStatus | null>(null);
   readonly billingSelection = signal<BillingType | null>(null);
 
+  /** ประกันที่ใช้งานของโปรเจค — ใช้โชว์ขอบเขต */
+  readonly activeWarranty = signal<Warranty | null>(null);
+  /** สัญญา MA ที่ใช้งาน — ใช้โชว์แผน/บริการย่อย */
+  readonly activeMaContract = signal<MaContract | null>(null);
+  readonly maPlan = signal<MaPlan | null>(null);
+  readonly maPlanLoading = signal(false);
+  readonly maPlanError = signal<string | null>(null);
+  /** ขยาย overview เมื่อยังไม่เลือกประเภทคิดเงิน */
+  readonly scopeOverviewOpen = signal(false);
+
   readonly availableBillingTypes = computed(() => {
     const types = this.eligibleBillingTypes();
     const current = this.billingSelection();
@@ -167,6 +177,31 @@ export class TicketFormDialogComponent {
       return 'ไม่มีสัญญา MA สถานะใช้งาน (ต้องไม่ใช่แบบร่าง) — ควรเปลี่ยนประเภท';
     }
     return null;
+  });
+
+  /**
+   * แผงช่วยดูขอบเขต — advisory เท่านั้น
+   * WARRANTY → ประกัน · MA_QUOTA/ADDON → รายการแผน · ยังไม่เลือก → overview ย่อได้
+   */
+  readonly scopePanelMode = computed((): 'warranty' | 'ma' | 'overview' | null => {
+    const billing = this.billingSelection();
+    const hasW = !!this.activeWarranty();
+    const hasM = !!this.activeMaContract();
+    if (billing === 'WARRANTY') {
+      return hasW ? 'warranty' : null;
+    }
+    if (billing === 'MA_QUOTA' || billing === 'ADDON') {
+      return hasM ? 'ma' : null;
+    }
+    if (!billing && (hasW || hasM)) {
+      return 'overview';
+    }
+    return null;
+  });
+
+  readonly maPlanItems = computed((): MaPlanItem[] => {
+    const items = this.maPlan()?.items ?? [];
+    return [...items].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
   });
 
   readonly form = this.fb.group({
@@ -251,7 +286,6 @@ export class TicketFormDialogComponent {
         this.customer.set(null);
         this.customerFromProject.set(false);
       }
-      this.maQuota.set(null);
       this.loadBillingEligibility(null, { preserveCurrent: false });
       return;
     }
@@ -286,6 +320,14 @@ export class TicketFormDialogComponent {
     this.loadBillingEligibility(null, { preserveCurrent: false });
   }
 
+  toggleScopeOverview(): void {
+    this.scopeOverviewOpen.update((open) => !open);
+  }
+
+  maPlanDisplayName(contract: MaContract | null = this.activeMaContract()): string {
+    return this.maPlan()?.name?.trim() || contract?.plan?.name?.trim() || '';
+  }
+
   /* ——— ประเภทการคิดค่าใช้จ่าย ——— */
 
   private eligibleBillingTypes(): BillingType[] {
@@ -300,14 +342,24 @@ export class TicketFormDialogComponent {
     return types;
   }
 
+  private clearScopeState(): void {
+    this.hasActiveWarranty.set(false);
+    this.hasActiveMa.set(false);
+    this.maQuota.set(null);
+    this.activeWarranty.set(null);
+    this.activeMaContract.set(null);
+    this.maPlan.set(null);
+    this.maPlanLoading.set(false);
+    this.maPlanError.set(null);
+    this.scopeOverviewOpen.set(false);
+  }
+
   private loadBillingEligibility(
     projectId: number | null,
     opts: { preserveCurrent: boolean }
   ): void {
     if (!projectId) {
-      this.hasActiveWarranty.set(false);
-      this.hasActiveMa.set(false);
-      this.maQuota.set(null);
+      this.clearScopeState();
       this.syncBillingSelection(opts);
       return;
     }
@@ -321,14 +373,23 @@ export class TicketFormDialogComponent {
         .pipe(swallowHttpError([] as MaContract[], 'ticket-form ma-contracts')),
     }).subscribe({
       next: ({ warranties, contracts }) => {
-        this.hasActiveWarranty.set(warranties.some((w) => w.isCurrentlyActive));
+        const warranty = warranties.find((w) => w.isCurrentlyActive) ?? null;
+        this.activeWarranty.set(warranty);
+        this.hasActiveWarranty.set(!!warranty);
+
         const active = contracts.find((c) => c.isCurrentlyActive) ?? null;
+        this.activeMaContract.set(active);
         this.hasActiveMa.set(!!active);
         this.syncBillingSelection(opts);
+
         if (!active) {
           this.maQuota.set(null);
+          this.maPlan.set(null);
+          this.maPlanLoading.set(false);
+          this.maPlanError.set(null);
           return;
         }
+
         this.maApi.getQuota(active.id).subscribe({
           next: (quota) => this.maQuota.set(quota),
           error: (err) => {
@@ -336,12 +397,31 @@ export class TicketFormDialogComponent {
             this.maQuota.set(null);
           },
         });
+
+        const planId = active.planId ?? active.plan?.id ?? null;
+        if (planId == null) {
+          this.maPlan.set(null);
+          this.maPlanError.set('สัญญา MA นี้ยังไม่มีแผนผูกไว้');
+          return;
+        }
+        this.maPlanLoading.set(true);
+        this.maPlanError.set(null);
+        this.maApi.getPlanById(planId).subscribe({
+          next: (plan) => {
+            this.maPlan.set(plan);
+            this.maPlanLoading.set(false);
+          },
+          error: (err: Error) => {
+            warnHttpError(err, 'ticket-form ma-plan');
+            this.maPlan.set(null);
+            this.maPlanLoading.set(false);
+            this.maPlanError.set(err.message || 'โหลดรายการบริการในแผนไม่สำเร็จ');
+          },
+        });
       },
       error: (err) => {
         warnHttpError(err, 'ticket-form billing-eligibility');
-        this.hasActiveWarranty.set(false);
-        this.hasActiveMa.set(false);
-        this.maQuota.set(null);
+        this.clearScopeState();
         this.syncBillingSelection(opts);
       },
     });
