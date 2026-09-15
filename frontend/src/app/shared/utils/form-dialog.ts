@@ -6,7 +6,7 @@ const FORM_DIALOG_PANEL = 'app-form-dialog';
 export const FORM_DIALOG_WIDE = {
   width: '1280px',
   maxWidth: '98vw',
-  maxHeight: '94vh',
+  maxHeight: '96vh',
   panelClass: FORM_DIALOG_PANEL,
 } as const;
 

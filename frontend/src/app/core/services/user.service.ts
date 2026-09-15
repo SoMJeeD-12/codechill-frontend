@@ -7,6 +7,9 @@ import { apiErrorMessage } from '../http/api-error';
 import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import { AccountType, User, UserStatus, UserSummary } from '../models/user.model';
 
+/** query `capability` ของ GET /users/assignable — Backend กรอง permission + ACTIVE ให้แล้ว */
+export type AssignableCapability = 'TASK' | 'TICKET' | 'TASK_REVIEW';
+
 /** CreateUserDto */
 export interface CreateUserInput {
   username: string;
@@ -52,8 +55,17 @@ export class UserService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/users`;
   private readonly usersSignal = signal<User[]>([]);
+  /** รายชื่อล่าสุดต่อ capability สำหรับดรอปดาวน์ — ไม่กรอง role ฝั่ง FE */
+  private readonly assignableMap = signal<Record<AssignableCapability, User[]>>({
+    TASK: [],
+    TICKET: [],
+    TASK_REVIEW: [],
+  });
 
   readonly users = this.usersSignal.asReadonly();
+  readonly assignableTask = computed(() => this.assignableMap().TASK);
+  readonly assignableTicket = computed(() => this.assignableMap().TICKET);
+  readonly assignableTaskReview = computed(() => this.assignableMap().TASK_REVIEW);
   readonly activeCount = computed(
     () => this.usersSignal().filter((u) => u.status === 'ACTIVE').length
   );
@@ -69,37 +81,47 @@ export class UserService {
   }
 
   /**
-   * GET /users/assignable — ดรอปดาวน์มอบหมายงาน (ไม่ต้องมี user.view)
-   * คืนเฉพาะพนักงาน ACTIVE: { id, username, fullName, position }
+   * GET /users/assignable?capability=
+   * — TASK / TICKET / TASK_REVIEW
+   * Backend กรอง permission + ACTIVE แล้ว · FE แสดงตามที่คืนมา ไม่กรอง roles.length / ชื่อ Role
    */
-  listAssignable(): Observable<User[]> {
-    return this.http.get<UserSummary[] | User[]>(`${this.base}/assignable`).pipe(
-      map((rows) => (Array.isArray(rows) ? rows : []).map((u) => this.toUser(u))),
-      tap((list) => {
-        for (const user of list) {
-          this.upsertLocal(user);
-        }
-      }),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
+  listAssignable(capability: AssignableCapability): Observable<User[]> {
+    return this.http
+      .get<UserSummary[] | User[]>(`${this.base}/assignable`, {
+        params: toHttpParams({ capability }),
+      })
+      .pipe(
+        map((rows) => (Array.isArray(rows) ? rows : []).map((u) => this.toUser(u))),
+        tap((list) => {
+          this.assignableMap.update((prev) => ({ ...prev, [capability]: list }));
+          for (const user of list) {
+            this.upsertLocal(user);
+          }
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   /**
-   * สำหรับดรอปดาวน์มอบหมายงาน — ใช้ /users/assignable (ไม่ใช้ GET /users)
-   * seed ใส่แคชก่อน แล้วดึงรายการ assignable ทับ
+   * สำหรับดรอปดาวน์มอบหมาย — ต้องระบุ capability ตามประเภทงาน
+   * seed ใส่แคชชื่อแสดงผลก่อน แล้วดึงรายการ assignable ทับในแมป capability
    */
   loadForPicker(
     seed?: User | UserSummary | null,
-    _opts?: { tryList?: boolean }
+    opts?: { capability: AssignableCapability }
   ): Observable<User[]> {
     if (seed) {
       this.upsertLocal(seed);
     }
-    return this.listAssignable().pipe(catchError(() => of(this.usersSignal())));
+    const capability = opts?.capability ?? 'TASK';
+    return this.listAssignable(capability).pipe(
+      catchError(() => of(this.assignableMap()[capability] ?? []))
+    );
   }
 
   clearCache(): void {
     this.usersSignal.set([]);
+    this.assignableMap.set({ TASK: [], TICKET: [], TASK_REVIEW: [] });
   }
 
   /** ใส่ผู้ใช้ลงแคชโดยไม่ต้องมีสิทธิ์ list (เช่น จาก session หรือ summary ใน ticket) */

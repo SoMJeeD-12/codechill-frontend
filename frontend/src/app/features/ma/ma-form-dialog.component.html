@@ -6,7 +6,7 @@
         <h3 class="form-grid__title">คู่สัญญา</h3>
 
         @if (!isEdit) {
-          <mat-form-field appearance="outline" class="full">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>ลูกค้า</mat-label>
             <mat-select formControlName="customerId">
               @for (c of customers(); track c.id) {
@@ -17,7 +17,7 @@
           </mat-form-field>
         }
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>โปรเจค *</mat-label>
           <mat-select formControlName="projectId">
             @for (p of filteredProjects(); track p.id) {
@@ -31,7 +31,7 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>แผน MA *</mat-label>
           <mat-select formControlName="planId">
             @for (p of plans(); track p.id) {
@@ -43,7 +43,7 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>สถานะ</mat-label>
           <mat-select formControlName="status">
             @for (s of statuses; track s) {
@@ -53,7 +53,7 @@
         </mat-form-field>
 
         @if (status() === 'ACTIVE') {
-          <mat-form-field appearance="outline" class="full">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>วันที่เซ็น</mat-label>
             <input
               matInput
@@ -68,7 +68,7 @@
           </mat-form-field>
         }
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>หมายเหตุ</mat-label>
           <textarea matInput rows="3" formControlName="note"></textarea>
         </mat-form-field>
@@ -78,7 +78,7 @@
         <h3 class="form-grid__title">ระยะเวลาและมูลค่า</h3>
 
         <div class="row">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>รอบวางบิล</mat-label>
             <mat-select formControlName="billingCycle">
               @for (b of billingCycles; track b) {
@@ -87,7 +87,7 @@
             </mat-select>
             <mat-hint>ใช้วางบิลเท่านั้น · โควตานับรายเดือนเสมอ</mat-hint>
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>ระยะสัญญา</mat-label>
             <mat-select formControlName="durationMonths">
               @for (opt of availableDurationOptions(); track opt.value) {
@@ -101,7 +101,7 @@
         </div>
 
         <div class="row">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>วันเริ่ม *</mat-label>
             <input
               matInput
@@ -113,7 +113,7 @@
             <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
             <mat-datepicker #startPicker></mat-datepicker>
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>วันสิ้นสุด *</mat-label>
             <input
               matInput
@@ -139,7 +139,7 @@
           <p class="error">วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา</p>
         }
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>มูลค่ารวมตลอดอายุสัญญา (บาท) *</mat-label>
           <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
           <mat-hint>

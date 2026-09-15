@@ -220,7 +220,6 @@ export class TasksPageComponent implements OnInit {
       this.search.set(v);
       this.reload();
     });
-    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe({ error: () => undefined });
 
     this.route.data.subscribe((data) => {
       const mode = (data['taskMode'] as TasksPageMode) || 'all';
@@ -236,6 +235,11 @@ export class TasksPageComponent implements OnInit {
       } else {
         this.myView.set('all');
       }
+      this.usersApi
+        .loadForPicker(this.auth.currentUser(), {
+          capability: mode === 'review' ? 'TASK_REVIEW' : 'TASK',
+        })
+        .subscribe({ error: () => undefined });
       this.reload();
     });
 

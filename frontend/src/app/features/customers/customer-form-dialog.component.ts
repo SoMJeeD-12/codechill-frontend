@@ -47,7 +47,7 @@ export class CustomerFormDialogComponent {
 
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.data.customer;
@@ -72,7 +72,7 @@ export class CustomerFormDialogComponent {
   });
 
   constructor() {
-    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({ error: () => undefined });
     const c = this.data.customer;
     if (c) {
       this.form.patchValue({

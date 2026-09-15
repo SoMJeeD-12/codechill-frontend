@@ -22,8 +22,12 @@
         <p class="app-subtitle">
           {{ customerName() }} · {{ projectName() }} ·
           {{ billingLabel(t.billingType) }}
-          @if (t.billingType === 'ONE_TIME' && t.extraCharge != null) {
-            ({{ t.extraCharge | baht }})
+          @if (t.billingType === 'ONE_TIME') {
+            @if (displayExtraCharge(); as charge) {
+              ({{ charge | baht }})
+            } @else {
+              (ยังไม่กรอกค่าบริการ)
+            }
           }
         </p>
         @if (t.billingType === 'MA_QUOTA') {

@@ -188,7 +188,8 @@ export class FollowUpsPageComponent implements OnInit {
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.customersApi.listCustomers({ limit: 100 }).subscribe();
-    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
+    // follow-up ไม่ใช่ TASK/TICKET — ใช้ TASK เป็นรายชื่อพนักงาน ACTIVE ที่มอบหมายงานได้
+    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TASK' }).subscribe();
 
     // เข้ามาจากการ์ด "ติดตามที่เลยกำหนด" บนหน้าแรก
     const params = this.route.snapshot.queryParamMap;
@@ -407,7 +408,7 @@ export class FollowUpFormDialogComponent {
   readonly data = inject<FollowUpFormDialogData>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
   readonly statuses = Object.keys(FOLLOW_UP_STATUS_LABELS) as FollowUpWritableStatus[];
   readonly statusLabels = FOLLOW_UP_STATUS_LABELS;
   readonly saving = signal(false);

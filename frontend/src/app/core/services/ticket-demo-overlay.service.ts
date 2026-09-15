@@ -31,6 +31,13 @@ export interface TicketDemoOverlay {
   assignedAt?: string;
   /** หมวดหมู่ตัวอย่าง — ไม่ส่งขึ้น API */
   category?: TicketCategoryDemo | null;
+  /** ข้อความเมื่อหมวด = อื่น ๆ — ไม่ส่งขึ้น API */
+  categoryOtherNote?: string | null;
+  /**
+   * ค่าบริการเป็นครั้ง (บาท) — ตัวอย่าง FE
+   * API มี extraCharge แต่สร้าง/แก้ใบยังไม่มีช่องส่งครบ
+   */
+  extraCharge?: number | null;
   /**
    * รอบล่าสุดเป็น PARTIAL/FAILED แต่ API อาจดันเป็น RESOLVED
    * — ใช้กับหน้ารายการที่ไม่มี resolutions ใน payload
@@ -82,8 +89,47 @@ export class TicketDemoOverlayService {
     this.patch(ticketId, { waitingStart: false });
   }
 
-  setCategory(ticketId: number, category: TicketCategoryDemo | null): void {
-    this.patch(ticketId, { category });
+  setCategory(
+    ticketId: number,
+    category: TicketCategoryDemo | null,
+    categoryOtherNote: string | null = null
+  ): void {
+    const note =
+      category === 'OTHER' ? categoryOtherNote?.trim() || null : null;
+    this.patch(ticketId, { category, categoryOtherNote: note });
+  }
+
+  /** ป้ายหมวดสำหรับแสดงผล — อื่น ๆ ต่อท้ายข้อความที่ระบุ */
+  categoryDisplayLabel(ticketId: number): string | null {
+    const snap = this.snapshot(ticketId);
+    const cat = snap.category;
+    if (!cat) {
+      return null;
+    }
+    const base = TICKET_CATEGORY_DEMO_LABELS[cat];
+    if (cat === 'OTHER' && snap.categoryOtherNote?.trim()) {
+      return `${base} · ${snap.categoryOtherNote.trim()}`;
+    }
+    return base;
+  }
+
+  setExtraCharge(ticketId: number, extraCharge: number | null): void {
+    this.patch(ticketId, { extraCharge });
+  }
+
+  /**
+   * ยอดคิดเป็นครั้งที่โชว์บนจอ — ใช้ของ API ก่อน ถ้าไม่มีค่อยใช้ mock overlay
+   * ไม่คืน 0 เมื่อยังไม่กรอก (null = ยังไม่กรอก)
+   */
+  effectiveExtraCharge(ticket: Pick<Ticket, 'id' | 'extraCharge'>): number | null {
+    if (ticket.extraCharge != null && !Number.isNaN(ticket.extraCharge)) {
+      return ticket.extraCharge;
+    }
+    const demo = this.snapshot(ticket.id).extraCharge;
+    if (demo != null && !Number.isNaN(demo)) {
+      return demo;
+    }
+    return null;
   }
 
   /** หลังบันทึกรอบ PARTIAL/FAILED — ใบยังไม่จบ */

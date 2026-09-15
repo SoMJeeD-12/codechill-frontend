@@ -101,7 +101,9 @@ export class TaskReviewDialogComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker(null, { capability: 'TASK_REVIEW' }).subscribe({
+      error: () => undefined,
+    });
     this.loadTask();
   }
 

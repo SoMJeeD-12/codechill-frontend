@@ -53,8 +53,10 @@ import {
   searchViaBackend,
 } from '../../shared/components/entity-picker.component';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
+import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { swallowHttpError, warnHttpError } from '../../shared/utils/swallow-http-error';
+import { parseMoneyValue } from '../../core/utils/money.util';
 
 const BILLING_TYPE_ORDER: BillingType[] = [
   'WARRANTY',
@@ -97,6 +99,7 @@ export interface TicketFormDialogData {
     MatSnackBarModule,
     MatDatepickerModule,
     ThaiTimeInputDirective,
+    MoneyInputDirective,
     ThaiDatePipe,
     EntityPickerComponent,
   ],
@@ -130,6 +133,11 @@ export class TicketFormDialogComponent {
   readonly priorities: TicketPriority[] = ['URGENT', 'HIGH', 'NORMAL', 'LOW'];
   readonly categoryLabels = TICKET_CATEGORY_DEMO_LABELS;
   readonly categories = Object.keys(TICKET_CATEGORY_DEMO_LABELS) as TicketCategoryDemo[];
+  readonly categorySelection = signal<TicketCategoryDemo | null>(
+    this.ticket
+      ? (this.demoOverlay.snapshot(this.ticket.id).category ?? null)
+      : null
+  );
 
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -215,9 +223,22 @@ export class TicketFormDialogComponent {
         ? (this.demoOverlay.snapshot(this.ticket.id).category ?? null)
         : null) as TicketCategoryDemo | null,
     ],
+    /** ระบุเมื่อหมวด = อื่น ๆ — ตัวอย่าง FE */
+    categoryOtherNote: [
+      this.ticket
+        ? (this.demoOverlay.snapshot(this.ticket.id).categoryOtherNote ?? '')
+        : '',
+    ],
     billingType: [
       (this.ticket?.billingType ?? null) as BillingType | null,
       Validators.required,
+    ],
+    /** ตัวอย่าง FE — ค่าบริการเป็นครั้ง (ยังไม่ส่ง Create/Update API) */
+    extraCharge: [
+      this.ticket
+        ? (this.demoOverlay.effectiveExtraCharge(this.ticket) as number | null)
+        : (null as number | null),
+      Validators.min(0),
     ],
     reportedDate: [
       (this.ticket ? parseDateOnly(this.ticket.reportedAt) : new Date()) as Date | null,
@@ -247,7 +268,27 @@ export class TicketFormDialogComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.billingSelection.set((value as BillingType) ?? null));
 
+    this.form.controls.category.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        const cat = (value as TicketCategoryDemo | null) ?? null;
+        this.categorySelection.set(cat);
+        this.syncCategoryOtherValidators(cat);
+      });
+    this.syncCategoryOtherValidators(this.categorySelection());
+
     this.loadBillingEligibility(presetProject?.id ?? null, { preserveCurrent: this.isEdit });
+  }
+
+  private syncCategoryOtherValidators(category: TicketCategoryDemo | null): void {
+    const ctrl = this.form.controls.categoryOtherNote;
+    if (category === 'OTHER') {
+      ctrl.setValidators([Validators.required, Validators.maxLength(80)]);
+    } else {
+      ctrl.clearValidators();
+      ctrl.setValue('', { emitEvent: false });
+    }
+    ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
   /* ——— ค้นหา ——— */
@@ -467,6 +508,8 @@ export class TicketFormDialogComponent {
       this.form.markAllAsTouched();
       if (this.form.controls.billingType.invalid) {
         this.error.set('เลือกประเภทการคิดค่าใช้จ่ายก่อนบันทึก');
+      } else if (this.form.controls.categoryOtherNote.invalid) {
+        this.error.set('ระบุหมวดหมู่เมื่อเลือก「อื่น ๆ」');
       } else {
         this.error.set('กรอกหัวข้อและรายละเอียดปัญหาก่อนบันทึก');
       }
@@ -490,10 +533,12 @@ export class TicketFormDialogComponent {
       };
       this.ticketsApi.update(this.ticket.id, update).subscribe({
         next: () => {
-          this.demoOverlay.setCategory(
+          this.persistDemoCategory(
             this.ticket!.id,
-            (raw.category as TicketCategoryDemo | null) ?? null
+            raw.category as TicketCategoryDemo | null,
+            raw.categoryOtherNote
           );
+          this.persistDemoExtraCharge(this.ticket!.id, raw.billingType, raw.extraCharge);
           this.saving.set(false);
           this.snack.open('บันทึกการแก้ไขแล้ว', 'ปิด', { duration: 2800 });
           this.ref.close(true);
@@ -521,10 +566,12 @@ export class TicketFormDialogComponent {
 
     this.ticketsApi.create(payload).subscribe({
       next: (created) => {
-        const cat = (raw.category as TicketCategoryDemo | null) ?? null;
-        if (cat) {
-          this.demoOverlay.setCategory(created.id, cat);
-        }
+        this.persistDemoCategory(
+          created.id,
+          raw.category as TicketCategoryDemo | null,
+          raw.categoryOtherNote
+        );
+        this.persistDemoExtraCharge(created.id, raw.billingType, raw.extraCharge);
         this.saving.set(false);
         const no = created.ticketNo?.trim();
         this.snack.open(
@@ -539,6 +586,42 @@ export class TicketFormDialogComponent {
         this.error.set(err.message);
       },
     });
+  }
+
+  private persistDemoCategory(
+    ticketId: number,
+    category: TicketCategoryDemo | null,
+    otherNote: unknown
+  ): void {
+    if (!category) {
+      this.demoOverlay.setCategory(ticketId, null, null);
+      return;
+    }
+    const note =
+      typeof otherNote === 'string' ? otherNote.trim() || null : null;
+    this.demoOverlay.setCategory(ticketId, category, note);
+  }
+
+  private persistDemoExtraCharge(
+    ticketId: number,
+    billingType: BillingType | null | undefined,
+    rawCharge: unknown
+  ): void {
+    if (billingType !== 'ONE_TIME') {
+      this.demoOverlay.setExtraCharge(ticketId, null);
+      return;
+    }
+    if (typeof rawCharge === 'number' && Number.isFinite(rawCharge)) {
+      this.demoOverlay.setExtraCharge(ticketId, rawCharge);
+      return;
+    }
+    const amount = parseMoneyValue(
+      rawCharge == null ? null : String(rawCharge)
+    );
+    this.demoOverlay.setExtraCharge(
+      ticketId,
+      amount != null && !Number.isNaN(amount) ? amount : null
+    );
   }
 
   private projectOptionFrom(ticket: Ticket | null): PickerOption | null {

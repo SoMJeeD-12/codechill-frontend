@@ -73,7 +73,7 @@ export class TaskEditDialogComponent implements OnInit {
   readonly data = inject<TaskDialogData>(MAT_DIALOG_DATA);
 
   readonly isEdit = !!this.data.task;
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
   readonly taskStatuses = TASK_STATUSES;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
@@ -125,8 +125,10 @@ export class TaskEditDialogComponent implements OnInit {
   });
 
   constructor() {
-    // รายชื่อผู้มอบหมายได้จาก GET /users/assignable — ไม่ใช้ managerUserId อัตโนมัติ
-    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
+    // GET /users/assignable?capability=TASK — ไม่กรอง Role ฝั่ง FE
+    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({
+      error: () => undefined,
+    });
     this.form.controls.status.valueChanges.subscribe((value) => {
       if (value) {
         this.status.set(value);

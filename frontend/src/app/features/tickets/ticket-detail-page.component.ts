@@ -35,7 +35,6 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
-  TICKET_CATEGORY_DEMO_LABELS,
   TicketDemoOverlayService,
 } from '../../core/services/ticket-demo-overlay.service';
 import { TicketService } from '../../core/services/ticket.service';
@@ -91,7 +90,7 @@ export class TicketDetailPageComponent implements OnInit {
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTicket;
   readonly canResolve = computed(() => this.auth.hasPermission('tickets', 'resolve'));
   readonly canAssign = computed(() => {
     this.auth.session();
@@ -174,8 +173,17 @@ export class TicketDetailPageComponent implements OnInit {
     if (id == null) {
       return null;
     }
-    const cat = this.demoOverlay.snapshot(id).category;
-    return cat ? TICKET_CATEGORY_DEMO_LABELS[cat] : null;
+    return this.demoOverlay.categoryDisplayLabel(id);
+  });
+
+  /** ค่าบริการเป็นครั้ง — API หรือ mock overlay */
+  readonly displayExtraCharge = computed(() => {
+    this.demoOverlay.state();
+    const t = this.ticket();
+    if (!t || t.billingType !== 'ONE_TIME') {
+      return null;
+    }
+    return this.demoOverlay.effectiveExtraCharge(t);
   });
 
   readonly demoBanner = computed(() => null);
@@ -407,7 +415,9 @@ export class TicketDetailPageComponent implements OnInit {
       return;
     }
     this.resolutionSearchControl.valueChanges.subscribe((v) => this.resolutionSearch.set(v));
-    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
+    this.usersApi
+      .loadForPicker(this.auth.currentUser(), { capability: 'TICKET' })
+      .subscribe();
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.projectsApi.listProjects().subscribe({ error: () => undefined });
     this.loadTicket();
@@ -663,23 +673,27 @@ export class TicketDetailPageComponent implements OnInit {
       return;
     }
     const last = [...this.resolutions()].sort((a, b) => b.round - a.round)[0] ?? null;
-    const ref = this.dialog.open(TicketProblemReturnedDialogComponent, {
-      ...FORM_DIALOG,
-      data: {
-        ticketId: this.ticketId,
-        ticket,
-        /** อ่านก่อนเรียก reopen — หลัง reopen closedAt จะเป็น null */
-        closedAtSnapshot: ticket.closedAt,
-        lastResolution: last,
-        users: this.users(),
-        canAssign: this.canAssign(),
-        defaultAssigneeId: ticket.assignedUserId,
-      } satisfies TicketProblemReturnedDialogData,
-    });
-    ref.afterClosed().subscribe((ok) => {
-      if (ok) {
-        this.loadTicket();
-      }
+    this.usersApi.listAssignable('TICKET').subscribe({
+      next: (users) => {
+        const ref = this.dialog.open(TicketProblemReturnedDialogComponent, {
+          ...FORM_DIALOG,
+          data: {
+            ticketId: this.ticketId,
+            ticket,
+            closedAtSnapshot: ticket.closedAt,
+            lastResolution: last,
+            users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
+            canAssign: this.canAssign(),
+            defaultAssigneeId: ticket.assignedUserId,
+          } satisfies TicketProblemReturnedDialogData,
+        });
+        ref.afterClosed().subscribe((ok) => {
+          if (ok) {
+            this.loadTicket();
+          }
+        });
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
     });
   }
 
@@ -771,31 +785,36 @@ export class TicketDetailPageComponent implements OnInit {
       me?.id ??
       null;
 
-    const ref = this.dialog.open(TicketAssignDialogComponent, {
-      ...FORM_DIALOG_COMPACT,
-      data: {
-        users: this.users(),
-        defaultUserId: defaultId,
-        title: opts?.preferCurrent ? 'รับงานรอบใหม่' : 'เลือกผู้รับผิดชอบ',
-      },
-    });
-    ref.afterClosed().subscribe((userId: number | null | undefined) => {
-      if (userId == null) {
-        return;
-      }
-      this.ticketsApi.assign(this.ticketId, userId).subscribe({
-        next: (ticket) => {
-          if (ticket.status !== 'ASSIGNED') {
-            // fallback ถ้า BE เก่าข้ามสถานะ
-            this.demoOverlay.markAssigned(this.ticketId);
-          } else {
-            this.demoOverlay.markStarted(this.ticketId);
+    this.usersApi.listAssignable('TICKET').subscribe({
+      next: (users) => {
+        const ref = this.dialog.open(TicketAssignDialogComponent, {
+          ...FORM_DIALOG_COMPACT,
+          data: {
+            users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
+            defaultUserId: defaultId,
+            title: opts?.preferCurrent ? 'รับงานรอบใหม่' : 'เลือกผู้รับผิดชอบ',
+          },
+        });
+        ref.afterClosed().subscribe((userId: number | null | undefined) => {
+          if (userId == null) {
+            return;
           }
-          this.snack.open(successMsg, 'ปิด', { duration: 2800 });
-          this.loadTicket();
-        },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-      });
+          this.ticketsApi.assign(this.ticketId, userId).subscribe({
+            next: (ticket) => {
+              if (ticket.status !== 'ASSIGNED') {
+                this.demoOverlay.markAssigned(this.ticketId);
+              } else {
+                this.demoOverlay.markStarted(this.ticketId);
+              }
+              this.snack.open(successMsg, 'ปิด', { duration: 2800 });
+              this.loadTicket();
+            },
+            error: (err: Error) =>
+              this.snack.open(err.message, 'ปิด', { duration: 4500 }),
+          });
+        });
+      },
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
     });
   }
 }
@@ -918,7 +937,7 @@ export class TicketResolutionFormDialogComponent {
   private readonly ref = inject(MatDialogRef<TicketResolutionFormDialogComponent, boolean>);
   readonly data = inject<TicketResolutionFormData>(MAT_DIALOG_DATA);
 
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTicket;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
   readonly resultHints = RESOLUTION_RESULT_HINTS;
   readonly results = Object.keys(RESOLUTION_RESULT_LABELS) as ResolutionResult[];
@@ -945,6 +964,9 @@ export class TicketResolutionFormDialogComponent {
   );
 
   constructor() {
+    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TICKET' }).subscribe({
+      error: () => undefined,
+    });
     this.form.controls.result.valueChanges.subscribe((value) => {
       this.selectedResult.set(value);
       if (!isIncompleteResolutionResult(value)) {
@@ -994,7 +1016,15 @@ export class TicketResolutionFormDialogComponent {
             handoffUserId !== this.data.currentAssigneeId
           ) {
             return this.ticketsApi.assign(this.data.ticketId, handoffUserId).pipe(
-              map(() => ({ quota, handedOff: true as const }))
+              map(() => ({ quota, handedOff: true as const })),
+              catchError((err: Error) => {
+                this.snack.open(
+                  `บันทึกรอบแล้ว แต่ส่งต่อผู้รับผิดชอบไม่สำเร็จ: ${err.message}`,
+                  'ปิด',
+                  { duration: 6500 }
+                );
+                return of({ quota, handedOff: false as const });
+              })
             );
           }
           return of({ quota, handedOff: false as const });
@@ -1021,7 +1051,7 @@ export class TicketResolutionFormDialogComponent {
           });
           this.ref.close(true);
         },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4500 }),
       });
   }
 }

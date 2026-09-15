@@ -67,7 +67,7 @@ export class TasksOverviewPageComponent implements OnInit {
   readonly priorityLabels = TASK_PRIORITY_LABELS;
   readonly priorities = TASK_PRIORITIES;
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
 
   readonly statusFilter = signal<TaskStatus | 'ALL'>('ALL');
   readonly assigneeFilter = signal<number | 'ALL' | 'UNASSIGNED'>('ALL');
@@ -116,7 +116,7 @@ export class TasksOverviewPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({ error: () => undefined });
     const params = this.route.snapshot.queryParamMap;
     const qProject = Number(params.get('projectId'));
     if (Number.isFinite(qProject) && qProject > 0) {

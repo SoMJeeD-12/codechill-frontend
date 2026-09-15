@@ -2,334 +2,361 @@
 
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="ticket-form" (ngSubmit)="save()">
-    <!-- 1) ใคร — ต้องรู้ก่อนทุกอย่าง -->
-    <section class="block">
-      <h3 class="block-title">1 · ปัญหาของใคร</h3>
-      <div class="who-grid">
-        <div class="who-grid__main">
-          <app-entity-picker
-            label="โปรเจค"
-            placeholder="พิมพ์ชื่อโปรเจคอย่างน้อย 2 ตัวอักษร"
-            [searchFn]="searchProjects"
-            [selected]="project()"
-            (selectionChange)="onProjectPicked($event)"
-          />
+    <div class="form-layout">
+      <div class="form-layout__main">
+        <!-- 1) ใคร -->
+        <section class="block">
+          <h3 class="block-title">1 · ปัญหาของใคร</h3>
+          <div class="who-grid">
+            <div class="who-grid__main">
+              <app-entity-picker
+                label="โปรเจค"
+                placeholder="พิมพ์ชื่อโปรเจคอย่างน้อย 2 ตัวอักษร"
+                [searchFn]="searchProjects"
+                [selected]="project()"
+                (selectionChange)="onProjectPicked($event)"
+              />
 
-          @if (maQuota(); as quota) {
-            <div class="ma-quota" [class.is-exhausted]="quota.isExhausted">
-              <mat-icon>{{ quota.isExhausted ? 'warning' : 'handshake' }}</mat-icon>
-              <div>
-                <strong>
-                  สัญญา MA รอบ {{ quota.periodStart | thaiDate: 'date' }} –
-                  {{ quota.periodEnd | thaiDate: 'date' }}
-                </strong>
-                <small>ใช้ไป {{ quota.used }}/{{ quota.quota }} ครั้ง · เหลือ {{ quota.remaining }}</small>
-                @if (quota.isExhausted) {
-                  <p class="ma-quota__warn">โควตาในรอบนี้หมดแล้ว — เปิดใบได้แต่ควรแจ้งลูกค้าเรื่องค่าใช้จ่าย</p>
-                }
-              </div>
-            </div>
-          }
-        </div>
-
-        <div class="who-grid__side">
-          @if (customer(); as picked) {
-            <div class="picked-customer" [class.is-auto]="customerFromProject()">
-              <mat-icon>business</mat-icon>
-              <div class="picked-customer__text">
-                <strong>{{ picked.label }}</strong>
-                @if (picked.meta) {
-                  <small>{{ picked.meta }}</small>
-                }
-              </div>
-              <button
-                mat-icon-button
-                type="button"
-                aria-label="เปลี่ยนลูกค้า"
-                (click)="clearCustomerLock()"
-              >
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          } @else {
-            <app-entity-picker
-              label="หรือเลือกลูกค้าอย่างเดียว"
-              placeholder="พิมพ์ชื่อลูกค้าอย่างน้อย 2 ตัวอักษร"
-              [searchFn]="searchCustomers"
-              (selectionChange)="onCustomerPicked($event)"
-            />
-            <p class="field-note">เลือกโปรเจคแล้วระบบจะเติมลูกค้าให้เอง</p>
-          }
-        </div>
-      </div>
-    </section>
-
-    <!-- 2) ปัญหาอะไร — หัวใจของใบ -->
-    <section class="block">
-      <h3 class="block-title">2 · ปัญหาคืออะไร</h3>
-
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>หัวข้อ</mat-label>
-        <input matInput formControlName="title" placeholder="สรุปสั้น ๆ ว่าลูกค้าแจ้งอะไร" />
-        @if (form.controls.title.touched && form.controls.title.invalid) {
-          <mat-error>กรอกหัวข้อ</mat-error>
-        }
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="full description-field">
-        <mat-label>รายละเอียด</mat-label>
-        <textarea
-          matInput
-          rows="7"
-          formControlName="description"
-          placeholder="อาการที่ลูกค้าเจอ · เกิดตอนไหน · กระทบอะไรบ้าง"
-        ></textarea>
-        @if (form.controls.description.touched && form.controls.description.invalid) {
-          <mat-error>กรอกรายละเอียด</mat-error>
-        }
-      </mat-form-field>
-    </section>
-
-    <!-- 3) ความเร่งด่วน + คิดเงิน — ตัดสินใจคิวและค่าใช้จ่าย -->
-    <section class="block block--decide">
-      <h3 class="block-title">3 · ความเร่งด่วนและการคิดค่าใช้จ่าย</h3>
-      <div class="row row--2">
-        <mat-form-field appearance="outline" class="priority-field">
-          <mat-label>ความเร่งด่วน</mat-label>
-          <mat-select formControlName="priority">
-            @for (p of priorities; track p) {
-              <mat-option [value]="p">
-                <span class="priority-badge" [attr.data-priority]="p">
-                  {{ priorityLabels[p] }}
-                </span>
-              </mat-option>
-            }
-          </mat-select>
-          <mat-hint>ใช้จัดลำดับคิว「รอรับการแก้ไข」</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>คิดค่าใช้จ่าย</mat-label>
-          <mat-select formControlName="billingType">
-            @for (b of availableBillingTypes(); track b) {
-              <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
-            }
-          </mat-select>
-          @if (billingHint(); as hint) {
-            <mat-hint>{{ hint }}</mat-hint>
-          }
-          @if (form.controls.billingType.touched && form.controls.billingType.invalid) {
-            <mat-error>เลือกประเภทการคิดค่าใช้จ่าย</mat-error>
-          }
-        </mat-form-field>
-      </div>
-
-      @if (scopePanelMode(); as mode) {
-        <aside class="scope-panel" [attr.data-mode]="mode">
-          @if (mode === 'overview') {
-            <button
-              type="button"
-              class="scope-panel__toggle"
-              (click)="toggleScopeOverview()"
-              [attr.aria-expanded]="scopeOverviewOpen()"
-            >
-              <mat-icon>info</mat-icon>
-              <span>ดูขอบเขตความคุ้มครอง</span>
-              <mat-icon class="scope-panel__chevron">
-                {{ scopeOverviewOpen() ? 'expand_less' : 'expand_more' }}
-              </mat-icon>
-            </button>
-            @if (scopeOverviewOpen()) {
-              <div class="scope-panel__body">
-                @if (activeWarranty(); as w) {
-                  <div class="scope-block">
-                    <h4 class="scope-block__title">ประกัน</h4>
-                    <p class="scope-block__meta">
-                      @if (w.code) {
-                        {{ w.code }} ·
-                      }
-                      {{ w.startDate | thaiDate: 'date' }} – {{ w.endDate | thaiDate: 'date' }}
-                      · เหลือ {{ w.daysRemaining }} วัน
-                    </p>
-                    <p class="scope-block__text">
-                      {{ w.scopeNote?.trim() || 'ไม่ได้ระบุขอบเขตในระบบ' }}
-                    </p>
-                  </div>
-                }
-                @if (activeMaContract(); as c) {
-                  <div class="scope-block">
-                    <h4 class="scope-block__title">
-                      แผน MA
-                      @if (maPlanDisplayName(c); as planName) {
-                        · {{ planName }}
-                      }
-                    </h4>
-                    @if (c.contractNo) {
-                      <p class="scope-block__meta">{{ c.contractNo }}</p>
-                    }
-                    @if (maPlanLoading()) {
-                      <p class="scope-block__muted">กำลังโหลดรายการบริการ…</p>
-                    } @else if (maPlanError()) {
-                      <p class="scope-block__warn">{{ maPlanError() }}</p>
-                    } @else if (maPlanItems().length) {
-                      <ul class="scope-items">
-                        @for (item of maPlanItems(); track item.id) {
-                          <li class="scope-item">
-                            <div class="scope-item__title">{{ item.title }}</div>
-                            <p class="scope-item__detail">
-                              {{ item.detail?.trim() || 'ไม่มีรายละเอียดขอบเขตในแผน — ตรวจจากสัญญาเพิ่มถ้าไม่แน่ใจ' }}
-                            </p>
-                          </li>
-                        }
-                      </ul>
-                    } @else {
-                      <p class="scope-block__muted">แผนนี้ยังไม่มีรายการบริการย่อย</p>
+              @if (maQuota(); as quota) {
+                <div class="ma-quota" [class.is-exhausted]="quota.isExhausted">
+                  <mat-icon>{{ quota.isExhausted ? 'warning' : 'handshake' }}</mat-icon>
+                  <div>
+                    <strong>
+                      สัญญา MA รอบ {{ quota.periodStart | thaiDate: 'date' }} –
+                      {{ quota.periodEnd | thaiDate: 'date' }}
+                    </strong>
+                    <small>ใช้ไป {{ quota.used }}/{{ quota.quota }} ครั้ง · เหลือ {{ quota.remaining }}</small>
+                    @if (quota.isExhausted) {
+                      <p class="ma-quota__warn">โควตาในรอบนี้หมดแล้ว — เปิดใบได้แต่ควรแจ้งลูกค้าเรื่องค่าใช้จ่าย</p>
                     }
                   </div>
-                }
-                <p class="scope-panel__hint">
-                  เทียบอาการที่แจ้งกับรายละเอียดด้านบน — ถ้าไม่ตรงขอบเขต ให้คิดค่าบริการเป็นครั้ง
-                </p>
-              </div>
-            }
-          }
-
-          @if (mode === 'warranty') {
-            @if (activeWarranty(); as w) {
-              <div class="scope-panel__head">
-                <mat-icon>verified_user</mat-icon>
-                <div>
-                  <strong>ขอบเขตประกัน</strong>
-                  <small>
-                    @if (w.code) {
-                      {{ w.code }} ·
-                    }
-                    {{ w.startDate | thaiDate: 'date' }} – {{ w.endDate | thaiDate: 'date' }}
-                    · เหลือ {{ w.daysRemaining }} วัน
-                  </small>
                 </div>
-              </div>
-              <p class="scope-block__text">
-                {{ w.scopeNote?.trim() || 'ไม่ได้ระบุขอบเขตในระบบ' }}
-              </p>
-              <p class="scope-panel__hint">
-                ใช้เทียบกับอาการที่แจ้ง — ไม่บล็อกการเลือกอัตโนมัติ
-              </p>
-            }
-          }
-
-          @if (mode === 'ma') {
-            @if (activeMaContract(); as c) {
-              <div class="scope-panel__head">
-                <mat-icon>handshake</mat-icon>
-                <div>
-                  <strong>
-                    ขอบเขตบริการในแผน MA
-                    @if (maPlanDisplayName(c); as planName) {
-                      · {{ planName }}
-                    }
-                  </strong>
-                  <small>
-                    @if (c.contractNo) {
-                      {{ c.contractNo }}
-                    }
-                    @if (maQuota(); as q) {
-                      @if (c.contractNo) {
-                        ·
-                      }
-                      โควตาเหลือ {{ q.remaining }}/{{ q.quota }}
-                    }
-                  </small>
-                </div>
-              </div>
-              @if (maPlanLoading()) {
-                <p class="scope-block__muted">กำลังโหลดรายการบริการ…</p>
-              } @else if (maPlanError()) {
-                <p class="scope-block__warn">{{ maPlanError() }}</p>
-              } @else if (maPlanItems().length) {
-                <ul class="scope-items">
-                  @for (item of maPlanItems(); track item.id) {
-                    <li class="scope-item">
-                      <div class="scope-item__title">{{ item.title }}</div>
-                      <p class="scope-item__detail">
-                        {{ item.detail?.trim() || 'ไม่มีรายละเอียดขอบเขตในแผน — ตรวจจากสัญญาเพิ่มถ้าไม่แน่ใจ' }}
-                      </p>
-                    </li>
-                  }
-                </ul>
-              } @else {
-                <p class="scope-block__muted">แผนนี้ยังไม่มีรายการบริการย่อย</p>
               }
-              <p class="scope-panel__hint">
-                อ่านรายละเอียดแต่ละข้อเทียบกับปัญหาที่แจ้ง — ถ้าอยู่นอกขอบเขต ให้เปลี่ยนเป็นคิดครั้งคราว
-                (ไม่เกี่ยวกับการตัดโควตา)
-              </p>
+            </div>
+
+            <div class="who-grid__side">
+              @if (customer(); as picked) {
+                <div class="picked-customer" [class.is-auto]="customerFromProject()">
+                  <mat-icon>business</mat-icon>
+                  <div class="picked-customer__text">
+                    <strong>{{ picked.label }}</strong>
+                    @if (picked.meta) {
+                      <small>{{ picked.meta }}</small>
+                    }
+                  </div>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="เปลี่ยนลูกค้า"
+                    (click)="clearCustomerLock()"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <app-entity-picker
+                  label="หรือเลือกลูกค้าอย่างเดียว"
+                  placeholder="พิมพ์ชื่อลูกค้าอย่างน้อย 2 ตัวอักษร"
+                  [searchFn]="searchCustomers"
+                  (selectionChange)="onCustomerPicked($event)"
+                />
+                <p class="field-note">เลือกโปรเจคแล้วระบบจะเติมลูกค้าให้เอง</p>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- 2) ปัญหาอะไร -->
+        <section class="block">
+          <h3 class="block-title">2 · ปัญหาคืออะไร</h3>
+
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>หัวข้อ</mat-label>
+            <input matInput formControlName="title" placeholder="สรุปสั้น ๆ ว่าลูกค้าแจ้งอะไร" />
+            @if (form.controls.title.touched && form.controls.title.invalid) {
+              <mat-error>กรอกหัวข้อ</mat-error>
             }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full description-field">
+            <mat-label>รายละเอียด</mat-label>
+            <textarea
+              matInput
+              rows="5"
+              formControlName="description"
+              placeholder="อาการที่ลูกค้าเจอ · เกิดตอนไหน · กระทบอะไรบ้าง"
+            ></textarea>
+            @if (form.controls.description.touched && form.controls.description.invalid) {
+              <mat-error>กรอกรายละเอียด</mat-error>
+            }
+          </mat-form-field>
+        </section>
+      </div>
+
+      <div class="form-layout__side">
+        <!-- 3) ความเร่งด่วน + คิดเงิน -->
+        <section class="block block--decide">
+          <h3 class="block-title">3 · ความเร่งด่วนและการคิดค่าใช้จ่าย</h3>
+          <div class="row row--2">
+            <mat-form-field appearance="outline" class="priority-field">
+              <mat-label>ความเร่งด่วน</mat-label>
+              <mat-select formControlName="priority">
+                @for (p of priorities; track p) {
+                  <mat-option [value]="p">
+                    <span class="priority-badge" [attr.data-priority]="p">
+                      {{ priorityLabels[p] }}
+                    </span>
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>จัดลำดับคิว「รอรับการแก้ไข」</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>คิดค่าใช้จ่าย</mat-label>
+              <mat-select formControlName="billingType">
+                @for (b of availableBillingTypes(); track b) {
+                  <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+                }
+              </mat-select>
+              @if (billingHint(); as hint) {
+                <mat-hint>{{ hint }}</mat-hint>
+              }
+              @if (form.controls.billingType.touched && form.controls.billingType.invalid) {
+                <mat-error>เลือกประเภทการคิดค่าใช้จ่าย</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          @if (billingSelection() === 'ONE_TIME') {
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>ค่าบริการเป็นครั้ง (บาท)</mat-label>
+              <input matInput appMoneyInput formControlName="extraCharge" inputmode="decimal" />
+              <mat-hint>ตัวอย่าง FE — ไม่ส่ง API · กรอกมือ ไม่คิดจากชั่วโมง</mat-hint>
+            </mat-form-field>
           }
-        </aside>
-      }
-    </section>
 
-    <!-- 4) รายละเอียดรอง -->
-    <section class="block block--secondary">
-      <h3 class="block-title">4 · รายละเอียดเพิ่มเติม</h3>
-      <div class="row row--4">
-        <mat-form-field appearance="outline">
-          <mat-label>ช่องทางที่แจ้ง</mat-label>
-          <mat-select formControlName="reportedChannel">
-            @for (ch of channels; track ch) {
-              <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+          @if (scopePanelMode(); as mode) {
+            <aside class="scope-panel" [attr.data-mode]="mode">
+              @if (mode === 'overview') {
+                <button
+                  type="button"
+                  class="scope-panel__toggle"
+                  (click)="toggleScopeOverview()"
+                  [attr.aria-expanded]="scopeOverviewOpen()"
+                >
+                  <mat-icon>info</mat-icon>
+                  <span>ดูขอบเขตความคุ้มครอง</span>
+                  <mat-icon class="scope-panel__chevron">
+                    {{ scopeOverviewOpen() ? 'expand_less' : 'expand_more' }}
+                  </mat-icon>
+                </button>
+                @if (scopeOverviewOpen()) {
+                  <div class="scope-panel__body">
+                    @if (activeWarranty(); as w) {
+                      <div class="scope-block">
+                        <h4 class="scope-block__title">ประกัน</h4>
+                        <p class="scope-block__meta">
+                          @if (w.code) {
+                            {{ w.code }} ·
+                          }
+                          {{ w.startDate | thaiDate: 'date' }} – {{ w.endDate | thaiDate: 'date' }}
+                          · เหลือ {{ w.daysRemaining }} วัน
+                        </p>
+                        <p class="scope-block__text">
+                          {{ w.scopeNote?.trim() || 'ไม่ได้ระบุขอบเขตในระบบ' }}
+                        </p>
+                      </div>
+                    }
+                    @if (activeMaContract(); as c) {
+                      <div class="scope-block">
+                        <h4 class="scope-block__title">
+                          แผน MA
+                          @if (maPlanDisplayName(c); as planName) {
+                            · {{ planName }}
+                          }
+                        </h4>
+                        @if (c.contractNo) {
+                          <p class="scope-block__meta">{{ c.contractNo }}</p>
+                        }
+                        @if (maPlanLoading()) {
+                          <p class="scope-block__muted">กำลังโหลดรายการบริการ…</p>
+                        } @else if (maPlanError()) {
+                          <p class="scope-block__warn">{{ maPlanError() }}</p>
+                        } @else if (maPlanItems().length) {
+                          <ul class="scope-items">
+                            @for (item of maPlanItems(); track item.id) {
+                              <li class="scope-item">
+                                <div class="scope-item__title">{{ item.title }}</div>
+                                <p class="scope-item__detail">
+                                  {{ item.detail?.trim() || 'ไม่มีรายละเอียดขอบเขตในแผน — ตรวจจากสัญญาเพิ่มถ้าไม่แน่ใจ' }}
+                                </p>
+                              </li>
+                            }
+                          </ul>
+                        } @else {
+                          <p class="scope-block__muted">แผนนี้ยังไม่มีรายการบริการย่อย</p>
+                        }
+                      </div>
+                    }
+                    <p class="scope-panel__hint">
+                      เทียบอาการที่แจ้งกับรายละเอียด — ถ้าไม่ตรงขอบเขต ให้คิดค่าบริการเป็นครั้ง
+                    </p>
+                  </div>
+                }
+              }
 
-        <mat-form-field appearance="outline">
-          <mat-label>หมวดหมู่ (ตัวอย่าง)</mat-label>
-          <mat-select formControlName="category">
-            <mat-option [value]="null">ไม่ระบุ</mat-option>
-            @for (c of categories; track c) {
-              <mat-option [value]="c">{{ categoryLabels[c] }}</mat-option>
-            }
-          </mat-select>
-          <mat-hint>ยังไม่ส่งขึ้น API</mat-hint>
-        </mat-form-field>
+              @if (mode === 'warranty') {
+                @if (activeWarranty(); as w) {
+                  <div class="scope-panel__head">
+                    <mat-icon>verified_user</mat-icon>
+                    <div>
+                      <strong>ขอบเขตประกัน</strong>
+                      <small>
+                        @if (w.code) {
+                          {{ w.code }} ·
+                        }
+                        {{ w.startDate | thaiDate: 'date' }} – {{ w.endDate | thaiDate: 'date' }}
+                        · เหลือ {{ w.daysRemaining }} วัน
+                      </small>
+                    </div>
+                  </div>
+                  <p class="scope-block__text">
+                    {{ w.scopeNote?.trim() || 'ไม่ได้ระบุขอบเขตในระบบ' }}
+                  </p>
+                  <p class="scope-panel__hint">ใช้เทียบกับอาการที่แจ้ง — ไม่บล็อกอัตโนมัติ</p>
+                }
+              }
 
-        <mat-form-field appearance="outline">
-          <mat-label>วันที่รับแจ้ง</mat-label>
-          <input
-            matInput
-            [matDatepicker]="reportPicker"
-            formControlName="reportedDate"
-            readonly
-            (click)="reportPicker.open()"
-          />
-          <mat-datepicker-toggle matIconSuffix [for]="reportPicker" />
-          <mat-datepicker #reportPicker />
-        </mat-form-field>
+              @if (mode === 'ma') {
+                @if (activeMaContract(); as c) {
+                  <div class="scope-panel__head">
+                    <mat-icon>handshake</mat-icon>
+                    <div>
+                      <strong>
+                        ขอบเขตบริการในแผน MA
+                        @if (maPlanDisplayName(c); as planName) {
+                          · {{ planName }}
+                        }
+                      </strong>
+                      <small>
+                        @if (c.contractNo) {
+                          {{ c.contractNo }}
+                        }
+                        @if (maQuota(); as q) {
+                          @if (c.contractNo) {
+                            ·
+                          }
+                          โควตาเหลือ {{ q.remaining }}/{{ q.quota }}
+                        }
+                      </small>
+                    </div>
+                  </div>
+                  @if (maPlanLoading()) {
+                    <p class="scope-block__muted">กำลังโหลดรายการบริการ…</p>
+                  } @else if (maPlanError()) {
+                    <p class="scope-block__warn">{{ maPlanError() }}</p>
+                  } @else if (maPlanItems().length) {
+                    <ul class="scope-items">
+                      @for (item of maPlanItems(); track item.id) {
+                        <li class="scope-item">
+                          <div class="scope-item__title">{{ item.title }}</div>
+                          <p class="scope-item__detail">
+                            {{ item.detail?.trim() || 'ไม่มีรายละเอียดขอบเขตในแผน — ตรวจจากสัญญาเพิ่มถ้าไม่แน่ใจ' }}
+                          </p>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="scope-block__muted">แผนนี้ยังไม่มีรายการบริการย่อย</p>
+                  }
+                  <p class="scope-panel__hint">
+                    อ่านรายละเอียดเทียบปัญหา — ถ้าอยู่นอกขอบเขต ให้เปลี่ยนเป็นคิดครั้งคราว
+                  </p>
+                }
+              }
+            </aside>
+          }
+        </section>
 
-        <mat-form-field appearance="outline">
-          <mat-label>เวลารับแจ้ง</mat-label>
-          <input matInput appThaiTimeInput formControlName="reportedTime" />
-          <span matTextSuffix>น.</span>
-        </mat-form-field>
+        <!-- 4) รายละเอียดรอง -->
+        <section class="block block--secondary">
+          <h3 class="block-title">4 · รายละเอียดเพิ่มเติม</h3>
+          <div class="row row--2">
+            <mat-form-field appearance="outline">
+              <mat-label>ช่องทางที่แจ้ง</mat-label>
+              <mat-select formControlName="reportedChannel">
+                @for (ch of channels; track ch) {
+                  <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>หมวดหมู่ (ตัวอย่าง)</mat-label>
+              <mat-select formControlName="category">
+                <mat-option [value]="null">ไม่ระบุ</mat-option>
+                @for (c of categories; track c) {
+                  <mat-option [value]="c">{{ categoryLabels[c] }}</mat-option>
+                }
+              </mat-select>
+              <mat-hint>ยังไม่ส่งขึ้น API</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>วันที่รับแจ้ง</mat-label>
+              <input
+                matInput
+                [matDatepicker]="reportPicker"
+                formControlName="reportedDate"
+                readonly
+                (click)="reportPicker.open()"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="reportPicker" />
+              <mat-datepicker #reportPicker />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>เวลารับแจ้ง</mat-label>
+              <input matInput appThaiTimeInput formControlName="reportedTime" />
+              <span matTextSuffix>น.</span>
+            </mat-form-field>
+          </div>
+
+          @if (categorySelection() === 'OTHER') {
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>ระบุหมวดหมู่ *</mat-label>
+              <input
+                matInput
+                formControlName="categoryOtherNote"
+                maxlength="80"
+                placeholder="เช่น ขอข้อมูลรายงาน · ย้ายเซิร์ฟเวอร์"
+              />
+              @if (form.controls.categoryOtherNote.touched && form.controls.categoryOtherNote.invalid) {
+                <mat-error>กรอกสั้น ๆ ว่าเป็นเรื่องอะไร</mat-error>
+              } @else {
+                <mat-hint>ตัวอย่าง FE — ไม่ส่ง API</mat-hint>
+              }
+            </mat-form-field>
+          }
+        </section>
+
+        @if (!isEdit) {
+          <div class="form-notes">
+            <p class="assign-note">
+              <mat-icon>info</mat-icon>
+              รับเรื่องอย่างเดียวพอ — หัวหน้ามอบหมายทีหลัง
+            </p>
+            <p class="recurring-note">
+              <mat-icon>replay</mat-icon>
+              <span>
+                ปัญหาเดิมกลับมา — อย่าเปิดใบใหม่ หาใบที่ปิดแล้วกด「ปัญหาเดิมกลับมา」
+              </span>
+            </p>
+          </div>
+        }
       </div>
-    </section>
-
-    @if (!isEdit) {
-      <div class="form-notes">
-        <p class="assign-note">
-          <mat-icon>info</mat-icon>
-          รับเรื่องอย่างเดียวพอ — หัวหน้าจะมอบหมายผู้รับผิดชอบให้ทีหลัง
-        </p>
-        <p class="recurring-note">
-          <mat-icon>replay</mat-icon>
-          <span>
-            ถ้าเป็น<strong>ปัญหาเดิมที่กลับมา</strong> อย่าเปิดใบใหม่ —
-            หาใบเดิมที่<strong>ปิดงานแล้ว</strong> แล้วกด「ปัญหาเดิมกลับมา」เพื่อเปิดงานครั้งใหม่
-          </span>
-        </p>
-      </div>
-    }
+    </div>
 
     @if (error(); as e) {
       <p class="form-error">{{ e }}</p>

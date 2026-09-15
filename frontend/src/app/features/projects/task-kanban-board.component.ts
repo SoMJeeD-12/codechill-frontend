@@ -70,7 +70,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   readonly priorityLabels = TASK_PRIORITY_LABELS;
   readonly priorities = TASK_PRIORITIES;
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
 
   readonly summary = signal<TaskSummary | null>(null);
   readonly projects = signal<Project[]>([]);
@@ -104,7 +104,9 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   readonly activeProjectId = computed(() => this.effectiveProjectId());
 
   ngOnInit(): void {
-    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TASK' }).subscribe({
+      error: () => undefined,
+    });
     if (this.showProjectFilter) {
       this.projectsApi.listProjects().subscribe({
         next: (list) => this.projects.set(list),

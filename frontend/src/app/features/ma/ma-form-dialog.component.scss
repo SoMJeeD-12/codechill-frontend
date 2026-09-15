@@ -1,8 +1,8 @@
 .form {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.65rem;
   min-width: min(1040px, 100%);
-  padding-top: 0.15rem;
+  padding-top: 0.35rem;
 }
 
 .form-grid {
@@ -14,7 +14,8 @@
 
 .form-grid__col {
   display: grid;
-  gap: 0.35rem;
+  /* ต้องเผื่อที่ให้ mat-hint / error ใต้ฟิลด์ — เดิม 0.35rem ทำให้ข้อความซ้อนป้ายช่องถัดไป */
+  gap: 1.25rem;
   align-content: start;
   min-width: 0;
 }
@@ -25,7 +26,7 @@
 }
 
 .form-grid__title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.15rem;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -36,7 +37,8 @@
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
+  gap: 1.25rem 0.85rem;
+  align-items: start;
 }
 
 .full {
@@ -44,7 +46,7 @@
 }
 
 .field-note {
-  margin: -0.15rem 0 0.35rem;
+  margin: -0.35rem 0 0.15rem;
   font-size: 0.78rem;
   color: #64748b;
   line-height: 1.35;
@@ -54,6 +56,24 @@
   margin: 0.25rem 0 0;
   color: #b91c1c;
   font-size: 0.9rem;
+}
+
+/* ให้พื้นที่ hint/error ใต้ฟิลด์ชัด ไม่ทับช่องถัดไป */
+:host ::ng-deep .mat-mdc-form-field {
+  width: 100%;
+}
+
+:host ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  margin-top: 0.15rem;
+  min-height: 1.25em;
+  overflow: visible;
+}
+
+:host ::ng-deep .mat-mdc-form-field-hint-wrapper,
+:host ::ng-deep .mat-mdc-form-field-error-wrapper {
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
 }
 
 @media (max-width: 900px) {

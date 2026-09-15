@@ -299,7 +299,7 @@ export class ProjectFormDialogComponent {
   private readonly ref = inject(MatDialogRef<ProjectFormDialogComponent, boolean>);
   readonly data = inject<{ project: Project | null; customerId?: number }>(MAT_DIALOG_DATA);
 
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
   readonly statuses = PROJECT_STATUSES;
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly priorities = PROJECT_PRIORITIES;
@@ -372,7 +372,7 @@ export class ProjectFormDialogComponent {
   private selectedCustomerSnapshot: Customer | null = null;
 
   constructor() {
-    this.usersApi.loadForPicker().subscribe({ error: () => undefined });
+    this.usersApi.loadForPicker(null, { capability: 'TASK' }).subscribe({ error: () => undefined });
 
     if (!this.isEdit && this.canViewCustomer()) {
       this.customerSearchControl.valueChanges

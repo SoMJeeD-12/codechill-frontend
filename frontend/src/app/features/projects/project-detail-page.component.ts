@@ -184,7 +184,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly maStatusLabels = MA_STATUS_LABELS;
   readonly acceptanceLabels = DELIVERY_ACCEPTANCE_LABELS;
   readonly acceptances = Object.keys(DELIVERY_ACCEPTANCE_LABELS) as DeliveryAcceptance[];
-  readonly users = this.usersApi.users;
+  readonly users = this.usersApi.assignableTask;
   readonly taskColumns = ['title', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   readonly deliveryColumns = [
     'title',
@@ -559,7 +559,7 @@ export class ProjectDetailPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
-    this.usersApi.loadForPicker(this.auth.currentUser()).subscribe();
+    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TASK' }).subscribe();
     this.projectsApi.fetchProject(this.projectId).subscribe({
       next: (project) => {
         this.project.set(project);
@@ -1141,7 +1141,7 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     this.projectsApi.updateTask(task.projectId, task.id, { assignedUserId }).subscribe({
       next: () => this.refresh(),
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3000 }),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4500 }),
     });
   }
 
