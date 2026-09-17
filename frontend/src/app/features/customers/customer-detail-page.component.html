@@ -143,7 +143,15 @@
       [selectedIndex]="selectedTab()"
       (selectedIndexChange)="onTabChange($event)"
     >
-      <mat-tab label="ผู้ติดต่อ">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            ผู้ติดต่อ
+            @if (contacts().length) {
+              <span class="tab-count">{{ contacts().length }}</span>
+            }
+          </span>
+        </ng-template>
         <div class="tab-panel">
           <div class="app-panel">
             <div class="app-panel-toolbar">
@@ -168,7 +176,7 @@
               <table mat-table [dataSource]="contactsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>ชื่อ-นามสกุล</th>
-                  <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+                  <td mat-cell *matCellDef="let row" [attr.title]="row.name">{{ row.name }}</td>
                 </ng-container>
                 <ng-container matColumnDef="nickname">
                   <th mat-header-cell *matHeaderCellDef>ชื่อเล่น</th>
@@ -248,7 +256,15 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="ประวัติการติดต่อ">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            ประวัติการติดต่อ
+            @if (logs().length) {
+              <span class="tab-count">{{ logs().length }}</span>
+            }
+          </span>
+        </ng-template>
         <div class="tab-panel">
           <div class="app-panel">
             <div class="app-panel-toolbar">
@@ -281,7 +297,7 @@
                 </ng-container>
                 <ng-container matColumnDef="subject">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
-                  <td mat-cell *matCellDef="let row">{{ row.subject || '—' }}</td>
+                  <td mat-cell *matCellDef="let row" [attr.title]="row.subject || null">{{ row.subject || '—' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="contact">
                   <th mat-header-cell *matHeaderCellDef>ผู้ติดต่อ</th>
@@ -340,7 +356,15 @@
       </mat-tab>
 
       @if (is360Mode) {
-      <mat-tab label="โปรเจค">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            โปรเจค
+            @if (projects().length) {
+              <span class="tab-count">{{ projects().length }}</span>
+            }
+          </span>
+        </ng-template>
         <div class="tab-panel">
           <div class="app-panel">
             <div class="app-panel-toolbar">
@@ -361,7 +385,7 @@
               <table mat-table [dataSource]="projectsPager.paged()" class="data-table">
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>ชื่อโปรเจค</th>
-                  <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+                  <td mat-cell *matCellDef="let row" [attr.title]="row.name">{{ row.name }}</td>
                 </ng-container>
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>สถานะ</th>
@@ -374,7 +398,7 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let row" class="actions">
-                    <button mat-button type="button" color="primary" (click)="openProjectDetail(row)">รายละเอียด</button>
+                    <app-row-actions [actions]="projectRowActions(row)" />
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="projectColumns"></tr>
@@ -397,7 +421,15 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="ประกัน / สัญญา">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            ประกัน / สัญญา
+            @if (warranties().length + contracts().length) {
+              <span class="tab-count">{{ warranties().length + contracts().length }}</span>
+            }
+          </span>
+        </ng-template>
         <div class="tab-panel stacked">
           <div class="app-panel">
             <div class="app-panel-toolbar">
@@ -445,7 +477,7 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let row" class="actions">
-                    <button mat-button type="button" color="primary" (click)="openWarrantyDetail(row)">รายละเอียด</button>
+                    <app-row-actions [actions]="warrantyRowActions(row)" />
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="warrantyColumns"></tr>
@@ -506,7 +538,7 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let row" class="actions">
-                    <button mat-button type="button" color="primary" (click)="openMaDetail(row)">รายละเอียด</button>
+                    <app-row-actions [actions]="maRowActions(row)" />
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="maColumns"></tr>
@@ -529,7 +561,15 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="ปัญหา">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            ปัญหา
+            @if (tickets().length) {
+              <span class="tab-count">{{ tickets().length }}</span>
+            }
+          </span>
+        </ng-template>
         <div class="tab-panel">
           <div class="app-panel">
             <div class="app-panel-toolbar">
@@ -550,7 +590,7 @@
               <table mat-table [dataSource]="ticketsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
-                  <td mat-cell *matCellDef="let row">{{ row.title }}</td>
+                  <td mat-cell *matCellDef="let row" [attr.title]="row.title">{{ row.title }}</td>
                 </ng-container>
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>สถานะ</th>
@@ -567,7 +607,7 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let row" class="actions">
-                    <button mat-button type="button" color="primary" (click)="openTicketDetail(row)">รายละเอียด</button>
+                    <app-row-actions [actions]="ticketRowActions(row)" />
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
@@ -590,7 +630,15 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="การติดตาม">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            การติดตาม
+            @if (followUps().length) {
+              <span class="tab-count">{{ followUps().length }}</span>
+            }
+          </span>
+        </ng-template>
         <div class="tab-panel">
           <div class="app-panel">
             <div class="app-panel-toolbar">
@@ -611,7 +659,7 @@
               <table mat-table [dataSource]="followUpsPager.paged()" class="data-table">
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
-                  <td mat-cell *matCellDef="let row">{{ row.title }}</td>
+                  <td mat-cell *matCellDef="let row" [attr.title]="row.title">{{ row.title }}</td>
                 </ng-container>
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>สถานะ</th>
@@ -629,7 +677,7 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let row" class="actions">
-                    <button mat-button type="button" color="primary" (click)="openFollowUpDetail(row)">รายละเอียด</button>
+                    <app-row-actions [actions]="followUpRowActions(row)" />
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="followUpColumns"></tr>

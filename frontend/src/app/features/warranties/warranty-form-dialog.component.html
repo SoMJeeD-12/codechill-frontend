@@ -37,9 +37,6 @@
             </mat-option>
           }
         </mat-select>
-        @if (!isEdit && !deliveries().length && form.controls.projectId.value) {
-          <mat-hint>ยังไม่มีการส่งมอบในโปรเจคนี้ — สร้างที่หน้ารายละเอียดโปรเจคก่อน</mat-hint>
-        }
       </mat-form-field>
     }
 
@@ -67,15 +64,7 @@
         @for (c of maContracts(); track c.id) {
           <mat-option [value]="c.id">{{ maContractOptionLabel(c) }}</mat-option>
         }
-      </mat-select>
-      @if (form.getRawValue().projectId && maContracts().length === 0) {
-        <mat-hint>
-          โปรเจคนี้ยังไม่มีสัญญา MA — ต้องสร้างสัญญาก่อนจึงจะมีตัวเลือก
-          (หรือเว้น「ไม่ได้ผูก MA」ได้ ตามประชุม: ผูกไม่บังคับ)
-        </mat-hint>
-      } @else {
-        <mat-hint>อ้างอิงว่าประกันใบนี้มาคู่กับสัญญาไหน — ไม่รวมโควตาหรือราคาเข้ากับประกัน</mat-hint>
-      }
+        </mat-select>
     </mat-form-field>
 
     @if (form.getRawValue().projectId && maContracts().length === 0) {

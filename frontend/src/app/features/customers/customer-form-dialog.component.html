@@ -2,111 +2,122 @@
 
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
-    <!-- ——— ข้อมูลบริษัท — สำคัญสุด อยู่บนสุด ——— -->
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อบริษัท *</mat-label>
-      <input matInput formControlName="name" />
-    </mat-form-field>
+    <div class="form-grid">
+      <section class="form-grid__col">
+        <h3 class="form-grid__title">ข้อมูลบริษัท</h3>
 
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>เลขผู้เสียภาษี</mat-label>
-      <input matInput formControlName="taxId" />
-      <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ที่อยู่</mat-label>
-      <textarea matInput rows="2" formControlName="address"></textarea>
-      <mat-hint>ใช้ตอนพิมพ์สัญญา MA</mat-hint>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>หมายเหตุ</mat-label>
-      <textarea matInput rows="2" formControlName="note"></textarea>
-    </mat-form-field>
-
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>โทรศัพท์</mat-label>
-        <input
-          matInput
-          appPhoneInput
-          formControlName="phone"
-          type="tel"
-          inputmode="numeric"
-          maxlength="10"
-          placeholder="เช่น 0921234567"
-        />
-        @if (form.controls.phone.hasError('thaiPhone')) {
-          <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
-        }
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>อีเมล</mat-label>
-        <input matInput formControlName="email" />
-      </mat-form-field>
-    </div>
-
-    <div class="row">
-      <mat-form-field appearance="outline">
-        <mat-label>สถานะ</mat-label>
-        <mat-select formControlName="status">
-          @for (s of statuses; track s) {
-            <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full" hideRequiredMarker>
+          <mat-label>ชื่อบริษัท *</mat-label>
+          <input matInput formControlName="name" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <mat-error>กรอกชื่อบริษัท</mat-error>
           }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>ผู้ดูแล</mat-label>
-        <mat-select formControlName="ownerUserId">
-          <mat-option [value]="null">—</mat-option>
-          @for (u of users(); track u.id) {
-            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>เลขผู้เสียภาษี</mat-label>
+          <input matInput formControlName="taxId" />
+        </mat-form-field>
+
+        <div class="row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>โทรศัพท์</mat-label>
+            <input
+              matInput
+              appPhoneInput
+              formControlName="phone"
+              type="tel"
+              inputmode="numeric"
+              maxlength="10"
+              placeholder="0812345678"
+            />
+            @if (form.controls.phone.hasError('thaiPhone')) {
+              <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>อีเมล</mat-label>
+            <input matInput formControlName="email" />
+            @if (form.controls.email.touched && form.controls.email.hasError('email')) {
+              <mat-error>อีเมลไม่ถูกต้อง</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always" hideRequiredMarker>
+            <mat-label>สถานะ *</mat-label>
+            <mat-select formControlName="status">
+              @for (s of statuses; track s) {
+                <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>ผู้ดูแล</mat-label>
+            <mat-select formControlName="ownerUserId">
+              <mat-option [value]="null">—</mat-option>
+              @for (u of users(); track u.id) {
+                <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <section class="form-grid__col">
+        <h3 class="form-grid__title">ที่อยู่และผู้ติดต่อ</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>ที่อยู่</mat-label>
+          <textarea matInput rows="2" formControlName="address"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+
+        <fieldset class="section" formGroupName="primaryContact">
+          <legend>ผู้ติดต่อหลัก</legend>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+            <mat-label>ชื่อผู้ติดต่อ</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+          <div class="row">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>เบอร์ผู้ติดต่อ</mat-label>
+              <input
+                matInput
+                appPhoneInput
+                formControlName="phone"
+                type="tel"
+                inputmode="numeric"
+                maxlength="10"
+              />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>LINE ID</mat-label>
+              <input matInput formControlName="lineId" />
+            </mat-form-field>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section--muted">
+          <legend>ช่องทางโซเชียล</legend>
+          <div class="row">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>LINE Official</mat-label>
+              <input matInput formControlName="lineOfficialId" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Facebook</mat-label>
+              <input matInput formControlName="facebookUrl" />
+            </mat-form-field>
+          </div>
+        </fieldset>
+      </section>
     </div>
-
-    <!-- ——— ผู้ติดต่อ ——— -->
-    <fieldset class="section" formGroupName="primaryContact">
-      <legend>ผู้ติดต่อหลัก</legend>
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>ชื่อผู้ติดต่อ</mat-label>
-        <input matInput formControlName="name" placeholder="ถ้ามี — จะบันทึกเป็นผู้ติดต่อหลัก" />
-      </mat-form-field>
-      <div class="row">
-        <mat-form-field appearance="outline">
-          <mat-label>เบอร์ผู้ติดต่อ</mat-label>
-          <input
-            matInput
-            appPhoneInput
-            formControlName="phone"
-            type="tel"
-            inputmode="numeric"
-            maxlength="10"
-          />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>LINE ID ผู้ติดต่อ</mat-label>
-          <input matInput formControlName="lineId" />
-        </mat-form-field>
-      </div>
-    </fieldset>
-
-    <!-- ——— ช่องทางโซเชียล — ใช้น้อยสุด อยู่ล่างสุด ——— -->
-    <fieldset class="section section--muted">
-      <legend>ช่องทางโซเชียล</legend>
-      <div class="row">
-        <mat-form-field appearance="outline">
-          <mat-label>LINE Official</mat-label>
-          <input matInput formControlName="lineOfficialId" placeholder="LINE Official ID" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Facebook</mat-label>
-          <input matInput formControlName="facebookUrl" placeholder="URL" />
-        </mat-form-field>
-      </div>
-    </fieldset>
   </form>
 
   @if (error()) {

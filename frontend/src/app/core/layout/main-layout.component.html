@@ -57,9 +57,6 @@
               <a mat-list-item [routerLink]="item.route" routerLinkActive="active">
                 <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
                 <span matListItemTitle>{{ item.label }}</span>
-                @if (item.description) {
-                  <span matListItemLine class="nav-item-desc">{{ item.description }}</span>
-                }
               </a>
             }
           }
@@ -85,6 +82,9 @@
         color="primary"
         type="button"
         class="quick-action"
+        matTooltip="เปิดใบแจ้งปัญหา"
+        matTooltipPosition="below"
+        aria-label="เปิดใบแจ้งปัญหา"
         (click)="openTicketForm()"
       >
         <mat-icon>add</mat-icon>
@@ -96,6 +96,9 @@
           mat-stroked-button
           type="button"
           class="quick-action quick-action--ghost"
+          matTooltip="บันทึกการติดต่อ"
+          matTooltipPosition="below"
+          aria-label="บันทึกการติดต่อ"
           (click)="openCommunicationLog()"
         >
           <mat-icon>add</mat-icon>

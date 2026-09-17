@@ -31,12 +31,20 @@
 
   .mat-column-reportedAt.mat-mdc-header-cell,
   .mat-column-reportedAt.mat-mdc-cell {
-    width: 10.5rem;
+    width: 13.25rem;
+    min-width: 13.25rem;
+    padding-right: 1rem;
   }
 
   .mat-column-actions.mat-mdc-header-cell,
-  .mat-column-actions.mat-mdc-cell {
-    width: 7.5rem;
+  .mat-column-actions.mat-mdc-cell,
+  .mat-mdc-header-cell.col-sticky-end,
+  .mat-mdc-cell.col-sticky-end {
+    width: 11rem;
+    min-width: 11rem;
+    max-width: 11rem;
+    overflow: hidden;
+    padding-left: 0.75rem;
   }
 
   /* หัวข้อกินพื้นที่ที่เหลือ — เต็มแผง */
@@ -165,8 +173,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.2rem;
-    overflow: visible;
+    gap: 0.45rem;
+    max-width: 100%;
+    overflow: hidden;
   }
 }
 

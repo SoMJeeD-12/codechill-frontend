@@ -33,6 +33,7 @@ import {
 } from '../../core/services/document.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
+import { FilePickerComponent } from '../../shared/components/file-picker.component';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
@@ -399,6 +400,7 @@ export class DocumentsPageComponent implements OnInit {
     MatSelectModule,
     MatButtonModule,
     MatSnackBarModule,
+    FilePickerComponent,
   ],
   templateUrl: './document-upload-dialog.component.html',
   styleUrl: './document-upload-dialog.component.scss',
@@ -434,10 +436,10 @@ export class DocumentUploadDialogComponent {
     }
   }
 
-  onFilePicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  onFilePicked(file: File | null): void {
     if (!file) {
+      this.form.patchValue({ fileName: '' });
+      this.pendingFile = null;
       return;
     }
     this.form.patchValue({
@@ -515,6 +517,7 @@ export class DocumentUploadDialogComponent {
     MatTableModule,
     MatSnackBarModule,
     MatTooltipModule,
+    FilePickerComponent,
   ],
   templateUrl: './document-versions-dialog.component.html',
   styleUrl: './document-versions-dialog.component.scss',
@@ -574,10 +577,10 @@ export class DocumentVersionsDialogComponent {
     });
   }
 
-  onFilePicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  onFilePicked(file: File | null): void {
     if (!file) {
+      this.form.patchValue({ fileName: '' });
+      this.pendingFile = null;
       return;
     }
     this.form.patchValue({ fileName: file.name });

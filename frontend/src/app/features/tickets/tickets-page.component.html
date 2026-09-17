@@ -3,10 +3,15 @@
     <div>
       <p class="app-eyebrow">คิวซัพพอร์ต</p>
       <h1 class="app-page-title">ปัญหา / ซัพพอร์ต</h1>
-      <p class="app-subtitle">
-        รับเรื่องจากลูกค้า · คิว「รอรับการแก้ไข」เรียงความเร่งด่วนก่อน แล้วตามวันรับแจ้ง
-      </p>
     </div>
+    @if (canCreate()) {
+      <div class="app-header-actions">
+        <button mat-flat-button color="primary" type="button" (click)="openCreate()">
+          <mat-icon>add</mat-icon>
+          เปิดใบแจ้งปัญหา
+        </button>
+      </div>
+    }
   </header>
 
   <div class="app-panel">
@@ -91,22 +96,8 @@
             <a
               [routerLink]="['/app/tickets', row.id]"
               class="app-link ticket-title"
-              [title]="row.title"
+              [title]="ticketTitleTip(row)"
             >{{ row.title }}</a>
-            <div class="ticket-meta">
-              @if (projectName(row); as project) {
-                <span class="ticket-meta__item" [title]="project">
-                  <mat-icon>folder_open</mat-icon>
-                  {{ project }}
-                </span>
-              }
-              @if (row.resolutionCount > 0) {
-                <span class="ticket-meta__item">
-                  <mat-icon>handyman</mat-icon>
-                  แก้แล้ว {{ row.resolutionCount }} ครั้ง
-                </span>
-              }
-            </div>
           </td>
         </ng-container>
 
@@ -151,46 +142,7 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef class="col-sticky-end"></th>
           <td mat-cell *matCellDef="let row" class="actions col-sticky-end">
-            <a
-              mat-stroked-button
-              color="primary"
-              class="ticket-open-btn"
-              [routerLink]="['/app/tickets', row.id]"
-            >
-              เปิด
-            </a>
-            <button
-              mat-icon-button
-              type="button"
-              [matMenuTriggerFor]="manageMenu"
-              aria-label="จัดการใบแจ้งปัญหา"
-            >
-              <mat-icon>more_vert</mat-icon>
-            </button>
-            <mat-menu #manageMenu="matMenu">
-              <a mat-menu-item [routerLink]="['/app/tickets', row.id]">
-                <mat-icon>open_in_new</mat-icon>
-                <span>เปิดรายละเอียด</span>
-              </a>
-              @if (canEdit()) {
-                <button mat-menu-item type="button" (click)="openEdit(row)">
-                  <mat-icon>edit</mat-icon>
-                  <span>แก้ไข</span>
-                </button>
-              }
-              @if (canClose() && displayStatus(row) === 'RESOLVED') {
-                <button mat-menu-item type="button" (click)="closeTicket(row)">
-                  <mat-icon>task_alt</mat-icon>
-                  <span>ปิดงาน</span>
-                </button>
-              }
-              @if (canDelete()) {
-                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                  <mat-icon>delete</mat-icon>
-                  <span>ลบ</span>
-                </button>
-              }
-            </mat-menu>
+            <app-row-actions [actions]="ticketRowActions(row)" />
           </td>
         </ng-container>
 

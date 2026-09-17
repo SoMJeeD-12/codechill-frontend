@@ -1,6 +1,13 @@
 /** สถานะสัญญา MA — MaContractResponseDto */
 export type MaContractStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'RENEWED';
 
+/**
+ * สถานะคุ้มครองจริงจาก BE — ห้ามเดาจาก status=ACTIVE หรือเครื่องหมาย daysUntilExpiry อย่างเดียว
+ * INACTIVE ไม่คุ้มครอง (ร่าง/ยกเลิก/ต่อแล้ว) · NOT_STARTED ยังไม่ถึงวันเริ่ม
+ * IN_FORCE คุ้มครองอยู่ · ENDED เลยวันสิ้นสุดแล้ว
+ */
+export type MaCoverageState = 'INACTIVE' | 'NOT_STARTED' | 'IN_FORCE' | 'ENDED';
+
 export type MaBillingCycle = 'MONTHLY' | 'YEARLY';
 
 export type MaAddonType = 'EXTRA_QUOTA' | 'OTHER';
@@ -91,9 +98,11 @@ export interface MaContract {
   startDate: string;
   endDate: string;
   status: MaContractStatus;
-  /** ใช้แสดงสถานะจริงจนกว่า Phase 11 มี scheduler */
+  /** แหล่งความจริงของป้ายคุ้มครอง — มีใน GET /ma-contracts/:id */
+  coverageState?: MaCoverageState;
+  /** true เฉพาะ coverageState === IN_FORCE */
   isCurrentlyActive: boolean;
-  /** ติดลบ = หมดอายุแล้ว */
+  /** วันถึง endDate: บวก = ยังไม่ถึงวันสิ้นสุด, ลบ = เลยแล้ว — ห้ามใช้เครื่องหมายอย่างเดียวตัดสินป้ายหมดอายุ */
   daysUntilExpiry: number;
   signedDate: string | null;
   signedFileUrl: string | null;
@@ -140,4 +149,94 @@ export function maPlanDisplayName(contract: MaContract): string {
 
 export function maSlaHours(contract: MaContract): number | null {
   return contract.plan?.responseTimeHour ?? null;
+}
+
+/** ใช้ coverageState ถ้ามี — ถ้าไม่มี ห้ามตีความ days > 0 เป็นหมดอายุ */
+export function resolveMaCoverageState(
+  contract: Pick<
+    MaContract,
+    'coverageState' | 'status' | 'isCurrentlyActive' | 'daysUntilExpiry' | 'startDate'
+  >
+): MaCoverageState {
+  if (contract.coverageState) {
+    return contract.coverageState;
+  }
+  if (contract.isCurrentlyActive) {
+    return 'IN_FORCE';
+  }
+  if (
+    contract.status === 'DRAFT' ||
+    contract.status === 'CANCELLED' ||
+    contract.status === 'RENEWED'
+  ) {
+    return 'INACTIVE';
+  }
+  if (contract.status === 'EXPIRED') {
+    return 'ENDED';
+  }
+  if (contract.daysUntilExpiry > 0 || isStartDateInFuture(contract.startDate)) {
+    return 'NOT_STARTED';
+  }
+  if (contract.daysUntilExpiry < 0) {
+    return 'ENDED';
+  }
+  return 'NOT_STARTED';
+}
+
+function isStartDateInFuture(startDate: string | undefined): boolean {
+  if (!startDate) {
+    return false;
+  }
+  const start = new Date(`${startDate.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(start.getTime())) {
+    return false;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return start.getTime() > today.getTime();
+}
+
+export function maCoverageLabel(contract: MaContract): string {
+  switch (resolveMaCoverageState(contract)) {
+    case 'IN_FORCE':
+      return 'คุ้มครองอยู่';
+    case 'NOT_STARTED':
+      return 'ยังไม่เริ่ม';
+    case 'ENDED':
+      return 'หมดอายุแล้ว';
+    case 'INACTIVE':
+      return maInactiveStatusLabel(contract.status);
+  }
+}
+
+/** ข้อความวัน — เหลืออีก เฉพาะที่ยังไม่ถึง endDate และยังไม่จบความคุ้มครอง */
+export function maCoverageDaysHint(contract: MaContract): string | null {
+  const state = resolveMaCoverageState(contract);
+  const days = contract.daysUntilExpiry;
+  if (typeof days !== 'number' || Number.isNaN(days)) {
+    return null;
+  }
+  if (state === 'ENDED') {
+    const past = Math.abs(days);
+    return past > 0 ? `เลยมา ${past} วัน` : null;
+  }
+  if ((state === 'NOT_STARTED' || state === 'IN_FORCE') && days > 0) {
+    return `เหลืออีก ${days} วัน`;
+  }
+  return null;
+}
+
+function maInactiveStatusLabel(status: MaContractStatus): string {
+  switch (status) {
+    case 'DRAFT':
+      return 'ร่าง';
+    case 'CANCELLED':
+      return 'ยกเลิก';
+    case 'RENEWED':
+      return 'ต่อสัญญาแล้ว';
+    case 'EXPIRED':
+      return 'หมดอายุ';
+    default:
+      return 'ไม่ใช้งาน';
+  }
 }

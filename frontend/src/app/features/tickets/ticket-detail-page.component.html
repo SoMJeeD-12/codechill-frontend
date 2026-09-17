@@ -135,6 +135,25 @@
       }
     </nav>
 
+    <div class="app-meta-grid">
+      <mat-card class="app-meta-card">
+        <strong>รับแจ้ง</strong>
+        <span>{{ t.reportedAt | thaiDate }}</span>
+      </mat-card>
+      <mat-card class="app-meta-card">
+        <strong>ปิดงานเมื่อ</strong>
+        <span>{{ t.closedAt | thaiDate }}</span>
+      </mat-card>
+      <mat-card class="app-meta-card">
+        <strong>ผู้รับเรื่อง</strong>
+        <span>{{ userName(t.receivedByUserId) }}</span>
+      </mat-card>
+      <mat-card class="app-meta-card">
+        <strong>งานแก้ไขแล้ว</strong>
+        <span>{{ t.resolutionCount || 0 }} ครั้ง</span>
+      </mat-card>
+    </div>
+
     @if (demoBanner()) {
       <p class="demo-banner">{{ demoBanner() }}</p>
     }
@@ -338,31 +357,6 @@
       </div>
     </div>
 
-    <div class="app-meta-grid">
-      <mat-card class="app-meta-card">
-        <strong>รับแจ้ง</strong>
-        <span>{{ t.reportedAt | thaiDate }}</span>
-      </mat-card>
-      <mat-card class="app-meta-card">
-        <strong>ปิดงานเมื่อ</strong>
-        <span>{{ t.closedAt | thaiDate }}</span>
-      </mat-card>
-      <mat-card class="app-meta-card">
-        <strong>ผู้รับเรื่อง</strong>
-        <span>{{ userName(t.receivedByUserId) }}</span>
-      </mat-card>
-      <mat-card class="app-meta-card">
-        <strong>งานแก้ไขแล้ว</strong>
-        <span>{{ t.resolutionCount || 0 }} ครั้ง</span>
-      </mat-card>
-    </div>
-
-    @if (categoryLabel(); as cat) {
-      <p class="category-chip">
-        หมวดหมู่ · {{ cat }}
-        <span class="demo-tag">ตัวอย่าง</span>
-      </p>
-    }
   </section>
   }
 }

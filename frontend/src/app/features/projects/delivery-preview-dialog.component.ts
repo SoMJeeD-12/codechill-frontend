@@ -1,15 +1,25 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
+  MatDialog,
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
+import { ApiProjectDocument } from '../../core/models/document.model';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
 } from '../../core/models/project.model';
+import { DocumentService } from '../../core/services/document.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
+import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 
 export interface DeliveryPreviewDialogData {
   delivery: Delivery;
@@ -23,7 +33,7 @@ export interface DeliveryPreviewDialogData {
 @Component({
   selector: 'app-delivery-preview-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, ThaiDatePipe],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatSnackBarModule, ThaiDatePipe],
   template: `
     <h2 mat-dialog-title>รายละเอียดการส่งมอบ</h2>
     <mat-dialog-content>
@@ -80,8 +90,41 @@ export interface DeliveryPreviewDialogData {
           </div>
           <div class="full">
             <dt>หมายเหตุ</dt>
-            <dd class="desc">{{ d.note || '—' }}</dd>
+            <dd class="desc">{{ noteText }}</dd>
           </div>
+          @if (attachment || files().length || filesLoading()) {
+            <div class="full">
+              <dt>ไฟล์หลักฐาน</dt>
+              <dd>
+                @if (filesLoading()) {
+                  <span class="file-miss">กำลังโหลดไฟล์…</span>
+                } @else if (files().length) {
+                  @for (file of files(); track file.id) {
+                    <div class="file-row">
+                      <mat-icon>description</mat-icon>
+                      <span class="file-name">{{ file.fileName }}</span>
+                      <button mat-stroked-button type="button" (click)="preview(file)">
+                        ดูตัวอย่าง
+                      </button>
+                      <button
+                        mat-button
+                        type="button"
+                        [disabled]="downloadingId() === file.id"
+                        (click)="download(file)"
+                      >
+                        ดาวน์โหลด
+                      </button>
+                    </div>
+                  }
+                } @else {
+                  <span>{{ attachment?.fileName || '—' }}</span>
+                  <p class="file-miss">
+                    {{ filesError() || 'ไม่พบไฟล์ในเอกสารโปรเจค จึงเปิดดูหรือดาวน์โหลดไม่ได้' }}
+                  </p>
+                }
+              </dd>
+            </div>
+          }
         </dl>
       </article>
     </mat-dialog-content>
@@ -134,6 +177,27 @@ export interface DeliveryPreviewDialogData {
         line-height: 1.45;
       }
     }
+    .file-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      mat-icon {
+        color: #0f766e;
+        width: 1.15rem;
+        height: 1.15rem;
+        font-size: 1.15rem;
+      }
+    }
+    .file-name {
+      min-width: 0;
+      word-break: break-all;
+    }
+    .file-miss {
+      margin: 0.2rem 0 0;
+      color: #64748b;
+      font-size: 0.82rem;
+    }
     @media (max-width: 560px) {
       .preview-card__grid {
         grid-template-columns: 1fr;
@@ -142,9 +206,146 @@ export interface DeliveryPreviewDialogData {
   `,
 })
 export class DeliveryPreviewDialogComponent {
+  private readonly docsApi = inject(DocumentService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly ref = inject(MatDialogRef<DeliveryPreviewDialogComponent>);
   readonly data = inject<DeliveryPreviewDialogData>(MAT_DIALOG_DATA);
   readonly d = this.data.delivery;
   readonly acceptanceLabel =
     DELIVERY_ACCEPTANCE_LABELS[this.d.acceptanceStatus] ?? this.d.acceptanceStatus;
+  readonly attachment = parseDeliveryAttachment(this.d.note);
+  readonly noteText = deliveryNoteText(this.d.note);
+  readonly files = signal<ApiProjectDocument[]>([]);
+  readonly filesLoading = signal(false);
+  readonly filesError = signal<string | null>(null);
+  readonly downloadingId = signal<number | null>(null);
+
+  constructor() {
+    this.loadFiles();
+  }
+
+  preview(file: ApiProjectDocument): void {
+    this.dialog.open(DocumentPreviewDialogComponent, {
+      ...FORM_DIALOG_WIDE,
+      data: { document: file },
+    });
+  }
+
+  download(file: ApiProjectDocument): void {
+    this.downloadingId.set(file.id);
+    this.docsApi
+      .download(file)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.downloadingId.set(null),
+        error: (err: Error) => {
+          this.downloadingId.set(null);
+          this.snack.open(err.message || 'ดาวน์โหลดไม่สำเร็จ', 'ปิด', { duration: 4000 });
+        },
+      });
+  }
+
+  private loadFiles(): void {
+    const projectId = this.d.projectId;
+    if (!projectId || (!this.attachment && !this.d.id)) {
+      return;
+    }
+    if (this.attachment) {
+      this.filesLoading.set(true);
+    }
+    const named = this.attachment?.fileName ?? null;
+    const byName = named
+      ? this.docsApi.listByProject(projectId, { search: named, limit: 50 })
+      : of({ items: [] as ApiProjectDocument[], total: 0 });
+    byName
+      .pipe(
+        switchMap((page) => {
+          const found = this.pick(page.items);
+          if (found.length) {
+            return of(found);
+          }
+          return this.docsApi
+            .listByProject(projectId, { search: `ส่งมอบ #${this.d.id}`, limit: 50 })
+            .pipe(
+              switchMap((refPage) => {
+                const refFound = this.pick(refPage.items);
+                if (refFound.length) {
+                  return of(refFound);
+                }
+                return this.docsApi
+                  .listByProject(projectId, { limit: 100 })
+                  .pipe(map((all) => this.pick(all.items)));
+              })
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (rows) => {
+          this.files.set(rows);
+          this.filesLoading.set(false);
+        },
+        error: (err: Error) => {
+          this.files.set([]);
+          this.filesError.set(err.message || 'โหลดไฟล์ไม่สำเร็จ');
+          this.filesLoading.set(false);
+        },
+      });
+  }
+
+  private pick(rows: ApiProjectDocument[]): ApiProjectDocument[] {
+    const seen = new Set<number>();
+    return rows.filter((doc) => {
+      if (seen.has(doc.id) || !deliveryDocMatches(doc, this.d.id, this.attachment)) {
+        return false;
+      }
+      seen.add(doc.id);
+      return true;
+    });
+  }
+}
+
+export function parseDeliveryAttachment(
+  note: string | null
+): { fileName: string; documentId: number | null } | null {
+  const text = note?.trim() ?? '';
+  const match = text.match(/^แนบไฟล์:\s*(.+)$/);
+  if (!match) {
+    return null;
+  }
+  const rest = match[1].trim();
+  const idMatch = rest.match(/·\s*เอกสาร\s*#(\d+)\s*$/);
+  const fileName = rest.replace(/\s*·\s*เอกสาร\s*#\d+\s*$/, '').trim();
+  if (!fileName) {
+    return null;
+  }
+  return {
+    fileName,
+    documentId: idMatch ? Number(idMatch[1]) : null,
+  };
+}
+
+function deliveryNoteText(note: string | null): string {
+  const text = note?.trim() ?? '';
+  if (!text || parseDeliveryAttachment(text)) {
+    return '—';
+  }
+  return text;
+}
+
+function deliveryDocMatches(
+  doc: ApiProjectDocument,
+  deliveryId: number,
+  attachment: { fileName: string; documentId: number | null } | null
+): boolean {
+  if (attachment?.documentId != null && doc.id === attachment.documentId) {
+    return true;
+  }
+  if ((doc.note ?? '').includes(`อ้างอิงการส่งมอบ #${deliveryId}`)) {
+    return true;
+  }
+  return !!attachment && doc.fileName.trim() === attachment.fileName;
 }

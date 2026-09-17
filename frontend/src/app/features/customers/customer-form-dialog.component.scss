@@ -1,21 +1,47 @@
 .form {
+  min-width: min(1040px, 100%);
+  margin-top: 0.65rem;
+}
+
+.form-grid {
   display: grid;
-  gap: 0.15rem;
-  min-width: min(1040px, 92vw);
-  margin-top: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 2rem;
+  align-items: start;
+}
+
+.form-grid__col {
+  display: grid;
+  gap: 1.15rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.form-grid__col + .form-grid__col {
+  padding-left: 1.5rem;
+  border-left: 1px solid rgba(28, 43, 40, 0.1);
+}
+
+.form-grid__title {
+  margin: 0 0 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #0f766e;
 }
 
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: 1.15rem 0.85rem;
+  min-width: 0;
 }
 
-.full {
+.full,
+:host ::ng-deep .mat-mdc-form-field {
   width: 100%;
 }
 
-/* ช่องทางที่ใช้น้อย — จางกว่าเพื่อไม่แย่งความสนใจ */
 .section--muted {
   background: rgba(28, 43, 40, 0.02);
 
@@ -25,10 +51,13 @@
 }
 
 .section {
-  margin: 0.35rem 0 0.5rem;
-  padding: 0.65rem 0.75rem 0.25rem;
+  display: grid;
+  gap: 1rem;
+  margin: 0.15rem 0 0;
+  padding: 0.85rem 0.9rem 0.35rem;
   border: 1px solid rgba(28, 43, 40, 0.12);
   border-radius: 10px;
+  min-width: 0;
 
   legend {
     padding: 0 0.35rem;
@@ -38,38 +67,45 @@
   }
 }
 
-.more {
-  margin-top: 0.35rem;
-  border: 1px dashed rgba(28, 43, 40, 0.18);
-  border-radius: 10px;
-  padding: 0.35rem 0.65rem 0.15rem;
-
-  summary {
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: #0f766e;
-    list-style: none;
-    padding: 0.35rem 0;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-  }
-}
-
-.more-body {
-  display: grid;
-  gap: 0.15rem;
-  padding-bottom: 0.35rem;
-}
-
 .error {
+  margin: 0.35rem 0 0;
   color: #991b1b;
 }
 
-@media (max-width: 560px) {
+/* ป้ายลอยต้องอยู่เหนือเส้นช่อง และ error ต้องไม่ทับช่องถัดไป */
+:host ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  margin-top: 0.2rem;
+  min-height: 1.15em;
+}
+
+:host ::ng-deep .mat-mdc-text-field-wrapper {
+  overflow: visible;
+}
+
+:host ::ng-deep .mat-mdc-form-field-infix {
+  min-width: 0;
+  width: 100%;
+}
+
+:host ::ng-deep .mat-mdc-select-value-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 860px) {
+  .form {
+    min-width: 0;
+  }
+
+  .form-grid,
   .row {
     grid-template-columns: 1fr;
+  }
+
+  .form-grid__col + .form-grid__col {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(28, 43, 40, 0.1);
   }
 }

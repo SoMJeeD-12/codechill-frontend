@@ -80,6 +80,9 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { DeliveryPreviewDialogComponent } from './delivery-preview-dialog.component';
+import { FilePickerComponent } from '../../shared/components/file-picker.component';
+import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
+import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
@@ -111,6 +114,7 @@ import {
     MatTooltipModule,
     MatDialogModule,
     MatMenuModule,
+    RowActionsComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './project-detail-page.component.html',
@@ -155,6 +159,9 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly documentsDenied = signal(false);
   readonly documentSearch = signal('');
   readonly documentSearchControl = this.fb.nonNullable.control('');
+  /** ไม่ส่ง sort จนกว่าจะกดหัวคอลัมน์ — ให้ BE เรียง createdAt DESC */
+  readonly documentSortBy = signal<'title' | 'fileName' | 'fileSize' | 'createdAt' | null>(null);
+  readonly documentSortOrder = signal<'ASC' | 'DESC'>('DESC');
   readonly documentPageIndex = signal(0);
   readonly documentPageSize = signal(10);
   readonly documentPageSizeOptions = [...DEFAULT_PAGE_SIZE_OPTIONS];
@@ -203,14 +210,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'period', 'status'];
-  readonly documentColumns = [
-    'title',
-    'fileName',
-    'fileSize',
-    'uploadedBy',
-    'createdAt',
-    'actions',
-  ];
+  readonly documentColumns = ['title', 'fileSize', 'uploadedBy', 'createdAt', 'actions'];
 
   /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
   readonly canViewProject = computed(() => {
@@ -589,7 +589,11 @@ export class ProjectDetailPageComponent implements OnInit {
       this.projectTicketsPager.reset();
     });
     this.documentSearchControl.valueChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        debounceTime(PICKER_DEBOUNCE_MS),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe((v) => {
         this.documentSearch.set(v);
         this.documentPageIndex.set(0);
@@ -598,8 +602,16 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   customerName(): string {
-    const id = this.project()?.customerId;
-    return id ? this.customersApi.getCustomer(id)?.name ?? `#${id}` : '—';
+    const project = this.project();
+    const fromProject = project?.customer?.name?.trim();
+    if (fromProject) {
+      return fromProject;
+    }
+    const id = project?.customerId;
+    if (!id) {
+      return '—';
+    }
+    return this.customersApi.getCustomer(id)?.name?.trim() || '—';
   }
 
   /** ซ่อนค่าว่าง / ตัวเลขเดี่ยวที่มักใส่ผิด เช่น "0" */
@@ -829,15 +841,6 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  reportPercent(): string {
-    const percent = this.projectReport()?.progress?.percent;
-    return percent == null ? '—' : `${percent}%`;
-  }
-
-  reportCount(value: number | null | undefined): string {
-    return value == null ? '—' : String(value);
-  }
-
   refresh(): void {
     this.projectsApi.fetchProject(this.projectId).subscribe({
       next: (project) => {
@@ -1046,11 +1049,14 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     this.documentsLoading.set(true);
     this.documentsDenied.set(false);
+    const q = this.documentSearch().trim();
     this.documentsApi
       .listByProject(this.projectId, {
-        search: this.documentSearch().trim() || undefined,
+        search: q.length >= PICKER_MIN_CHARS ? q : undefined,
         page: this.documentPageIndex() + 1,
         limit: this.documentPageSize(),
+        sortBy: this.documentSortBy() ?? undefined,
+        sortOrder: this.documentSortBy() ? this.documentSortOrder() : undefined,
       })
       .subscribe({
         next: ({ items, total }) => {
@@ -1071,6 +1077,38 @@ export class ProjectDetailPageComponent implements OnInit {
     this.documentPageIndex.set(event.pageIndex);
     this.documentPageSize.set(event.pageSize);
     this.loadDocuments();
+  }
+
+  toggleDocumentSort(key: 'title' | 'fileName' | 'fileSize' | 'createdAt'): void {
+    if (this.documentSortBy() === key) {
+      this.documentSortOrder.update((dir) => (dir === 'ASC' ? 'DESC' : 'ASC'));
+    } else {
+      this.documentSortBy.set(key);
+      this.documentSortOrder.set(key === 'createdAt' || key === 'fileSize' ? 'DESC' : 'ASC');
+    }
+    this.documentPageIndex.set(0);
+    this.loadDocuments();
+  }
+
+  documentSortIcon(key: 'title' | 'fileName' | 'fileSize' | 'createdAt'): string {
+    if (this.documentSortBy() !== key) {
+      return 'unfold_more';
+    }
+    return this.documentSortOrder() === 'ASC' ? 'arrow_upward' : 'arrow_downward';
+  }
+
+  documentTitle(row: ApiProjectDocument): string {
+    return row.title?.trim() || row.fileName;
+  }
+
+  /** ชื่อไฟล์เป็นบรรทัดรอง เมื่อคนละค่ากับชื่อเอกสาร */
+  documentFileName(row: ApiProjectDocument): string | null {
+    const title = row.title?.trim();
+    const fileName = row.fileName?.trim();
+    if (!fileName || !title || fileName === title) {
+      return null;
+    }
+    return fileName;
   }
 
   formatDocSize(bytes: number): string {
@@ -1279,6 +1317,52 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
+  deliveryRowActions(row: Delivery): RowAction[] {
+    return [
+      { label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openDeliveryDetail(row) },
+      {
+        label: 'ออกประกัน',
+        icon: 'verified',
+        disabled: !row.canIssueWarranty,
+        run: () => this.openIssueWarranty(row),
+      },
+    ];
+  }
+
+  documentRowActions(row: ApiProjectDocument): RowAction[] {
+    const actions: RowAction[] = [
+      { label: 'ดูรายละเอียด', primary: true, icon: 'visibility', run: () => this.openDocumentPreview(row) },
+    ];
+    if (this.canUpdateDocument()) {
+      actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openEditDocument(row) });
+    }
+    if (this.canDeleteDocument()) {
+      actions.push({ label: 'ลบ', icon: 'delete', danger: true, run: () => this.removeDocument(row) });
+    }
+    return actions;
+  }
+
+  projectTicketRowActions(row: Ticket): RowAction[] {
+    const actions: RowAction[] = [
+      {
+        label: 'รายละเอียด',
+        primary: true,
+        icon: 'open_in_new',
+        run: () => void this.router.navigate(['/app/tickets', row.id]),
+      },
+    ];
+    if (this.canCloseTicket() && this.ticketStatusAttr(row) === 'RESOLVED') {
+      actions.push({ label: 'ปิดงาน', icon: 'task_alt', run: () => this.closeProjectTicket(row) });
+    }
+    return actions;
+  }
+
+  projectFollowUpRowActions(row: FollowUp): RowAction[] {
+    return [
+      { label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openFollowUpDetail(row) },
+    ];
+  }
+
   openDeliveryDetail(d: Delivery): void {
     this.dialog.open(DeliveryPreviewDialogComponent, {
       ...FORM_DIALOG_COMPACT,
@@ -1415,32 +1499,26 @@ export interface DeliveryFormDialogData {
     <h2 mat-dialog-title>บันทึกการส่งมอบ</h2>
     <mat-dialog-content>
       <form [formGroup]="form" class="dlg-form" id="delivery-form" (ngSubmit)="save()">
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>หัวข้อการส่งมอบ</mat-label>
           <input matInput formControlName="title" placeholder="เช่น ส่งมอบรอบที่ 1" />
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>เวอร์ชัน</mat-label>
           <input matInput formControlName="version" placeholder="เช่น v1.0" />
         </mat-form-field>
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>วันที่ส่ง</mat-label>
-            <input matInput [matDatepicker]="deliveryPicker" formControlName="deliveredDate" />
-            <mat-datepicker-toggle matIconSuffix [for]="deliveryPicker"></mat-datepicker-toggle>
-            <mat-datepicker #deliveryPicker></mat-datepicker>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>เวลาที่ส่ง</mat-label>
-            <input matInput appThaiTimeInput formControlName="deliveredTime" />
-            <span matTextSuffix>น.</span>
-          </mat-form-field>
-        </div>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>รายละเอียด</mat-label>
-          <textarea matInput rows="2" formControlName="description"></textarea>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>วันที่ส่ง</mat-label>
+          <input matInput [matDatepicker]="deliveryPicker" formControlName="deliveredDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="deliveryPicker"></mat-datepicker-toggle>
+          <mat-datepicker #deliveryPicker></mat-datepicker>
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>เวลาที่ส่ง</mat-label>
+          <input matInput appThaiTimeInput formControlName="deliveredTime" />
+          <span matTextSuffix>น.</span>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>ผู้ส่งมอบ</mat-label>
           <mat-select formControlName="deliveredByUserId">
             <mat-option [value]="null">—</mat-option>
@@ -1449,7 +1527,7 @@ export interface DeliveryFormDialogData {
             }
           </mat-select>
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>ผู้รับมอบ (ฝั่งลูกค้า)</mat-label>
           <mat-select formControlName="acceptedByContactId">
             <mat-option [value]="null">—</mat-option>
@@ -1458,7 +1536,11 @@ export interface DeliveryFormDialogData {
             }
           </mat-select>
         </mat-form-field>
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>รายละเอียด</mat-label>
+          <textarea matInput rows="2" formControlName="description"></textarea>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>หมายเหตุ</mat-label>
           <textarea matInput rows="2" formControlName="note"></textarea>
         </mat-form-field>
@@ -1474,20 +1556,20 @@ export interface DeliveryFormDialogData {
   styles: `
     .dlg-form {
       display: grid;
-      gap: 0.35rem;
-      padding-top: 0.25rem;
-      min-width: min(100%, 42rem);
-    }
-    .row {
-      display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.55rem;
+      gap: 0.65rem 0.85rem;
+      align-items: start;
+      padding-top: 0.15rem;
     }
-    .full {
+    mat-form-field {
       width: 100%;
     }
-    @media (max-width: 560px) {
-      .row {
+    textarea {
+      resize: none;
+      min-height: 2.4rem;
+    }
+    @media (max-width: 720px) {
+      .dlg-form {
         grid-template-columns: 1fr;
       }
     }
@@ -1571,6 +1653,7 @@ type EvidenceMode = 'text' | 'file';
     MatButtonModule,
     MatCheckboxModule,
     MatIconModule,
+    FilePickerComponent,
   ],
   template: `
     <h2 mat-dialog-title>ยอมรับการส่งมอบ</h2>
@@ -1623,22 +1706,15 @@ type EvidenceMode = 'text' | 'file';
                 formControlName="evidenceNote"
                 placeholder='เช่น ข้อความจากลูกค้า "โอเคค่ะ"'
               ></textarea>
-              <mat-hint>ใส่ข้อความ / ลิงก์ยืนยันจากลูกค้า</mat-hint>
             </mat-form-field>
           } @else {
-            <label class="file-pick">
-              <span>เลือกไฟล์หลักฐาน (ไม่เกิน 20 MB)</span>
-              <input type="file" [accept]="accept" (change)="onFilePicked($event)" />
-            </label>
-            @if (selectedFileName()) {
-              <p class="file-name">
-                <mat-icon>description</mat-icon>
-                {{ selectedFileName() }}
-              </p>
-            } @else {
-              <p class="file-empty">ยังไม่ได้เลือกไฟล์</p>
-            }
-            <p class="file-hint">ไฟล์จะถูกเก็บในเอกสารของโปรเจคนี้</p>
+            <app-file-picker
+              label="เลือกไฟล์หลักฐาน"
+              hint="ไม่เกิน 20 MB · เก็บในเอกสารของโปรเจคนี้"
+              [accept]="accept"
+              [fileName]="selectedFileName()"
+              (picked)="onFilePicked($event)"
+            />
           }
         </div>
 
@@ -1807,9 +1883,7 @@ export class DeliveryAcceptDialogComponent {
     this.error.set(null);
   }
 
-  onFilePicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
+  onFilePicked(file: File | null): void {
     this.evidenceFile = file;
     this.selectedFileName.set(file?.name ?? '');
     this.error.set(null);
@@ -1817,7 +1891,6 @@ export class DeliveryAcceptDialogComponent {
       this.evidenceFile = null;
       this.selectedFileName.set('');
       this.error.set('ไฟล์ใหญ่เกิน 20 MB');
-      input.value = '';
     }
   }
 
@@ -1864,7 +1937,7 @@ export class DeliveryAcceptDialogComponent {
           const fileLabel = doc.fileName || this.evidenceFile?.name || 'ไฟล์';
           this.ref.close({
             acceptedByContactId,
-            evidenceNote: `แนบไฟล์: ${fileLabel}`,
+            evidenceNote: `แนบไฟล์: ${fileLabel} · เอกสาร #${doc.id}`,
             isFinal,
           });
         },
@@ -1892,6 +1965,7 @@ export interface ProjectDocumentUploadDialogData {
     MatInputModule,
     MatButtonModule,
     MatSnackBarModule,
+    FilePickerComponent,
   ],
   template: `
     <h2 mat-dialog-title>อัปโหลดเอกสาร</h2>
@@ -1899,20 +1973,16 @@ export interface ProjectDocumentUploadDialogData {
       <form [formGroup]="form" class="dlg-form" id="project-doc-upload-form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>ชื่อเอกสาร</mat-label>
-          <input matInput formControlName="title" placeholder="ว่างไว้จะใช้ชื่อไฟล์" />
+          <input matInput formControlName="title" placeholder="ตั้งชื่อที่ค้นเจอง่าย — ว่างไว้ใช้ชื่อไฟล์" />
         </mat-form-field>
 
-        <label class="file-pick">
-          <span>แนบไฟล์ (บังคับ · ไม่เกิน 20 MB)</span>
-          <input
-            type="file"
-            [accept]="accept"
-            (change)="onFilePicked($event)"
-          />
-        </label>
-        @if (selectedFileName()) {
-          <p class="file-name">{{ selectedFileName() }}</p>
-        }
+        <app-file-picker
+          label="แนบไฟล์"
+          hint="บังคับ · ไม่เกิน 20 MB"
+          [accept]="accept"
+          [fileName]="selectedFileName()"
+          (picked)="onFilePicked($event)"
+        />
 
         <mat-form-field appearance="outline" class="full">
           <mat-label>หมายเหตุ</mat-label>
@@ -1984,9 +2054,7 @@ export class ProjectDocumentUploadDialogComponent {
     note: [''],
   });
 
-  onFilePicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
+  onFilePicked(file: File | null): void {
     this.file = file;
     this.selectedFileName.set(file?.name ?? '');
     this.error.set(null);
@@ -1994,7 +2062,6 @@ export class ProjectDocumentUploadDialogComponent {
       this.file = null;
       this.selectedFileName.set('');
       this.error.set('ไฟล์ใหญ่เกิน 20 MB');
-      input.value = '';
     }
   }
 
@@ -2047,16 +2114,26 @@ export interface ProjectDocumentEditDialogData {
     MatInputModule,
     MatButtonModule,
     MatSnackBarModule,
+    FilePickerComponent,
   ],
   template: `
     <h2 mat-dialog-title>แก้ไขเอกสาร</h2>
     <mat-dialog-content>
-      <p class="file-hint">{{ data.document.fileName }}</p>
       <form [formGroup]="form" class="dlg-form" id="project-doc-edit-form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>ชื่อเอกสาร</mat-label>
           <input matInput formControlName="title" />
         </mat-form-field>
+
+        <app-file-picker
+          label="เปลี่ยนไฟล์"
+          hint="ไม่บังคับ · ไม่เกิน 20 MB"
+          [accept]="accept"
+          [fileName]="selectedFileName()"
+          [currentName]="data.document.fileName"
+          (picked)="onFilePicked($event)"
+        />
+
         <mat-form-field appearance="outline" class="full">
           <mat-label>หมายเหตุ</mat-label>
           <textarea matInput rows="3" formControlName="note" placeholder="ว่าง = ล้างหมายเหตุ"></textarea>
@@ -2080,10 +2157,16 @@ export interface ProjectDocumentEditDialogData {
     </mat-dialog-actions>
   `,
   styles: `
+    .file-pick {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+      color: #334155;
+    }
     .file-hint {
-      margin: 0 0 0.65rem;
-      color: #64748b;
-      font-size: 0.88rem;
+      margin: 0;
+      color: #0f766e;
+      font-size: 0.85rem;
       word-break: break-all;
     }
     .dlg-form {
@@ -2108,15 +2191,33 @@ export class ProjectDocumentEditDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ProjectDocumentEditDialogComponent, boolean>);
   readonly data = inject<ProjectDocumentEditDialogData>(MAT_DIALOG_DATA);
 
+  readonly accept = DOCUMENT_ACCEPT;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly selectedFileName = signal('');
+  private file: File | null = null;
 
   readonly form = this.fb.group({
     title: [this.data.document.title ?? ''],
     note: [this.data.document.note ?? ''],
   });
 
+  onFilePicked(file: File | null): void {
+    this.file = file;
+    this.selectedFileName.set(file?.name ?? '');
+    this.error.set(null);
+    if (file && file.size > DOCUMENT_MAX_BYTES) {
+      this.file = null;
+      this.selectedFileName.set('');
+      this.error.set('ไฟล์ใหญ่เกิน 20 MB');
+    }
+  }
+
   save(): void {
+    if (this.file && this.file.size > DOCUMENT_MAX_BYTES) {
+      this.error.set('ไฟล์ใหญ่เกิน 20 MB');
+      return;
+    }
     const raw = this.form.getRawValue();
     this.saving.set(true);
     this.error.set(null);
@@ -2124,6 +2225,7 @@ export class ProjectDocumentEditDialogComponent {
       .update(this.data.document.id, {
         title: (raw.title ?? '').trim(),
         note: (raw.note ?? '').trim() || null,
+        file: this.file,
       })
       .subscribe({
         next: () => {

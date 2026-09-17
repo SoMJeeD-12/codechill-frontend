@@ -144,7 +144,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'ma-plans',
     label: 'แผน MA',
-    description: 'แพ็กเกจโควตาและราคา',
+    description: 'แพ็กเกจโควตา',
     icon: 'playlist_add_check',
     route: '/app/ma/plans',
     group: 'settings',

@@ -2,7 +2,6 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">แบบประเมิน</h1>
-      <p class="app-subtitle">สร้างแบบประเมิน เปิดรับคำตอบ และบันทึกการส่งโดยพนักงาน</p>
     </div>
   </header>
 
@@ -34,9 +33,8 @@
               <mat-icon>{{ sortIcon('title') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row">
-            <a class="app-link" [routerLink]="['/app/surveys', row.id]"><strong>{{ row.title }}</strong></a>
-            <div class="app-muted text-sm">{{ row.description || '—' }}</div>
+          <td mat-cell *matCellDef="let row" [attr.title]="row.description ? row.title + ' — ' + row.description : row.title">
+            <a class="app-link" [routerLink]="['/app/surveys', row.id]">{{ row.title }}</a>
           </td>
         </ng-container>
         <ng-container matColumnDef="status">
@@ -46,11 +44,12 @@
               <mat-icon>{{ sortIcon('status') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row">
+          <td
+            mat-cell
+            *matCellDef="let row"
+            [attr.title]="row.status === 'ACTIVE' && !row.isCurrentlyUsable ? 'เปิดรับแล้ว แต่ยังใช้ไม่ได้ตามช่วงวันที่' : statusLabel(row.status)"
+          >
             <span class="status" [attr.data-status]="row.status">{{ statusLabel(row.status) }}</span>
-            @if (row.status === 'ACTIVE' && !row.isCurrentlyUsable) {
-              <div class="muted usable-hint">เปิดรับแล้ว แต่ยังใช้ไม่ได้ตามช่วงวันที่</div>
-            }
           </td>
         </ng-container>
         <ng-container matColumnDef="questions">

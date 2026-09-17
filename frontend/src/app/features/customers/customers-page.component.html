@@ -3,13 +3,6 @@
     <div>
       <p class="app-eyebrow">{{ is360Mode ? 'มุมมองลูกค้า 360°' : 'ข้อมูล' }}</p>
       <h1 class="app-page-title">{{ is360Mode ? 'มุมมอง 360°' : 'ลูกค้า' }}</h1>
-      <p class="app-subtitle">
-        {{
-          is360Mode
-            ? 'เลือกลูกค้า 1 ราย แล้วดูโปรเจค ประกัน MA ปัญหา ติดตาม ในหน้าเดียว'
-            : 'ทะเบียนลูกค้า — ชื่อ ภาษี ที่อยู่ ผู้ติดต่อ'
-        }}
-      </p>
     </div>
   </header>
 
@@ -68,7 +61,7 @@
               <mat-icon>{{ sortIcon('name') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row">
+          <td mat-cell *matCellDef="let row" [attr.title]="row.name + (row.code ? ' · รหัส ' + row.code : '')">
             @if (is360Mode) {
               <a [routerLink]="['/app/customer-360', row.id]">{{ row.name }}</a>
             } @else {
@@ -76,7 +69,6 @@
                 {{ row.name }}
               </button>
             }
-            <div class="app-muted text-sm">รหัส {{ row.code || '—' }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="phone">
@@ -109,41 +101,7 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions">
-            @if (is360Mode) {
-              <button mat-stroked-button type="button" color="primary" (click)="openDetail(row)">
-                <mat-icon>travel_explore</mat-icon>
-                เปิดมุมมอง 360°
-              </button>
-            } @else {
-              <button mat-button type="button" color="primary" (click)="openDetail(row)">
-                รายละเอียด
-              </button>
-              @if (canUpdate() || canDelete()) {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  [matMenuTriggerFor]="manageMenu"
-                  aria-label="จัดการลูกค้า"
-                >
-                  จัดการ
-                  <mat-icon iconPositionEnd>expand_more</mat-icon>
-                </button>
-                <mat-menu #manageMenu="matMenu">
-                  @if (canUpdate()) {
-                    <button mat-menu-item type="button" (click)="openEdit(row)">
-                      <mat-icon>edit</mat-icon>
-                      <span>แก้ไข</span>
-                    </button>
-                  }
-                  @if (canDelete()) {
-                    <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                      <mat-icon>delete</mat-icon>
-                      <span>ลบ</span>
-                    </button>
-                  }
-                </mat-menu>
-              }
-            }
+            <app-row-actions [actions]="customerRowActions(row)" />
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

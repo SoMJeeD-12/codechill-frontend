@@ -64,6 +64,7 @@ import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.
 import { formatMoneyDisplay } from '../../core/utils/money.util';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
@@ -84,6 +85,7 @@ import { FORM_DIALOG } from '../../shared/utils/form-dialog';
     MatTableModule,
     MatDialogModule,
     MatMenuModule,
+    RowActionsComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './customer-detail-page.component.html',
@@ -612,6 +614,26 @@ export class CustomerDetailPageComponent implements OnInit {
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
       });
     });
+  }
+
+  projectRowActions(row: Project): RowAction[] {
+    return [{ label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openProjectDetail(row) }];
+  }
+
+  warrantyRowActions(row: Warranty): RowAction[] {
+    return [{ label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openWarrantyDetail(row) }];
+  }
+
+  maRowActions(row: MaContract): RowAction[] {
+    return [{ label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openMaDetail(row) }];
+  }
+
+  ticketRowActions(row: Ticket): RowAction[] {
+    return [{ label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openTicketDetail(row) }];
+  }
+
+  followUpRowActions(row: FollowUp): RowAction[] {
+    return [{ label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openFollowUpDetail(row) }];
   }
 
   openProjectDetail(project: Project): void {

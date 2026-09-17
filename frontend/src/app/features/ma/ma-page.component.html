@@ -2,7 +2,6 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">สัญญา MA</h1>
-      <p class="app-subtitle">แผน · สัญญา · โควตารอบ · Add-on</p>
     </div>
     <div class="app-header-actions">
       <a mat-stroked-button routerLink="/app/ma/plans">
@@ -115,13 +114,13 @@
           </th>
           <td mat-cell *matCellDef="let row">
             <span
-              [class.app-status-active]="row.status === 'ACTIVE'"
-              [class.app-status-muted]="row.status === 'EXPIRED' || row.status === 'CANCELLED'"
+              [class.app-status-active]="coverageStateOf(row) === 'IN_FORCE'"
+              [class.app-status-muted]="coverageStateOf(row) === 'ENDED' || coverageStateOf(row) === 'INACTIVE'"
             >
-              {{ statusLabel(row.status) }}
+              {{ coverageLabel(row) }}
             </span>
-            @if (row.status === 'ACTIVE' && !row.isCurrentlyActive) {
-              <small class="app-muted"> (หมดอายุแล้ว)</small>
+            @if (coverageDaysHint(row); as daysHint) {
+              <small class="app-muted"> ({{ daysHint }})</small>
             }
           </td>
         </ng-container>

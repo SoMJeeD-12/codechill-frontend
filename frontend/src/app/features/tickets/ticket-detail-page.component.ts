@@ -19,7 +19,6 @@ import { MatTableModule } from '@angular/material/table';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
-  RESOLUTION_RESULT_HINTS,
   RESOLUTION_RESULT_LABELS,
   ResolutionResult,
   TICKET_STATUS_LABELS,
@@ -172,15 +171,6 @@ export class TicketDetailPageComponent implements OnInit {
     return t ? this.demoOverlay.statusAttr(t) : this.displayStatus();
   });
 
-  readonly categoryLabel = computed(() => {
-    this.demoOverlay.state();
-    const id = this.ticket()?.id;
-    if (id == null) {
-      return null;
-    }
-    return this.demoOverlay.categoryDisplayLabel(id);
-  });
-
   /** ค่าบริการเป็นครั้ง — API หรือ mock overlay */
   readonly displayExtraCharge = computed(() => {
     this.demoOverlay.state();
@@ -329,13 +319,10 @@ export class TicketDetailPageComponent implements OnInit {
 
     if (shown === 'RESOLVED') {
       const actions: {
-        id: 'close' | 'print-last';
+        id: 'print-last';
         label: string;
         primary: boolean;
       }[] = [];
-      if (this.canResolve()) {
-        actions.push({ id: 'close', label: 'ปิดงาน', primary: true });
-      }
       if (this.resolutions()[0]) {
         actions.push({
           id: 'print-last',
@@ -350,7 +337,7 @@ export class TicketDetailPageComponent implements OnInit {
         tone: 'ok' as const,
         title: 'แก้ไขเรียบร้อยแล้ว — รอปิดงาน',
         detail:
-          'พิมพ์ใบยืนยันให้ลูกค้าตรวจรับ แล้วกด「ปิดงาน」· ปุ่ม「ปัญหาเดิมกลับมา」จะโชว์หลังปิดงานแล้วเท่านั้น',
+          'พิมพ์ใบยืนยันให้ลูกค้าตรวจรับ แล้วกด「ปิดงาน」ที่หัวข้อ · ปุ่ม「ปัญหาเดิมกลับมา」จะโชว์หลังปิดงานแล้วเท่านั้น',
         actions,
       };
     }
@@ -860,11 +847,6 @@ export interface TicketResolutionFormData {
   template: `
     <h2 mat-dialog-title>เพิ่มรอบการแก้ไข</h2>
     <mat-dialog-content>
-      <p class="hint">
-        บันทึกเป็น<strong>งานแก้ไข</strong>ในใบปัญหานี้ ·
-        「สำเร็จ」= จบรอบนี้รอปิดงาน ·
-        「สำเร็จบางส่วน / ไม่สำเร็จ」= ยังทำต่อหรือส่งต่อได้ (ใบยังไม่ปิด)
-      </p>
       <form [formGroup]="form" class="dlg-form" id="ticket-resolution-form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>สาเหตุ</mat-label>
@@ -886,7 +868,6 @@ export interface TicketResolutionFormData {
                 <mat-option [value]="r">{{ resultLabels[r] }}</mat-option>
               }
             </mat-select>
-            <mat-hint>{{ resultHints[selectedResult()] }}</mat-hint>
           </mat-form-field>
         </div>
         <mat-form-field appearance="outline" class="full">
@@ -896,9 +877,6 @@ export interface TicketResolutionFormData {
               <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
             }
           </mat-select>
-          @if (!data.canChangeResolver) {
-            <mat-hint>ล็อกเป็นผู้ใช้ที่ล็อกอิน — เปลี่ยนได้เฉพาะ Admin</mat-hint>
-          }
         </mat-form-field>
         @if (showHandoff()) {
           <mat-form-field appearance="outline" class="full">
@@ -909,7 +887,6 @@ export interface TicketResolutionFormData {
                 <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
               }
             </mat-select>
-            <mat-hint>เลือกเมื่อต้องการส่งต่อให้อีกคนทำรอบถัดไป</mat-hint>
           </mat-form-field>
         }
       </form>
@@ -954,7 +931,6 @@ export class TicketResolutionFormDialogComponent {
 
   readonly users = this.usersApi.assignableTicket;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
-  readonly resultHints = RESOLUTION_RESULT_HINTS;
   readonly results = Object.keys(RESOLUTION_RESULT_LABELS) as ResolutionResult[];
 
   readonly form = this.fb.nonNullable.group({

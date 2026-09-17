@@ -228,9 +228,11 @@
   }
 }
 
+/* มาตรฐานตารางทั้งระบบ: 1 บรรทัด + … · คอลัมน์สถานะ/วันที่/ปุ่มมีที่คงที่ · ข้อความยาวไม่ดันให้เลื่อนแนวนอน */
 .data-table {
   width: 100%;
-  min-width: 36rem;
+  max-width: 100%;
+  min-width: 0;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
@@ -262,13 +264,36 @@
     background: #f7faf9;
   }
 
+  .mat-mdc-row {
+    height: 3.15rem;
+  }
+
   .mat-mdc-cell {
+    height: 3.15rem;
+    max-height: 3.15rem;
     border-bottom-color: #eef2f0 !important;
-    padding-top: 0.72rem !important;
-    padding-bottom: 0.72rem !important;
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
     vertical-align: middle;
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* ข้อความในช่องตัด 1 บรรทัด — บรรทัดรอง (รหัส/คำอธิบาย) ไม่ได้โชว์ในตาราง */
+  .mat-mdc-cell :is(a, span, strong, button, p, div, small) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .mat-mdc-cell .muted,
+  .mat-mdc-cell .app-muted,
+  .mat-mdc-cell .ticket-meta {
+    display: none;
   }
 
   /* คอลัมน์แรกกินพื้นที่เหลือ — ตารางกว้างเต็มแผง */
@@ -300,9 +325,10 @@
     box-shadow: -1px 0 0 #eef2f0;
     text-align: right;
     white-space: nowrap;
-    width: 12rem;
-    min-width: 10rem;
-    overflow: visible;
+    width: 11rem;
+    min-width: 11rem;
+    overflow: hidden;
+    padding-left: 0.75rem;
   }
 
   .mat-mdc-header-cell:last-of-type,
@@ -340,10 +366,35 @@
   .mat-column-isActive,
   .mat-column-active,
   .mat-column-isOverdue {
-    width: 9rem;
+    width: 7.75rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .mat-column-dueDate,
+  .mat-column-targetEndDate,
+  .mat-column-startDate,
+  .mat-column-occurredAt,
+  .mat-column-createdAt,
+  .mat-column-completedAt {
+    width: 8.5rem;
+    min-width: 8.5rem;
+    white-space: nowrap;
+  }
+
+  /* วันเวลาแบบไทย เช่น 17 ก.ย. 2026 11.01 น. — กว้างพอไม่ให้ล้นทับปุ่ม */
+  .mat-column-reportedAt,
+  .mat-column-deliveredAt {
+    width: 13.25rem;
+    min-width: 13.25rem;
+    white-space: nowrap;
+    padding-right: 1rem;
+  }
+
+  .mat-column-description,
+  .mat-column-note {
+    width: 8rem;
   }
 
   .mat-column-phone {
@@ -358,11 +409,30 @@
     text-overflow: ellipsis;
   }
 
-  .mat-column-actions {
-    width: 12rem;
-    min-width: 10rem;
+  .mat-column-actions,
+  .mat-mdc-cell.actions,
+  .mat-mdc-cell.row-actions {
+    width: 12.25rem;
+    min-width: 0;
     white-space: nowrap;
-    overflow: visible;
+    overflow: hidden;
+    text-align: right;
+  }
+
+  .mat-mdc-cell.actions,
+  .mat-mdc-cell.row-actions {
+    .mat-mdc-button-base + .mat-mdc-button-base {
+      margin-left: 0.45rem;
+    }
+  }
+
+  .mat-column-actions :is(a, span, strong, button, div),
+  .mat-mdc-cell.row-actions :is(a, span, strong, button, div),
+  .mat-mdc-cell.actions :is(a, span, strong, button, div),
+  .row-actions :is(a, span, strong, button, div) {
+    overflow: hidden;
+    text-overflow: clip;
+    max-width: none;
   }
 
   a {
@@ -373,6 +443,158 @@
     &:hover {
       text-decoration: underline;
     }
+  }
+}
+
+/* ตารางงาน — 1 บรรทัด + … ไม่ให้ชื่องาน/รายละเอียดดันคอลัมน์หรือยืดแถว */
+.data-table.data-table--tasks {
+  .mat-mdc-header-cell,
+  .mat-mdc-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .mat-column-title {
+    width: 28%;
+    max-width: 22rem;
+  }
+
+  .mat-column-project {
+    width: 14rem;
+  }
+
+  .mat-column-assignee,
+  .mat-column-assigner {
+    width: 9rem;
+  }
+
+  .mat-column-dueDate,
+  .mat-column-status,
+  .mat-column-priority {
+    width: 8.25rem;
+  }
+
+  .mat-mdc-header-cell:last-of-type,
+  .mat-mdc-cell:last-of-type,
+  .mat-column-actions,
+  .col-sticky-end {
+    width: 12.25rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  &.is-review {
+    .mat-column-title {
+      width: auto;
+      max-width: none;
+    }
+
+    .mat-mdc-header-cell:last-of-type,
+    .mat-mdc-cell:last-of-type,
+    .mat-column-actions,
+    .col-sticky-end {
+      width: 7.5rem;
+      min-width: 0;
+    }
+  }
+
+  .cell-clip,
+  .linkish,
+  .task-title-line {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .task-title-line {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    .cell-clip {
+      flex: 1 1 auto;
+      width: auto;
+    }
+
+    .overdue-tag {
+      flex: 0 0 auto;
+    }
+  }
+}
+
+.data-table.data-table--tasks.is-review {
+  .mat-column-project,
+  .mat-column-assignee,
+  .mat-column-dueDate {
+    display: table-cell !important;
+  }
+}
+
+/* ปุ่มการกระทำในตาราง — สูง 32px เว้นระยะ แยกปุ่มหลักกับปุ่มรอง */
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  max-width: 100%;
+}
+
+.row-action.mat-mdc-button-base,
+.data-table .mat-column-actions .mat-mdc-button-base:not(.mat-mdc-icon-button),
+.data-table .actions .mat-mdc-button-base:not(.mat-mdc-icon-button) {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 0.8rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 32px;
+}
+
+.row-action--primary.mat-mdc-unelevated-button {
+  box-shadow: none;
+}
+
+.row-action--secondary.mat-mdc-outlined-button {
+  --mdc-outlined-button-outline-color: #c5d5d0;
+  color: #3f4a46;
+  background: #fff;
+}
+
+.row-action--more.mat-mdc-icon-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #c5d5d0;
+  border-radius: 8px;
+  background: #fff;
+  color: #3f4a46;
+
+  .mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.row-action--more.is-compact {
+  display: none;
+}
+
+@media (max-width: 840px) {
+  .row-action--secondary {
+    display: none !important;
+  }
+
+  .row-action--more.is-compact {
+    display: inline-flex;
   }
 }
 
@@ -456,7 +678,7 @@
 
 @media (max-width: 768px) {
   .data-table {
-    min-width: 28rem;
+    min-width: 0;
 
     .mat-mdc-header-cell,
     .mat-mdc-cell {

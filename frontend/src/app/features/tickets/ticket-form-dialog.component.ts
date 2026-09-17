@@ -125,6 +125,9 @@ export class TicketFormDialogComponent {
   private readonly ticket: Ticket | null = this.data?.ticket ?? null;
   readonly isEdit = !!this.ticket;
 
+  /** Q11 — ซ่อนจนกว่าพี่เลี้ยงจะให้รายการหมวดหมู่ อย่าให้ดูเหมือนฟีเจอร์พร้อมใช้ */
+  readonly showCategoryField = false;
+
   readonly channelLabels = REPORTED_CHANNEL_LABELS;
   readonly channels = Object.keys(REPORTED_CHANNEL_LABELS) as ReportedChannel[];
   readonly billingLabels = BILLING_TYPE_LABELS;
@@ -171,20 +174,6 @@ export class TicketFormDialogComponent {
       return sortBillingTypes([...types, current]);
     }
     return types;
-  });
-
-  readonly billingHint = computed(() => {
-    const current = this.billingSelection();
-    if (!this.project()) {
-      return 'เลือกโปรเจคก่อนจึงจะเลือก「ในประกัน」หรือ「ใช้โควตา MA / Add-on」ได้';
-    }
-    if (current === 'WARRANTY' && !this.hasActiveWarranty()) {
-      return 'ไม่มีประกันใช้งานของโปรเจคนี้แล้ว — ควรเปลี่ยนประเภท';
-    }
-    if ((current === 'MA_QUOTA' || current === 'ADDON') && !this.hasActiveMa()) {
-      return 'ไม่มีสัญญา MA สถานะใช้งาน (ต้องไม่ใช่แบบร่าง) — ควรเปลี่ยนประเภท';
-    }
-    return null;
   });
 
   /**
@@ -282,7 +271,7 @@ export class TicketFormDialogComponent {
 
   private syncCategoryOtherValidators(category: TicketCategoryDemo | null): void {
     const ctrl = this.form.controls.categoryOtherNote;
-    if (category === 'OTHER') {
+    if (this.showCategoryField && category === 'OTHER') {
       ctrl.setValidators([Validators.required, Validators.maxLength(80)]);
     } else {
       ctrl.clearValidators();
@@ -533,11 +522,13 @@ export class TicketFormDialogComponent {
       };
       this.ticketsApi.update(this.ticket.id, update).subscribe({
         next: () => {
-          this.persistDemoCategory(
-            this.ticket!.id,
-            raw.category as TicketCategoryDemo | null,
-            raw.categoryOtherNote
-          );
+          if (this.showCategoryField) {
+            this.persistDemoCategory(
+              this.ticket!.id,
+              raw.category as TicketCategoryDemo | null,
+              raw.categoryOtherNote
+            );
+          }
           this.persistDemoExtraCharge(this.ticket!.id, raw.billingType, raw.extraCharge);
           this.saving.set(false);
           this.snack.open('บันทึกการแก้ไขแล้ว', 'ปิด', { duration: 2800 });
@@ -566,11 +557,13 @@ export class TicketFormDialogComponent {
 
     this.ticketsApi.create(payload).subscribe({
       next: (created) => {
-        this.persistDemoCategory(
-          created.id,
-          raw.category as TicketCategoryDemo | null,
-          raw.categoryOtherNote
-        );
+        if (this.showCategoryField) {
+          this.persistDemoCategory(
+            created.id,
+            raw.category as TicketCategoryDemo | null,
+            raw.categoryOtherNote
+          );
+        }
         this.persistDemoExtraCharge(created.id, raw.billingType, raw.extraCharge);
         this.saving.set(false);
         const no = created.ticketNo?.trim();

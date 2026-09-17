@@ -13,7 +13,6 @@
                 <mat-option [value]="c.id">{{ c.name }}</mat-option>
               }
             </mat-select>
-            <mat-hint>ใช้กรองโปรเจค — ระบบดึง customerId จากโปรเจคให้อัตโนมัติ</mat-hint>
           </mat-form-field>
         }
 
@@ -26,9 +25,6 @@
               </mat-option>
             }
           </mat-select>
-          @if (isEdit) {
-            <mat-hint>ย้ายโปรเจคทีหลังไม่ได้</mat-hint>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
@@ -38,9 +34,6 @@
               <mat-option [value]="p.id">{{ p.name }}</mat-option>
             }
           </mat-select>
-          @if (planHint()) {
-            <mat-hint>{{ planHint() }}</mat-hint>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
@@ -64,7 +57,6 @@
             />
             <mat-datepicker-toggle matIconSuffix [for]="signedPicker"></mat-datepicker-toggle>
             <mat-datepicker #signedPicker></mat-datepicker>
-            <mat-hint>สัญญาต้องเซ็นก่อนถึงมีผล (BR-12) — กรณีคีย์สัญญากระดาษเก่าย้อนหลัง</mat-hint>
           </mat-form-field>
         }
 
@@ -85,7 +77,6 @@
                 <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
               }
             </mat-select>
-            <mat-hint>ใช้วางบิลเท่านั้น · โควตานับรายเดือนเสมอ</mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>ระยะสัญญา</mat-label>
@@ -94,9 +85,6 @@
                 <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
               }
             </mat-select>
-            @if (billingCycle() === 'YEARLY') {
-              <mat-hint>วางบิลรายปีใช้ได้ตั้งแต่ 12 เดือนขึ้นไป</mat-hint>
-            }
           </mat-form-field>
         </div>
 
@@ -129,9 +117,6 @@
               [disabled]="!isCustomDuration()"
             ></mat-datepicker-toggle>
             <mat-datepicker #endPicker></mat-datepicker>
-            @if (isCustomDuration()) {
-              <mat-hint>ต้องอยู่หลังวันเริ่ม</mat-hint>
-            }
           </mat-form-field>
         </div>
 
@@ -142,14 +127,7 @@
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>มูลค่ารวมตลอดอายุสัญญา (บาท) *</mat-label>
           <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
-          <mat-hint>
-            กรอกราคาที่ตกลงจริงทั้งสัญญา · ไม่คิดเป็นรายเดือน/ปีอัตโนมัติ
-            @if (durationMonthCount() > 0) {
-              · ระยะ {{ durationMonthCount() }} เดือน
-            }
-          </mat-hint>
         </mat-form-field>
-        <p class="field-note">เลขที่สัญญา (contractNo) ระบบสร้างให้อัตโนมัติหลังบันทึก</p>
       </section>
     </div>
 

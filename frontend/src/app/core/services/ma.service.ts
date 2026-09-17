@@ -175,6 +175,21 @@ export class MaService {
 
   /* ——— Contracts ——— */
 
+  /**
+   * GET /ma-contracts?expiringInDays= — ไม่เขียนทับ cache รายการสัญญาทั้งก้อน
+   * (list() จะ set cache เป็นผลลัพธ์ที่กรองแล้ว)
+   */
+  listExpiring(days: number, limit = 100): Observable<MaContract[]> {
+    return this.http
+      .get<MaContract[] | { items: MaContract[] }>(this.contractsBase, {
+        params: toHttpParams({ limit, expiringInDays: days }),
+      })
+      .pipe(
+        map(asList),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   list(params: MaContractListParams = {}): Observable<MaContract[]> {
     return this.http
       .get<MaContract[] | { items: MaContract[] }>(this.contractsBase, {

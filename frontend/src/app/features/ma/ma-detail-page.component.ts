@@ -20,13 +20,16 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   MA_BILLING_CYCLE_LABELS,
-  MA_STATUS_LABELS,
   MaAddon,
   MaBillingCycle,
   MaContract,
+  MaCoverageState,
   MaQuotaStatus,
+  maCoverageDaysHint,
+  maCoverageLabel,
   maPlanDisplayName,
   maSlaHours,
+  resolveMaCoverageState,
 } from '../../core/models/ma.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -97,7 +100,6 @@ export class MaDetailPageComponent implements OnInit {
   readonly savingAddon = signal(false);
   readonly renewing = signal(false);
   readonly activating = signal(false);
-  readonly statusLabels = MA_STATUS_LABELS;
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
   readonly addonColumns = ['title', 'extraQuota', 'price', 'effective', 'createdAt'];
 
@@ -116,18 +118,16 @@ export class MaDetailPageComponent implements OnInit {
     );
   });
 
-  readonly planQuota = computed(
-    () => this.contract()?.plan?.bugQuotaPerMonth ?? 0
-  );
+  coverageStateOf(contract: MaContract): MaCoverageState {
+    return resolveMaCoverageState(contract);
+  }
 
-  readonly addonQuota = computed(() =>
-    this.addons()
-      .filter((a) => a.addonType === 'EXTRA_QUOTA')
-      .reduce((sum, a) => sum + (Number(a.extraQuota) || 0), 0)
-  );
+  coverageLabel(contract: MaContract): string {
+    return maCoverageLabel(contract);
+  }
 
-  statusLabel(status: MaContract['status']): string {
-    return this.statusLabels[status];
+  coverageDaysHint(contract: MaContract): string | null {
+    return maCoverageDaysHint(contract);
   }
 
   readonly addonForm = this.fb.nonNullable.group({
@@ -354,48 +354,6 @@ export class MaDetailPageComponent implements OnInit {
     });
   }
 
-  printInvoice(): void {
-    const c = this.contract();
-    if (!c) {
-      return;
-    }
-    const customer = this.customerName(c);
-    const user = this.auth.currentUser()?.fullName ?? 'ระบบ';
-    const addonLines = this.addons()
-      .map(
-        (a) =>
-          `<tr><td>${a.title}</td><td>1</td><td>${formatMoneyDisplay(a.price)}</td><td>${formatMoneyDisplay(
-            a.price
-          )}</td></tr>`
-      )
-      .join('');
-    const addonTotal = this.addons().reduce((sum, a) => sum + (parseMoneyValue(a.price) ?? 0), 0);
-    const fee = parseMoneyValue(c.price) ?? 0;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบแจ้งค่าบริการ #${c.id}</title>
-<style>
-body{font-family:Sarabun,sans-serif;padding:32px;color:#1c2b28}
-h1{margin:0 0 4px;font-size:1.4rem} .muted{color:#5b6762}
-table{width:100%;border-collapse:collapse;margin-top:1.25rem}
-th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
-.total{margin-top:1rem;font-size:1.1rem;font-weight:700}
-@media print{button{display:none}}
-</style></head><body>
-<p class="muted">CPAMS · ใบแจ้งค่าบริการ</p>
-<h1>${this.planName(c)} · #${c.id}</h1>
-<p>ลูกค้า: ${customer}<br>ระยะสัญญา: ${c.startDate} – ${c.endDate}<br>พิมพ์โดย: ${user}</p>
-<table>
-<thead><tr><th>รายการ</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
-<tbody>
-<tr><td>มูลค่าสัญญา MA ทั้งสัญญา (${this.billingLabels[c.billingCycle]})</td><td>1</td><td>${formatMoneyDisplay(c.price)}</td><td>${formatMoneyDisplay(c.price)}</td></tr>
-${addonLines}
-</tbody></table>
-<p class="total">รวมทั้งสิ้น ${formatMoneyDisplay(fee + addonTotal)} บาท</p>
-<p class="muted">เอกสารจำลองสำหรับพรีวิว — ไม่ใช่ใบกำกับภาษีจริง</p>
-<button onclick="window.print()">พิมพ์</button>
-</body></html>`;
-    this.openPrintWindow(html, 'ใบแจ้งค่าบริการ');
-  }
-
   private addOneYear(dateStr: string): string {
     const d = parseDateOnly(dateStr) ?? new Date(dateStr);
     d.setFullYear(d.getFullYear() + 1);
@@ -577,7 +535,6 @@ export interface MaRenewDialogData {
         <mat-form-field appearance="outline" class="full">
           <mat-label>มูลค่ารวมตลอดอายุสัญญาใหม่ (บาท) *</mat-label>
           <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
-          <mat-hint>กรอกราคาที่ตกลงจริงของฉบับใหม่ · ไม่คิดอัตโนมัติจากฉบับเดิม</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full">
           <mat-label>รอบวางบิล</mat-label>

@@ -23,7 +23,7 @@
           [formControl]="projectSearchControl"
           [matAutocomplete]="projectAuto"
           [readonly]="projectLocked"
-          placeholder="พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา"
+          placeholder="พิมพ์ชื่อโปรเจค"
         />
         <mat-autocomplete
           #projectAuto="matAutocomplete"
@@ -41,11 +41,6 @@
             }
           }
         </mat-autocomplete>
-        @if (selectedProjectCustomer(); as customerName) {
-          <mat-hint>ลูกค้า: {{ customerName }} — ระบบเติมให้จากโปรเจค</mat-hint>
-        } @else if (!projectLocked) {
-          <mat-hint>เลือกโปรเจค แล้วระบบจะใช้ลูกค้าของโปรเจคนั้นให้เอง</mat-hint>
-        }
       </mat-form-field>
     } @else {
       <mat-form-field appearance="outline" class="full">
@@ -55,9 +50,6 @@
             <mat-option [value]="c.id">{{ c.name }}</mat-option>
           }
         </mat-select>
-        @if (isEdit) {
-          <mat-hint>ย้ายลูกค้าไม่ได้ — ถ้าผิดรายให้ยกเลิกแล้วสร้างใหม่</mat-hint>
-        }
       </mat-form-field>
     }
 
@@ -105,10 +97,6 @@
         <mat-label>ผลการติดตาม</mat-label>
         <textarea matInput rows="2" formControlName="resultNote"></textarea>
       </mat-form-field>
-    }
-
-    @if (overdueHint(); as hint) {
-      <p class="hint">{{ hint }}</p>
     }
 
     @if (error()) {

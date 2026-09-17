@@ -16,7 +16,8 @@ import {
 import { Customer } from '../models/customer.model';
 import { OPEN_PROJECT_STATUSES, Project } from '../models/project.model';
 import { Ticket } from '../models/ticket.model';
-import { WARRANTY_NEAR_EXPIRY_DAYS } from '../models/warranty.model';
+import { MaContract } from '../models/ma.model';
+import { WARRANTY_NEAR_EXPIRY_DAYS, Warranty } from '../models/warranty.model';
 import { formatMoneyDisplay } from '../utils/money.util';
 import { CustomerService } from './customer.service';
 import { FollowUpService } from './follow-up.service';
@@ -46,6 +47,18 @@ export interface ReportRow {
   note?: string;
 }
 
+/** รายการใกล้หมดอายุจริง — ไม่ได้มาจาก contract-value/upcoming */
+export interface NearExpiryItem {
+  kind: 'ma' | 'warranty';
+  id: number;
+  title: string;
+  meta: string;
+  endDate: string;
+  daysRemaining: number;
+  link: string[];
+  queryParams?: Record<string, string>;
+}
+
 export interface ExecutiveReport {
   generatedAt: string;
   disclaimer: string;
@@ -62,7 +75,11 @@ export interface ExecutiveReport {
   excludedCancelledValue: string;
   excludedCancelledCount: number;
   oneTimeCompletenessLabel: string;
+  /** สัญญาที่ยังคุ้มครอง — คนละความหมายกับใกล้หมดอายุ */
   upcoming: UpcomingContractValueReport | null;
+  /** เกณฑ์เดียวกับการ์ดหน้าแรก: ภายใน 30 วัน */
+  nearExpiryDays: number;
+  nearExpiry: NearExpiryItem[];
   serviceCost: ServiceCostReport | null;
   overlaps: ContractOverlapReport | null;
   operations: ReportRow[];
@@ -133,7 +150,10 @@ export class ReportService {
       overlaps: this.overlaps().pipe(catchError(() => of(null))),
       warranties: this.warranties
         .listExpiring({ days: WARRANTY_NEAR_EXPIRY_DAYS, limit: 100 })
-        .pipe(catchError(() => of([]))),
+        .pipe(catchError(() => of([] as Warranty[]))),
+      expiringMa: this.ma
+        .listExpiring(WARRANTY_NEAR_EXPIRY_DAYS)
+        .pipe(catchError(() => of([] as MaContract[]))),
       followUps: this.followUps.list({ overdue: true, limit: 100 }).pipe(catchError(() => of([]))),
       surveys: this.surveys.list().pipe(catchError(() => of([]))),
       // ต้องโหลดเองที่นี่ — ห้ามพึ่ง cache ของหน้าอื่น
@@ -150,7 +170,8 @@ export class ReportService {
     upcoming: UpcomingContractValueReport | null;
     serviceCost: ServiceCostReport | null;
     overlaps: ContractOverlapReport | null;
-    warranties: unknown[];
+    warranties: Warranty[];
+    expiringMa: MaContract[];
     followUps: unknown[];
     surveys: Array<{ title: string; id: number; responseCount: number }>;
     customers: Customer[];
@@ -162,13 +183,19 @@ export class ReportService {
     const openProjects = projectList.filter((p) => OPEN_PROJECT_STATUSES.includes(p.status));
     const openTickets = data.tickets;
     const nearWarranty = data.warranties.length;
+    const expiringMa = data.expiringMa.length;
     const overdueFollowUps = data.followUps.length;
     const byType = data.byType;
     const byCustomer = data.byCustomer;
 
     const alerts: string[] = [];
     if (nearWarranty > 0) {
-      alerts.push(`ประกันใกล้หมดอายุ ${nearWarranty} รายการ`);
+      alerts.push(`ประกันใกล้หมดอายุ ${nearWarranty} รายการ (ภายใน ${WARRANTY_NEAR_EXPIRY_DAYS} วัน)`);
+    }
+    if (expiringMa > 0) {
+      alerts.push(
+        `สัญญา MA ใกล้หมดอายุ ${expiringMa} รายการ (ภายใน ${WARRANTY_NEAR_EXPIRY_DAYS} วัน)`
+      );
     }
     if (overdueFollowUps > 0) {
       alerts.push(`ติดตามลูกค้าเลยกำหนด ${overdueFollowUps} รายการ`);
@@ -263,11 +290,13 @@ export class ReportService {
         byCustomer?.oneTimeCompleteness ?? byType?.oneTimeCompleteness
       ),
       upcoming: data.upcoming,
+      nearExpiryDays: WARRANTY_NEAR_EXPIRY_DAYS,
+      nearExpiry: this.nearExpiryItems(data.warranties, data.expiringMa),
       serviceCost: data.serviceCost,
       overlaps: data.overlaps,
       operations: [
         {
-          label: 'สัญญา MA ที่คุ้มครองอยู่',
+          label: 'สัญญา MA ที่ยังคุ้มครองอยู่',
           value: data.upcoming?.contractCount ?? 0,
           display: `${data.upcoming?.contractCount ?? 0} สัญญา`,
         },
@@ -275,6 +304,11 @@ export class ReportService {
           label: 'ประกันใกล้หมดอายุ (30 วัน)',
           value: nearWarranty,
           display: `${nearWarranty} รายการ`,
+        },
+        {
+          label: 'สัญญา MA ใกล้หมดอายุ (30 วัน)',
+          value: expiringMa,
+          display: `${expiringMa} รายการ`,
         },
         {
           label: 'ติดตามเลยกำหนด',
@@ -296,6 +330,30 @@ export class ReportService {
       })),
       alerts,
     };
+  }
+
+  private nearExpiryItems(warranties: Warranty[], contracts: MaContract[]): NearExpiryItem[] {
+    const days = WARRANTY_NEAR_EXPIRY_DAYS;
+    const warrantyRows: NearExpiryItem[] = warranties.map((w) => ({
+      kind: 'warranty',
+      id: w.id,
+      title: w.code?.trim() || w.delivery?.title || `ประกัน #${w.id}`,
+      meta: [w.project?.customerName, w.project?.name].filter(Boolean).join(' · ') || 'ประกัน',
+      endDate: w.endDate,
+      daysRemaining: w.daysRemaining,
+      link: ['/app/warranties'],
+      queryParams: { expiring: String(days) },
+    }));
+    const maRows: NearExpiryItem[] = contracts.map((c) => ({
+      kind: 'ma',
+      id: c.id,
+      title: c.contractNo?.trim() || `สัญญา #${c.id}`,
+      meta: c.customerName?.trim() || c.projectName?.trim() || 'สัญญา MA',
+      endDate: c.endDate,
+      daysRemaining: c.daysUntilExpiry,
+      link: ['/app/ma', String(c.id)],
+    }));
+    return [...warrantyRows, ...maRows].sort((a, b) => a.daysRemaining - b.daysRemaining);
   }
 
   private thb(n: string | number): string {

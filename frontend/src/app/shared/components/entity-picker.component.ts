@@ -2,7 +2,6 @@ import {
   Component,
   DestroyRef,
   OnInit,
-  computed,
   inject,
   input,
   model,
@@ -35,8 +34,8 @@ export interface PickerOption {
   code?: string | null;
 }
 
-/** ต้องพิมพ์อย่างน้อยกี่ตัวอักษรถึงจะเริ่มค้น */
-export const PICKER_MIN_CHARS = 2;
+/** ต้องพิมพ์อย่างน้อยกี่ตัวอักษรถึงจะเริ่มค้น — ช่องว่างไม่ยิง API */
+export const PICKER_MIN_CHARS = 1;
 /** หน่วงก่อนยิง API (ms) */
 export const PICKER_DEBOUNCE_MS = 300;
 
@@ -68,7 +67,7 @@ export const searchWithClientFallback = searchViaBackend;
  *
  * กติกาตามที่ตกลงไว้:
  * - ยังไม่พิมพ์ = ไม่แสดงรายการอะไรเลย (ไม่ preload ทั้งตาราง)
- * - เริ่มค้นเมื่อพิมพ์ครบ 2 ตัวอักษร · หน่วง 300ms
+ * - เริ่มค้นเมื่อพิมพ์อย่างน้อย 1 ตัวอักษร · หน่วง 300ms
  * - เลือกแล้วโชว์ข้อมูลที่เลือกให้เห็นชัด ๆ พร้อมปุ่มล้าง
  */
 @Component({
@@ -121,9 +120,6 @@ export const searchWithClientFallback = searchViaBackend;
           </mat-option>
         }
       </mat-autocomplete>
-      @if (hint(); as h) {
-        <mat-hint>{{ h }}</mat-hint>
-      }
       @if (error(); as e) {
         <mat-error>{{ e }}</mat-error>
       }
@@ -154,7 +150,7 @@ export class EntityPickerComponent implements OnInit {
 
   /** ป้ายชื่อช่อง เช่น "ลูกค้า" */
   readonly label = input('ค้นหา');
-  readonly placeholder = input('พิมพ์อย่างน้อย 2 ตัวอักษร');
+  readonly placeholder = input('พิมพ์เพื่อค้นหา');
   /** ฟังก์ชันค้นหา — คืนรายการตัวเลือก */
   readonly searchFn = input.required<(query: string) => Observable<PickerOption[]>>();
   /** ตัวที่เลือกอยู่ (two-way) */
@@ -166,14 +162,6 @@ export class EntityPickerComponent implements OnInit {
   readonly options = signal<PickerOption[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
-  private readonly typedTooShort = signal(false);
-
-  readonly hint = computed(() => {
-    if (this.selected()) {
-      return null;
-    }
-    return this.typedTooShort() ? `พิมพ์อีก ${PICKER_MIN_CHARS} ตัวอักษรเพื่อค้นหา` : null;
-  });
 
   ngOnInit(): void {
     const current = this.selected();
@@ -200,15 +188,12 @@ export class EntityPickerComponent implements OnInit {
           const query = (typeof raw === 'string' ? raw : '').trim();
           this.error.set(null);
 
-          // ยังไม่พิมพ์ หรือสั้นเกินไป — ไม่แสดงอะไรเลย
           if (query.length < PICKER_MIN_CHARS) {
-            this.typedTooShort.set(query.length > 0);
             this.options.set([]);
             this.loading.set(false);
             return of([] as PickerOption[]);
           }
 
-          this.typedTooShort.set(false);
           this.loading.set(true);
           return this.searchFn()(query).pipe(
             catchError((err: Error) => {
@@ -237,7 +222,6 @@ export class EntityPickerComponent implements OnInit {
     this.selected.set(null);
     this.queryControl.setValue('', { emitEvent: false });
     this.options.set([]);
-    this.typedTooShort.set(false);
     this.selectionChange.emit(null);
   }
 }

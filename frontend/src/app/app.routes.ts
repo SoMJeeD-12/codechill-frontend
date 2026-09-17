@@ -154,6 +154,14 @@ export const routes: Routes = [
           import('./features/tickets/tickets-page.component').then((m) => m.TicketsPageComponent),
       },
       {
+        path: 'tickets/create',
+        canActivate: [permissionGuard('tickets')],
+        loadComponent: () =>
+          import('./features/tickets/ticket-create-page.component').then(
+            (m) => m.TicketCreatePageComponent
+          ),
+      },
+      {
         path: 'tickets/:id',
         canActivate: [permissionGuard('tickets')],
         loadComponent: () =>

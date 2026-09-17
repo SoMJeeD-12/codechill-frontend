@@ -74,7 +74,7 @@ export interface QuickLogDialogData {
         } @else {
           <app-entity-picker
             label="ลูกค้า"
-            placeholder="พิมพ์ชื่อลูกค้าอย่างน้อย 2 ตัวอักษร"
+            placeholder="พิมพ์ชื่อลูกค้า"
             [searchFn]="searchCustomers"
             (selectionChange)="onCustomerPicked($event)"
           />
@@ -97,9 +97,6 @@ export interface QuickLogDialogData {
                 <mat-option [value]="contact.id">{{ contact.name }}</mat-option>
               }
             </mat-select>
-            @if (!contacts().length) {
-              <mat-hint>เลือกลูกค้าก่อน</mat-hint>
-            }
           </mat-form-field>
         </div>
 

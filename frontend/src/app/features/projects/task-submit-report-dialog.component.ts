@@ -7,11 +7,11 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TaskItem } from '../../core/models/project.model';
 import { ProjectService } from '../../core/services/project.service';
+import { FilePickerComponent } from '../../shared/components/file-picker.component';
 
 export interface TaskSubmitReportDialogData {
   task: TaskItem;
@@ -33,17 +33,14 @@ export interface TaskSubmitReportDialogData {
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
-    MatIconModule,
     MatSnackBarModule,
+    FilePickerComponent,
   ],
   template: `
     <h2 mat-dialog-title>ส่งตรวจ — รายงานผลการทำงาน</h2>
     <mat-dialog-content>
       <p class="task-ref">
         งาน #{{ data.task.id }} · {{ data.task.title }}
-      </p>
-      <p class="hint">
-        ระบบจะส่งรายงานก่อน (POST /submissions) แล้วค่อยส่งตรวจ (PATCH /submit-review)
       </p>
       <form [formGroup]="form" class="form" id="submit-report-form" (ngSubmit)="submit()">
         <mat-form-field appearance="outline" class="full">
@@ -62,17 +59,12 @@ export interface TaskSubmitReportDialogData {
           <mat-label>ชั่วโมงที่ใช้จริง (ไม่บังคับ)</mat-label>
           <input matInput type="number" min="0" step="0.5" formControlName="actualHours" />
         </mat-form-field>
-        <div class="file-field">
-          <label class="file-label">แนบไฟล์รายงาน (ไม่บังคับ)</label>
-          <input type="file" (change)="onFileSelected($event)" />
-          @if (fileName()) {
-            <p class="file-name">
-              <mat-icon>attach_file</mat-icon>
-              {{ fileName() }}
-              <button mat-button type="button" (click)="clearFile()">ลบไฟล์</button>
-            </p>
-          }
-        </div>
+        <app-file-picker
+          label="แนบไฟล์รายงาน"
+          hint="ไม่บังคับ"
+          [fileName]="fileName()"
+          (picked)="onFileSelected($event)"
+        />
       </form>
       @if (error()) {
         <p class="error">{{ error() }}</p>
@@ -160,16 +152,9 @@ export class TaskSubmitReportDialogComponent {
     actualHours: [null as number | null],
   });
 
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
+  onFileSelected(file: File | null): void {
     this.selectedFile = file;
     this.fileName.set(file?.name ?? null);
-  }
-
-  clearFile(): void {
-    this.selectedFile = null;
-    this.fileName.set(null);
   }
 
   submit(): void {
@@ -202,7 +187,7 @@ export class TaskSubmitReportDialogComponent {
       .subscribe({
         next: () => {
           this.saving.set(false);
-          this.snack.open('ส่งตรวจแล้ว — สถานะรอตรวจ', 'ปิด', { duration: 3000 });
+          this.snack.open('ส่งให้ผู้มอบหมายตรวจแล้ว', 'ปิด', { duration: 4000 });
           this.ref.close(true);
         },
         error: (err: Error) => {

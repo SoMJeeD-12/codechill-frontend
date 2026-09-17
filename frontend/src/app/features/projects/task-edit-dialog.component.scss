@@ -1,5 +1,24 @@
 /* เลย์เอาต์ป็อปอัปรายละเอียด — แนวเดียวกับ customer-preview-dialog */
 
+.dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  button {
+    flex: 0 0 auto;
+  }
+
+  mat-icon {
+    margin-right: 0.2rem;
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    vertical-align: middle;
+  }
+}
+
 .preview-card__head {
   margin-bottom: 0.85rem;
 

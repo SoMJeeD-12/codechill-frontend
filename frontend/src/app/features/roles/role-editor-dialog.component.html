@@ -12,8 +12,6 @@
     <mat-slide-toggle formControlName="isActive">เปิดใช้งานบทบาทนี้</mat-slide-toggle>
   </form>
 
-  <p class="hint">เลือกสิทธิ์ที่บทบาทนี้ใช้ได้ · เลือกแล้ว {{ selectedCount() }} รายการ · กดหัวข้อเพื่อเปิดรายการ</p>
-
   @if (loading()) {
     <div class="perm-loading">
       <mat-spinner diameter="28"></mat-spinner>

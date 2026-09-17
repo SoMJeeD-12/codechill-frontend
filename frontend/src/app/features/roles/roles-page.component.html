@@ -2,13 +2,6 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">บทบาท</h1>
-      <p class="app-subtitle">
-        @if (canManage()) {
-          Super Admin สามารถสร้างบทบาทและติ๊กสิทธิ์รายเมนูได้
-        } @else {
-          คุณสามารถดูรายการบทบาทได้เท่านั้น — สร้าง/แก้ไข/ลบสงวนไว้สำหรับ Super Admin
-        }
-      </p>
     </div>
   </header>
 
@@ -57,7 +50,7 @@
               <mat-icon>{{ sortIcon('description') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row">{{ row.description || '—' }}</td>
+          <td mat-cell *matCellDef="let row" [attr.title]="row.description || null">{{ row.description || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="permissions">
           <th mat-header-cell *matHeaderCellDef>สิทธิ์ที่ได้รับ</th>

@@ -71,13 +71,13 @@
   }
 
   .mat-column-actions {
-    width: 13.5rem;
-    min-width: 12rem;
+    width: 10.5rem;
+    min-width: 0;
   }
 
   &.is-360 .mat-column-actions {
-    width: 15rem;
-    min-width: 14rem;
+    width: 11.5rem;
+    min-width: 0;
   }
 }
 

@@ -2,7 +2,6 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">รายงาน</h1>
-      <p class="app-subtitle">สรุปมูลค่าตามสัญญา การดำเนินงาน และความพึงพอใจจากข้อมูลในระบบ</p>
     </div>
     <div class="app-header-actions">
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
@@ -135,9 +134,26 @@
         }
       </mat-card>
 
+      <mat-card>
+        <h2>ใกล้หมดอายุภายใน {{ r.nearExpiryDays }} วัน</h2>
+        <p class="metric-note">ประกันและสัญญา MA — เกณฑ์เดียวกับการ์ดหน้าแรก</p>
+        <ul class="upcoming-list">
+          @for (item of r.nearExpiry; track item.kind + '-' + item.id) {
+            <li>
+              <a [routerLink]="item.link" [queryParams]="item.queryParams">{{ item.title }}</a>
+              · {{ item.meta }}
+              · ถึง {{ item.endDate | thaiDate: 'date' }}
+              · เหลือ {{ item.daysRemaining }} วัน
+            </li>
+          } @empty {
+            <li class="empty">ไม่มีประกันหรือสัญญา MA ที่จะหมดภายใน {{ r.nearExpiryDays }} วัน</li>
+          }
+        </ul>
+      </mat-card>
+
       @if (r.upcoming; as upcoming) {
         <mat-card>
-          <h2>สัญญาที่ใกล้หมดอายุ</h2>
+          <h2>สัญญา MA ที่ยังคุ้มครองอยู่</h2>
           @if (upcoming.disclaimer) {
             <p class="disclaimer inline">{{ upcoming.disclaimer }}</p>
           }
@@ -161,7 +177,7 @@
                 · ถึง {{ item.endDate | thaiDate: 'date' }}
               </li>
             } @empty {
-              <li class="empty">ไม่มีสัญญาใกล้หมดอายุ</li>
+              <li class="empty">ไม่มีสัญญาที่ยังคุ้มครองอยู่</li>
             }
           </ul>
         </mat-card>

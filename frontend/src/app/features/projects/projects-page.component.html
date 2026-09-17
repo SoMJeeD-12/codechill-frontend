@@ -2,7 +2,6 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">โปรเจค</h1>
-      <p class="app-subtitle">โปรเจคคือศูนย์กลางของงาน — งานย่อย ส่งมอบ ประกัน และปัญหา อยู่ในนี้ทั้งหมด</p>
     </div>
     <div class="app-header-actions">
       <button
@@ -88,7 +87,7 @@
             </button>
           </th>
           <td mat-cell *matCellDef="let row">
-            <span class="cell-clip cell-clip--sm">{{ customerName(row.customerId) }}</span>
+            <span class="cell-clip cell-clip--sm">{{ customerName(row) }}</span>
           </td>
         </ng-container>
         <ng-container matColumnDef="manager">

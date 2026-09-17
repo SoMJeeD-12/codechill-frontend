@@ -43,7 +43,9 @@ import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
@@ -77,6 +79,7 @@ function isFollowUpRow(data: FollowUpFormDialogData): data is FollowUp {
     MatDialogModule,
     MatSnackBarModule,
     MatMenuModule,
+    RowActionsComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './follow-ups-page.component.html',
@@ -266,6 +269,17 @@ export class FollowUpsPageComponent implements OnInit {
     return this.usersApi.getById(f.assignedUserId)?.fullName ?? `#${f.assignedUserId}`;
   }
 
+  followUpTip(f: FollowUp): string {
+    const parts = [f.title];
+    if (f.detail?.trim()) {
+      parts.push(f.detail.trim());
+    }
+    if (f.resultNote?.trim()) {
+      parts.push(`ผล: ${f.resultNote.trim()}`);
+    }
+    return parts.join(' — ');
+  }
+
   statusLabel(f: FollowUp): string {
     return followUpDisplayStatus(f);
   }
@@ -312,6 +326,20 @@ export class FollowUpsPageComponent implements OnInit {
         this.reload();
       }
     });
+  }
+
+  followUpRowActions(row: FollowUp): RowAction[] {
+    const actions: RowAction[] = [];
+    if (row.status === 'PLANNED' && this.canComplete()) {
+      actions.push({ label: 'เสร็จแล้ว', primary: true, icon: 'task_alt', run: () => this.markDone(row) });
+    }
+    if (this.canUpdate()) {
+      actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openCreate(row) });
+    }
+    if (this.canDelete()) {
+      actions.push({ label: 'ลบ', icon: 'delete', danger: true, run: () => this.remove(row) });
+    }
+    return actions;
   }
 
   markDone(row: FollowUp): void {
@@ -426,21 +454,6 @@ export class FollowUpFormDialogComponent {
 
   readonly projectSearchControl = this.fb.control<string | Project | FollowUpProjectSummary>('');
 
-  readonly selectedProjectCustomer = computed(() => {
-    const p = this.selectedProject();
-    if (!p) {
-      return null;
-    }
-    if ('customer' in p && p.customer?.name) {
-      return p.customer.name;
-    }
-    const project = p as Project;
-    if (project.customerId) {
-      return this.customersApi.getCustomer(project.customerId)?.name ?? null;
-    }
-    return null;
-  });
-
   readonly form = this.fb.group({
     customerId: [
       {
@@ -461,19 +474,6 @@ export class FollowUpFormDialogComponent {
     detail: [this.editRow?.detail ?? ''],
     resultNote: [this.editRow?.resultNote ?? ''],
   });
-
-  overdueHint(): string | null {
-    const due = this.form.getRawValue().dueDate;
-    if (!due) {
-      return null;
-    }
-    const dueStr = toDateOnlyString(due);
-    const todayStr = toDateOnlyString(new Date());
-    if (!dueStr || dueStr >= todayStr) {
-      return null;
-    }
-    return 'วันครบกำหนดผ่านแล้ว — ระบบจะแสดงเป็น「เลยกำหนด」จาก isOverdue (สถานะในฐานยังเป็นวางแผนไว้)';
-  }
 
   constructor() {
     if (!this.isEdit) {
@@ -647,7 +647,7 @@ export class FollowUpFormDialogComponent {
       this.selectedProject.set(null);
       this.form.patchValue({ projectId: null });
     }
-    if (search.length < 2) {
+    if (search.length < PICKER_MIN_CHARS) {
       this.projectQueryReady.set(false);
       this.projectSuggestions.set([]);
       return;
@@ -773,9 +773,6 @@ export class FollowUpFormDialogComponent {
         </mat-form-field>
 
         <mat-checkbox formControlName="alsoLog">บันทึกการติดต่อครั้งนี้ด้วย</mat-checkbox>
-        <p class="hint">
-          แนะนำให้ติ๊กไว้ — การปิดงานติดตามอย่างเดียวจะไม่อัปเดต「ลูกค้าที่ถูกลืม」
-        </p>
 
         @if (form.controls.alsoLog.value) {
           <mat-form-field appearance="outline" class="full">

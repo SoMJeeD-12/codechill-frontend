@@ -23,23 +23,20 @@
           }
         </h1>
         <p class="app-subtitle">
-          @if (c.contractNo?.trim()) {
-            #{{ c.id }} ·
+          {{ planName(c) }} · {{ coverageLabel(c) }}
+          @if (coverageStateOf(c) === 'NOT_STARTED') {
+            · เริ่ม {{ c.startDate | thaiDate: 'date' }}
           }
-          {{ planName(c) }} · {{ statusLabel(c.status) }} · {{ slaLabel(c) }}
-          @if (!c.isCurrentlyActive && c.status === 'ACTIVE') {
-            · หมดอายุแล้ว ({{ c.daysUntilExpiry }} วัน)
+          @if (coverageDaysHint(c); as daysHint) {
+            · {{ daysHint }}
           }
+          · {{ slaLabel(c) }}
         </p>
       </div>
       <div class="app-header-actions">
         <button mat-stroked-button type="button" (click)="printDraftContract()">
           <mat-icon>description</mat-icon>
           พิมพ์ร่างสัญญา
-        </button>
-        <button mat-stroked-button type="button" (click)="printInvoice()">
-          <mat-icon>print</mat-icon>
-          พิมพ์ใบแจ้งค่าบริการ
         </button>
         @if (canActivate()) {
           <button
@@ -102,34 +99,14 @@
             class="mb-0 mt-2 text-[1.35rem] font-bold"
             [class.app-quota-low]="q.remaining <= 2 && c.isCurrentlyActive"
           >
-            ใช้แล้ว {{ q.used }} จากทั้งหมด {{ q.quota }}
-            <span
-              class="mt-1 block text-[0.95rem] font-semibold"
-              [class.text-brand]="!(q.remaining <= 2 && c.isCurrentlyActive)"
-              [class.text-warn]="q.remaining <= 2 && c.isCurrentlyActive"
-            >
-              เหลือ {{ q.remaining }} เคส{{ q.isExhausted ? ' (หมดแล้ว)' : '' }}
-            </span>
+            ใช้แล้ว {{ q.used }} · เหลือ {{ q.remaining }} จาก {{ q.quota }}
+            @if (q.isExhausted) {
+              <span class="text-[0.95rem] font-semibold text-warn">(หมดแล้ว)</span>
+            }
           </p>
-          <ul class="mt-2.5 list-disc space-y-0.5 pl-5 text-sm leading-relaxed text-slate-700">
-            <li>จากแผน {{ planQuota() }} เคส/เดือน</li>
-            <li>
-              จาก Add-on +{{ addonQuota() }}
-              @if (addonQuota() > 0) {
-                <span class="ml-1 text-[0.82rem] text-muted">(รวมในโควตาทั้งหมดด้านบน)</span>
-              }
-            </li>
-            <li class="text-muted">
-              รวมที่แสดง = โควตาจากแผน + Add-on · รอบวันที่มาจาก Backend เท่านั้น
-            </li>
-          </ul>
         } @else {
           <p class="mt-2.5 mb-0 text-sm text-muted">กำลังโหลดโควตา…</p>
         }
-        <p class="mt-2.5 mb-0 text-sm text-muted">
-          ตัวเลข “ใช้แล้ว” เพิ่มเมื่อปิดใบปัญหาแบบใช้โควตา MA เท่านั้น ·
-          บันทึก Add-on จะเพิ่มโควตาทั้งหมด (ตัวหลัง) ไม่เพิ่มจำนวนที่ใช้
-        </p>
         @if (c.status === 'DRAFT') {
           <p class="app-warn-banner">
             สัญญานี้ยังเป็น「แบบร่าง」— ระบบจะไม่หักโควตาจากใบปัญหา
@@ -149,7 +126,13 @@
           </p>
         } @else if (!c.isCurrentlyActive) {
           <p class="app-warn-banner">
-            สัญญานี้ยังไม่ถือว่าใช้งานอยู่ตอนนี้ — การหักโควตาอาจไม่เกิดขึ้น
+            @if (coverageStateOf(c) === 'ENDED') {
+              สัญญาหมดอายุแล้ว — ระบบจะยังไม่หักโควตา
+            } @else if (coverageStateOf(c) === 'NOT_STARTED') {
+              สัญญายังไม่เริ่ม — ระบบจะยังไม่หักโควตา
+            } @else {
+              สัญญานี้ยังไม่คุ้มครองตอนนี้ — การหักโควตาอาจไม่เกิดขึ้น
+            }
           </p>
         }
         @if (c.note) {

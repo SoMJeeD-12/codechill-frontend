@@ -53,7 +53,7 @@ import { CodeLabelComponent } from '../../shared/components/code-label.component
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { ApiToastService } from '../../shared/services/api-toast.service';
@@ -151,7 +151,7 @@ export class ProjectsPageComponent implements OnInit {
         case 'name':
           return row.name;
         case 'customer':
-          return this.customerName(row.customerId);
+          return this.customerName(row);
         case 'status':
           return statusRank[row.status];
         case 'progress':
@@ -199,7 +199,7 @@ export class ProjectsPageComponent implements OnInit {
 
   reload(): void {
     const q = this.search().trim();
-    const params = q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
+    const params = q.length >= PICKER_MIN_CHARS ? { search: q, limit: 100 } : { limit: 100 };
     this.projectsApi.listProjects(params).subscribe((list) => {
       this.projects.set(list);
       this.loadMissingProgress(list);
@@ -226,8 +226,14 @@ export class ProjectsPageComponent implements OnInit {
     });
   }
 
-  customerName(id: number): string {
-    return this.customersApi.getCustomer(id)?.name ?? `#${id}`;
+  /** ชื่อจาก response ก่อน cache — ห้าม fallback เป็น #id เมื่อมีชื่อแล้ว */
+  customerName(row: Pick<Project, 'customerId' | 'customer'>): string {
+    const fromRow = row.customer?.name?.trim();
+    if (fromRow) {
+      return fromRow;
+    }
+    const cached = this.customersApi.getCustomer(row.customerId)?.name?.trim();
+    return cached || '—';
   }
 
   progressOf(row: Project): number | null {
@@ -346,7 +352,7 @@ export class ProjectFormDialogComponent {
   /** none | existing | new */
   readonly customerMode = signal<'none' | 'existing' | 'new'>('none');
   readonly customerSuggestions = signal<Customer[]>([]);
-  /** true เมื่อพิมพ์ค้นหา ≥2 ตัว — ถึงจะโชว์ตัวเลือก autocomplete */
+  /** true เมื่อพิมพ์ค้นหาอย่างน้อย 1 ตัว — ถึงจะโชว์ตัวเลือก autocomplete */
   readonly customerQueryReady = signal(false);
   readonly newCustomerToken = NEW_CUSTOMER_TOKEN;
 
@@ -800,13 +806,13 @@ export class ProjectFormDialogComponent {
     }
     if (this.customerMode() === 'new' && search !== 'ลูกค้าใหม่') {
       // ยังอยู่โหมดใหม่ แต่พิมพ์ค้นหา — เคลียร์โหมดใหม่ถ้าเริ่มค้น
-      if (search.length >= 2) {
+      if (search.length >= PICKER_MIN_CHARS) {
         this.customerMode.set('none');
         this.clearCustomerFields();
       }
     }
 
-    if (search.length < 2 || !this.canViewCustomer()) {
+    if (search.length < PICKER_MIN_CHARS || !this.canViewCustomer()) {
       this.customerQueryReady.set(false);
       this.customerSuggestions.set([]);
       return;

@@ -53,10 +53,20 @@ export interface DocumentListParams {
 }
 
 /** พารามิเตอร์รายการเอกสารโปรเจคจาก API จริง */
+export type ProjectDocumentSortBy =
+  | 'id'
+  | 'title'
+  | 'fileName'
+  | 'fileSize'
+  | 'createdAt'
+  | 'updatedAt';
+
 export interface ProjectDocumentListParams {
   search?: string;
   page?: number;
   limit?: number;
+  sortBy?: ProjectDocumentSortBy;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface ProjectDocumentUploadInput {
@@ -68,6 +78,8 @@ export interface ProjectDocumentUploadInput {
 export interface ProjectDocumentUpdateInput {
   title?: string;
   note?: string | null;
+  /** ส่งเมื่อต้องการเปลี่ยนไฟล์บนเอกสารใบเดิม */
+  file?: File | null;
 }
 
 /**
@@ -101,6 +113,8 @@ export class DocumentService {
             search: params.search,
             page: params.page,
             limit: params.limit ?? 10,
+            sortBy: params.sortBy,
+            sortOrder: params.sortBy ? params.sortOrder : undefined,
           }),
         }
       )
@@ -138,20 +152,36 @@ export class DocumentService {
     id: number,
     input: ProjectDocumentUpdateInput
   ): Observable<ApiProjectDocument> {
+    const title = input.title !== undefined ? input.title.trim() : undefined;
+    const note =
+      input.note === undefined
+        ? undefined
+        : input.note == null
+          ? null
+          : input.note.trim() || null;
+    const body = input.file
+      ? this.documentForm({ file: input.file, title, note })
+      : pruneUndefined({ title, note });
     return this.http
-      .patch<ApiProjectDocument>(
-        `${environment.apiBaseUrl}/documents/${id}`,
-        pruneUndefined({
-          title: input.title !== undefined ? input.title.trim() : undefined,
-          note:
-            input.note === undefined
-              ? undefined
-              : input.note == null
-                ? null
-                : input.note.trim() || null,
-        })
-      )
+      .patch<ApiProjectDocument>(`${environment.apiBaseUrl}/documents/${id}`, body)
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  /** multipart ฟิลด์เดียวกับอัปโหลด: file · title · note — ห้ามตั้ง Content-Type เอง */
+  private documentForm(input: {
+    file: File;
+    title?: string;
+    note?: string | null;
+  }): FormData {
+    const form = new FormData();
+    form.append('file', input.file, input.file.name);
+    if (input.title) {
+      form.append('title', input.title);
+    }
+    if (input.note != null) {
+      form.append('note', input.note);
+    }
+    return form;
   }
 
   remove(id: number): Observable<void> {

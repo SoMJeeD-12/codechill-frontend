@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -25,7 +25,8 @@ import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketDemoOverlayService } from '../../core/services/ticket-demo-overlay.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
+import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
@@ -48,6 +49,7 @@ import { TicketFormDialogComponent } from './ticket-form-dialog.component';
     MatSnackBarModule,
     MatTooltipModule,
     MatMenuModule,
+    RowActionsComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './tickets-page.component.html',
@@ -64,6 +66,7 @@ export class TicketsPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly tickets = signal<Ticket[]>([]);
   readonly loading = signal(false);
@@ -92,6 +95,13 @@ export class TicketsPageComponent implements OnInit {
   readonly canClose = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('ticket.close');
+  });
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('ticket.create') ||
+      this.auth.hasPermission('tickets', 'create')
+    );
   });
 
   readonly columns = [
@@ -156,6 +166,10 @@ export class TicketsPageComponent implements OnInit {
 
   private loadedOnce = false;
 
+  openCreate(): void {
+    this.quickActions.openTicketForm().subscribe();
+  }
+
   ngOnInit(): void {
     this.loadedOnce = true;
     this.searchControl.valueChanges
@@ -175,7 +189,7 @@ export class TicketsPageComponent implements OnInit {
   reload(): void {
     this.loading.set(true);
     const q = this.search().trim();
-    const params = q.length >= 2 ? { search: q } : {};
+    const params = q.length >= PICKER_MIN_CHARS ? { search: q } : {};
     this.ticketsApi
       .listAll(params)
       .pipe(switchMap((list) => this.ticketsApi.enrichIncompleteWork(list)))
@@ -248,6 +262,18 @@ export class TicketsPageComponent implements OnInit {
     );
   }
 
+  ticketTitleTip(row: Ticket): string {
+    const parts = [row.title];
+    const project = this.projectName(row);
+    if (project) {
+      parts.push(project);
+    }
+    if (row.resolutionCount > 0) {
+      parts.push(`แก้แล้ว ${row.resolutionCount} ครั้ง`);
+    }
+    return parts.join(' · ');
+  }
+
   projectName(row: Ticket): string | null {
     if (row.project?.name) {
       return row.project.name;
@@ -264,6 +290,27 @@ export class TicketsPageComponent implements OnInit {
 
   priorityLabel(priority: TicketPriority): string {
     return this.priorityLabels[priority] ?? priority;
+  }
+
+  ticketRowActions(row: Ticket): RowAction[] {
+    const actions: RowAction[] = [
+      {
+        label: 'เปิด',
+        primary: true,
+        icon: 'open_in_new',
+        run: () => void this.router.navigate(['/app/tickets', row.id]),
+      },
+    ];
+    if (this.canEdit()) {
+      actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openEdit(row) });
+    }
+    if (this.canClose() && this.displayStatus(row) === 'RESOLVED') {
+      actions.push({ label: 'ปิดงาน', icon: 'task_alt', run: () => this.closeTicket(row) });
+    }
+    if (this.canDelete()) {
+      actions.push({ label: 'ลบ', icon: 'delete', danger: true, run: () => this.remove(row) });
+    }
+    return actions;
   }
 
   openEdit(ticket: Ticket): void {

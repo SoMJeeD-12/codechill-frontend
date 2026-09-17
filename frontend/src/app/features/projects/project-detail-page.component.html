@@ -182,7 +182,15 @@
 
     <mat-tab-group animationDuration="150ms">
       @if (canViewDeliveries()) {
-      <mat-tab label="ส่งมอบ">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            ส่งมอบ
+            @if (projectReport()?.deliveryCount) {
+              <span class="tab-count">{{ projectReport()?.deliveryCount }}</span>
+            }
+          </span>
+        </ng-template>
         @if (deliveriesDenied()) {
           <p class="perm-denied">ไม่มีสิทธิ์ดูส่วนนี้</p>
         } @else {
@@ -241,14 +249,11 @@
                 </div>
               </div>
               <div class="app-panel-body">
-                <table mat-table [dataSource]="deliveriesPager.paged()" class="data-table">
+                <table mat-table [dataSource]="deliveriesPager.paged()" class="data-table data-table--deliveries">
                   <ng-container matColumnDef="title">
                     <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
-                    <td mat-cell *matCellDef="let row">
+                    <td mat-cell *matCellDef="let row" [attr.title]="row.version ? row.title + ' · ' + row.version : row.title">
                       <strong>{{ row.title }}</strong>
-                      @if (row.version) {
-                        <div class="muted">{{ row.version }}</div>
-                      }
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="deliveryNo">
@@ -313,23 +318,7 @@
                   <ng-container matColumnDef="actions">
                     <th mat-header-cell *matHeaderCellDef></th>
                     <td mat-cell *matCellDef="let row" class="row-actions">
-                      <button mat-button type="button" color="primary" (click)="openDeliveryDetail(row)">
-                        รายละเอียด
-                      </button>
-                      <button
-                        mat-button
-                        type="button"
-                        color="primary"
-                        [disabled]="!row.canIssueWarranty"
-                        [matTooltip]="
-                          row.canIssueWarranty
-                            ? 'ออกประกันจากการส่งมอบนี้'
-                            : 'ต้องเป็นการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว'
-                        "
-                        (click)="openIssueWarranty(row)"
-                      >
-                        ออกประกัน
-                      </button>
+                      <app-row-actions [actions]="deliveryRowActions(row)" [compact]="true" />
                     </td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="deliveryColumns"></tr>
@@ -476,20 +465,30 @@
               <div class="app-panel-body">
                 <table mat-table [dataSource]="documents()" class="data-table">
                   <ng-container matColumnDef="title">
-                    <th mat-header-cell *matHeaderCellDef>ชื่อเอกสาร</th>
-                    <td mat-cell *matCellDef="let row">
-                      <strong>{{ row.title || row.fileName }}</strong>
-                      @if (row.note) {
-                        <div class="muted">{{ row.note }}</div>
+                    <th mat-header-cell *matHeaderCellDef>
+                      <button type="button" class="sort-header" (click)="toggleDocumentSort('title')">
+                        ชื่อเอกสาร
+                        <mat-icon>{{ documentSortIcon('title') }}</mat-icon>
+                      </button>
+                    </th>
+                    <td
+                      mat-cell
+                      *matCellDef="let row"
+                      [attr.title]="row.note ? documentTitle(row) + ' — ' + row.note : documentTitle(row)"
+                    >
+                      <strong class="cell-clip">{{ documentTitle(row) }}</strong>
+                      @if (documentFileName(row); as fileName) {
+                        <span class="doc-file">{{ fileName }}</span>
                       }
                     </td>
                   </ng-container>
-                  <ng-container matColumnDef="fileName">
-                    <th mat-header-cell *matHeaderCellDef>ชื่อไฟล์</th>
-                    <td mat-cell *matCellDef="let row">{{ row.fileName }}</td>
-                  </ng-container>
                   <ng-container matColumnDef="fileSize">
-                    <th mat-header-cell *matHeaderCellDef>ขนาด</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      <button type="button" class="sort-header" (click)="toggleDocumentSort('fileSize')">
+                        ขนาด
+                        <mat-icon>{{ documentSortIcon('fileSize') }}</mat-icon>
+                      </button>
+                    </th>
                     <td mat-cell *matCellDef="let row">{{ formatDocSize(row.fileSize) }}</td>
                   </ng-container>
                   <ng-container matColumnDef="uploadedBy">
@@ -499,35 +498,18 @@
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="createdAt">
-                    <th mat-header-cell *matHeaderCellDef>วันที่</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      <button type="button" class="sort-header" (click)="toggleDocumentSort('createdAt')">
+                        วันที่อัปโหลด
+                        <mat-icon>{{ documentSortIcon('createdAt') }}</mat-icon>
+                      </button>
+                    </th>
                     <td mat-cell *matCellDef="let row">{{ row.createdAt | thaiDate }}</td>
                   </ng-container>
                   <ng-container matColumnDef="actions">
                     <th mat-header-cell *matHeaderCellDef></th>
                     <td mat-cell *matCellDef="let row" class="row-actions">
-                      <button
-                        mat-button
-                        type="button"
-                        color="primary"
-                        (click)="openDocumentPreview(row)"
-                      >
-                        ดูรายละเอียด
-                      </button>
-                      @if (canUpdateDocument()) {
-                        <button mat-button type="button" (click)="openEditDocument(row)">
-                          แก้ไข
-                        </button>
-                      }
-                      @if (canDeleteDocument()) {
-                        <button
-                          mat-button
-                          type="button"
-                          color="warn"
-                          (click)="removeDocument(row)"
-                        >
-                          ลบ
-                        </button>
-                      }
+                      <app-row-actions [actions]="documentRowActions(row)" />
                     </td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="documentColumns"></tr>
@@ -560,7 +542,15 @@
 
       <!-- ——— ปัญหาของโปรเจคนี้ ——— -->
       @if (canViewTickets()) {
-        <mat-tab label="ปัญหาของโปรเจคนี้">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <span class="tab-label">
+              ปัญหาของโปรเจคนี้
+              @if (projectReport()?.ticketCount) {
+                <span class="tab-count">{{ projectReport()?.ticketCount }}</span>
+              }
+            </span>
+          </ng-template>
           <div class="tab-panel">
             <div class="app-panel">
               <div class="app-panel-toolbar">
@@ -633,14 +623,7 @@
                   <ng-container matColumnDef="actions">
                     <th mat-header-cell *matHeaderCellDef></th>
                     <td mat-cell *matCellDef="let row" class="row-actions">
-                      <a mat-button color="primary" [routerLink]="['/app/tickets', row.id]">
-                        รายละเอียด
-                      </a>
-                      @if (canCloseTicket() && ticketStatusAttr(row) === 'RESOLVED') {
-                        <button mat-button type="button" (click)="closeProjectTicket(row)">
-                          ปิดงาน
-                        </button>
-                      }
+                      <app-row-actions [actions]="projectTicketRowActions(row)" />
                     </td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="ticketColumns"></tr>
@@ -733,10 +716,8 @@
                 </ng-container>
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
-                  <td mat-cell *matCellDef="let row">
-                    <button mat-button type="button" color="primary" (click)="openFollowUpDetail(row)">
-                      รายละเอียด
-                    </button>
+                  <td mat-cell *matCellDef="let row" class="row-actions">
+                    <app-row-actions [actions]="projectFollowUpRowActions(row)" />
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="followUpColumns"></tr>
@@ -767,7 +748,15 @@
 
       <!-- ——— สัญญา MA ——— -->
       @if (canViewMa()) {
-        <mat-tab label="สัญญา MA">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <span class="tab-label">
+              สัญญา MA
+              @if (projectReport()?.maContractCount) {
+                <span class="tab-count">{{ projectReport()?.maContractCount }}</span>
+              }
+            </span>
+          </ng-template>
           <div class="tab-panel">
             <div class="app-panel">
               <div class="app-panel-toolbar">
@@ -815,29 +804,6 @@
       }
     </mat-tab-group>
 
-    @if (canViewProject()) {
-    <section class="report-strip" aria-label="สรุปโปรเจค">
-      <h2 class="report-strip__title">รายงานของโปรเจคนี้</h2>
-      <div class="report-strip__grid">
-        <div>
-          <span>ความคืบหน้า</span>
-          <strong>{{ reportPercent() }}</strong>
-        </div>
-        <div>
-          <span>ใบปัญหา</span>
-          <strong>{{ reportCount(projectReport()?.ticketCount) }}</strong>
-        </div>
-        <div>
-          <span>การส่งมอบ</span>
-          <strong>{{ reportCount(projectReport()?.deliveryCount) }}</strong>
-        </div>
-        <div>
-          <span>สัญญา MA</span>
-          <strong>{{ reportCount(projectReport()?.maContractCount) }}</strong>
-        </div>
-      </div>
-    </section>
-    }
   </section>
   }
 }

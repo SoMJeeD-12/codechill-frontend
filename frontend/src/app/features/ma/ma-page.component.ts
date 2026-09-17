@@ -30,8 +30,12 @@ import {
   MaBillingCycle,
   MaContract,
   MaContractStatus,
+  MaCoverageState,
   MaQuotaStatus,
+  maCoverageDaysHint,
+  maCoverageLabel,
   maPlanDisplayName,
+  resolveMaCoverageState,
 } from '../../core/models/ma.model';
 import { CustomerService } from '../../core/services/customer.service';
 import {
@@ -130,6 +134,7 @@ export class MaPageComponent implements OnInit {
           this.customerName(c).toLowerCase().includes(q) ||
           this.projectName(c).toLowerCase().includes(q) ||
           this.statusLabel(c.status).toLowerCase().includes(q) ||
+          this.coverageLabel(c).toLowerCase().includes(q) ||
           (c.note ?? '').toLowerCase().includes(q)
         );
       });
@@ -149,7 +154,7 @@ export class MaPageComponent implements OnInit {
         case 'fee':
           return Number(row.price) || 0;
         case 'status':
-          return this.statusLabel(row.status);
+          return this.coverageLabel(row);
       }
     });
   });
@@ -265,6 +270,18 @@ export class MaPageComponent implements OnInit {
 
   statusLabel(status: MaContract['status']): string {
     return this.statusLabels[status];
+  }
+
+  coverageStateOf(contract: MaContract): MaCoverageState {
+    return resolveMaCoverageState(contract);
+  }
+
+  coverageLabel(contract: MaContract): string {
+    return maCoverageLabel(contract);
+  }
+
+  coverageDaysHint(contract: MaContract): string | null {
+    return maCoverageDaysHint(contract);
   }
 
   toggleSort(key: 'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'): void {
@@ -491,16 +508,6 @@ export class MaFormDialogComponent {
   filteredProjects() {
     const customerId = this.form.getRawValue().customerId;
     return this.projects().filter((p) => p.customerId === customerId);
-  }
-
-  planHint(): string {
-    const planId = this.form.getRawValue().planId;
-    const plan = planId != null ? this.api.getPlan(planId) : undefined;
-    if (!plan) {
-      return '';
-    }
-    const sla = plan.responseTimeHour != null ? `SLA ${plan.responseTimeHour} ชม.` : 'ไม่มี SLA';
-    return `โควตา ${plan.bugQuotaPerMonth} เคส/เดือน · ${sla}`;
   }
 
   isCustomDuration(): boolean {

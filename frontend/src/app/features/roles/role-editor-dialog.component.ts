@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -70,8 +70,6 @@ export class RoleEditorDialogComponent {
   readonly error = signal<string | null>(null);
 
   private readonly selected = signal<ReadonlySet<number>>(new Set<number>());
-  readonly selectedCount = computed(() => this.selected().size);
-
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
     description: [''],

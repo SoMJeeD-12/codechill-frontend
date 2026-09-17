@@ -60,10 +60,12 @@
         <input matInput formControlName="fileName" />
       </mat-form-field>
     </div>
-    <label class="file-pick">
-      <span>เลือกไฟล์</span>
-      <input type="file" (change)="onFilePicked($event)" />
-    </label>
+    <app-file-picker
+      label="เลือกไฟล์"
+      hint="คลิกหรือลากไฟล์มาวาง"
+      [fileName]="form.controls.fileName.value"
+      (picked)="onFilePicked($event)"
+    />
     <mat-form-field appearance="outline" class="full">
       <mat-label>หมายเหตุการเปลี่ยนแปลง</mat-label>
       <input matInput formControlName="note" />

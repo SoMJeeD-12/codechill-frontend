@@ -20,6 +20,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { TaskKanbanBoardComponent } from '../projects/task-kanban-board.component';
@@ -40,48 +41,26 @@ export type TasksPageMode =
   | 'overdue'
   | 'board';
 
-/** มุมมองย่อยในหน้างานของฉัน */
-export type MyTasksView = 'all' | 'todo' | 'doing' | 'review' | 'done' | 'overdue';
+/** มุมมองย่อยในหน้างานของฉัน — ไม่กรอง REVIEW เพราะ /tasks/me ไม่คืนงานที่ส่งตรวจแล้ว */
+export type MyTasksView = 'all' | 'todo' | 'doing' | 'done' | 'overdue';
 
 const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
   todo: 'todo',
   unassigned: 'todo',
   doing: 'doing',
-  review: 'review',
   done: 'done',
   overdue: 'overdue',
   all: 'all',
 };
 
 const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
-  all: {
-    title: 'งานทั้งหมด',
-    subtitle: 'งานย่อยทุกโปรเจค — แยกจากหน้ารายละเอียดโปรเจคและการส่งมอบ',
-  },
-  me: {
-    title: 'งานที่มอบหมาย',
-    subtitle: 'งานที่ระบบมอบหมายให้คุณ — ส่งตรวจเมื่อทำเสร็จ ห้ามทำเสร็จเอง',
-  },
-  unassigned: {
-    title: 'งานที่ยังไม่มอบหมาย',
-    subtitle: 'งานที่ยังไม่มีผู้รับผิดชอบ',
-  },
-  doing: {
-    title: 'งานกำลังดำเนินการ',
-    subtitle: 'สถานะ「กำลังทำ」ทั้งระบบ',
-  },
-  review: {
-    title: 'งานรอตรวจ',
-    subtitle: 'GET /tasks?status=REVIEW — กด「ตรวจงาน」เพื่อดูรายงานและอนุมัติ',
-  },
-  overdue: {
-    title: 'งานเกินกำหนด',
-    subtitle: 'ใช้ flag isOverdue จาก Backend',
-  },
-  board: {
-    title: 'กระดานงาน',
-    subtitle: 'มุมมองคัมบังของงานย่อย',
-  },
+  all: { title: 'งานทั้งหมด', subtitle: '' },
+  me: { title: 'งานที่มอบหมาย', subtitle: '' },
+  unassigned: { title: 'งานที่ยังไม่มอบหมาย', subtitle: '' },
+  doing: { title: 'งานกำลังดำเนินการ', subtitle: '' },
+  review: { title: 'งานรอตรวจ', subtitle: 'งานที่ส่งตรวจแล้ว รออนุมัติ' },
+  overdue: { title: 'งานเกินกำหนด', subtitle: '' },
+  board: { title: 'กระดานงาน', subtitle: '' },
 };
 
 @Component({
@@ -96,6 +75,7 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
     MatTooltipModule,
     MatSnackBarModule,
     ThaiDatePipe,
+    RowActionsComponent,
     TablePaginatorComponent,
     TaskKanbanBoardComponent,
   ],
@@ -144,7 +124,6 @@ export class TasksPageComponent implements OnInit {
       all: rows.length,
       todo: rows.filter((t) => t.status === 'TODO').length,
       doing: rows.filter((t) => t.status === 'DOING' || t.status === 'WAITING').length,
-      review: rows.filter((t) => t.status === 'REVIEW').length,
       done: rows.filter((t) => t.status === 'DONE').length,
       overdue: rows.filter((t) => !!t.isOverdue).length,
     };
@@ -163,9 +142,6 @@ export class TasksPageComponent implements OnInit {
           break;
         case 'doing':
           rows = rows.filter((t) => t.status === 'DOING' || t.status === 'WAITING');
-          break;
-        case 'review':
-          rows = rows.filter((t) => t.status === 'REVIEW');
           break;
         case 'done':
           rows = rows.filter((t) => t.status === 'DONE');
@@ -207,10 +183,10 @@ export class TasksPageComponent implements OnInit {
 
   readonly columns = computed(() => {
     if (this.mode() === 'review') {
-      return ['title', 'description', 'project', 'assignee', 'assigner', 'dueDate', 'status', 'actions'];
+      return ['title', 'project', 'assignee', 'dueDate', 'actions'];
     }
     if (this.mode() === 'me') {
-      return ['title', 'description', 'project', 'assigner', 'dueDate', 'status', 'actions'];
+      return ['title', 'project', 'assigner', 'dueDate', 'status', 'actions'];
     }
     return ['title', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   });
@@ -285,7 +261,6 @@ export class TasksPageComponent implements OnInit {
     if (
       raw === 'todo' ||
       raw === 'doing' ||
-      raw === 'review' ||
       raw === 'done' ||
       raw === 'overdue' ||
       raw === 'all'
@@ -457,6 +432,38 @@ export class TasksPageComponent implements OnInit {
    * - หน้างานรอตรวจ: ไม่มีปุ่มสถานะในแถว (ใช้「ตรวจงาน」อย่างเดียว)
    * - หน้างานที่มอบหมาย: ส่งตรวจได้ ห้ามทำเสร็จ/อนุมัติเอง
    */
+  taskRowActions(task: TaskItem): RowAction[] {
+    if (this.mode() === 'review') {
+      if (!this.canReviewTasks() || this.isOwnAssignment(task)) {
+        return [];
+      }
+      return [{ label: 'ตรวจงาน', primary: true, icon: 'fact_check', run: () => this.openReview(task) }];
+    }
+
+    const busy = this.savingId() === task.id;
+    const actions: RowAction[] = this.statusActions(task).map((action) => ({
+      label: action.label,
+      primary: action.kind === 'submit' || action.label === 'เริ่มงาน' || action.label === 'กลับมาทำ',
+      disabled: busy,
+      icon:
+        action.kind === 'submit'
+          ? 'fact_check'
+          : action.label === 'พักงาน'
+            ? 'pause'
+            : 'play_arrow',
+      run: () =>
+        action.kind === 'submit'
+          ? this.openSubmitReport(task)
+          : this.changeStatus(task, action.status, action.kind),
+    }));
+    actions.push({
+      label: this.canUpdateTask() ? 'แก้ไข' : 'รายละเอียด',
+      icon: this.canUpdateTask() ? 'edit' : 'visibility',
+      run: () => this.openTask(task),
+    });
+    return actions;
+  }
+
   statusActions(task: TaskItem): { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] {
     if (this.mode() === 'review') {
       return [];

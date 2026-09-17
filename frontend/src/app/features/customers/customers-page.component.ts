@@ -22,10 +22,11 @@ import { CustomerService } from '../../core/services/customer.service';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { CustomerFormDialogComponent } from './customer-form-dialog.component';
 import { CustomerPreviewDialogComponent } from './customer-preview-dialog.component';
+import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { PICKER_DEBOUNCE_MS } from '../../shared/components/entity-picker.component';
+import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
@@ -46,6 +47,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
     MatSnackBarModule,
     MatTooltipModule,
     MatMenuModule,
+    RowActionsComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './customers-page.component.html',
@@ -121,7 +123,7 @@ export class CustomersPageComponent implements OnInit {
 
   reload(): void {
     const q = this.search().trim();
-    const params = q.length >= 2 ? { search: q, limit: 100 } : { limit: 100 };
+    const params = q.length >= PICKER_MIN_CHARS ? { search: q, limit: 100 } : { limit: 100 };
     this.api.listCustomers(params).subscribe((list) => this.customers.set(list));
   }
 
@@ -131,6 +133,24 @@ export class CustomersPageComponent implements OnInit {
 
   openEdit(customer: Customer): void {
     this.openForm(customer);
+  }
+
+  customerRowActions(row: Customer): RowAction[] {
+    const actions: RowAction[] = [
+      {
+        label: this.is360Mode ? 'เปิดมุมมอง 360°' : 'รายละเอียด',
+        primary: true,
+        icon: this.is360Mode ? 'travel_explore' : 'visibility',
+        run: () => this.openDetail(row),
+      },
+    ];
+    if (!this.is360Mode && this.canUpdate()) {
+      actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openEdit(row) });
+    }
+    if (!this.is360Mode && this.canDelete()) {
+      actions.push({ label: 'ลบ', icon: 'delete', danger: true, run: () => this.remove(row) });
+    }
+    return actions;
   }
 
   openDetail(customer: Customer): void {
