@@ -13,6 +13,7 @@ import {
   Project,
   ProjectProgress,
   ProjectPriority,
+  ProjectReport,
   ProjectStatus,
   TaskItem,
   TaskPriority,
@@ -129,6 +130,14 @@ type ApiProject = Omit<Project, 'contractValue' | 'progress'> & {
   progress?: ApiProjectProgress | null;
   progressPercent?: string | number | null;
 };
+
+/** GET /projects/:id/report — interceptor แกะ envelope แล้ว */
+type ApiProjectReport = {
+  progress?: { percent?: string | number | null } | null;
+  ticketCount?: string | number | null;
+  deliveryCount?: string | number | null;
+  maContractCount?: string | number | null;
+};
 type ApiTask = Omit<
   TaskItem,
   | 'estimatedHours'
@@ -236,6 +245,14 @@ export class ProjectService {
     return this.http.get<ApiProject>(`${this.base}/${id}`).pipe(
       map((row) => this.normalizeProject(row)),
       tap((project) => this.projectsSignal.update((list) => upsertById(list, project))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /** GET /projects/:id/report — ไม่ประกอบตัวเลขจากข้อมูลในหน้า */
+  getProjectReport(id: number): Observable<ProjectReport> {
+    return this.http.get<ApiProjectReport>(`${this.base}/${id}/report`).pipe(
+      map((row) => this.normalizeProjectReport(row)),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
   }
@@ -706,6 +723,16 @@ export class ProjectService {
       ...rest,
       contractValue: toNumber(row.contractValue),
       progress: this.normalizeProgress(rawProgress, progressPercent),
+    };
+  }
+
+  private normalizeProjectReport(row: ApiProjectReport | null | undefined): ProjectReport {
+    const percent = toNumber(row?.progress?.percent ?? undefined);
+    return {
+      progress: row?.progress ? { percent } : null,
+      ticketCount: toNumber(row?.ticketCount ?? undefined),
+      deliveryCount: toNumber(row?.deliveryCount ?? undefined),
+      maContractCount: toNumber(row?.maContractCount ?? undefined),
     };
   }
 

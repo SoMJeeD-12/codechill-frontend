@@ -52,6 +52,14 @@ export interface Project {
   updatedAt: string;
 }
 
+/** GET /projects/:id/report — สรุปตัวเลขรายโปรเจค (สิทธิ์ project.view) */
+export interface ProjectReport {
+  progress: { percent: number | null } | null;
+  ticketCount: number | null;
+  deliveryCount: number | null;
+  maContractCount: number | null;
+}
+
 /** ไฟล์รายงานที่ผู้รับผิดชอบแนบตอนส่งตรวจ */
 export interface TaskSubmissionFile {
   id?: number;

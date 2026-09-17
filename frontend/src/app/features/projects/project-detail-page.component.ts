@@ -31,6 +31,7 @@ import {
   PRIORITY_LABELS,
   PROJECT_STATUS_LABELS,
   Project,
+  ProjectReport,
   ProjectStatus,
   TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
@@ -172,6 +173,8 @@ export class ProjectDetailPageComponent implements OnInit {
   /** สัญญา MA ของโปรเจคนี้ */
   readonly maContracts = signal<MaContract[]>([]);
   readonly maLoading = signal(false);
+  /** สรุปตัวเลขจาก GET /projects/:id/report — ไม่ประกอบเองจากแท็บ */
+  readonly projectReport = signal<ProjectReport | null>(null);
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly projectPriorityLabels = PRIORITY_LABELS;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
@@ -210,6 +213,10 @@ export class ProjectDetailPageComponent implements OnInit {
   ];
 
   /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
+  readonly canViewProject = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('project.view');
+  });
   readonly canViewTasks = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('task.view');
@@ -810,6 +817,27 @@ export class ProjectDetailPageComponent implements OnInit {
     return this.projectPriorityLabels[priority];
   }
 
+  /** สิทธิ์เดียวกับหน้ารายละเอียด — project.view */
+  private loadProjectReport(): void {
+    if (!this.canViewProject()) {
+      this.projectReport.set(null);
+      return;
+    }
+    this.projectsApi.getProjectReport(this.projectId).subscribe({
+      next: (report) => this.projectReport.set(report),
+      error: () => this.projectReport.set(null),
+    });
+  }
+
+  reportPercent(): string {
+    const percent = this.projectReport()?.progress?.percent;
+    return percent == null ? '—' : `${percent}%`;
+  }
+
+  reportCount(value: number | null | undefined): string {
+    return value == null ? '—' : String(value);
+  }
+
   refresh(): void {
     this.projectsApi.fetchProject(this.projectId).subscribe({
       next: (project) => {
@@ -818,6 +846,7 @@ export class ProjectDetailPageComponent implements OnInit {
       },
       error: () => undefined,
     });
+    this.loadProjectReport();
 
     if (this.canViewTasks()) {
       this.tasksDenied.set(false);

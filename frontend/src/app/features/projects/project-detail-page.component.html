@@ -815,32 +815,29 @@
       }
     </mat-tab-group>
 
-    <!-- รายงานรายโปรเจค — ยังไม่มี API รวม แสดงเท่าที่มีจากโปรเจคนี้ -->
+    @if (canViewProject()) {
     <section class="report-strip" aria-label="สรุปโปรเจค">
       <h2 class="report-strip__title">รายงานของโปรเจคนี้</h2>
-      <p class="report-strip__note">
-        ยังไม่มี API สรุปตัวเลขรายโปรเจค — แสดงเท่าที่มีจากข้อมูลในหน้านี้
-        (ความคืบหน้า / จำนวนใบปัญหา / การส่งมอบ / สัญญา MA)
-      </p>
       <div class="report-strip__grid">
         <div>
           <span>ความคืบหน้า</span>
-          <strong>{{ progress() == null ? '—' : progress() + '%' }}</strong>
+          <strong>{{ reportPercent() }}</strong>
         </div>
         <div>
           <span>ใบปัญหา</span>
-          <strong>{{ projectTickets().length }}</strong>
+          <strong>{{ reportCount(projectReport()?.ticketCount) }}</strong>
         </div>
         <div>
           <span>การส่งมอบ</span>
-          <strong>{{ deliveries().length }}</strong>
+          <strong>{{ reportCount(projectReport()?.deliveryCount) }}</strong>
         </div>
         <div>
           <span>สัญญา MA</span>
-          <strong>{{ maContracts().length }}</strong>
+          <strong>{{ reportCount(projectReport()?.maContractCount) }}</strong>
         </div>
       </div>
     </section>
+    }
   </section>
   }
 }
