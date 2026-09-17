@@ -20,7 +20,8 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor, unwrapInterceptor])),
     {
       provide: APP_INITIALIZER,
-      useFactory: (auth: AuthService) => () => auth.initAuthFromStorage(),
+      useFactory: (auth: AuthService) => () =>
+        auth.initAuthFromStorage().catch(() => undefined),
       deps: [AuthService],
       multi: true,
     },

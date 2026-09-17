@@ -1,13 +1,16 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   Observable,
   catchError,
+  defer,
   finalize,
   firstValueFrom,
+  from,
   shareReplay,
   throwError,
+  timeout,
 } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -28,9 +31,16 @@ import {
 } from '../models/user.model';
 import { UserService } from './user.service';
 
-import { TokenStorageService } from './token-storage.service';
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  RefreshPolicy,
+  StoredAuthTokens,
+  TokenStorageService,
+} from './token-storage.service';
 
 const LEGACY_SESSION_KEY = 'cpams_auth_session';
+const BOOT_TIMEOUT_MS = 8000;
 
 const ANON_USER: User = {
   id: 0,
@@ -56,6 +66,13 @@ interface AuthTokens {
   refreshToken: string;
 }
 
+interface AuthChannelMessage {
+  type: 'tokens' | 'logout';
+  accessToken?: string;
+  refreshToken?: string;
+  policy?: RefreshPolicy;
+}
+
 interface LoginResponse extends AuthTokens {
   tokenType?: string;
   user: AuthProfile;
@@ -71,10 +88,14 @@ export class AuthService {
 
   private readonly sessionSignal = signal<AuthSession | null>(null);
   private refreshInFlight$: Observable<AuthTokens> | null = null;
+  private readonly tabId = createTabId();
+  private channel: BroadcastChannel | null = null;
+  private peerWaiters: Array<(tokens: AuthTokens | null) => void> = [];
+  private loggingOut = false;
 
   readonly initStatus = signal<'idle' | 'loading' | 'done' | 'failed'>('idle');
   private initPromise: Promise<void> | null = null;
-  private refreshPolicy: 'local' | 'session' = 'session';
+  private refreshPolicy: RefreshPolicy = 'session';
 
   readonly session = this.sessionSignal.asReadonly();
   readonly currentUser = computed(() => this.sessionSignal()?.user ?? null);
@@ -94,11 +115,37 @@ export class AuthService {
   }
 
   get refreshToken(): string | null {
-    return this.sessionSignal()?.refreshToken ?? null;
+    return this.latestRefreshToken();
   }
 
   constructor() {
-    // ใช้งานผ่าน APP_INITIALIZER แล้วค่อย initAuthFromStorage()
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        this.channel = new BroadcastChannel('cpams-auth');
+        this.channel.onmessage = (event: MessageEvent<AuthChannelMessage>) => {
+          try {
+            this.onPeerMessage(event.data);
+          } catch {
+            /* ข้อความข้ามแท็บพังแล้วห้ามล้มแอป */
+          }
+        };
+      }
+    } catch {
+      this.channel = null;
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('storage', (event) => {
+          try {
+            this.onStorageEvent(event);
+          } catch {
+            /* ignore */
+          }
+        });
+      }
+    } catch {
+      /* ไม่มี storage event ก็ยังบูตได้ */
+    }
   }
 
   /** รอให้ hydrate session จาก storage เสร็จ — ใช้ใน route guard */
@@ -129,11 +176,13 @@ export class AuthService {
         tap((session) => {
           this.users.clearCache();
           this.refreshPolicy = rememberMe ? 'local' : 'session';
-          this.tokenStorage.setRefreshToken(
+          this.tokenStorage.replaceTokens(
+            session.accessToken,
             session.refreshToken,
             this.refreshPolicy,
           );
           this.setSession(session);
+          this.broadcastTokens(session.accessToken, session.refreshToken);
         }),
         catchError((err) =>
           throwError(
@@ -143,108 +192,68 @@ export class AuthService {
       );
   }
 
-  /** ต่ออายุ access + refresh (หมุนใบใหม่ทับเสมอ) */
-  refresh(
-    refreshTokenOverride?: string,
-    opts?: { silent?: boolean },
-  ): Observable<AuthTokens> {
+  /**
+   * ต่ออายุ access + refresh ครั้งเดียวต่อรอบ (คิว request ที่ 401 พร้อมกัน)
+   * ใช้ใบในที่เก็บล่าสุดเท่านั้น — ห้ามยิงซ้ำด้วยใบที่ถูกหมุนไปแล้ว
+   */
+  refresh(opts?: { silent?: boolean; boot?: boolean }): Observable<AuthTokens> {
     if (this.refreshInFlight$) {
       return this.refreshInFlight$;
     }
-    const refreshToken = refreshTokenOverride ?? this.refreshToken;
-    if (!refreshToken) {
-      this.clearSession();
-      if (!opts?.silent) {
-        void this.router.navigateByUrl('/login');
-      }
-      return throwError(() => new Error('ไม่มี refresh token'));
-    }
 
-    this.refreshInFlight$ = this.http
-      .post<AuthTokens>(`${this.base}/refresh`, { refreshToken })
-      .pipe(
-        tap((tokens) => {
-          const current = this.sessionSignal();
-          this.tokenStorage.setRefreshToken(
-            tokens.refreshToken,
-            this.refreshPolicy,
-          );
-          this.sessionSignal.set({
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            user: current?.user ?? ANON_USER,
-            permissions: current?.permissions ?? [],
-          });
-        }),
-        catchError((err) => {
-          this.clearSession();
-          if (!opts?.silent) {
-            void this.router.navigateByUrl('/login');
-          }
-          return throwError(() => err);
-        }),
-        finalize(() => {
-          this.refreshInFlight$ = null;
-        }),
-        shareReplay(1),
-      );
-
+    const silent = opts?.silent === true;
+    const boot = opts?.boot === true;
+    this.refreshInFlight$ = defer(() => from(this.refreshOnce(silent, boot))).pipe(
+      finalize(() => {
+        this.refreshInFlight$ = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
     return this.refreshInFlight$;
   }
 
   logout(): void {
-    const accessToken = this.accessToken;
+    this.loggingOut = true;
     const clearAndGo = () => {
-      this.clearSession();
+      this.clearSession(true);
+      this.loggingOut = false;
       void this.router.navigateByUrl('/login', { replaceUrl: true });
     };
 
-    if (!accessToken) {
+    const callLogout = () => {
+      this.http.post<void>(`${this.base}/logout`, {}).subscribe({
+        next: () => clearAndGo(),
+        error: () => clearAndGo(),
+      });
+    };
+
+    if (!this.latestRefreshToken() && !this.accessToken) {
       clearAndGo();
       return;
     }
 
-    // logout ต้องส่ง access token (Authorization header) ผ่าน interceptor
-    this.http.post<void>(`${this.base}/logout`, {}).subscribe({
-      next: () => clearAndGo(),
-      error: () => clearAndGo(),
-    });
+    if (this.latestRefreshToken()) {
+      this.refresh({ silent: true }).subscribe({
+        next: () => callLogout(),
+        error: () => callLogout(),
+      });
+      return;
+    }
+
+    callLogout();
   }
 
-  /** ดึงโปรไฟล์ + permissions ล่าสุด — พยายามต่ออายุ token ด้วย (สิทธิ์ใน JWT อาจค้างหลังแก้บทบาท) */
+  /** ดึงโปรไฟล์ล่าสุด — ไม่หมุน refresh เอง ถ้า access หมด interceptor จะ refresh แล้วเรียก /me ซ้ำ */
   refreshSession(): void {
-    if (!this.accessToken) {
+    if (!this.accessToken && !this.latestRefreshToken()) {
       return;
     }
-    const applyProfile = (profile: AuthProfile) => {
-      const current = this.sessionSignal();
-      if (!current) {
-        return;
-      }
-      this.setSession({
-        ...current,
-        user: mapAuthProfileToUser(profile),
-        permissions: profile.permissions ?? [],
-      });
-    };
-
-    const loadMe = () => {
-      this.http.get<AuthProfile>(`${this.base}/me`).subscribe({
-        next: applyProfile,
-        error: () => {
-          /* คง session เดิม — ถ้า 401 interceptor จะ refresh / logout */
-        },
-      });
-    };
-
-    if (this.refreshToken) {
-      this.refresh().subscribe({
-        next: () => loadMe(),
-        error: () => loadMe(),
-      });
-      return;
-    }
-    loadMe();
+    this.http.get<AuthProfile>(`${this.base}/me`).subscribe({
+      next: (profile) => this.applyProfile(profile),
+      error: () => {
+        /* 401 ให้ interceptor ต่ออายุ — อย่าล้าง refresh ตรงนี้ */
+      },
+    });
   }
 
   /** เช็คสิทธิ์แบบ API เช่น customer.view — รองรับ edit/update ที่ API ใช้สลับกัน */
@@ -415,10 +424,13 @@ export class AuthService {
     this.users.upsertLocal(session.user);
   }
 
-  private clearSession(): void {
+  private clearSession(broadcast = false): void {
     this.sessionSignal.set(null);
     this.tokenStorage.clearRefreshToken();
     this.users.clearCache();
+    if (broadcast) {
+      this.channel?.postMessage({ type: 'logout' } satisfies AuthChannelMessage);
+    }
   }
 
   initAuthFromStorage(): Promise<void> {
@@ -427,35 +439,69 @@ export class AuthService {
     }
 
     this.initStatus.set('loading');
-
-    const stored =
-      this.tokenStorage.getRefreshToken() ?? this.tryReadLegacyRefreshToken();
-    if (!stored) {
-      this.initStatus.set('done');
-      return Promise.resolve();
-    }
-
-    this.refreshPolicy = stored.policy;
-
-    // Block การรันของ route guard จนกว่าจะ refresh / โหลดโปรไฟล์เสร็จ
-    this.initPromise = (async () => {
-      try {
-        // refresh() จะใส่ accessToken + refreshToken ลงใน sessionSignal ให้ก่อน
-        await firstValueFrom(this.refresh(stored.token, { silent: true }));
-        const profile = await firstValueFrom(
-          this.http.get<AuthProfile>(`${this.base}/me`),
-        );
-        this.applyProfile(profile);
-        this.initStatus.set('done');
-      } catch {
-        this.clearSession();
+    this.initPromise = this.bootFromStorage().finally(() => {
+      this.initPromise = null;
+      if (this.initStatus() === 'loading') {
         this.initStatus.set('failed');
-      } finally {
-        this.initPromise = null;
       }
-    })();
-
+    });
     return this.initPromise;
+  }
+
+  /** บูตต้องจบเสมอ — token ไม่ครบหรือ storage พังแล้วไป login ห้าม throw ให้แอปขาว */
+  private async bootFromStorage(): Promise<void> {
+    try {
+      const stored =
+        this.tokenStorage.getStoredTokens() ?? this.tryReadLegacyRefreshToken();
+      if (!stored?.refreshToken) {
+        this.initStatus.set('done');
+        return;
+      }
+
+      this.refreshPolicy = stored.policy;
+      this.sessionSignal.set({
+        accessToken: stored.accessToken ?? '',
+        refreshToken: stored.refreshToken,
+        user: ANON_USER,
+        permissions: [],
+      });
+
+      if (stored.accessToken) {
+        try {
+          const profile = await withTimeout(
+            firstValueFrom(this.http.get<AuthProfile>(`${this.base}/me`)),
+            BOOT_TIMEOUT_MS,
+          );
+          this.applyProfile(profile);
+          this.initStatus.set('done');
+          return;
+        } catch {
+          /* access ใช้ไม่ได้ — ลองหมุนด้วย refresh ด้านล่าง */
+        }
+      }
+
+      const tokens = await withTimeout(
+        firstValueFrom(this.refresh({ silent: true, boot: true })),
+        BOOT_TIMEOUT_MS,
+      );
+      if (!tokens.accessToken?.trim() || !tokens.refreshToken?.trim()) {
+        throw new Error('refresh ไม่ครบ');
+      }
+
+      const profile = await withTimeout(
+        firstValueFrom(this.http.get<AuthProfile>(`${this.base}/me`)),
+        BOOT_TIMEOUT_MS,
+      );
+      this.applyProfile(profile);
+      this.initStatus.set('done');
+    } catch {
+      try {
+        this.clearSession(false);
+      } catch {
+        this.sessionSignal.set(null);
+      }
+      this.initStatus.set('failed');
+    }
   }
 
   private applyProfile(profile: AuthProfile): void {
@@ -473,10 +519,270 @@ export class AuthService {
     this.users.upsertLocal(user);
   }
 
-  private tryReadLegacyRefreshToken(): {
-    token: string;
-    policy: 'local' | 'session';
-  } | null {
+  private latestRefreshToken(): string | null {
+    const stored = this.tokenStorage.getRefreshToken()?.token ?? null;
+    const memory = this.sessionSignal()?.refreshToken ?? null;
+    if (stored && memory && stored !== memory) {
+      return stored;
+    }
+    return stored || memory;
+  }
+
+  private async refreshOnce(silent: boolean, boot = false): Promise<AuthTokens> {
+    const beforeWait = this.latestRefreshToken();
+    let ownedLock = false;
+    if (!boot) {
+      ownedLock = this.acquireRefreshLock();
+    }
+    if (!boot && !ownedLock) {
+      const peer = await this.waitForPeerTokens(8000, beforeWait);
+      if (peer && peer.refreshToken !== beforeWait) {
+        return peer;
+      }
+      ownedLock = this.acquireRefreshLock();
+    }
+
+    const sentToken = this.latestRefreshToken();
+    try {
+      if (!sentToken) {
+        this.failAuth(silent);
+        throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+      }
+
+      const tokens = await this.postRefresh(sentToken);
+      this.persistRotatedTokens(tokens);
+      return tokens;
+    } catch (err) {
+      if (!this.isUnauthorized(err)) {
+        throw err;
+      }
+
+      const peer = await this.waitForPeerTokens(2000, sentToken, true);
+      if (peer && peer.refreshToken !== sentToken) {
+        return peer;
+      }
+
+      const storedNow = this.tokenStorage.getRefreshToken()?.token ?? null;
+      if (storedNow && storedNow !== sentToken) {
+        try {
+          const tokens = await this.postRefresh(storedNow);
+          this.persistRotatedTokens(tokens);
+          return tokens;
+        } catch (retryErr) {
+          if (this.isUnauthorized(retryErr)) {
+            this.failAuth(silent);
+          }
+          throw retryErr;
+        }
+      }
+
+      this.failAuth(silent);
+      throw err;
+    } finally {
+      if (ownedLock) {
+        this.tokenStorage.clearRefreshLock(this.tabId);
+      }
+    }
+  }
+
+  private postRefresh(refreshToken: string): Promise<AuthTokens> {
+    return firstValueFrom(
+      this.http
+        .post<AuthTokens>(`${this.base}/refresh`, { refreshToken })
+        .pipe(timeout(BOOT_TIMEOUT_MS)),
+    );
+  }
+
+  private persistRotatedTokens(tokens: AuthTokens): void {
+    this.tokenStorage.setTokens(
+      tokens.accessToken,
+      tokens.refreshToken,
+      this.refreshPolicy,
+    );
+    const current = this.sessionSignal();
+    this.sessionSignal.set({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: current?.user ?? ANON_USER,
+      permissions: current?.permissions ?? [],
+    });
+    this.broadcastTokens(tokens.accessToken, tokens.refreshToken);
+    this.notifyPeerWaiters(tokens);
+  }
+
+  private failAuth(silent: boolean): void {
+    this.clearSession(false);
+    if (!silent && !this.loggingOut) {
+      try {
+        void this.router.navigateByUrl('/login');
+      } catch {
+        /* router ยังไม่พร้อมระหว่างบูต — guard จะพาไป login เอง */
+      }
+    }
+  }
+
+  private isUnauthorized(err: unknown): boolean {
+    return err instanceof HttpErrorResponse && err.status === 401;
+  }
+
+  private lockHeldByOther(): boolean {
+    const lock = this.tokenStorage.getRefreshLock();
+    if (!lock || lock.id === this.tabId) {
+      return false;
+    }
+    return lock.exp > Date.now();
+  }
+
+  private acquireRefreshLock(): boolean {
+    if (this.lockHeldByOther()) {
+      return false;
+    }
+    this.tokenStorage.setRefreshLock(this.tabId, Date.now() + 12_000);
+    return this.tokenStorage.getRefreshLock()?.id === this.tabId;
+  }
+
+  private waitForPeerTokens(
+    ms: number,
+    previousToken?: string | null,
+    requireChange = false,
+  ): Promise<AuthTokens | null> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (tokens: AuthTokens | null) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        window.clearTimeout(timer);
+        window.clearInterval(poll);
+        this.peerWaiters = this.peerWaiters.filter((waiter) => waiter !== onTokens);
+        resolve(tokens);
+      };
+      let timer = 0;
+      let poll = 0;
+      const onTokens = (tokens: AuthTokens | null) => finish(tokens);
+      try {
+        timer = window.setTimeout(() => finish(null), ms);
+        poll = window.setInterval(() => {
+          const refreshToken = this.latestRefreshToken();
+          const accessToken = this.accessToken;
+          if (
+            previousToken &&
+            refreshToken &&
+            refreshToken !== previousToken &&
+            accessToken
+          ) {
+            finish({ accessToken, refreshToken });
+            return;
+          }
+          if (!requireChange && !this.lockHeldByOther()) {
+            finish(null);
+          }
+        }, 150);
+        this.peerWaiters.push(onTokens);
+      } catch {
+        finish(null);
+      }
+    });
+  }
+
+  private notifyPeerWaiters(tokens: AuthTokens | null): void {
+    const waiters = this.peerWaiters.splice(0);
+    for (const waiter of waiters) {
+      waiter(tokens);
+    }
+  }
+
+  private broadcastTokens(accessToken: string, refreshToken: string): void {
+    this.channel?.postMessage({
+      type: 'tokens',
+      accessToken,
+      refreshToken,
+      policy: this.refreshPolicy,
+    } satisfies AuthChannelMessage);
+  }
+
+  private onPeerMessage(message: AuthChannelMessage | null): void {
+    if (!message || this.loggingOut) {
+      return;
+    }
+    if (message.type === 'logout') {
+      this.clearSession(false);
+      void this.router.navigateByUrl('/login', { replaceUrl: true });
+      return;
+    }
+    if (message.type !== 'tokens' || !message.refreshToken) {
+      return;
+    }
+    this.applyExternalTokens(
+      message.accessToken ?? '',
+      message.refreshToken,
+      message.policy,
+    );
+  }
+
+  private onStorageEvent(event: StorageEvent): void {
+    if (this.loggingOut || event.storageArea !== localStorage) {
+      return;
+    }
+    if (event.key !== REFRESH_TOKEN_KEY && event.key !== ACCESS_TOKEN_KEY) {
+      return;
+    }
+    const refreshToken = this.tokenStorage.getRefreshToken()?.token;
+    if (!refreshToken) {
+      return;
+    }
+    this.applyExternalTokens(
+      this.tokenStorage.getAccessToken() ?? '',
+      refreshToken,
+      'local',
+    );
+  }
+
+  private applyExternalTokens(
+    accessToken: string,
+    refreshToken: string,
+    policy?: RefreshPolicy,
+  ): void {
+    if (policy) {
+      this.refreshPolicy = policy;
+    }
+    const current = this.sessionSignal();
+    if (
+      current?.refreshToken === refreshToken &&
+      current.accessToken === accessToken &&
+      accessToken
+    ) {
+      this.notifyPeerWaiters({
+        accessToken,
+        refreshToken,
+      });
+      return;
+    }
+    const nextAccess = accessToken || current?.accessToken || '';
+    if (!nextAccess) {
+      this.sessionSignal.set({
+        accessToken: '',
+        refreshToken,
+        user: current?.user ?? ANON_USER,
+        permissions: current?.permissions ?? [],
+      });
+      return;
+    }
+    this.tokenStorage.setTokens(nextAccess, refreshToken, this.refreshPolicy);
+    this.sessionSignal.set({
+      accessToken: nextAccess,
+      refreshToken,
+      user: current?.user ?? ANON_USER,
+      permissions: current?.permissions ?? [],
+    });
+    this.notifyPeerWaiters({
+      accessToken: nextAccess,
+      refreshToken,
+    });
+  }
+
+  private tryReadLegacyRefreshToken(): StoredAuthTokens | null {
     try {
       const raw = localStorage.getItem(LEGACY_SESSION_KEY);
       if (!raw) {
@@ -484,15 +790,44 @@ export class AuthService {
       }
       const parsed = JSON.parse(raw) as Partial<AuthSession>;
       const refreshToken =
-        typeof parsed?.refreshToken === 'string' ? parsed.refreshToken : null;
+        typeof parsed?.refreshToken === 'string' ? parsed.refreshToken.trim() : '';
       if (!refreshToken) {
         return null;
       }
-      // legacy เก็บ refreshToken ใน localStorage เสมอ
-      this.tokenStorage.setRefreshToken(refreshToken, 'local');
-      return { token: refreshToken, policy: 'local' };
+      const accessToken =
+        typeof parsed?.accessToken === 'string' && parsed.accessToken.trim()
+          ? parsed.accessToken.trim()
+          : null;
+      return { refreshToken, accessToken, policy: 'local' };
     } catch {
       return null;
     }
   }
+}
+
+function createTabId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {
+    /* insecure context */
+  }
+  return `tab-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('boot timeout')), ms);
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
 }
