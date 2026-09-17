@@ -123,7 +123,7 @@
   }
 
   .app-meta-card {
-    @apply rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-none;
+    @apply min-w-0 overflow-hidden rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-none;
   }
 
   .app-meta-card > strong {
@@ -132,7 +132,7 @@
 
   .app-meta-card > span,
   .app-meta-card > a {
-    @apply text-[0.95rem] leading-snug text-ink;
+    @apply block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.95rem] leading-snug text-ink;
   }
 
   .app-meta-card a {

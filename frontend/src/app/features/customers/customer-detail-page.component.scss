@@ -57,10 +57,29 @@
   }
 }
 
+:host ::ng-deep .app-meta-card.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: #0f766e;
+    box-shadow: 0 0 0 2px rgb(15 118 110 / 0.12);
+    outline: none;
+  }
+}
+
 .lifetime-meta {
   span {
     font-weight: 700;
     color: #1c2b28;
+  }
+
+  .lifetime-meta__note,
+  .lifetime-meta__warn {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .lifetime-meta__note {

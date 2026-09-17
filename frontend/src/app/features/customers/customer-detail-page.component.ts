@@ -61,6 +61,7 @@ import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
+import { formatMoneyDisplay } from '../../core/utils/money.util';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
@@ -627,6 +628,40 @@ export class CustomerDetailPageComponent implements OnInit {
     void this.router.navigate(['/app/ma', contract.id]);
   }
 
+  /** การ์ดที่ถูกตัดด้วยจุดไข่ปลา — กดเพื่ออ่านค่าเต็ม */
+  openFieldDetail(label: string, value: string | null | undefined, href?: string | null): void {
+    const text = value?.trim();
+    if (!text) {
+      return;
+    }
+    this.dialog.open(CustomerFieldDetailDialogComponent, {
+      width: '480px',
+      maxWidth: '96vw',
+      data: { label, value: text, href: href || null },
+    });
+  }
+
+  externalHref(value: string | null | undefined): string | null {
+    const raw = value?.trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    return null;
+  }
+
+  openLifetimeDetail(lv: CustomerLifetimeValue): void {
+    const amount = formatMoneyDisplay(lv.totalContractValue);
+    const lines = [
+      `มูลค่าตามสัญญา: ${amount ? `฿${amount}` : '—'}`,
+      this.oneTimeCompletenessLabel(lv),
+      this.lifetimeTooltip(lv),
+    ].filter((line) => !!line?.trim());
+    this.openFieldDetail('มูลค่าตามสัญญา', lines.join('\n'));
+  }
+
   openTicketDetail(ticket: Ticket): void {
     void this.router.navigate(['/app/tickets', ticket.id]);
   }
@@ -636,6 +671,47 @@ export class CustomerDetailPageComponent implements OnInit {
       queryParams: { highlight: followUp.id },
     });
   }
+}
+
+@Component({
+  selector: 'app-customer-field-detail-dialog',
+  standalone: true,
+  imports: [MatDialogModule, MatButtonModule, MatIconModule],
+  template: `
+    <h2 mat-dialog-title>{{ data.label }}</h2>
+    <mat-dialog-content>
+      <p class="field-detail">{{ data.value }}</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      @if (data.href) {
+        <a mat-stroked-button [href]="data.href" target="_blank" rel="noopener noreferrer">
+          <mat-icon>open_in_new</mat-icon>
+          เปิดลิงก์
+        </a>
+      }
+      <button mat-flat-button color="primary" type="button" mat-dialog-close>ปิด</button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .field-detail {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.55;
+      color: #1c2b28;
+    }
+    mat-dialog-actions a mat-icon {
+      margin-right: 0.25rem;
+      font-size: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
+      vertical-align: middle;
+    }
+  `,
+})
+class CustomerFieldDetailDialogComponent {
+  readonly data = inject<{ label: string; value: string; href: string | null }>(MAT_DIALOG_DATA);
 }
 
 /* ——— Contact form dialog ——— */

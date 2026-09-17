@@ -38,15 +38,39 @@
     </header>
 
     <div class="app-meta-grid">
-      <mat-card class="app-meta-card">
+      <mat-card
+        class="app-meta-card"
+        [class.is-clickable]="!!c.taxId"
+        [attr.role]="c.taxId ? 'button' : null"
+        [attr.tabindex]="c.taxId ? 0 : null"
+        [attr.title]="c.taxId ? 'คลิกเพื่อดูรายละเอียด' : null"
+        (click)="openFieldDetail('เลขผู้เสียภาษี', c.taxId)"
+        (keydown.enter)="openFieldDetail('เลขผู้เสียภาษี', c.taxId)"
+      >
         <strong>เลขผู้เสียภาษี</strong>
         <span>{{ c.taxId || '—' }}</span>
       </mat-card>
-      <mat-card class="app-meta-card">
+      <mat-card
+        class="app-meta-card"
+        [class.is-clickable]="!!c.address"
+        [attr.role]="c.address ? 'button' : null"
+        [attr.tabindex]="c.address ? 0 : null"
+        [attr.title]="c.address ? 'คลิกเพื่อดูรายละเอียด' : null"
+        (click)="openFieldDetail('ที่อยู่', c.address)"
+        (keydown.enter)="openFieldDetail('ที่อยู่', c.address)"
+      >
         <strong>ที่อยู่</strong>
         <span>{{ c.address || '—' }}</span>
       </mat-card>
-      <mat-card class="app-meta-card">
+      <mat-card
+        class="app-meta-card"
+        [class.is-clickable]="!!c.note"
+        [attr.role]="c.note ? 'button' : null"
+        [attr.tabindex]="c.note ? 0 : null"
+        [attr.title]="c.note ? 'คลิกเพื่อดูรายละเอียด' : null"
+        (click)="openFieldDetail('หมายเหตุ', c.note)"
+        (keydown.enter)="openFieldDetail('หมายเหตุ', c.note)"
+      >
         <strong>หมายเหตุ</strong>
         <span>{{ c.note || '—' }}</span>
       </mat-card>
@@ -54,11 +78,27 @@
         <strong>ผู้ติดต่อ</strong>
         <span>{{ contacts().length }} คน</span>
       </mat-card>
-      <mat-card class="app-meta-card">
+      <mat-card
+        class="app-meta-card"
+        [class.is-clickable]="!!c.lineOfficialId"
+        [attr.role]="c.lineOfficialId ? 'button' : null"
+        [attr.tabindex]="c.lineOfficialId ? 0 : null"
+        [attr.title]="c.lineOfficialId ? 'คลิกเพื่อดูรายละเอียด' : null"
+        (click)="openFieldDetail('LINE Official', c.lineOfficialId)"
+        (keydown.enter)="openFieldDetail('LINE Official', c.lineOfficialId)"
+      >
         <strong>LINE Official</strong>
         <span>{{ c.lineOfficialId || '—' }}</span>
       </mat-card>
-      <mat-card class="app-meta-card">
+      <mat-card
+        class="app-meta-card"
+        [class.is-clickable]="!!c.facebookUrl"
+        [attr.role]="c.facebookUrl ? 'button' : null"
+        [attr.tabindex]="c.facebookUrl ? 0 : null"
+        [attr.title]="c.facebookUrl ? 'คลิกเพื่อดูรายละเอียด' : null"
+        (click)="openFieldDetail('Facebook', c.facebookUrl, externalHref(c.facebookUrl))"
+        (keydown.enter)="openFieldDetail('Facebook', c.facebookUrl, externalHref(c.facebookUrl))"
+      >
         <strong>Facebook</strong>
         <span>{{ c.facebookUrl || '—' }}</span>
       </mat-card>
@@ -78,8 +118,12 @@
         </mat-card>
         @if (lifetimeValue(); as lv) {
           <mat-card
-            class="app-meta-card lifetime-meta"
-            [attr.title]="lifetimeTooltip(lv)"
+            class="app-meta-card lifetime-meta is-clickable"
+            role="button"
+            tabindex="0"
+            title="คลิกเพื่อดูรายละเอียด"
+            (click)="openLifetimeDetail(lv)"
+            (keydown.enter)="openLifetimeDetail(lv)"
           >
             <strong>มูลค่าตามสัญญา</strong>
             <span>{{ lv.totalContractValue | baht }}</span>
