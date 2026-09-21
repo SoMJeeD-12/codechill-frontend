@@ -1,4 +1,6 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -20,6 +22,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
+import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import {
   TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
@@ -28,6 +32,7 @@ import {
   TaskItem,
   TaskPriority,
   TaskStatus,
+  TaskSubmission,
 } from '../../core/models/project.model';
 import { ApiProjectDocument } from '../../core/models/document.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -36,6 +41,8 @@ import { ProjectService, TaskInput } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
+import { downloadAuthorizedBlob } from '../../shared/utils/download-blob';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { TaskSubmitReportDialogComponent } from './task-submit-report-dialog.component';
 
@@ -83,6 +90,12 @@ export interface TaskDialogData {
   styleUrl: './task-edit-dialog.component.scss',
 })
 export class TaskEditDialogComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  /** โชว์ช่องค้นหาเมื่อรายการเริ่มยาวเกินที่เห็นในกรอบเลื่อน */
+  private readonly projectDocsSearchMin = 2;
+  private docsRequest = 0;
   private readonly fb = inject(FormBuilder);
   private readonly projectsApi = inject(ProjectService);
   private readonly docsApi = inject(DocumentService);
@@ -104,8 +117,54 @@ export class TaskEditDialogComponent implements OnInit {
   readonly currentTask = signal<TaskItem | null>(this.data.task);
   readonly status = signal<TaskStatus>(this.data.task?.status ?? 'TODO');
   readonly projectDocs = signal<ApiProjectDocument[]>([]);
+  /** จำนวนเอกสารทั้งโปรเจคตอนยังไม่ค้น — ใช้ตัดสินใจโชว์ช่องค้นหา */
+  readonly projectDocsCatalogTotal = signal(0);
+  readonly projectDocSearchControl = this.fb.nonNullable.control('');
+  readonly submissionSearchControl = this.fb.nonNullable.control('');
+  readonly submissionSearch = signal('');
+  /** คำค้นที่ใช้กับรายการปัจจุบัน — ไม่ผูกกับไฟล์ที่ส่งในงาน */
+  readonly appliedProjectDocSearch = signal('');
   readonly docsLoading = signal(false);
   readonly downloadingId = signal<number | null>(null);
+  readonly downloadingKey = signal<string | null>(null);
+  readonly submissionsLoading = signal(
+    this.isEdit && !(this.data.task?.submissions?.length)
+  );
+  /** คลังเอกสารโปรเจค — ค่าเริ่มต้นหุบ เพื่อไม่ปนกับไฟล์ของงาน */
+  readonly projectDocsOpen = signal(false);
+  readonly showProjectDocSearch = computed(
+    () =>
+      Math.max(this.projectDocsCatalogTotal(), this.projectDocs().length) >
+      this.projectDocsSearchMin
+  );
+  /** จำนวนแถวในตารางไฟล์ของงาน — โชว์ค้นหาเมื่อเยอะกว่าเกณฑ์เดียวกับเอกสารโปรเจค */
+  readonly submissionRowCount = computed(() =>
+    this.taskSubmissions().reduce((count, sub) => count + Math.max(sub.files.length, 1), 0)
+  );
+  readonly showSubmissionSearch = computed(
+    () => this.submissionRowCount() > this.projectDocsSearchMin
+  );
+  readonly filteredTaskSubmissions = computed(() => {
+    const q = this.submissionSearch().trim().toLowerCase();
+    const rows = this.taskSubmissions();
+    if (q.length < PICKER_MIN_CHARS) {
+      return rows;
+    }
+    return rows
+      .map((sub) => {
+        const report = (sub.report ?? '').toLowerCase();
+        const status = this.submissionStatusLabel(sub.status).toLowerCase();
+        const files = sub.files.filter((file) => file.fileName.toLowerCase().includes(q));
+        if (report.includes(q) || status.includes(q)) {
+          return sub;
+        }
+        if (!files.length) {
+          return null;
+        }
+        return { ...sub, files };
+      })
+      .filter((sub): sub is TaskSubmission => !!sub);
+  });
   /** โหมดดูรายละเอียดแบบการ์ด (ค่าเริ่มต้นเมื่อเปิดงานที่มีอยู่) */
   readonly editing = signal(false);
   private statusChanged = false;
@@ -169,20 +228,140 @@ export class TaskEditDialogComponent implements OnInit {
     }
   }
 
+  readonly taskSubmissions = computed(() => {
+    const rows = this.currentTask()?.submissions ?? [];
+    return [...rows].sort((a, b) => {
+      const at = a.submittedAt ?? '';
+      const bt = b.submittedAt ?? '';
+      if (at !== bt) {
+        return bt.localeCompare(at);
+      }
+      return (b.id ?? 0) - (a.id ?? 0);
+    });
+  });
+
   ngOnInit(): void {
+    const task = this.data.task;
+    if (this.isEdit && task) {
+      this.projectsApi.getTask(task.id).subscribe({
+        next: (fresh) => {
+          this.currentTask.set({
+            ...task,
+            ...fresh,
+            project: fresh.project ?? task.project ?? null,
+            submissions: fresh.submissions ?? task.submissions ?? [],
+          });
+          this.submissionsLoading.set(false);
+        },
+        error: () => this.submissionsLoading.set(false),
+      });
+    }
+    if (this.isEdit) {
+      this.applyDetailWidth();
+    }
+    if (this.isEdit) {
+      this.submissionSearchControl.valueChanges
+        .pipe(
+          debounceTime(PICKER_DEBOUNCE_MS),
+          map((value) => value.trim()),
+          distinctUntilChanged(),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe((value) => this.submissionSearch.set(value));
+    }
     if (this.isEdit && this.data.projectId) {
-      this.loadProjectDocuments();
+      this.projectDocSearchControl.valueChanges
+        .pipe(
+          debounceTime(PICKER_DEBOUNCE_MS),
+          map((value) => value.trim()),
+          distinctUntilChanged(),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe((value) => this.loadProjectDocuments(value));
+      this.loadProjectDocuments('');
     }
   }
 
-  private loadProjectDocuments(): void {
+  toggleProjectDocs(): void {
+    this.projectDocsOpen.update((open) => !open);
+  }
+
+  submissionStatusLabel(status: string | null): string {
+    switch (status) {
+      case 'PENDING':
+        return 'รอตรวจ';
+      case 'APPROVED':
+        return 'อนุมัติแล้ว';
+      case 'REJECTED':
+        return 'ส่งกลับแก้ไข';
+      default:
+        return status || '—';
+    }
+  }
+
+  downloadSubmission(url: string, fileName: string, key: string): void {
+    if (!url) {
+      this.snack.open('ไม่มีลิงก์ดาวน์โหลดไฟล์ของงาน', 'ปิด', { duration: 3000 });
+      return;
+    }
+    this.downloadingKey.set(key);
+    downloadAuthorizedBlob(this.http, url, fileName || 'download').subscribe({
+      next: () => this.downloadingKey.set(null),
+      error: (err: Error) => {
+        this.downloadingKey.set(null);
+        this.snack.open(err.message || 'ดาวน์โหลดไฟล์ไม่สำเร็จ', 'ปิด', { duration: 4000 });
+      },
+    });
+  }
+
+  trackSubmission(index: number, row: TaskSubmission): number | string {
+    return row.id ?? `${row.submittedAt ?? 'sub'}-${index}`;
+  }
+
+  submissionFileKey(row: TaskSubmission, submissionIndex: number, fileIndex: number): string {
+    return `sub-${row.id ?? submissionIndex}-${fileIndex}`;
+  }
+
+  projectDocSearchActive(): boolean {
+    return this.appliedProjectDocSearch().length >= PICKER_MIN_CHARS;
+  }
+
+  goToProjectDocuments(): void {
+    const projectId = this.data.projectId;
+    if (!projectId) {
+      return;
+    }
+    const search = this.projectDocSearchControl.value.trim();
+    this.ref.close(this.statusChanged);
+    this.router.navigate(['/app/projects', projectId], {
+      queryParams:
+        search.length >= PICKER_MIN_CHARS
+          ? { tab: 'documents', search }
+          : { tab: 'documents' },
+    });
+  }
+
+  private loadProjectDocuments(raw: string): void {
+    const q = raw.trim();
+    const search = q.length >= PICKER_MIN_CHARS ? q : undefined;
+    const requestId = ++this.docsRequest;
     this.docsLoading.set(true);
-    this.docsApi.listByProject(this.data.projectId, { limit: 50 }).subscribe({
+    this.docsApi.listByProject(this.data.projectId, { search, limit: 50 }).subscribe({
       next: (page) => {
+        if (requestId !== this.docsRequest) {
+          return;
+        }
         this.projectDocs.set(page.items);
+        this.appliedProjectDocSearch.set(search ?? '');
+        if (!search) {
+          this.projectDocsCatalogTotal.set(page.total);
+        }
         this.docsLoading.set(false);
       },
       error: () => {
+        if (requestId !== this.docsRequest) {
+          return;
+        }
         this.projectDocs.set([]);
         this.docsLoading.set(false);
       },
@@ -194,6 +373,7 @@ export class TaskEditDialogComponent implements OnInit {
       return;
     }
     this.editing.set(true);
+    this.ref.updateSize('760px');
   }
 
   cancelEditing(): void {
@@ -216,6 +396,11 @@ export class TaskEditDialogComponent implements OnInit {
     }
     this.editing.set(false);
     this.error.set(null);
+    this.applyDetailWidth();
+  }
+
+  private applyDetailWidth(): void {
+    this.ref.updateSize('1100px');
   }
 
   isOwnAssignment(task: TaskItem | null = this.currentTask()): boolean {
@@ -315,7 +500,12 @@ export class TaskEditDialogComponent implements OnInit {
       next: (updated) => {
         this.saving.set(false);
         this.statusChanged = true;
-        this.currentTask.set(updated);
+        this.currentTask.set({
+          ...task,
+          ...updated,
+          project: updated.project ?? task.project ?? null,
+          submissions: updated.submissions ?? task.submissions ?? [],
+        });
         this.status.set(updated.status);
         this.form.patchValue(
           {

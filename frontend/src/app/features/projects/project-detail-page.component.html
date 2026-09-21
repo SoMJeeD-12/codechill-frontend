@@ -98,6 +98,14 @@
     </header>
 
     <section class="project-summary" aria-label="สรุปโปรเจค">
+      <aside class="project-summary__note" [class.is-empty]="!projectDescription(p)">
+        <div class="project-summary__note-head">
+          <mat-icon aria-hidden="true">notes</mat-icon>
+          <span>รายละเอียดโปรเจค</span>
+        </div>
+        <p>{{ projectDescription(p) || 'ยังไม่มีรายละเอียดเพิ่มเติม' }}</p>
+      </aside>
+
       <div class="project-summary__spotlight">
         <article class="summary-hero">
           <div class="summary-hero__top">
@@ -171,16 +179,13 @@
         </article>
       </div>
 
-      <aside class="project-summary__note" [class.is-empty]="!projectDescription(p)">
-        <div class="project-summary__note-head">
-          <mat-icon aria-hidden="true">notes</mat-icon>
-          <span>รายละเอียดโปรเจค</span>
-        </div>
-        <p>{{ projectDescription(p) || 'ยังไม่มีรายละเอียดเพิ่มเติม' }}</p>
-      </aside>
     </section>
 
-    <mat-tab-group animationDuration="150ms">
+    <mat-tab-group
+      animationDuration="150ms"
+      [selectedIndex]="selectedTab()"
+      (selectedIndexChange)="selectedTab.set($event)"
+    >
       @if (canViewDeliveries()) {
       <mat-tab>
         <ng-template mat-tab-label>
@@ -252,8 +257,11 @@
                 <table mat-table [dataSource]="deliveriesPager.paged()" class="data-table data-table--deliveries">
                   <ng-container matColumnDef="title">
                     <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
-                    <td mat-cell *matCellDef="let row" [attr.title]="row.version ? row.title + ' · ' + row.version : row.title">
+                    <td mat-cell *matCellDef="let row">
                       <strong>{{ row.title }}</strong>
+                      @if (row.description?.trim()) {
+                        <span class="cell-sub">{{ row.description }}</span>
+                      }
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="deliveryNo">

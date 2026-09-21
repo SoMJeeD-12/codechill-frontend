@@ -19,6 +19,146 @@
   }
 }
 
+.detail-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.detail-main {
+  min-width: 0;
+}
+
+.detail-files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.file-pane {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 0;
+  border: 1px solid rgb(15 23 42 / 0.08);
+  border-radius: 12px;
+  background: #fff;
+  background-clip: padding-box;
+  overflow: visible;
+}
+
+.file-pane--docs {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.15rem;
+}
+
+.file-pane--docs .ref-toggle.file-pane__head {
+  padding: 0.75rem 0.8rem 0.65rem;
+  border-radius: 11px;
+  background: #f8fafc;
+}
+
+.file-pane__head {
+  flex: 0 0 auto;
+  padding: 0.7rem 0.8rem 0.55rem;
+  border-bottom: 1px solid rgb(15 23 42 / 0.06);
+  background: #f8fafc;
+
+  h4,
+  strong {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+}
+
+.file-scroll {
+  max-height: 280px;
+  overflow: auto;
+  border-radius: 0 0 11px 11px;
+}
+
+.file-scroll--docs {
+  max-height: 180px;
+}
+
+.file-pane--docs .doc-search,
+.file-pane--docs .doc-tab-link {
+  margin-left: 0.75rem;
+  margin-right: 0.75rem;
+}
+
+.file-pane--docs .doc-tab-link {
+  margin-bottom: 0.55rem;
+}
+
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+
+  th,
+  td {
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid rgb(15 23 42 / 0.06);
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f1f5f4;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .col-date,
+  .col-status {
+    white-space: nowrap;
+    color: #334155;
+  }
+
+  .col-action {
+    width: 2.5rem;
+    text-align: right;
+  }
+
+  strong,
+  .sub {
+    display: block;
+  }
+}
+
+.file-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.file-pane > .doc-search {
+  margin: 0.55rem 0.75rem 0.35rem;
+}
+
+.file-pane .empty {
+  margin: 0;
+  padding: 0.75rem 0.8rem;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
 .preview-card__head {
   margin-bottom: 0.85rem;
 
@@ -80,6 +220,98 @@
     color: #c2410c;
     font-weight: 600;
   }
+}
+
+.block-hint {
+  margin: 0.15rem 0 0.45rem;
+  color: #5b6762;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.ref-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+
+  strong {
+    display: block;
+    font-size: 0.95rem;
+  }
+
+  .block-hint {
+    display: block;
+    margin: 0.15rem 0 0;
+  }
+}
+
+.submission-card {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.report {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.doc-search {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #cfe0db;
+  border-radius: 8px;
+  background: #fff;
+
+  mat-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    font-size: 1.05rem;
+    color: #6b7f79;
+  }
+
+  input {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.86rem;
+    outline: none;
+  }
+}
+
+.doc-tab-link {
+  margin-top: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preview-card__contacts + .preview-card__contacts {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgb(15 23 42 / 0.08);
+}
+
+.preview-card__contacts .file-name {
+  white-space: normal;
 }
 
 .preview-card__contacts {
@@ -175,13 +407,25 @@ mat-dialog-actions mat-icon {
   vertical-align: middle;
 }
 
+@media (max-width: 860px) {
+  .detail-split {
+    grid-template-columns: 1fr;
+  }
+
+  .file-scroll,
+  .file-scroll--docs {
+    max-height: 220px;
+  }
+}
+
 @media (max-width: 560px) {
   .preview-card__grid,
   .row {
     grid-template-columns: 1fr;
   }
 
-  .preview-card__contacts .doc-row {
+  .preview-card__contacts .doc-row,
+  .file-line {
     flex-direction: column;
     align-items: stretch;
   }

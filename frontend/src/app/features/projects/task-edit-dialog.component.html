@@ -20,7 +20,8 @@
 
 <mat-dialog-content>
   @if (isEdit && !editing() && currentTask(); as task) {
-    <article class="preview-card">
+    <article class="preview-card detail-split">
+      <div class="detail-main">
       <header class="preview-card__head">
         <h3>{{ task.title }}</h3>
         <p class="meta">
@@ -81,35 +82,6 @@
         </div>
       </dl>
 
-      <section class="preview-card__contacts">
-        <h4>เอกสารโปรเจค</h4>
-        @if (docsLoading()) {
-          <p class="empty">กำลังโหลดเอกสาร…</p>
-        } @else if (projectDocs().length === 0) {
-          <p class="empty">ไม่มีเอกสารในโปรเจคนี้</p>
-        } @else {
-          <ul>
-            @for (doc of projectDocs(); track doc.id) {
-              <li class="doc-row">
-                <div class="doc-meta">
-                  <strong>{{ doc.title || doc.fileName }}</strong>
-                  <span class="sub">{{ doc.fileName }}</span>
-                </div>
-                <button
-                  mat-stroked-button
-                  type="button"
-                  [disabled]="downloadingId() === doc.id"
-                  (click)="downloadDoc(doc)"
-                >
-                  <mat-icon>download</mat-icon>
-                  ดาวน์โหลด
-                </button>
-              </li>
-            }
-          </ul>
-        }
-      </section>
-
       @if (canUpdate() && statusActions().length) {
         <div class="status-actions">
           @for (action of statusActions(); track action.label + action.status + action.kind) {
@@ -125,6 +97,142 @@
           }
         </div>
       }
+      </div>
+
+      <aside class="detail-files">
+        <section class="file-pane" aria-label="ไฟล์ที่ส่งในงานนี้">
+          <header class="file-pane__head">
+            <h4>ไฟล์ที่ส่งในงานนี้</h4>
+            <p class="block-hint">ไฟล์แนบตอนส่งรายงานขอตรวจของงานนี้เท่านั้น</p>
+          </header>
+          <label class="doc-search">
+            <mat-icon>search</mat-icon>
+            <input
+              type="search"
+              [formControl]="submissionSearchControl"
+              placeholder="ค้นหารายงาน / ชื่อไฟล์"
+              aria-label="ค้นหาไฟล์ที่ส่งในงานนี้"
+            />
+          </label>
+          <div class="file-scroll">
+            @if (submissionsLoading()) {
+              <p class="empty">กำลังโหลดไฟล์ที่ส่งในงานนี้…</p>
+            } @else if (taskSubmissions().length === 0) {
+              <p class="empty">ยังไม่มีไฟล์ที่ส่งในงานนี้</p>
+            } @else if (filteredTaskSubmissions().length === 0) {
+              <p class="empty">ไม่พบไฟล์ตามคำค้นหา</p>
+            } @else {
+              <table class="file-table">
+                <thead>
+                  <tr>
+                    <th>วันที่ส่ง</th>
+                    <th>สถานะ</th>
+                    <th>รายงาน / ไฟล์</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (sub of filteredTaskSubmissions(); track trackSubmission($index, sub); let si = $index) {
+                    <tr>
+                      <td class="col-date">
+                        {{ sub.submittedAt ? (sub.submittedAt | thaiDate) : '—' }}
+                      </td>
+                      <td class="col-status">{{ submissionStatusLabel(sub.status) }}</td>
+                      <td class="col-file">
+                        <p class="report">{{ sub.report?.trim() || 'ไม่มีข้อความรายงาน' }}</p>
+                        @if (sub.files.length) {
+                          @for (file of sub.files; track file.downloadUrl + file.fileName; let fi = $index) {
+                            <div class="file-line">
+                              <span class="file-name">{{ file.fileName }}</span>
+                              <button
+                                mat-icon-button
+                                type="button"
+                                [disabled]="downloadingKey() === submissionFileKey(sub, si, fi)"
+                                (click)="downloadSubmission(file.downloadUrl, file.fileName, submissionFileKey(sub, si, fi))"
+                                [attr.aria-label]="'ดาวน์โหลด ' + file.fileName"
+                              >
+                                <mat-icon>download</mat-icon>
+                              </button>
+                            </div>
+                          }
+                        } @else {
+                          <span class="sub">ไม่มีไฟล์แนบ</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </section>
+
+        @if (data.projectId) {
+          <section class="file-pane file-pane--docs" aria-label="เอกสารโปรเจค (อ้างอิง)">
+            <button type="button" class="ref-toggle file-pane__head" (click)="toggleProjectDocs()">
+              <span>
+                <strong>เอกสารโปรเจค (อ้างอิง)</strong>
+                <span class="block-hint">ไฟล์ที่เก็บในโปรเจคนี้ ใช้ร่วมกันทุกงาน</span>
+              </span>
+              <mat-icon>{{ projectDocsOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+            @if (projectDocsOpen()) {
+              <label class="doc-search">
+                <mat-icon>search</mat-icon>
+                <input
+                  type="search"
+                  [formControl]="projectDocSearchControl"
+                  placeholder="ค้นหาชื่อเอกสาร / ชื่อไฟล์"
+                  aria-label="ค้นหาเอกสารโปรเจค"
+                />
+              </label>
+              <div class="file-scroll file-scroll--docs">
+                @if (docsLoading() && projectDocs().length === 0) {
+                  <p class="empty">กำลังโหลดเอกสาร…</p>
+                } @else if (projectDocs().length === 0) {
+                  <p class="empty">
+                    {{ projectDocSearchActive() ? 'ไม่พบเอกสารตามคำค้นหา' : 'ไม่มีเอกสารในโปรเจคนี้' }}
+                  </p>
+                } @else {
+                  <table class="file-table">
+                    <thead>
+                      <tr>
+                        <th>ชื่อเอกสาร</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (doc of projectDocs(); track doc.id) {
+                        <tr>
+                          <td class="col-file">
+                            <strong>{{ doc.title || doc.fileName }}</strong>
+                            <span class="sub">ของโปรเจค · {{ doc.fileName }}</span>
+                          </td>
+                          <td class="col-action">
+                            <button
+                              mat-icon-button
+                              type="button"
+                              [disabled]="downloadingId() === doc.id"
+                              (click)="downloadDoc(doc)"
+                              [attr.aria-label]="'ดาวน์โหลด ' + (doc.title || doc.fileName)"
+                            >
+                              <mat-icon>download</mat-icon>
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+              @if (showProjectDocSearch()) {
+                <button type="button" class="doc-tab-link" (click)="goToProjectDocuments()">
+                  ดูทั้งหมดในแท็บเอกสารโปรเจค
+                </button>
+              }
+            }
+          </section>
+        }
+      </aside>
     </article>
   } @else {
     <form [formGroup]="form" class="form" id="task-dialog-form" (ngSubmit)="save()">

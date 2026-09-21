@@ -158,6 +158,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly documentsLoading = signal(false);
   readonly documentsDenied = signal(false);
   readonly documentSearch = signal('');
+  readonly selectedTab = signal(0);
   readonly documentSearchControl = this.fb.nonNullable.control('');
   /** ไม่ส่ง sort จนกว่าจะกดหัวคอลัมน์ — ให้ BE เรียง createdAt DESC */
   readonly documentSortBy = signal<'title' | 'fileName' | 'fileSize' | 'createdAt' | null>(null);
@@ -564,8 +565,53 @@ export class ProjectDetailPageComponent implements OnInit {
     navigateBack(this.location, this.router, '/app/projects');
   }
 
+  /** ลิงก์จากรายละเอียดงาน — เปิดแท็บเอกสาร และใส่คำค้นถ้ามี */
+  private openDocumentsTab(tab: string | null, search: string | null): void {
+    if (tab !== 'documents' || !this.canViewDocuments()) {
+      return;
+    }
+    const q = (search ?? '').trim();
+    const next = q.length >= PICKER_MIN_CHARS ? q : '';
+    const changed = this.documentSearch() !== next;
+    this.documentSearch.set(next);
+    this.documentSearchControl.setValue(next, { emitEvent: false });
+    this.queueDocumentsTab();
+    if (changed && this.project()) {
+      this.documentPageIndex.set(0);
+      this.loadDocuments();
+    }
+  }
+
+  /** แท็บถูกสร้างหลังโปรเจคโหลด — ตั้ง index อีกรอบหลัง MatTabGroup init */
+  private queueDocumentsTab(): void {
+    if (!this.canViewDocuments()) {
+      return;
+    }
+    const index = this.documentsTabIndex();
+    this.selectedTab.set(index);
+    setTimeout(() => {
+      if (this.route.snapshot.queryParamMap.get('tab') === 'documents') {
+        this.selectedTab.set(index);
+      }
+    });
+  }
+
+  private documentsTabIndex(): number {
+    let index = 0;
+    if (this.canViewDeliveries()) {
+      index += 1;
+    }
+    if (this.canViewWarranties()) {
+      index += 1;
+    }
+    return index;
+  }
+
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.openDocumentsTab(params.get('tab'), params.get('search'));
+    });
     this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TASK' }).subscribe();
     this.projectsApi.fetchProject(this.projectId).subscribe({
       next: (project) => {
@@ -574,6 +620,9 @@ export class ProjectDetailPageComponent implements OnInit {
         this.customersApi.fetchCustomer(project.customerId).subscribe();
         this.customersApi.listContacts(project.customerId).subscribe();
         this.refresh();
+        if (this.route.snapshot.queryParamMap.get('tab') === 'documents') {
+          this.queueDocumentsTab();
+        }
       },
       error: () => this.notFound.set(true),
     });

@@ -56,8 +56,14 @@
               <mat-icon>{{ sortIcon('title') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row" [attr.title]="followUpTip(row)">
+          <td mat-cell *matCellDef="let row">
             <strong>{{ row.title }}</strong>
+            @if (row.detail?.trim()) {
+              <span class="cell-sub">แผน: {{ row.detail }}</span>
+            }
+            @if (row.resultNote?.trim()) {
+              <span class="cell-sub">ผล: {{ row.resultNote }}</span>
+            }
           </td>
         </ng-container>
         <ng-container matColumnDef="project">

@@ -492,6 +492,18 @@
   margin-top: 0.1rem;
 }
 
+.cell-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 0.15rem;
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
 .data-table--deliveries {
   .mat-column-acceptance {
     width: 10.25rem;

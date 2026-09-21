@@ -49,6 +49,13 @@ export interface DeliveryPreviewDialogData {
           </p>
         </header>
 
+        <section class="preview-story">
+          <h4>รายละเอียด</h4>
+          <p>{{ d.description?.trim() || 'ไม่มีรายละเอียด' }}</p>
+          <h4>หมายเหตุ</h4>
+          <p>{{ noteText?.trim() || 'ไม่มีหมายเหตุ' }}</p>
+        </section>
+
         <dl class="preview-card__grid">
           <div>
             <dt>เวอร์ชัน</dt>
@@ -84,14 +91,6 @@ export interface DeliveryPreviewDialogData {
               <dd>{{ d.acceptedAt | thaiDate }}</dd>
             </div>
           }
-          <div class="full">
-            <dt>รายละเอียด</dt>
-            <dd class="desc">{{ d.description || '—' }}</dd>
-          </div>
-          <div class="full">
-            <dt>หมายเหตุ</dt>
-            <dd class="desc">{{ noteText }}</dd>
-          </div>
           @if (attachment || files().length || filesLoading()) {
             <div class="full">
               <dt>ไฟล์หลักฐาน</dt>
@@ -133,6 +132,26 @@ export interface DeliveryPreviewDialogData {
     </mat-dialog-actions>
   `,
   styles: `
+    .preview-story {
+      margin: 0 0 0.85rem;
+      h4 {
+        margin: 0.7rem 0 0;
+        font-size: 0.75rem;
+        font-weight: 750;
+        color: #0f766e;
+      }
+      h4:first-child {
+        margin-top: 0;
+      }
+      p {
+        margin: 0.25rem 0 0;
+        color: #1c2b28;
+        font-size: 0.98rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    }
     .preview-card__head {
       margin-bottom: 0.85rem;
       h3 {

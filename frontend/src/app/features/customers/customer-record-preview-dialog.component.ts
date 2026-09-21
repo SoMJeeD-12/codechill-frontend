@@ -1,0 +1,101 @@
+import { Component, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+
+export interface RecordPreviewField {
+  label: string;
+  value: string;
+  full?: boolean;
+}
+
+export interface RecordPreviewDialogData {
+  title: string;
+  heading: string;
+  meta?: string | null;
+  fields: RecordPreviewField[];
+}
+
+/** ป็อปอัปรายละเอียดในมุมมอง 360° — เลย์เอาต์เดียวกับรายละเอียดการส่งมอบ */
+@Component({
+  selector: 'app-customer-record-preview-dialog',
+  standalone: true,
+  imports: [MatDialogModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <mat-dialog-content>
+      <article class="preview-card">
+        <header class="preview-card__head">
+          <h3>{{ data.heading || '—' }}</h3>
+          @if (data.meta) {
+            <p class="meta">{{ data.meta }}</p>
+          }
+        </header>
+        <dl class="preview-card__grid">
+          @for (field of data.fields; track field.label) {
+            <div [class.full]="field.full">
+              <dt>{{ field.label }}</dt>
+              <dd [class.desc]="field.full">{{ field.value || '—' }}</dd>
+            </div>
+          }
+        </dl>
+      </article>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>ปิด</button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .preview-card__head {
+      margin-bottom: 0.85rem;
+      h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+      .meta {
+        margin: 0.25rem 0 0;
+        color: #5b6762;
+        font-size: 0.88rem;
+      }
+    }
+    .preview-card__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem 1rem;
+      margin: 0;
+      padding: 0.85rem 0.95rem;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid rgb(15 23 42 / 0.06);
+      div {
+        min-width: 0;
+      }
+      .full {
+        grid-column: 1 / -1;
+      }
+      dt {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+      dd {
+        margin: 0.15rem 0 0;
+        font-size: 0.92rem;
+        word-break: break-word;
+      }
+      dd.desc {
+        white-space: pre-wrap;
+        line-height: 1.45;
+      }
+    }
+    @media (max-width: 560px) {
+      .preview-card__grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  `,
+})
+export class CustomerRecordPreviewDialogComponent {
+  readonly data = inject<RecordPreviewDialogData>(MAT_DIALOG_DATA);
+}

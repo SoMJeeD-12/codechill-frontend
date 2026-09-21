@@ -65,6 +65,15 @@
       </div>
     </header>
 
+    <section class="reported-detail" [class.is-empty]="!c.note?.trim()" aria-label="หมายเหตุสัญญา">
+      <h2>หมายเหตุสัญญา</h2>
+      @if (c.note?.trim()) {
+        <p>{{ c.note }}</p>
+      } @else {
+        <p class="reported-detail__empty">ไม่มีหมายเหตุ</p>
+      }
+    </section>
+
     <div class="app-meta-grid">
       <mat-card class="app-meta-card">
         <strong>ลูกค้า</strong>
@@ -134,9 +143,6 @@
               สัญญานี้ยังไม่คุ้มครองตอนนี้ — การหักโควตาอาจไม่เกิดขึ้น
             }
           </p>
-        }
-        @if (c.note) {
-          <p class="mt-2.5 mb-0 text-sm text-muted">{{ c.note }}</p>
         }
       </mat-card>
     </div>

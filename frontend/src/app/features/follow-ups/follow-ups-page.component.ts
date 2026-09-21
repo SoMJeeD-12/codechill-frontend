@@ -48,7 +48,8 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
+import { CustomerRecordPreviewDialogComponent } from '../customers/customer-record-preview-dialog.component';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
@@ -328,8 +329,25 @@ export class FollowUpsPageComponent implements OnInit {
     });
   }
 
+  openFollowUpDetail(row: FollowUp): void {
+    this.dialog.open(CustomerRecordPreviewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: {
+        title: 'รายละเอียดงานติดตาม',
+        heading: row.title,
+        meta: this.statusLabel(row),
+        fields: [
+          { label: 'สิ่งที่วางแผนไว้', value: row.detail?.trim() || 'ไม่มีรายละเอียดแผน', full: true },
+          { label: 'ผลตอนทำเสร็จ', value: row.resultNote?.trim() || 'ยังไม่มีผล', full: true },
+        ],
+      },
+    });
+  }
+
   followUpRowActions(row: FollowUp): RowAction[] {
-    const actions: RowAction[] = [];
+    const actions: RowAction[] = [
+      { label: 'รายละเอียด', icon: 'visibility', run: () => this.openFollowUpDetail(row) },
+    ];
     if (row.status === 'PLANNED' && this.canComplete()) {
       actions.push({ label: 'เสร็จแล้ว', primary: true, icon: 'task_alt', run: () => this.markDone(row) });
     }

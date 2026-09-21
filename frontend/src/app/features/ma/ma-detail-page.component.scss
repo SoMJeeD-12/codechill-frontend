@@ -1,1 +1,33 @@
-/* Layout ย้ายไป Tailwind (hybrid แบบ A) — เก็บไฟล์ไว้เผื่อสถานะเฉพาะหน้าในอนาคต */
+.reported-detail {
+  margin: 0 0 1rem;
+  padding: 0.95rem 1.05rem 0.85rem;
+  border-radius: 1rem;
+  border: 1px solid #d7e4df;
+  background: linear-gradient(135deg, rgb(240 253 250 / 0.9), #fff 42%);
+
+  h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 750;
+    color: #0f766e;
+  }
+
+  p {
+    margin: 0.45rem 0 0;
+    color: #1c2b28;
+    font-size: 1.02rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &.is-empty {
+    border-style: dashed;
+    background: #f7faf9;
+  }
+}
+
+.reported-detail__empty {
+  color: #3d4f49;
+  font-weight: 650;
+}

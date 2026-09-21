@@ -37,6 +37,17 @@
       }
     </header>
 
+    <section class="customer-context" aria-label="บริบทลูกค้า">
+      <div>
+        <h2>ที่อยู่</h2>
+        <p [class.is-empty]="!c.address?.trim()">{{ c.address?.trim() || 'ไม่มีที่อยู่' }}</p>
+      </div>
+      <div>
+        <h2>หมายเหตุ</h2>
+        <p [class.is-empty]="!c.note?.trim()">{{ c.note?.trim() || 'ไม่มีหมายเหตุ' }}</p>
+      </div>
+    </section>
+
     <div class="app-meta-grid">
       <mat-card
         class="app-meta-card"

@@ -1,3 +1,44 @@
+.customer-context {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+
+  > div {
+    padding: 0.9rem 1rem;
+    border-radius: 1rem;
+    border: 1px solid #d7e4df;
+    background: #fff;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 750;
+    color: #0f766e;
+  }
+
+  p {
+    margin: 0.4rem 0 0;
+    color: #1c2b28;
+    font-size: 0.98rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  p.is-empty {
+    color: #3d4f49;
+    font-weight: 650;
+  }
+}
+
+@media (max-width: 720px) {
+  .customer-context {
+    grid-template-columns: 1fr;
+  }
+}
+
 .page {
   max-width: none;
   width: 100%;

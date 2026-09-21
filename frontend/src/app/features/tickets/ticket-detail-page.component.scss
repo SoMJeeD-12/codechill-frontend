@@ -326,15 +326,52 @@
   color: #475569;
 }
 
-.description {
-  margin: 0.4rem 0 0;
-  color: #1c2b28;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.45;
-  max-width: none;
-  font-size: 0.92rem;
+.reported-detail {
+  margin: 0 0 1rem;
+  padding: 0.95rem 1.05rem 0.85rem;
+  border-radius: 1rem;
+  border: 1px solid #d7e4df;
+  background: linear-gradient(135deg, rgb(240 253 250 / 0.9), #fff 42%);
+  box-shadow: 0 4px 14px rgb(28 43 40 / 0.05);
+
+  h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 750;
+    letter-spacing: 0.02em;
+    color: #0f766e;
+  }
+
+  p {
+    margin: 0.45rem 0 0;
+    color: #1c2b28;
+    font-size: 1.02rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  p.is-clamped {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 8;
+    overflow: hidden;
+  }
+
+  button {
+    margin: 0.15rem 0 0 -0.5rem;
+  }
+
+  &.is-empty {
+    border-style: dashed;
+    background: #f7faf9;
+  }
+}
+
+.reported-detail__empty {
+  color: #3d4f49 !important;
+  font-weight: 650;
 }
 
 .reopen-chips {

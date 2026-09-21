@@ -123,8 +123,29 @@ export class TicketDetailPageComponent implements OnInit {
     splitTicketDescription(this.ticket()?.description)
   );
 
+  /** ย่อรายละเอียดที่แจ้งเมื่อยาวเกิน ~8 บรรทัด */
+  readonly reportedDetailExpanded = signal(false);
+
   /** ย่อรายการอาการกลับมา — ค่าเริ่มต้นโชว์แค่ครั้งล่าสุด */
   readonly showAllReopenNotes = signal(false);
+
+  reportedDetail(): string {
+    const base = this.descriptionParts().base.trim();
+    const title = this.ticket()?.title.trim() ?? '';
+    if (!base || base === title) {
+      return '';
+    }
+    return base;
+  }
+
+  reportedDetailLong(): boolean {
+    const text = this.reportedDetail();
+    return text.split('\n').length > 8 || text.length > 420;
+  }
+
+  toggleReportedDetail(): void {
+    this.reportedDetailExpanded.update((open) => !open);
+  }
 
   /** รายการอาการกลับมา ใหม่→เก่า พร้อมเลขครั้ง */
   readonly reopenNoteRows = computed(() => {
@@ -425,6 +446,7 @@ export class TicketDetailPageComponent implements OnInit {
         );
         this.demoOverlay.syncIncompleteWorkFromTicket(ticket);
         this.showAllReopenNotes.set(false);
+        this.reportedDetailExpanded.set(false);
         this.timelineExpanded.set(false);
         this.resolutionsPager.reset();
         this.notFound.set(false);

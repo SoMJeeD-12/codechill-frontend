@@ -53,6 +53,7 @@ import { TicketService } from '../../core/services/ticket.service';
 import { WarrantyService } from '../../core/services/warranty.service';
 import {
   combineDateAndTime,
+  formatThaiDateTime,
   nowTimeString,
   toTimeString,
 } from '../../core/utils/date.util';
@@ -67,7 +68,8 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
+import { CustomerRecordPreviewDialogComponent } from './customer-record-preview-dialog.component';
 
 @Component({
   selector: 'app-customer-detail-page',
@@ -529,20 +531,23 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   openContactDetail(contact: Contact): void {
-    openConfirmDialog(this.dialog, {
-      title: contact.name,
-      message: [
-        `ชื่อเล่น: ${contact.nickname || '—'}`,
-        `ตำแหน่ง: ${contact.position || '—'}`,
-        `โทรศัพท์: ${contact.phone || '—'}`,
-        `อีเมล: ${contact.email || '—'}`,
-        `LINE ID: ${contact.lineId || '—'}`,
-        `ผู้ติดต่อหลัก: ${contact.isPrimary ? 'ใช่' : 'ไม่'}`,
-        `หมายเหตุ: ${contact.note || '—'}`,
-      ].join('\n'),
-      confirmLabel: 'ปิด',
-      hideCancel: true,
-    }).subscribe();
+    this.dialog.open(CustomerRecordPreviewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: {
+        title: 'รายละเอียดผู้ติดต่อ',
+        heading: contact.name,
+        meta: `ผู้ติดต่อ #${contact.id} · ${contact.isPrimary ? 'ผู้ติดต่อหลัก' : 'ผู้ติดต่อทั่วไป'}`,
+        fields: [
+          { label: 'ชื่อเล่น', value: contact.nickname || '—' },
+          { label: 'ตำแหน่ง', value: contact.position || '—' },
+          { label: 'โทรศัพท์', value: contact.phone || '—' },
+          { label: 'อีเมล', value: contact.email || '—' },
+          { label: 'LINE ID', value: contact.lineId || '—' },
+          { label: 'ผู้ติดต่อหลัก', value: contact.isPrimary ? 'ใช่' : 'ไม่' },
+          { label: 'หมายเหตุ', value: contact.note || '—', full: true },
+        ],
+      },
+    });
   }
 
   removeContact(contact: Contact): void {
@@ -581,19 +586,22 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   openLogDetail(log: CommunicationLog): void {
-    openConfirmDialog(this.dialog, {
-      title: log.subject?.trim() || this.channelLabels[log.channel],
-      message: [
-        `ช่องทาง: ${this.channelLabels[log.channel]}`,
-        `วันเวลา: ${log.occurredAt}`,
-        `ผู้ติดต่อ: ${log.contactName || '—'}`,
-        `โดย: ${log.handledBy?.fullName || '—'}`,
-        '',
-        log.content || '—',
-      ].join('\n'),
-      confirmLabel: 'ปิด',
-      hideCancel: true,
-    }).subscribe();
+    const heading = log.subject?.trim() || this.channelLabels[log.channel];
+    this.dialog.open(CustomerRecordPreviewDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: {
+        title: 'รายละเอียดการติดต่อ',
+        heading,
+        meta: `บันทึก #${log.id} · ${this.channelLabels[log.channel]}`,
+        fields: [
+          { label: 'ช่องทาง', value: this.channelLabels[log.channel] },
+          { label: 'วันเวลา', value: formatThaiDateTime(log.occurredAt) || log.occurredAt },
+          { label: 'ผู้ติดต่อ', value: log.contactName || '—' },
+          { label: 'ผู้บันทึก', value: log.handledBy?.fullName || '—' },
+          { label: 'รายละเอียด', value: log.content || '—', full: true },
+        ],
+      },
+    });
   }
 
   removeLog(log: CommunicationLog): void {
@@ -657,8 +665,7 @@ export class CustomerDetailPageComponent implements OnInit {
       return;
     }
     this.dialog.open(CustomerFieldDetailDialogComponent, {
-      width: '480px',
-      maxWidth: '96vw',
+      ...FORM_DIALOG_COMPACT,
       data: { label, value: text, href: href || null },
     });
   }
@@ -700,9 +707,18 @@ export class CustomerDetailPageComponent implements OnInit {
   standalone: true,
   imports: [MatDialogModule, MatButtonModule, MatIconModule],
   template: `
-    <h2 mat-dialog-title>{{ data.label }}</h2>
+    <h2 mat-dialog-title>รายละเอียด</h2>
     <mat-dialog-content>
-      <p class="field-detail">{{ data.value }}</p>
+      <article class="preview-card">
+        <header class="preview-card__head">
+          <h3>{{ data.label }}</h3>
+        </header>
+        <dl class="preview-card__grid">
+          <div class="full">
+            <dd class="desc">{{ data.value }}</dd>
+          </div>
+        </dl>
+      </article>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       @if (data.href) {
@@ -711,17 +727,39 @@ export class CustomerDetailPageComponent implements OnInit {
           เปิดลิงก์
         </a>
       }
-      <button mat-flat-button color="primary" type="button" mat-dialog-close>ปิด</button>
+      <button mat-button type="button" mat-dialog-close>ปิด</button>
     </mat-dialog-actions>
   `,
   styles: `
-    .field-detail {
+    .preview-card__head {
+      margin-bottom: 0.85rem;
+      h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+    }
+    .preview-card__grid {
+      display: grid;
       margin: 0;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      line-height: 1.55;
-      color: #1c2b28;
+      padding: 0.85rem 0.95rem;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid rgb(15 23 42 / 0.06);
+      dt {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+      dd {
+        margin: 0.15rem 0 0;
+        font-size: 0.92rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        line-height: 1.45;
+      }
     }
     mat-dialog-actions a mat-icon {
       margin-right: 0.25rem;
