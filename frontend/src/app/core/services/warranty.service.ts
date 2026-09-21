@@ -184,12 +184,14 @@ export class WarrantyService {
   private normalize(
     row: Warranty & {
       warrantyNo?: string | null;
+      code?: string | null;
       warrantyCode?: string | null;
     }
   ): Warranty {
+    const { code: _ignoredCode, warrantyCode: _ignoredLegacy, ...rest } = row;
     return {
-      ...row,
-      code: pickWarrantyCode(row),
+      ...rest,
+      warrantyNo: pickWarrantyNo(row),
       scopeNote: row.scopeNote ?? null,
       maContractId: row.maContractId ?? null,
       maContract: row.maContract ?? null,
@@ -203,16 +205,13 @@ export class WarrantyService {
   }
 }
 
-/** BE อาจส่ง `code` หรือ `warrantyNo` (สไตล์เดียวกับ ticketNo / deliveryNo) */
-function pickWarrantyCode(row: {
-  code?: string | null;
+/** อ่านเฉพาะ warrantyNo — ห้ามใช้ warranty.code (ไม่มีใน BE) */
+function pickWarrantyNo(row: {
   warrantyNo?: string | null;
-  warrantyCode?: string | null;
 }): string | null {
-  for (const value of [row.code, row.warrantyNo, row.warrantyCode]) {
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
+  const value = row.warrantyNo;
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
   }
   return null;
 }

@@ -54,7 +54,9 @@ export interface Project {
 
 /** GET /projects/:id/report — สรุปตัวเลขรายโปรเจค (สิทธิ์ project.view) */
 export interface ProjectReport {
-  progress: { percent: number | null } | null;
+  projectId: number | null;
+  /** object เสมอ — ไม่มีงาน percent=0, totalTasks=0 */
+  progress: { percent: number; totalTasks: number };
   ticketCount: number | null;
   deliveryCount: number | null;
   maContractCount: number | null;

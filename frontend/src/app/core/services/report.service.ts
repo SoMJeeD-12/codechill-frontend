@@ -337,7 +337,7 @@ export class ReportService {
     const warrantyRows: NearExpiryItem[] = warranties.map((w) => ({
       kind: 'warranty',
       id: w.id,
-      title: w.code?.trim() || w.delivery?.title || `ประกัน #${w.id}`,
+      title: w.warrantyNo?.trim() || w.delivery?.title || `ประกัน #${w.id}`,
       meta: [w.project?.customerName, w.project?.name].filter(Boolean).join(' · ') || 'ประกัน',
       endDate: w.endDate,
       daysRemaining: w.daysRemaining,

@@ -1,13 +1,15 @@
 /**
- * รหัส entity — Backend เป็น source of truth · FE ห้าม generate
+ * รหัส entity — Backend เป็น source of truth · FE ห้ามออกรหัสเอง
  *
- * รูปแบบที่คาดหวัง (ข้อมูลเก่าอาจเป็น null / รูปแบบอื่น — แสดงตามที่ API ส่ง):
- * - ลูกค้า:     CUS-001
- * - โปรเจค:     PRJ-2026-001
- * - Ticket:     TK-2026-001
- * - MA Contract: MA-2026-001
- * - Warranty:   WAR-2026-001  (API อาจส่ง `code` หรือ `warrantyNo`)
- * - Delivery:   DLV-PRJ-2026-001-01
+ * รูปแบบสั้นที่ BE ออกให้ (ปี ค.ศ. 2026 → พ.ศ. สองหลัก = 69):
+ * - ใบปัญหา:  ticketNo   = TK69-0006  (ห้ามใช้ REC)
+ * - ลูกค้า:   code       = CUS69-0001
+ * - โปรเจค:   code       = PRJ69-0001
+ * - ส่งมอบ:   deliveryNo = DLV69-0001
+ * - ประกัน:   warrantyNo = WAR69-0001  (ห้ามอ่าน warranty.code)
+ * - สัญญา MA: contractNo = MA69-0014
+ *
+ * แถวเก่าอาจยังเป็น PRJ-2026-001 / TK-2026-… — แสดงตามค่าที่ API ส่งมา ไม่แปลง
  */
 
 /** แสดงรหัสบน UI — ค่าว่าง/null → fallback (ค่าเริ่มต้น "—") */

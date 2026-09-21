@@ -133,7 +133,11 @@ type ApiProject = Omit<Project, 'contractValue' | 'progress'> & {
 
 /** GET /projects/:id/report — interceptor แกะ envelope แล้ว */
 type ApiProjectReport = {
-  progress?: { percent?: string | number | null } | null;
+  projectId?: number | null;
+  progress?: {
+    percent?: string | number | null;
+    totalTasks?: string | number | null;
+  } | null;
   ticketCount?: string | number | null;
   deliveryCount?: string | number | null;
   maContractCount?: string | number | null;
@@ -727,9 +731,11 @@ export class ProjectService {
   }
 
   private normalizeProjectReport(row: ApiProjectReport | null | undefined): ProjectReport {
-    const percent = toNumber(row?.progress?.percent ?? undefined);
+    const percent = toNumber(row?.progress?.percent ?? undefined) ?? 0;
+    const totalTasks = toNumber(row?.progress?.totalTasks ?? undefined) ?? 0;
     return {
-      progress: row?.progress ? { percent } : null,
+      projectId: row?.projectId ?? null,
+      progress: { percent, totalTasks },
       ticketCount: toNumber(row?.ticketCount ?? undefined),
       deliveryCount: toNumber(row?.deliveryCount ?? undefined),
       maContractCount: toNumber(row?.maContractCount ?? undefined),

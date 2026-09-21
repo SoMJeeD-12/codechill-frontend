@@ -141,7 +141,7 @@
             <mat-icon aria-hidden="true">checklist</mat-icon>
             <div>
               <span class="summary-kicker">จำนวนงาน</span>
-              <strong>{{ p.progress?.totalTasks ?? '—' }}</strong>
+              <strong>{{ projectReport()?.progress?.totalTasks ?? p.progress?.totalTasks ?? '—' }}</strong>
             </div>
           </article>
           <article class="summary-key">
@@ -375,10 +375,10 @@
             </div>
             <div class="app-panel-body">
               <table mat-table [dataSource]="warrantiesPager.paged()" class="data-table">
-                <ng-container matColumnDef="code">
+                <ng-container matColumnDef="warrantyNo">
                   <th mat-header-cell *matHeaderCellDef>รหัส</th>
                   <td mat-cell *matCellDef="let row">
-                    {{ row.code || '—' }}
+                    {{ row.warrantyNo || '—' }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="delivery">

@@ -169,6 +169,12 @@
                 <mat-icon>edit</mat-icon>
                 <span>แก้ไข</span>
               </button>
+              @if (canResetPassword(row)) {
+                <button mat-menu-item type="button" (click)="openResetPassword(row)">
+                  <mat-icon>lock_reset</mat-icon>
+                  <span>ตั้งรหัสผ่านใหม่</span>
+                </button>
+              }
             </mat-menu>
           </td>
         </ng-container>

@@ -14,7 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { forkJoin } from 'rxjs';
+import { forkJoin, merge } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -125,7 +126,7 @@ export class TicketFormDialogComponent {
   private readonly ticket: Ticket | null = this.data?.ticket ?? null;
   readonly isEdit = !!this.ticket;
 
-  /** Q11 — ซ่อนจนกว่าพี่เลี้ยงจะให้รายการหมวดหมู่ อย่าให้ดูเหมือนฟีเจอร์พร้อมใช้ */
+  /** Q11 — ห้ามทำหมวดหมู่จนกว่า BE จะมีฟิลด์จริง */
   readonly showCategoryField = false;
 
   readonly channelLabels = REPORTED_CHANNEL_LABELS;
@@ -156,6 +157,12 @@ export class TicketFormDialogComponent {
   /** โควตา MA ของโปรเจคที่เลือก — ไม่มีสัญญา = null (ห้ามโชว์เป็น 0) */
   readonly maQuota = signal<MaQuotaStatus | null>(null);
   readonly billingSelection = signal<BillingType | null>(null);
+  /** ค่าที่ GET /tickets/billing-suggestion เสนอ — คนเลือกเองได้ */
+  readonly suggestedBillingType = signal<BillingType | null>(null);
+  readonly billingSuggestionReason = signal<string | null>(null);
+  /** ผู้ใช้เลือกคิดเงินเองแล้ว — อย่าทับด้วย suggestion */
+  private billingPickedByUser = false;
+  private suggestionRequest = 0;
 
   /** ประกันที่ใช้งานของโปรเจค — ใช้โชว์ขอบเขต */
   readonly activeWarranty = signal<Warranty | null>(null);
@@ -267,6 +274,25 @@ export class TicketFormDialogComponent {
     this.syncCategoryOtherValidators(this.categorySelection());
 
     this.loadBillingEligibility(presetProject?.id ?? null, { preserveCurrent: this.isEdit });
+
+    if (!this.isEdit) {
+      merge(
+        this.form.controls.reportedDate.valueChanges,
+        this.form.controls.reportedTime.valueChanges
+      )
+        .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.loadBillingSuggestion(this.project()?.id ?? null));
+    }
+  }
+
+  /** คนเลือกเอง — ไม่ทับด้วยค่าที่ระบบเสนอ */
+  onBillingTypePicked(): void {
+    this.billingPickedByUser = true;
+  }
+
+  billingSuggestionLabel(): string | null {
+    const suggested = this.suggestedBillingType();
+    return suggested ? this.billingLabels[suggested] : null;
   }
 
   private syncCategoryOtherValidators(category: TicketCategoryDemo | null): void {
@@ -310,6 +336,7 @@ export class TicketFormDialogComponent {
   onProjectPicked(option: PickerOption | null): void {
     this.project.set(option);
     this.error.set(null);
+    this.billingPickedByUser = false;
 
     if (!option) {
       if (this.customerFromProject()) {
@@ -390,6 +417,8 @@ export class TicketFormDialogComponent {
   ): void {
     if (!projectId) {
       this.clearScopeState();
+      this.suggestedBillingType.set(null);
+      this.billingSuggestionReason.set(null);
       this.syncBillingSelection(opts);
       return;
     }
@@ -411,6 +440,7 @@ export class TicketFormDialogComponent {
         this.activeMaContract.set(active);
         this.hasActiveMa.set(!!active);
         this.syncBillingSelection(opts);
+        this.loadBillingSuggestion(projectId);
 
         if (!active) {
           this.maQuota.set(null);
@@ -452,7 +482,63 @@ export class TicketFormDialogComponent {
       error: (err) => {
         warnHttpError(err, 'ticket-form billing-eligibility');
         this.clearScopeState();
+        this.suggestedBillingType.set(null);
+        this.billingSuggestionReason.set(null);
         this.syncBillingSelection(opts);
+      },
+    });
+  }
+
+  /**
+   * GET /tickets/billing-suggestion — เสนอค่าที่ data.suggested
+   * ยิงเมื่อมี projectId > 0 และ reportedAt ครบเท่านั้น · คนเลือกเองตอนบันทึก
+   */
+  private loadBillingSuggestion(projectId: number | null): void {
+    if (this.isEdit || projectId == null || projectId <= 0) {
+      this.suggestedBillingType.set(null);
+      this.billingSuggestionReason.set(null);
+      return;
+    }
+    const reportedDate = this.form.controls.reportedDate.value;
+    const reportedTime = this.form.controls.reportedTime.value;
+    if (!reportedDate || !String(reportedTime ?? '').trim()) {
+      this.suggestedBillingType.set(null);
+      this.billingSuggestionReason.set(null);
+      return;
+    }
+    const reportedAt = combineDateAndTime(reportedDate, reportedTime);
+    if (!reportedAt) {
+      this.suggestedBillingType.set(null);
+      this.billingSuggestionReason.set(null);
+      return;
+    }
+    const requestId = ++this.suggestionRequest;
+    this.ticketsApi.getBillingSuggestion(projectId, reportedAt).subscribe({
+      next: (suggestion) => {
+        if (requestId !== this.suggestionRequest) {
+          return;
+        }
+        const suggested = suggestion.suggested;
+        this.suggestedBillingType.set(suggested);
+        this.billingSuggestionReason.set(suggestion.reason);
+        if (!suggested || this.billingPickedByUser) {
+          return;
+        }
+        const eligible = this.eligibleBillingTypes();
+        if (!eligible.includes(suggested)) {
+          return;
+        }
+        // เติมเป็นข้อเสนอเท่านั้น — คนเปลี่ยนได้ และ POST ส่งค่าที่เลือกจริง
+        this.form.patchValue({ billingType: suggested }, { emitEvent: false });
+        this.billingSelection.set(suggested);
+      },
+      error: (err) => {
+        if (requestId !== this.suggestionRequest) {
+          return;
+        }
+        warnHttpError(err, 'ticket-form billing-suggestion');
+        this.suggestedBillingType.set(null);
+        this.billingSuggestionReason.set(null);
       },
     });
   }
@@ -468,21 +554,13 @@ export class TicketFormDialogComponent {
       this.billingSelection.set(current);
       return;
     }
-    // สร้างใหม่ — ไม่เดาค่าให้ ต้องเลือกเอง
-    if (!this.isEdit) {
-      if (current && !eligible.includes(current)) {
-        this.form.patchValue({ billingType: null }, { emitEvent: false });
-        this.billingSelection.set(null);
-      }
+    // ไม่บังคับค่าจากระบบ — คนเลือกเอง / suggestion ใส่แยก
+    if (current && !eligible.includes(current)) {
+      this.form.patchValue({ billingType: null }, { emitEvent: false });
+      this.billingSelection.set(null);
       return;
     }
-    const next = eligible.includes('WARRANTY')
-      ? 'WARRANTY'
-      : eligible.includes('MA_QUOTA')
-        ? 'MA_QUOTA'
-        : 'ONE_TIME';
-    this.form.patchValue({ billingType: next }, { emitEvent: false });
-    this.billingSelection.set(next);
+    this.billingSelection.set(current);
   }
 
   /* ——— บันทึก ——— */

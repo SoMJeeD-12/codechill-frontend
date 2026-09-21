@@ -26,8 +26,8 @@ export interface WarrantyMaContractSummary {
 /** WarrantyResponseDto */
 export interface Warranty {
   id: number;
-  /** รหัสที่ Backend ออก (`code` หรือ `warrantyNo`) — ข้อมูลเก่าอาจเป็น null */
-  code: string | null;
+  /** รหัสที่ Backend ออก — field ชื่อ warrantyNo เท่านั้น (ไม่มี warranty.code) */
+  warrantyNo: string | null;
   deliveryId: number;
   delivery: WarrantyDeliverySummary | null;
   projectId: number;

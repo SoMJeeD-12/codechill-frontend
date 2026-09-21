@@ -459,9 +459,9 @@
             </div>
             <div class="app-panel-body">
               <table mat-table [dataSource]="warrantiesPager.paged()" class="data-table">
-                <ng-container matColumnDef="code">
+                <ng-container matColumnDef="warrantyNo">
                   <th mat-header-cell *matHeaderCellDef>รหัส</th>
-                  <td mat-cell *matCellDef="let row">{{ row.code || '—' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.warrantyNo || '—' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="title">
                   <th mat-header-cell *matHeaderCellDef>รายการ</th>

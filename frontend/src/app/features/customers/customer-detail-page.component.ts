@@ -159,7 +159,7 @@ export class CustomerDetailPageComponent implements OnInit {
   ];
   readonly logColumns = ['occurredAt', 'channel', 'subject', 'contact', 'handler', 'actions'];
   readonly projectColumns = ['name', 'status', 'targetEndDate', 'actions'];
-  readonly warrantyColumns = ['code', 'title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
+  readonly warrantyColumns = ['warrantyNo', 'title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly maColumns = ['id', 'plan', 'status', 'quota', 'actions'];
   readonly ticketColumns = ['title', 'status', 'priority', 'actions'];
@@ -219,7 +219,7 @@ export class CustomerDetailPageComponent implements OnInit {
     }
     return list.filter((w) =>
       [
-        w.code,
+        w.warrantyNo,
         w.delivery?.title,
         w.project?.name,
         String(w.durationMonth),

@@ -239,6 +239,13 @@ export class UserService {
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
   }
 
+  /** POST /users/{id}/reset-password — ตั้งรหัสชั่วคราวโดยผู้มีสิทธิ์ user.reset_password */
+  resetPassword(id: number, newPassword: string): Observable<void> {
+    return this.http
+      .post<void>(`${this.base}/${id}/reset-password`, { newPassword })
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
   /** เหลือไว้ให้ roles-page เรียก — backend ถอดบทบาทเองตอนลบ role */
   detachRole(_roleId: number): void {
     /* no-op: sync จาก API ผ่าน list() หลังลบบทบาท */

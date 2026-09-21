@@ -207,7 +207,7 @@ export class ProjectDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
-  readonly warrantyColumns = ['code', 'delivery', 'period', 'daysLeft', 'maLink', 'status'];
+  readonly warrantyColumns = ['warrantyNo', 'delivery', 'period', 'daysLeft', 'maLink', 'status'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'period', 'status'];
@@ -538,7 +538,7 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     return list.filter((w) => {
       return (
-        (w.code ?? '').toLowerCase().includes(q) ||
+        (w.warrantyNo ?? '').toLowerCase().includes(q) ||
         (w.delivery?.title ?? '').toLowerCase().includes(q) ||
         this.warrantyStatusLabel(w.status).toLowerCase().includes(q) ||
         this.warrantyMaLinkLabel(w).toLowerCase().includes(q) ||
@@ -878,24 +878,28 @@ export class ProjectDetailPageComponent implements OnInit {
     return this.projectPriorityLabels[priority];
   }
 
-  /** สิทธิ์เดียวกับหน้ารายละเอียด — project.view */
+  /** สิทธิ์เดียวกับหน้ารายละเอียด — project.view · ตัวเลขจากเส้นนี้เท่านั้น */
   private loadProjectReport(): void {
     if (!this.canViewProject()) {
       this.projectReport.set(null);
+      this.progress.set(null);
       return;
     }
     this.projectsApi.getProjectReport(this.projectId).subscribe({
-      next: (report) => this.projectReport.set(report),
-      error: () => this.projectReport.set(null),
+      next: (report) => {
+        this.projectReport.set(report);
+        this.progress.set(report.progress.percent);
+      },
+      error: () => {
+        this.projectReport.set(null);
+        this.progress.set(null);
+      },
     });
   }
 
   refresh(): void {
     this.projectsApi.fetchProject(this.projectId).subscribe({
-      next: (project) => {
-        this.project.set(project);
-        this.progress.set(this.projectsApi.progressPercentOf(project));
-      },
+      next: (project) => this.project.set(project),
       error: () => undefined,
     });
     this.loadProjectReport();
@@ -903,13 +907,7 @@ export class ProjectDetailPageComponent implements OnInit {
     if (this.canViewTasks()) {
       this.tasksDenied.set(false);
       this.projectsApi.listTasks(this.projectId, undefined, { optional: true }).subscribe({
-        next: (tasks) => {
-          this.tasks.set(tasks);
-          this.progress.set(
-            this.projectsApi.progressPercentOf(this.project()) ??
-              this.projectsApi.progressPercent(this.projectId)
-          );
-        },
+        next: (tasks) => this.tasks.set(tasks),
         error: () => {
           this.tasks.set([]);
           this.tasksDenied.set(true);

@@ -3,8 +3,8 @@ import { displayEntityCode } from '../../core/utils/entity-code.util';
 
 /**
  * แสดงรหัส (code / ticketNo / contractNo / deliveryNo ฯลฯ)
- * ค่าว่างหรือ null → "—" — รองรับรหัสเก่าที่ยังไม่มีค่า
- * ห้าม generate รหัสฝั่ง FE
+ * แสดงตามค่าที่ API ส่งมา — รองรับทั้งรูปแบบสั้น (TK69-0006) และรหัสเก่า (PRJ-2026-001)
+ * ค่าว่างหรือ null → "—" · ห้ามออกรหัสฝั่ง FE
  */
 @Component({
   selector: 'app-code-label',

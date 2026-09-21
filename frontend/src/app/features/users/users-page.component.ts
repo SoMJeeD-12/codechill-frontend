@@ -20,9 +20,10 @@ import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { UserFormDialogComponent } from './user-form-dialog.component';
+import { ResetPasswordDialogComponent } from './reset-password-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { FORM_DIALOG } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 
 @Component({
@@ -117,6 +118,11 @@ export class UsersPageComponent implements OnInit {
 
   readonly pager = createClientPager(this.filteredUsers);
 
+  readonly canResetPasswordAny = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('user.reset_password');
+  });
+
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     this.reload();
@@ -170,6 +176,31 @@ export class UsersPageComponent implements OnInit {
 
   openEdit(user: User): void {
     this.openForm(user);
+  }
+
+  /** แสดงเมื่อมี user.reset_password · ห้ามตั้งของตัวเอง · SUPER_ADMIN ได้เฉพาะ SUPER_ADMIN */
+  canResetPassword(user: User): boolean {
+    if (!this.canResetPasswordAny()) {
+      return false;
+    }
+    const me = this.auth.currentUser();
+    if (!me || me.id === user.id) {
+      return false;
+    }
+    if (user.accountType === 'SUPER_ADMIN' && me.accountType !== 'SUPER_ADMIN') {
+      return false;
+    }
+    return true;
+  }
+
+  openResetPassword(user: User): void {
+    if (!this.canResetPassword(user)) {
+      return;
+    }
+    this.dialog.open(ResetPasswordDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: { user },
+    });
   }
 
   setStatus(user: User, status: UserStatus): void {

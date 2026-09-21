@@ -99,6 +99,20 @@ export interface ResolutionCreatedResult {
   quota: TicketQuotaSummary | null;
 }
 
+/**
+ * GET /tickets/billing-suggestion?projectId=&reportedAt=
+ * ค่าที่ระบบเสนออยู่ที่ suggested — คนเลือกเองตอน POST /tickets
+ */
+export interface TicketBillingSuggestion {
+  suggested: BillingType | null;
+  reason: string | null;
+}
+
+type ApiBillingSuggestion = {
+  suggested?: string | null;
+  reason?: string | null;
+};
+
 @Injectable({ providedIn: 'root' })
 export class TicketService {
   private readonly http = inject(HttpClient);
@@ -248,6 +262,24 @@ export class TicketService {
       tap((row) => this.items.update((list) => upsertById(list, row))),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
+  }
+
+  /** GET /tickets/billing-suggestion — บังคับ projectId + reportedAt ทั้งคู่ */
+  getBillingSuggestion(
+    projectId: number,
+    reportedAt: string
+  ): Observable<TicketBillingSuggestion> {
+    return this.http
+      .get<ApiBillingSuggestion>(`${this.base}/billing-suggestion`, {
+        params: toHttpParams({ projectId, reportedAt }),
+      })
+      .pipe(
+        map((row) => ({
+          suggested: this.asBillingType(row?.suggested),
+          reason: row?.reason?.trim() || null,
+        })),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   getByCustomer(customerId: number): Ticket[] {
@@ -455,6 +487,14 @@ export class TicketService {
       this.demoOverlay.syncIncompleteWorkFromTicket(ticket);
     }
     return ticket;
+  }
+
+  private asBillingType(value: string | null | undefined): BillingType | null {
+    if (!value) {
+      return null;
+    }
+    const allowed: BillingType[] = ['WARRANTY', 'MA_QUOTA', 'ADDON', 'ONE_TIME', 'FREE'];
+    return allowed.includes(value as BillingType) ? (value as BillingType) : null;
   }
 
   /** list มักไม่ส่ง resolutions — อย่าทับของที่มีใน cache */

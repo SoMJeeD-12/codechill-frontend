@@ -37,15 +37,15 @@
 
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
-        <ng-container matColumnDef="code">
+        <ng-container matColumnDef="warrantyNo">
           <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('code')">
+            <button type="button" class="sort-header" (click)="toggleSort('warrantyNo')">
               รหัส
-              <mat-icon>{{ sortIcon('code') }}</mat-icon>
+              <mat-icon>{{ sortIcon('warrantyNo') }}</mat-icon>
             </button>
           </th>
           <td mat-cell *matCellDef="let row">
-            <app-code-label [value]="row.code" />
+            <app-code-label [value]="row.warrantyNo" />
           </td>
         </ng-container>
         <ng-container matColumnDef="project">

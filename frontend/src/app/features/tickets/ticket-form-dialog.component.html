@@ -112,13 +112,17 @@
 
             <mat-form-field appearance="outline">
               <mat-label>คิดค่าใช้จ่าย</mat-label>
-              <mat-select formControlName="billingType">
+              <mat-select formControlName="billingType" (selectionChange)="onBillingTypePicked()">
                 @for (b of availableBillingTypes(); track b) {
                   <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
                 }
               </mat-select>
               @if (form.controls.billingType.touched && form.controls.billingType.invalid) {
                 <mat-error>เลือกประเภทการคิดค่าใช้จ่าย</mat-error>
+              } @else if (billingSuggestionLabel()) {
+                <mat-hint>ระบบแนะนำ: {{ billingSuggestionLabel() }} — เลือกเองได้</mat-hint>
+              } @else if (billingSuggestionReason()) {
+                <mat-hint>{{ billingSuggestionReason() }}</mat-hint>
               }
             </mat-form-field>
           </div>
@@ -151,8 +155,8 @@
                       <div class="scope-block">
                         <h4 class="scope-block__title">ประกัน</h4>
                         <p class="scope-block__meta">
-                          @if (w.code) {
-                            {{ w.code }} ·
+                          @if (w.warrantyNo) {
+                            {{ w.warrantyNo }} ·
                           }
                           {{ w.startDate | thaiDate: 'date' }} – {{ w.endDate | thaiDate: 'date' }}
                           · เหลือ {{ w.daysRemaining }} วัน
@@ -207,8 +211,8 @@
                     <div>
                       <strong>ขอบเขตประกัน</strong>
                       <small>
-                        @if (w.code) {
-                          {{ w.code }} ·
+                        @if (w.warrantyNo) {
+                          {{ w.warrantyNo }} ·
                         }
                         {{ w.startDate | thaiDate: 'date' }} – {{ w.endDate | thaiDate: 'date' }}
                         · เหลือ {{ w.daysRemaining }} วัน

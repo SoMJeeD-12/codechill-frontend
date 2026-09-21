@@ -53,7 +53,7 @@ export interface DeliveryPreviewDialogData {
           <h4>รายละเอียด</h4>
           <p>{{ d.description?.trim() || 'ไม่มีรายละเอียด' }}</p>
           <h4>หมายเหตุ</h4>
-          <p>{{ noteText?.trim() || 'ไม่มีหมายเหตุ' }}</p>
+          <p>{{ noteText.trim() || 'ไม่มีหมายเหตุ' }}</p>
         </section>
 
         <dl class="preview-card__grid">

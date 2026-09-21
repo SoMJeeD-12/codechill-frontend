@@ -79,11 +79,11 @@ export class WarrantiesPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
-  readonly columns = ['code', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
+  readonly columns = ['warrantyNo', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
   readonly maLinkLabel = warrantyMaLinkLabel;
 
   readonly tableSort = createTableSort<
-    'code' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
+    'warrantyNo' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
   >('daysLeft');
 
   readonly filtered = computed(() => {
@@ -105,7 +105,7 @@ export class WarrantiesPageComponent implements OnInit {
           projectName.includes(q) ||
           customerName.includes(q) ||
           deliveryTitle.includes(q) ||
-          (w.code ?? '').toLowerCase().includes(q) ||
+          (w.warrantyNo ?? '').toLowerCase().includes(q) ||
           this.statusLabel(w.status).toLowerCase().includes(q) ||
           (w.scopeNote ?? '').toLowerCase().includes(q)
         );
@@ -113,8 +113,8 @@ export class WarrantiesPageComponent implements OnInit {
     }
     return this.tableSort.apply(rows, (row, key) => {
       switch (key) {
-        case 'code':
-          return row.code ?? '';
+        case 'warrantyNo':
+          return row.warrantyNo ?? '';
         case 'project':
           return this.projectName(row);
         case 'title':
@@ -209,14 +209,14 @@ export class WarrantiesPageComponent implements OnInit {
   }
 
   toggleSort(
-    key: 'code' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
+    key: 'warrantyNo' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
   ): void {
     this.tableSort.toggleSort(key);
     this.pager.reset();
   }
 
   sortIcon(
-    key: 'code' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
+    key: 'warrantyNo' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
   ): string {
     return this.tableSort.sortIcon(key);
   }
@@ -531,7 +531,7 @@ export class WarrantyFormDialogComponent {
   private onSaved(isEdit: boolean, created?: Warranty): void {
     this.saving.set(false);
     if (!isEdit && created) {
-      const code = created.code?.trim();
+      const code = created.warrantyNo?.trim();
       this.snack.open(
         code ? `สร้างประกันแล้ว · ${code}` : 'สร้างประกันแล้ว',
         'ปิด',
