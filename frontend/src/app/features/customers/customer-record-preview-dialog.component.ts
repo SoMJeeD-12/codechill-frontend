@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { AttachmentRefType } from '../../core/models/attachment.model';
+import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 
 export interface RecordPreviewField {
   label: string;
@@ -13,13 +15,15 @@ export interface RecordPreviewDialogData {
   heading: string;
   meta?: string | null;
   fields: RecordPreviewField[];
+  /** ไฟล์แนบจาก GET /api/attachments */
+  attachmentRef?: { refType: AttachmentRefType; refId: number } | null;
 }
 
 /** ป็อปอัปรายละเอียดในมุมมอง 360° — เลย์เอาต์เดียวกับรายละเอียดการส่งมอบ */
 @Component({
   selector: 'app-customer-record-preview-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule],
+  imports: [MatDialogModule, MatButtonModule, EntityAttachmentsComponent],
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
@@ -38,6 +42,9 @@ export interface RecordPreviewDialogData {
             </div>
           }
         </dl>
+        @if (data.attachmentRef; as att) {
+          <app-entity-attachments [refType]="att.refType" [refId]="att.refId" />
+        }
       </article>
     </mat-dialog-content>
     <mat-dialog-actions align="end">

@@ -43,6 +43,7 @@ import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { formatMoneyDisplay, parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -76,6 +77,7 @@ const COMPANY_PRINT = {
     MatDialogModule,
     MoneyInputDirective,
     TablePaginatorComponent,
+    EntityAttachmentsComponent,
   ],
   templateUrl: './ma-detail-page.component.html',
   styleUrl: './ma-detail-page.component.scss',

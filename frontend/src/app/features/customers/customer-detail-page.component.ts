@@ -589,7 +589,7 @@ export class CustomerDetailPageComponent implements OnInit {
   openLogDetail(log: CommunicationLog): void {
     const heading = log.subject?.trim() || this.channelLabels[log.channel];
     this.dialog.open(CustomerRecordPreviewDialogComponent, {
-      ...FORM_DIALOG_COMPACT,
+      ...FORM_DIALOG,
       data: {
         title: 'รายละเอียดการติดต่อ',
         heading,
@@ -601,6 +601,7 @@ export class CustomerDetailPageComponent implements OnInit {
           { label: 'ผู้บันทึก', value: log.handledBy?.fullName || '—' },
           { label: 'รายละเอียด', value: log.content || '—', full: true },
         ],
+        attachmentRef: { refType: 'COMMUNICATION_LOG', refId: log.id },
       },
     });
   }

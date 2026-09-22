@@ -17,6 +17,7 @@ import {
   Delivery,
 } from '../../core/models/project.model';
 import { DocumentService } from '../../core/services/document.service';
+import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
@@ -33,7 +34,14 @@ export interface DeliveryPreviewDialogData {
 @Component({
   selector: 'app-delivery-preview-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatSnackBarModule, ThaiDatePipe],
+  imports: [
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSnackBarModule,
+    ThaiDatePipe,
+    EntityAttachmentsComponent,
+  ],
   template: `
     <h2 mat-dialog-title>รายละเอียดการส่งมอบ</h2>
     <mat-dialog-content>
@@ -125,6 +133,8 @@ export interface DeliveryPreviewDialogData {
             </div>
           }
         </dl>
+
+        <app-entity-attachments refType="DELIVERY" [refId]="d.id" />
       </article>
     </mat-dialog-content>
     <mat-dialog-actions align="end">

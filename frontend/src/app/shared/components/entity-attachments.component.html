@@ -1,0 +1,103 @@
+@if (canView()) {
+  <section class="entity-attachments" [attr.aria-label]="panelTitle()">
+    <header class="entity-attachments__head">
+      <div>
+        <h3 class="entity-attachments__title">{{ panelTitle() }}</h3>
+        <p class="entity-attachments__sub">
+          @if (loading()) {
+            กำลังโหลด…
+          } @else {
+            {{ items().length }} ไฟล์
+          }
+        </p>
+      </div>
+      @if (canUpload()) {
+        <label class="entity-attachments__upload" [class.is-busy]="uploading()">
+          <input
+            type="file"
+            [accept]="accept"
+            [disabled]="uploading() || !(refId() > 0)"
+            (change)="onFilePicked($event)"
+          />
+          @if (uploading()) {
+            <mat-spinner diameter="18" />
+            กำลังอัปโหลด…
+          } @else {
+            <mat-icon>upload_file</mat-icon>
+            อัปโหลด
+          }
+        </label>
+      }
+    </header>
+
+    @if (error()) {
+      <p class="entity-attachments__error">{{ error() }}</p>
+    }
+
+    @if (loading() && !items().length) {
+      <div class="entity-attachments__loading">
+        <mat-spinner diameter="24" />
+      </div>
+    } @else if (!items().length) {
+      <p class="entity-attachments__empty">ยังไม่มีไฟล์แนบ</p>
+    } @else {
+      <ul class="entity-attachments__list">
+        @for (row of items(); track row.id) {
+          <li>
+            <div class="entity-attachments__meta">
+              <mat-icon aria-hidden="true">attach_file</mat-icon>
+              <div class="entity-attachments__text">
+                <strong class="entity-attachments__name">{{ row.fileName }}</strong>
+                <span class="entity-attachments__info">
+                  {{ formatSize(row.fileSize) }}
+                  @if (row.createdAt) {
+                    · {{ row.createdAt | thaiDate }}
+                  }
+                </span>
+                @if (row.note) {
+                  <span class="entity-attachments__note">{{ row.note }}</span>
+                }
+              </div>
+            </div>
+            <div class="entity-attachments__actions">
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="ดาวน์โหลด"
+                [disabled]="downloadingId() === row.id"
+                (click)="download(row)"
+              >
+                @if (downloadingId() === row.id) {
+                  <mat-spinner diameter="18" />
+                } @else {
+                  <mat-icon>download</mat-icon>
+                }
+              </button>
+              @if (canEditNote()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="แก้หมายเหตุ"
+                  (click)="editNote(row)"
+                >
+                  <mat-icon>sticky_note_2</mat-icon>
+                </button>
+              }
+              @if (canDelete()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="ลบออกจากรายการ"
+                  color="warn"
+                  (click)="remove(row)"
+                >
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}

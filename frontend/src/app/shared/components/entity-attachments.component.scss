@@ -1,0 +1,149 @@
+.entity-attachments {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid rgb(15 23 42 / 0.08);
+  background: rgb(248 250 252 / 0.85);
+}
+
+.entity-attachments__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.entity-attachments__title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: rgb(15 23 42 / 0.85);
+}
+
+.entity-attachments__sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.74rem;
+  color: rgb(15 23 42 / 0.55);
+}
+
+.entity-attachments__upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgb(15 118 110 / 0.35);
+  background: #fff;
+  color: #0f766e;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.is-busy {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+}
+
+.entity-attachments__error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
+
+.entity-attachments__empty,
+.entity-attachments__loading {
+  margin: 0;
+  color: rgb(15 23 42 / 0.5);
+  font-size: 0.8rem;
+}
+
+.entity-attachments__loading {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.entity-attachments__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.entity-attachments__list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgb(15 23 42 / 0.06);
+}
+
+.entity-attachments__meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+
+  > mat-icon {
+    color: #0f766e;
+    margin-top: 0.1rem;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+}
+
+.entity-attachments__text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.entity-attachments__name {
+  font-size: 0.84rem;
+  word-break: break-word;
+}
+
+.entity-attachments__info,
+.entity-attachments__note {
+  font-size: 0.72rem;
+  color: rgb(15 23 42 / 0.55);
+}
+
+.entity-attachments__note {
+  white-space: pre-wrap;
+}
+
+.entity-attachments__actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  mat-spinner {
+    margin: 0 auto;
+  }
+}

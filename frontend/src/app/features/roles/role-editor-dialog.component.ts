@@ -41,6 +41,7 @@ const MODULE_LABELS: Record<string, string> = {
   followup: 'ติดตามลูกค้า',
   survey: 'แบบประเมิน',
   document: 'เอกสาร',
+  file: 'ไฟล์แนบ',
   report: 'รายงาน',
   notification: 'การแจ้งเตือน',
   audit_log: 'บันทึกการใช้งาน',

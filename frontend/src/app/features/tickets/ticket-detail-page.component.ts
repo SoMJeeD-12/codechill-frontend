@@ -41,6 +41,7 @@ import { UserService } from '../../core/services/user.service';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
@@ -67,6 +68,7 @@ const RESOLUTION_PAGE_SIZE = 5;
     MatDialogModule,
     StatusBarComponent,
     TablePaginatorComponent,
+    EntityAttachmentsComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -1479,7 +1481,7 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
 @Component({
   selector: 'app-ticket-work-round-detail-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, EntityAttachmentsComponent],
   template: `
     <h2 mat-dialog-title>งานครั้งที่ {{ data.resolution.round }}</h2>
     <mat-dialog-content>
@@ -1524,6 +1526,12 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
           <dd>{{ data.resolution.detail || '—' }}</dd>
         </div>
       </dl>
+
+      <app-entity-attachments
+        refType="TICKET_RESOLUTION"
+        [refId]="data.resolution.id"
+        heading="ไฟล์แนบรอบแก้ไข"
+      />
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>ปิด</button>

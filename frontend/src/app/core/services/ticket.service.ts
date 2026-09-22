@@ -102,15 +102,34 @@ export interface ResolutionCreatedResult {
 /**
  * GET /tickets/billing-suggestion?projectId=&reportedAt=
  * ค่าที่ระบบเสนออยู่ที่ suggested — คนเลือกเองตอน POST /tickets
+ * แถบสรุปอ่านฟิลด์จาก response นี้เท่านั้น (ห้ามประกอบจาก list warranty/MA)
  */
 export interface TicketBillingSuggestion {
   suggested: BillingType | null;
   reason: string | null;
+  warrantyEndDate: string | null;
+  warrantyScopeNote: string | null;
+  maPlanName: string | null;
+  maRemaining: number | null;
+  maIsExhausted: boolean;
+  maIsReferenceOnly: boolean;
 }
 
 type ApiBillingSuggestion = {
   suggested?: string | null;
   reason?: string | null;
+  warrantyEndDate?: string | null;
+  warrantyScopeNote?: string | null;
+  warrantyCoverage?: {
+    endDate?: string | null;
+    scopeNote?: string | null;
+  } | null;
+  maRemaining?: number | null;
+  maIsExhausted?: boolean | null;
+  maIsReferenceOnly?: boolean | null;
+  maCoverage?: {
+    planName?: string | null;
+  } | null;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -274,12 +293,40 @@ export class TicketService {
         params: toHttpParams({ projectId, reportedAt }),
       })
       .pipe(
-        map((row) => ({
-          suggested: this.asBillingType(row?.suggested),
-          reason: row?.reason?.trim() || null,
-        })),
+        map((row) => this.normalizeBillingSuggestion(row)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  private normalizeBillingSuggestion(
+    row: ApiBillingSuggestion | null | undefined
+  ): TicketBillingSuggestion {
+    const coverage = row?.warrantyCoverage;
+    const maCoverage = row?.maCoverage;
+    const warrantyEndDate =
+      (typeof row?.warrantyEndDate === 'string' && row.warrantyEndDate.trim()) ||
+      (typeof coverage?.endDate === 'string' && coverage.endDate.trim()) ||
+      null;
+    const warrantyScopeNote =
+      (typeof row?.warrantyScopeNote === 'string' && row.warrantyScopeNote.trim()) ||
+      (typeof coverage?.scopeNote === 'string' && coverage.scopeNote.trim()) ||
+      null;
+    const maPlanName =
+      (typeof maCoverage?.planName === 'string' && maCoverage.planName.trim()) || null;
+    const maRemaining =
+      typeof row?.maRemaining === 'number' && Number.isFinite(row.maRemaining)
+        ? row.maRemaining
+        : null;
+    return {
+      suggested: this.asBillingType(row?.suggested),
+      reason: row?.reason?.trim() || null,
+      warrantyEndDate,
+      warrantyScopeNote,
+      maPlanName,
+      maRemaining,
+      maIsExhausted: row?.maIsExhausted === true,
+      maIsReferenceOnly: row?.maIsReferenceOnly === true,
+    };
   }
 
   getByCustomer(customerId: number): Ticket[] {

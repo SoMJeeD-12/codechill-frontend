@@ -125,6 +125,8 @@
       }
     </section>
 
+    <app-entity-attachments refType="TICKET" [refId]="t.id" heading="ไฟล์แนบใบปัญหา" />
+
     <nav class="ticket-stepper" aria-label="ขั้นตอนใบปัญหา">
       @for (step of stepperSteps(); track step.status; let last = $last) {
         <div

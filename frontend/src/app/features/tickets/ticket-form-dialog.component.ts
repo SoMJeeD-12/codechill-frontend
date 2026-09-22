@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { forkJoin, merge } from 'rxjs';
+import { merge } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import {
   BILLING_TYPE_LABELS,
@@ -27,7 +27,6 @@ import {
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
   TICKET_CATEGORY_DEMO_LABELS,
@@ -35,19 +34,17 @@ import {
   TicketDemoOverlayService,
 } from '../../core/services/ticket-demo-overlay.service';
 import {
+  TicketBillingSuggestion,
   TicketCreateInput,
   TicketService,
   TicketUpdateInput,
 } from '../../core/services/ticket.service';
-import { WarrantyService } from '../../core/services/warranty.service';
 import {
   combineDateAndTime,
   nowTimeString,
   parseDateOnly,
   toTimeString,
 } from '../../core/utils/date.util';
-import { MaContract, MaPlan, MaPlanItem, MaQuotaStatus } from '../../core/models/ma.model';
-import { Warranty } from '../../core/models/warranty.model';
 import {
   EntityPickerComponent,
   PickerOption,
@@ -56,10 +53,11 @@ import {
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { swallowHttpError, warnHttpError } from '../../shared/utils/swallow-http-error';
+import { warnHttpError } from '../../shared/utils/swallow-http-error';
 import { parseMoneyValue } from '../../core/utils/money.util';
 
-const BILLING_TYPE_ORDER: BillingType[] = [
+/** ทุกประเภท — คนเปลี่ยนได้เสมอ ห้ามซ่อนตามประกัน/MA ที่ FE ประกอบเอง */
+const ALL_BILLING_TYPES: BillingType[] = [
   'WARRANTY',
   'MA_QUOTA',
   'ADDON',
@@ -79,11 +77,8 @@ export interface TicketFormDialogData {
 /**
  * เปิดใบแจ้งปัญหา
  *
- * พนักงานแค่ "รับเรื่อง" — ไม่ต้องเลือกผู้รับผิดชอบ
- * (การโยนงานให้ใครเป็นเรื่องของหัวหน้า ทำที่หน้ารายละเอียดใบ)
- *
- * ช่องบังคับมีแค่: โปรเจคหรือลูกค้า · หัวข้อ · รายละเอียด · ช่องทาง · ความเร่งด่วน
- * ที่เหลือพับไว้ใน "ตัวเลือกเพิ่มเติม"
+ * ประเภทคิดเงิน: GET /tickets/billing-suggestion เป็นหลัก (ประกันมาก่อน MA)
+ * คนเลือก billingType เองได้เสมอ — POST ส่งค่าที่เลือก ไม่บังคับตาม suggested
  */
 @Component({
   selector: 'app-ticket-form-dialog',
@@ -112,8 +107,6 @@ export class TicketFormDialogComponent {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
-  private readonly warrantiesApi = inject(WarrantyService);
-  private readonly maApi = inject(MaService);
   private readonly auth = inject(AuthService);
   private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly snack = inject(MatSnackBar);
@@ -132,8 +125,8 @@ export class TicketFormDialogComponent {
   readonly channelLabels = REPORTED_CHANNEL_LABELS;
   readonly channels = Object.keys(REPORTED_CHANNEL_LABELS) as ReportedChannel[];
   readonly billingLabels = BILLING_TYPE_LABELS;
+  readonly billingTypes = ALL_BILLING_TYPES;
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
-  /** เรียงจากเร่งด่วนมาก → ต่ำ ตามความสำคัญตอนเลือก */
   readonly priorities: TicketPriority[] = ['URGENT', 'HIGH', 'NORMAL', 'LOW'];
   readonly categoryLabels = TICKET_CATEGORY_DEMO_LABELS;
   readonly categories = Object.keys(TICKET_CATEGORY_DEMO_LABELS) as TicketCategoryDemo[];
@@ -146,90 +139,37 @@ export class TicketFormDialogComponent {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
-  /** ลูกค้า/โปรเจคที่เลือกอยู่ — โปรเจคเป็นตัวเติมลูกค้าให้ */
   readonly customer = signal<PickerOption | null>(null);
   readonly project = signal<PickerOption | null>(null);
   /** true เมื่อลูกค้าถูกเติมจากโปรเจค — ห้ามแก้มือ */
   readonly customerFromProject = signal(false);
 
-  readonly hasActiveWarranty = signal(false);
-  readonly hasActiveMa = signal(false);
-  /** โควตา MA ของโปรเจคที่เลือก — ไม่มีสัญญา = null (ห้ามโชว์เป็น 0) */
-  readonly maQuota = signal<MaQuotaStatus | null>(null);
   readonly billingSelection = signal<BillingType | null>(null);
-  /** ค่าที่ GET /tickets/billing-suggestion เสนอ — คนเลือกเองได้ */
-  readonly suggestedBillingType = signal<BillingType | null>(null);
-  readonly billingSuggestionReason = signal<string | null>(null);
+  /** สรุปจาก GET /tickets/billing-suggestion — null = ซ่อนแถบ */
+  readonly billingSuggestion = signal<TicketBillingSuggestion | null>(null);
   /** ผู้ใช้เลือกคิดเงินเองแล้ว — อย่าทับด้วย suggestion */
   private billingPickedByUser = false;
   private suggestionRequest = 0;
-
-  /** ประกันที่ใช้งานของโปรเจค — ใช้โชว์ขอบเขต */
-  readonly activeWarranty = signal<Warranty | null>(null);
-  /** สัญญา MA ที่ใช้งาน — ใช้โชว์แผน/บริการย่อย */
-  readonly activeMaContract = signal<MaContract | null>(null);
-  readonly maPlan = signal<MaPlan | null>(null);
-  readonly maPlanLoading = signal(false);
-  readonly maPlanError = signal<string | null>(null);
-  /** ขยาย overview เมื่อยังไม่เลือกประเภทคิดเงิน */
-  readonly scopeOverviewOpen = signal(false);
-
-  readonly availableBillingTypes = computed(() => {
-    const types = this.eligibleBillingTypes();
-    const current = this.billingSelection();
-    if (current && !types.includes(current)) {
-      return sortBillingTypes([...types, current]);
-    }
-    return types;
-  });
-
-  /**
-   * แผงช่วยดูขอบเขต — advisory เท่านั้น
-   * WARRANTY → ประกัน · MA_QUOTA/ADDON → รายการแผน · ยังไม่เลือก → overview ย่อได้
-   */
-  readonly scopePanelMode = computed((): 'warranty' | 'ma' | 'overview' | null => {
-    const billing = this.billingSelection();
-    const hasW = !!this.activeWarranty();
-    const hasM = !!this.activeMaContract();
-    if (billing === 'WARRANTY') {
-      return hasW ? 'warranty' : null;
-    }
-    if (billing === 'MA_QUOTA' || billing === 'ADDON') {
-      return hasM ? 'ma' : null;
-    }
-    if (!billing && (hasW || hasM)) {
-      return 'overview';
-    }
-    return null;
-  });
-
-  readonly maPlanItems = computed((): MaPlanItem[] => {
-    const items = this.maPlan()?.items ?? [];
-    return [...items].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
-  });
 
   readonly form = this.fb.group({
     title: [this.ticket?.title ?? '', Validators.required],
     description: [this.ticket?.description ?? '', Validators.required],
     priority: [(this.ticket?.priority ?? 'NORMAL') as TicketPriority],
     reportedChannel: [(this.ticket?.reportedChannel ?? 'PHONE') as ReportedChannel],
-    /** ตัวอย่าง FE เท่านั้น — ไม่ส่งขึ้น API */
     category: [
       (this.ticket
         ? (this.demoOverlay.snapshot(this.ticket.id).category ?? null)
         : null) as TicketCategoryDemo | null,
     ],
-    /** ระบุเมื่อหมวด = อื่น ๆ — ตัวอย่าง FE */
     categoryOtherNote: [
       this.ticket
         ? (this.demoOverlay.snapshot(this.ticket.id).categoryOtherNote ?? '')
         : '',
     ],
     billingType: [
-      (this.ticket?.billingType ?? null) as BillingType | null,
+      (this.ticket?.billingType ?? 'ONE_TIME') as BillingType,
       Validators.required,
     ],
-    /** ตัวอย่าง FE — ค่าบริการเป็นครั้ง (ยังไม่ส่ง Create/Update API) */
     extraCharge: [
       this.ticket
         ? (this.demoOverlay.effectiveExtraCharge(this.ticket) as number | null)
@@ -247,9 +187,8 @@ export class TicketFormDialogComponent {
   });
 
   constructor() {
-    this.billingSelection.set((this.ticket?.billingType ?? null) as BillingType | null);
+    this.billingSelection.set((this.ticket?.billingType ?? 'ONE_TIME') as BillingType);
 
-    // เติมค่าเริ่มต้นจาก preset / ใบเดิม
     const presetProject = this.data?.project ?? this.projectOptionFrom(this.ticket);
     const presetCustomer = this.data?.customer ?? this.customerOptionFrom(this.ticket);
     if (presetProject) {
@@ -273,8 +212,6 @@ export class TicketFormDialogComponent {
       });
     this.syncCategoryOtherValidators(this.categorySelection());
 
-    this.loadBillingEligibility(presetProject?.id ?? null, { preserveCurrent: this.isEdit });
-
     if (!this.isEdit) {
       merge(
         this.form.controls.reportedDate.valueChanges,
@@ -282,6 +219,10 @@ export class TicketFormDialogComponent {
       )
         .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
         .subscribe(() => this.loadBillingSuggestion(this.project()?.id ?? null));
+
+      if (presetProject?.id) {
+        this.loadBillingSuggestion(presetProject.id);
+      }
     }
   }
 
@@ -291,8 +232,21 @@ export class TicketFormDialogComponent {
   }
 
   billingSuggestionLabel(): string | null {
-    const suggested = this.suggestedBillingType();
+    const suggested = this.billingSuggestion()?.suggested ?? null;
     return suggested ? this.billingLabels[suggested] : null;
+  }
+
+  hasWarrantyCoverage(s: TicketBillingSuggestion): boolean {
+    return !!(s.warrantyEndDate || s.warrantyScopeNote);
+  }
+
+  hasMaCoverage(s: TicketBillingSuggestion): boolean {
+    return (
+      s.maPlanName != null ||
+      s.maRemaining != null ||
+      s.maIsExhausted ||
+      s.maIsReferenceOnly
+    );
   }
 
   private syncCategoryOtherValidators(category: TicketCategoryDemo | null): void {
@@ -305,8 +259,6 @@ export class TicketFormDialogComponent {
     }
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
-
-  /* ——— ค้นหา ——— */
 
   readonly searchProjects = (query: string) =>
     searchViaBackend(
@@ -332,7 +284,6 @@ export class TicketFormDialogComponent {
       query
     );
 
-  /** เลือกโปรเจค → เติมลูกค้าให้อัตโนมัติ */
   onProjectPicked(option: PickerOption | null): void {
     this.project.set(option);
     this.error.set(null);
@@ -343,7 +294,7 @@ export class TicketFormDialogComponent {
         this.customer.set(null);
         this.customerFromProject.set(false);
       }
-      this.loadBillingEligibility(null, { preserveCurrent: false });
+      this.clearBillingSuggestion();
       return;
     }
 
@@ -361,7 +312,7 @@ export class TicketFormDialogComponent {
       error: () => undefined,
     });
 
-    this.loadBillingEligibility(option.id, { preserveCurrent: false });
+    this.loadBillingSuggestion(option.id);
   }
 
   onCustomerPicked(option: PickerOption | null): void {
@@ -374,142 +325,27 @@ export class TicketFormDialogComponent {
     this.customer.set(null);
     this.customerFromProject.set(false);
     this.project.set(null);
-    this.loadBillingEligibility(null, { preserveCurrent: false });
-  }
-
-  toggleScopeOverview(): void {
-    this.scopeOverviewOpen.update((open) => !open);
-  }
-
-  maPlanDisplayName(contract: MaContract | null = this.activeMaContract()): string {
-    return this.maPlan()?.name?.trim() || contract?.plan?.name?.trim() || '';
-  }
-
-  /* ——— ประเภทการคิดค่าใช้จ่าย ——— */
-
-  private eligibleBillingTypes(): BillingType[] {
-    const types: BillingType[] = [];
-    if (this.hasActiveWarranty()) {
-      types.push('WARRANTY');
-    }
-    if (this.hasActiveMa()) {
-      types.push('MA_QUOTA', 'ADDON');
-    }
-    types.push('ONE_TIME', 'FREE');
-    return types;
-  }
-
-  private clearScopeState(): void {
-    this.hasActiveWarranty.set(false);
-    this.hasActiveMa.set(false);
-    this.maQuota.set(null);
-    this.activeWarranty.set(null);
-    this.activeMaContract.set(null);
-    this.maPlan.set(null);
-    this.maPlanLoading.set(false);
-    this.maPlanError.set(null);
-    this.scopeOverviewOpen.set(false);
-  }
-
-  private loadBillingEligibility(
-    projectId: number | null,
-    opts: { preserveCurrent: boolean }
-  ): void {
-    if (!projectId) {
-      this.clearScopeState();
-      this.suggestedBillingType.set(null);
-      this.billingSuggestionReason.set(null);
-      this.syncBillingSelection(opts);
-      return;
-    }
-
-    forkJoin({
-      warranties: this.warrantiesApi
-        .listByProject(projectId)
-        .pipe(swallowHttpError([] as Warranty[], 'ticket-form warranties')),
-      contracts: this.maApi
-        .list({ projectId, limit: 100 })
-        .pipe(swallowHttpError([] as MaContract[], 'ticket-form ma-contracts')),
-    }).subscribe({
-      next: ({ warranties, contracts }) => {
-        const warranty = warranties.find((w) => w.isCurrentlyActive) ?? null;
-        this.activeWarranty.set(warranty);
-        this.hasActiveWarranty.set(!!warranty);
-
-        const active = contracts.find((c) => c.isCurrentlyActive) ?? null;
-        this.activeMaContract.set(active);
-        this.hasActiveMa.set(!!active);
-        this.syncBillingSelection(opts);
-        this.loadBillingSuggestion(projectId);
-
-        if (!active) {
-          this.maQuota.set(null);
-          this.maPlan.set(null);
-          this.maPlanLoading.set(false);
-          this.maPlanError.set(null);
-          return;
-        }
-
-        this.maApi.getQuota(active.id).subscribe({
-          next: (quota) => this.maQuota.set(quota),
-          error: (err) => {
-            warnHttpError(err, 'ticket-form ma-quota');
-            this.maQuota.set(null);
-          },
-        });
-
-        const planId = active.planId ?? active.plan?.id ?? null;
-        if (planId == null) {
-          this.maPlan.set(null);
-          this.maPlanError.set('สัญญา MA นี้ยังไม่มีแผนผูกไว้');
-          return;
-        }
-        this.maPlanLoading.set(true);
-        this.maPlanError.set(null);
-        this.maApi.getPlanById(planId).subscribe({
-          next: (plan) => {
-            this.maPlan.set(plan);
-            this.maPlanLoading.set(false);
-          },
-          error: (err: Error) => {
-            warnHttpError(err, 'ticket-form ma-plan');
-            this.maPlan.set(null);
-            this.maPlanLoading.set(false);
-            this.maPlanError.set(err.message || 'โหลดรายการบริการในแผนไม่สำเร็จ');
-          },
-        });
-      },
-      error: (err) => {
-        warnHttpError(err, 'ticket-form billing-eligibility');
-        this.clearScopeState();
-        this.suggestedBillingType.set(null);
-        this.billingSuggestionReason.set(null);
-        this.syncBillingSelection(opts);
-      },
-    });
+    this.clearBillingSuggestion();
   }
 
   /**
-   * GET /tickets/billing-suggestion — เสนอค่าที่ data.suggested
-   * ยิงเมื่อมี projectId > 0 และ reportedAt ครบเท่านั้น · คนเลือกเองตอนบันทึก
+   * GET /tickets/billing-suggestion — ยิงเมื่อมี projectId + reportedAt
+   * ยังไม่เลือกโปรเจค = ซ่อนแถบ อย่าเรียก API
    */
   private loadBillingSuggestion(projectId: number | null): void {
     if (this.isEdit || projectId == null || projectId <= 0) {
-      this.suggestedBillingType.set(null);
-      this.billingSuggestionReason.set(null);
+      this.clearBillingSuggestion();
       return;
     }
     const reportedDate = this.form.controls.reportedDate.value;
     const reportedTime = this.form.controls.reportedTime.value;
     if (!reportedDate || !String(reportedTime ?? '').trim()) {
-      this.suggestedBillingType.set(null);
-      this.billingSuggestionReason.set(null);
+      this.clearBillingSuggestion();
       return;
     }
     const reportedAt = combineDateAndTime(reportedDate, reportedTime);
     if (!reportedAt) {
-      this.suggestedBillingType.set(null);
-      this.billingSuggestionReason.set(null);
+      this.clearBillingSuggestion();
       return;
     }
     const requestId = ++this.suggestionRequest;
@@ -518,52 +354,29 @@ export class TicketFormDialogComponent {
         if (requestId !== this.suggestionRequest) {
           return;
         }
-        const suggested = suggestion.suggested;
-        this.suggestedBillingType.set(suggested);
-        this.billingSuggestionReason.set(suggestion.reason);
-        if (!suggested || this.billingPickedByUser) {
+        this.billingSuggestion.set(suggestion);
+        if (this.billingPickedByUser) {
           return;
         }
-        const eligible = this.eligibleBillingTypes();
-        if (!eligible.includes(suggested)) {
-          return;
-        }
-        // เติมเป็นข้อเสนอเท่านั้น — คนเปลี่ยนได้ และ POST ส่งค่าที่เลือกจริง
-        this.form.patchValue({ billingType: suggested }, { emitEvent: false });
-        this.billingSelection.set(suggested);
+        // ค่าเริ่มต้น = suggested · null → ONE_TIME · คนเปลี่ยนได้เสมอ
+        const next = suggestion.suggested ?? 'ONE_TIME';
+        this.form.patchValue({ billingType: next }, { emitEvent: false });
+        this.billingSelection.set(next);
       },
       error: (err) => {
         if (requestId !== this.suggestionRequest) {
           return;
         }
         warnHttpError(err, 'ticket-form billing-suggestion');
-        this.suggestedBillingType.set(null);
-        this.billingSuggestionReason.set(null);
+        this.clearBillingSuggestion();
       },
     });
   }
 
-  private syncBillingSelection(opts: { preserveCurrent: boolean }): void {
-    const eligible = this.eligibleBillingTypes();
-    const current = (this.form.getRawValue().billingType as BillingType | null) ?? null;
-    if (current && eligible.includes(current)) {
-      this.billingSelection.set(current);
-      return;
-    }
-    if (opts.preserveCurrent && current && this.ticket && current === this.ticket.billingType) {
-      this.billingSelection.set(current);
-      return;
-    }
-    // ไม่บังคับค่าจากระบบ — คนเลือกเอง / suggestion ใส่แยก
-    if (current && !eligible.includes(current)) {
-      this.form.patchValue({ billingType: null }, { emitEvent: false });
-      this.billingSelection.set(null);
-      return;
-    }
-    this.billingSelection.set(current);
+  private clearBillingSuggestion(): void {
+    this.suggestionRequest += 1;
+    this.billingSuggestion.set(null);
   }
-
-  /* ——— บันทึก ——— */
 
   save(): void {
     const customerId = this.customer()?.id ?? null;
@@ -588,7 +401,6 @@ export class TicketFormDialogComponent {
     this.error.set(null);
 
     if (this.isEdit && this.ticket) {
-      // PATCH /tickets/:id ไม่รับ customerId / status / assignedUserId
       const update: TicketUpdateInput = {
         title: raw.title ?? '',
         description: (raw.description ?? '').trim() || null,
@@ -629,7 +441,6 @@ export class TicketFormDialogComponent {
       billingType: raw.billingType as BillingType,
       reportedChannel: (raw.reportedChannel as ReportedChannel) ?? 'PHONE',
       reportedAt: combineDateAndTime(raw.reportedDate, raw.reportedTime),
-      // ผู้รับเรื่อง = คนที่กำลังกรอก · ผู้รับผิดชอบปล่อยว่างให้หัวหน้ามอบหมายทีหลัง
       receivedByUserId: this.auth.currentUser()?.id ?? null,
     };
 
@@ -708,10 +519,4 @@ export class TicketFormDialogComponent {
     }
     return { id: ticket.customer.id, label: ticket.customer.name };
   }
-}
-
-function sortBillingTypes(types: BillingType[]): BillingType[] {
-  return [...types].sort(
-    (a, b) => BILLING_TYPE_ORDER.indexOf(a) - BILLING_TYPE_ORDER.indexOf(b)
-  );
 }
