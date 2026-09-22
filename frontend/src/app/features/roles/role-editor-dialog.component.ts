@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -13,8 +14,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { PermissionGroup, PermissionItem, Role } from '../../core/models/permission.model';
 import { RoleService } from '../../core/services/role.service';
+import {
+  PICKER_DEBOUNCE_MS,
+  PICKER_MIN_CHARS,
+} from '../../shared/components/entity-picker.component';
 
 /** ชื่อโมดูลภาษาไทย — โมดูลที่ไม่รู้จักจะแสดงรหัสตามที่ API ส่งมา */
 const MODULE_LABELS: Record<string, string> = {
@@ -47,6 +54,7 @@ const MODULE_LABELS: Record<string, string> = {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatCheckboxModule,
     MatExpansionModule,
@@ -68,12 +76,19 @@ export class RoleEditorDialogComponent {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  /** บทบาทที่ใช้เป็นเทมเพลตตอนสร้างใหม่ */
+  readonly templateRoles = signal<Role[]>([]);
+  readonly roleSuggestions = signal<Role[]>([]);
+  readonly roleQueryReady = signal(false);
+  /** ชื่อบทบาทที่คัดลอกสิทธิ์มา — แสดงคำใบ้ใต้ช่องชื่อ */
+  readonly templateFromName = signal<string | null>(null);
 
   private readonly selected = signal<ReadonlySet<number>>(new Set<number>());
-  readonly form = this.fb.nonNullable.group({
-    name: ['', Validators.required],
-    description: [''],
-    isActive: [true],
+  readonly isCreate = !this.data.role;
+  readonly form = this.fb.group({
+    name: this.fb.nonNullable.control<string | Role>('', Validators.required),
+    description: this.fb.nonNullable.control(''),
+    isActive: this.fb.nonNullable.control(true),
   });
 
   constructor() {
@@ -86,6 +101,7 @@ export class RoleEditorDialogComponent {
       });
       this.selected.set(new Set(role.permissions.map((p) => p.id)));
     }
+
     this.rolesApi.listPermissions().subscribe({
       next: (groups) => {
         this.groups.set(groups);
@@ -96,6 +112,39 @@ export class RoleEditorDialogComponent {
         this.loading.set(false);
       },
     });
+
+    if (this.isCreate) {
+      this.rolesApi.list({ limit: 100 }).subscribe({
+        next: (roles) => this.templateRoles.set(roles),
+        error: () => this.templateRoles.set([]),
+      });
+      this.form.controls.name.valueChanges
+        .pipe(
+          debounceTime(PICKER_DEBOUNCE_MS),
+          distinctUntilChanged(),
+          takeUntilDestroyed()
+        )
+        .subscribe((value) => this.onNameSearchChanged(value));
+    }
+  }
+
+  readonly displayRoleName = (value: string | Role | null): string => {
+    if (!value) {
+      return '';
+    }
+    return typeof value === 'string' ? value : value.name;
+  };
+
+  onTemplateSelected(event: MatAutocompleteSelectedEvent): void {
+    const value = event.option.value;
+    if (!value || typeof value === 'string') {
+      return;
+    }
+    const role = value as Role;
+    this.applyPermissionTemplate(role);
+    this.form.controls.name.setValue(role.name, { emitEvent: false });
+    this.roleSuggestions.set([]);
+    this.roleQueryReady.set(false);
   }
 
   moduleLabel(module: string): string {
@@ -151,10 +200,19 @@ export class RoleEditorDialogComponent {
       return;
     }
     const raw = this.form.getRawValue();
+    const name =
+      typeof raw.name === 'string'
+        ? raw.name.trim()
+        : (raw.name?.name ?? '').trim();
+    if (!name) {
+      this.form.controls.name.setErrors({ required: true });
+      this.form.markAllAsTouched();
+      return;
+    }
     const permissionIds = Array.from(this.selected());
     const payload = {
-      name: raw.name.trim(),
-      description: raw.description.trim() || undefined,
+      name,
+      description: (raw.description ?? '').trim() || undefined,
       isActive: raw.isActive,
       permissionIds,
     };
@@ -176,5 +234,37 @@ export class RoleEditorDialogComponent {
         this.error.set(err.message);
       },
     });
+  }
+
+  private onNameSearchChanged(value: string | Role | null): void {
+    if (typeof value !== 'string') {
+      return;
+    }
+    const search = value.trim().toLowerCase();
+    const from = this.templateFromName();
+    if (from && search !== from.toLowerCase()) {
+      this.templateFromName.set(null);
+    }
+    if (search.length < PICKER_MIN_CHARS) {
+      this.roleQueryReady.set(false);
+      this.roleSuggestions.set([]);
+      return;
+    }
+    this.roleQueryReady.set(true);
+    const matched = this.templateRoles().filter(
+      (r) =>
+        r.name.toLowerCase().includes(search) ||
+        (r.description ?? '').toLowerCase().includes(search)
+    );
+    this.roleSuggestions.set(matched.slice(0, 10));
+  }
+
+  /** คัดลอกติ๊กสิทธิ์จากบทบาทที่มี — แก้ชื่อ/ติ๊กต่อได้ */
+  private applyPermissionTemplate(role: Role): void {
+    this.selected.set(new Set(role.permissions.map((p) => p.id)));
+    if (role.description?.trim() && !this.form.controls.description.value.trim()) {
+      this.form.patchValue({ description: role.description }, { emitEvent: false });
+    }
+    this.templateFromName.set(role.name);
   }
 }

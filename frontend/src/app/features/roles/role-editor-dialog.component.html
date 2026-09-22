@@ -3,7 +3,35 @@
   <form [formGroup]="form" class="form">
     <mat-form-field appearance="outline" class="full">
       <mat-label>ชื่อบทบาท</mat-label>
-      <input matInput formControlName="name" />
+      @if (isCreate) {
+        <input matInput formControlName="name" [matAutocomplete]="roleAuto" />
+        <mat-autocomplete
+          #roleAuto="matAutocomplete"
+          [displayWith]="displayRoleName"
+          (optionSelected)="onTemplateSelected($event)"
+        >
+          @if (roleQueryReady()) {
+            @for (r of roleSuggestions(); track r.id) {
+              <mat-option [value]="r">
+                <span class="role-opt__name">{{ r.name }}</span>
+                <span class="role-opt__meta">
+                  {{ r.permissions.length }} สิทธิ์
+                  @if (!r.isActive) {
+                    · ปิดใช้งาน
+                  }
+                </span>
+              </mat-option>
+            }
+          }
+        </mat-autocomplete>
+        @if (templateFromName()) {
+          <mat-hint>
+            คัดลอกสิทธิ์จาก「{{ templateFromName() }}」แล้ว — แก้ชื่อหรือติ๊กต่อได้
+          </mat-hint>
+        }
+      } @else {
+        <input matInput formControlName="name" />
+      }
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
       <mat-label>คำอธิบาย</mat-label>
