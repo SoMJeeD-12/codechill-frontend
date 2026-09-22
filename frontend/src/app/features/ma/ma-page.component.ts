@@ -44,6 +44,7 @@ import {
   MaService,
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
+import { Project } from '../../core/models/project.model';
 import {
   addDays,
   contractEndFromDuration,
@@ -365,7 +366,8 @@ export class MaFormDialogComponent {
     this.data && 'id' in this.data && this.data.id ? this.data : null;
 
   readonly customers = this.customersApi.customers;
-  readonly projects = this.projectsApi.projects;
+  /** โปรเจคของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
+  readonly customerProjects = signal<Project[]>([]);
   readonly plans = this.api.plans;
   readonly statusLabels = MA_STATUS_LABELS;
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
@@ -436,9 +438,6 @@ export class MaFormDialogComponent {
 
   constructor() {
     this.api.listPlans({ isActive: true }).subscribe();
-    if (!this.projects().length) {
-      this.projectsApi.listProjects().subscribe();
-    }
     if (!this.customers().length) {
       this.customersApi.listCustomers().subscribe();
     }
@@ -466,6 +465,7 @@ export class MaFormDialogComponent {
           });
           this.form.controls.projectId.disable({ emitEvent: false });
           this.form.controls.customerId.disable({ emitEvent: false });
+          this.loadCustomerProjects(p.customerId);
         };
         const cached = this.projectsApi.getProject(presetProjectId);
         if (cached) {
@@ -473,11 +473,26 @@ export class MaFormDialogComponent {
         } else {
           this.projectsApi.fetchProject(presetProjectId).subscribe({
             next: applyProject,
-            error: () => this.form.patchValue({ projectId: presetProjectId }),
+            error: () => {
+              this.form.patchValue({ projectId: presetProjectId });
+              this.loadCustomerProjects(Number(this.form.getRawValue().customerId) || 0);
+            },
           });
         }
+      } else {
+        this.loadCustomerProjects(Number(this.form.getRawValue().customerId) || 0);
       }
+    } else {
+      this.loadCustomerProjects(Number(this.form.getRawValue().customerId) || 0);
     }
+
+    this.form.controls.customerId.valueChanges.subscribe((customerId) => {
+      if (this.isEdit || this.form.controls.projectId.disabled) {
+        return;
+      }
+      this.form.patchValue({ projectId: null });
+      this.loadCustomerProjects(Number(customerId) || 0);
+    });
 
     this.syncEndDateEditability();
     this.ensureDurationMatchesBilling();
@@ -506,8 +521,18 @@ export class MaFormDialogComponent {
   }
 
   filteredProjects() {
-    const customerId = this.form.getRawValue().customerId;
-    return this.projects().filter((p) => p.customerId === customerId);
+    return this.customerProjects();
+  }
+
+  private loadCustomerProjects(customerId: number): void {
+    if (!customerId) {
+      this.customerProjects.set([]);
+      return;
+    }
+    this.projectsApi.listProjectsByCustomer(customerId).subscribe({
+      next: (rows) => this.customerProjects.set(rows),
+      error: () => this.customerProjects.set([]),
+    });
   }
 
   isCustomDuration(): boolean {

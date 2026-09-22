@@ -123,14 +123,7 @@ export class SurveyDetailPageComponent implements OnInit {
     return sum.questions.filter((q) => q.questionType === 'RATING');
   });
 
-  readonly customerProjects = computed(() => {
-    const customerId = this.assignmentForm.controls.customerId.value;
-    const list = this.projects();
-    if (!customerId) {
-      return list;
-    }
-    return list.filter((p) => p.customerId === customerId);
-  });
+  readonly customerProjects = computed(() => this.projects());
 
   goBack(): void {
     navigateBack(this.location, this.router, '/app/surveys');
@@ -147,10 +140,6 @@ export class SurveyDetailPageComponent implements OnInit {
           this.onCustomerChange(first.id);
         }
       },
-      error: () => undefined,
-    });
-    this.projectsApi.listProjects({ limit: 100 }).subscribe({
-      next: (rows) => this.projects.set(rows),
       error: () => undefined,
     });
     this.assignmentForm.controls.customerId.valueChanges.subscribe((customerId) => {
@@ -223,12 +212,17 @@ export class SurveyDetailPageComponent implements OnInit {
   onCustomerChange(customerId: number): void {
     this.assignmentForm.patchValue({ contactId: null, projectId: null }, { emitEvent: false });
     this.contacts.set([]);
+    this.projects.set([]);
     if (!customerId) {
       return;
     }
     this.customersApi.listContacts(customerId).subscribe({
       next: (rows) => this.contacts.set(rows),
       error: () => this.contacts.set([]),
+    });
+    this.projectsApi.listProjectsByCustomer(customerId).subscribe({
+      next: (rows) => this.projects.set(rows),
+      error: () => this.projects.set([]),
     });
   }
 

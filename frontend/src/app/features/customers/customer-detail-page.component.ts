@@ -428,16 +428,17 @@ export class CustomerDetailPageComponent implements OnInit {
       next: (rows) => this.logs.set(rows),
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
-    this.projectsApi.listProjects().subscribe({
-      next: () => {
-        this.projects.set(this.projectsApi.getProjectsByCustomer(this.customerId));
+    this.projectsApi.listProjectsByCustomer(this.customerId).subscribe({
+      next: (rows) => {
+        this.projects.set(rows);
         this.warrantiesApi
           .listExpiring({ customerId: this.customerId, days: 365, limit: 100 })
           .subscribe({
-            next: (rows) => this.warranties.set(rows),
+            next: (warrantyRows) => this.warranties.set(warrantyRows),
             error: () => this.warranties.set([]),
           });
       },
+      error: () => this.projects.set([]),
     });
     this.ticketsApi.list({ customerId: this.customerId }).subscribe({
       next: (rows) => this.tickets.set(rows),

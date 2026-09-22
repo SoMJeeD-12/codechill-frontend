@@ -17,7 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
-import { Delivery } from '../../core/models/project.model';
+import { Delivery, Project } from '../../core/models/project.model';
 import { MaContract } from '../../core/models/ma.model';
 import {
   WARRANTY_NEAR_EXPIRY_DAYS,
@@ -295,7 +295,8 @@ export class WarrantyFormDialogComponent {
   readonly data = inject<WarrantyFormDialogData>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
-  readonly projects = this.projectsApi.projects;
+  /** โปรเจคของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
+  readonly customerProjects = signal<Project[]>([]);
   readonly deliveries = signal<Delivery[]>([]);
   readonly maContracts = signal<MaContract[]>([]);
   readonly statusLabels = WARRANTY_STATUS_LABELS;
@@ -373,13 +374,14 @@ export class WarrantyFormDialogComponent {
       this.form.controls.deliveryId.disable();
     }
 
-    this.form.controls.customerId.valueChanges.subscribe(() => {
+    this.form.controls.customerId.valueChanges.subscribe((customerId) => {
       if (this.lockDelivery) {
         return;
       }
       this.form.patchValue({ projectId: null, deliveryId: null, maContractId: null });
       this.deliveries.set([]);
       this.maContracts.set([]);
+      this.loadCustomerProjects(Number(customerId) || 0);
     });
     this.form.controls.projectId.valueChanges.subscribe((projectId) => {
       if (this.lockDelivery) {
@@ -394,7 +396,8 @@ export class WarrantyFormDialogComponent {
       }
     });
 
-    const projectId = this.form.getRawValue().projectId;
+    const { customerId, projectId } = this.form.getRawValue();
+    this.loadCustomerProjects(Number(customerId) || 0);
     if (projectId) {
       this.loadDeliveries(projectId);
       this.loadMaContracts(projectId, { preferSelect: !this.isEdit });
@@ -402,8 +405,18 @@ export class WarrantyFormDialogComponent {
   }
 
   filteredProjects() {
-    const customerId = this.form.getRawValue().customerId;
-    return this.projects().filter((p) => p.customerId === customerId);
+    return this.customerProjects();
+  }
+
+  private loadCustomerProjects(customerId: number): void {
+    if (!customerId) {
+      this.customerProjects.set([]);
+      return;
+    }
+    this.projectsApi.listProjectsByCustomer(customerId).subscribe({
+      next: (rows) => this.customerProjects.set(rows),
+      error: () => this.customerProjects.set([]),
+    });
   }
 
   maContractOptionLabel(c: MaContract): string {

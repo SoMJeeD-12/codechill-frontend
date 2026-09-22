@@ -80,6 +80,15 @@ export class UserService {
       );
   }
 
+  /** GET /users/{id} — ใช้เติมชื่อเมื่อรายการงานส่งมาแค่ userId */
+  get(id: number): Observable<User> {
+    return this.http.get<User>(`${this.base}/${id}`).pipe(
+      map((row) => this.toUser(row)),
+      tap((user) => this.upsertLocal(user)),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
   /**
    * GET /users/assignable?capability=
    * — TASK / TICKET / TASK_REVIEW

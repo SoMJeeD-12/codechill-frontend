@@ -344,27 +344,34 @@ export class TasksPageComponent implements OnInit {
     });
   }
 
-  /** รายการงานมักไม่ส่งผู้มอบหมาย — ดึง GET /tasks/:id เฉพาะแถวที่ยังว่าง (จำกัดจำนวน) */
+  /**
+   * รายการงานมักส่งแค่ assignedByUserId หรือไม่ส่งชื่อ
+   * — ดึง GET /tasks/:id แล้วถ้ายังไม่มีชื่อ ค่อย GET /users/:id
+   */
   private enrichMissingAssigners(rows: TaskItem[]): void {
-    const missing = rows.filter((t) => !t.assignedByUserId && !t.assignedBy).slice(0, 15);
+    const missing = rows
+      .filter((t) => !t.assignedBy?.fullName?.trim())
+      .slice(0, 15);
     if (!missing.length) {
       return;
     }
+
     forkJoin(
       missing.map((t) => this.projectsApi.getTask(t.id).pipe(catchError(() => of(null))))
     ).subscribe((details) => {
-      const found = details.filter((d): d is TaskItem => !!d?.assignedByUserId || !!d?.assignedBy);
-      if (!found.length) {
-        return;
-      }
-      for (const task of found) {
-        if (task.assignedBy) {
-          this.usersApi.upsertLocal(task.assignedBy);
+      const byId = new Map<number, TaskItem>();
+      for (const detail of details) {
+        if (detail) {
+          byId.set(detail.id, detail);
+          if (detail.assignedBy) {
+            this.usersApi.upsertLocal(detail.assignedBy);
+          }
         }
       }
+
       this.tasks.update((current) =>
         current.map((t) => {
-          const detail = found.find((d) => d.id === t.id);
+          const detail = byId.get(t.id);
           if (!detail) {
             return t;
           }
@@ -375,6 +382,50 @@ export class TasksPageComponent implements OnInit {
           };
         })
       );
+
+      const stillMissingIds = [
+        ...new Set(
+          this.tasks()
+            .filter((t) => t.assignedByUserId && !t.assignedBy?.fullName?.trim())
+            .map((t) => t.assignedByUserId as number)
+            .filter((id) => !this.usersApi.getById(id)?.fullName)
+        ),
+      ].slice(0, 15);
+
+      if (!stillMissingIds.length) {
+        return;
+      }
+
+      forkJoin(
+        stillMissingIds.map((id) => this.usersApi.get(id).pipe(catchError(() => of(null))))
+      ).subscribe((users) => {
+        for (const user of users) {
+          if (user) {
+            this.usersApi.upsertLocal(user);
+          }
+        }
+        // trigger recompute ของ assignerName ผ่านอ้างอิงแคช — อัปเดต signal เบา ๆ
+        this.tasks.update((list) =>
+          list.map((t) => {
+            const id = t.assignedByUserId;
+            if (!id || t.assignedBy?.fullName?.trim()) {
+              return t;
+            }
+            const cached = this.usersApi.getById(id);
+            if (!cached?.fullName) {
+              return t;
+            }
+            return {
+              ...t,
+              assignedBy: {
+                id: cached.id,
+                username: cached.username,
+                fullName: cached.fullName,
+              },
+            };
+          })
+        );
+      });
     });
   }
 

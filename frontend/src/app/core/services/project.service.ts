@@ -232,13 +232,27 @@ export class ProjectService {
       .pipe(
         map((body) => asList(body).map((row) => this.normalizeProject(row))),
         tap((list) => {
+          const customerId = params?.customerId;
           this.projectsSignal.update((prev) => {
             const prevById = new Map(prev.map((p) => [p.id, p]));
-            return list.map((p) => this.mergeProjectRow(p, prevById.get(p.id)));
+            const merged = list.map((p) => this.mergeProjectRow(p, prevById.get(p.id)));
+            // แบบผู้ติดต่อ: เมื่อกรองตามลูกค้า แทนที่เฉพาะโปรเจคของลูกค้านั้น · รวม CLOSED
+            if (customerId != null && customerId > 0) {
+              return [...prev.filter((p) => p.customerId !== customerId), ...merged];
+            }
+            return merged;
           });
         }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /**
+   * GET /projects?customerId= — โปรเจคของลูกค้า (รวม CLOSED · ห้ามตัดสถานะ)
+   * ใช้กับดรอปดาวน์หลังเลือกลูกค้า — อย่าใส่รายการทั้งระบบ
+   */
+  listProjectsByCustomer(customerId: number, limit = 100): Observable<Project[]> {
+    return this.listProjects({ customerId, limit });
   }
 
   getProject(id: number): Project | undefined {
