@@ -62,7 +62,7 @@
         <article class="mywork-card">
           <header class="mywork-card__head">
             <mat-icon>support_agent</mat-icon>
-            <h3>ปัญหาที่ฉันรับผิดชอบ</h3>
+            <h3>ใบที่ฉันต้องแก้</h3>
             <span class="mywork-card__count">{{ myTickets().length }}</span>
           </header>
           <ul class="mywork-list">
@@ -82,19 +82,19 @@
                 </a>
               </li>
             } @empty {
-              <li class="mywork-empty">ไม่มีปัญหาที่ค้างอยู่กับคุณ</li>
+              <li class="mywork-empty">ยังไม่มีใบที่มอบหมายให้คุณ</li>
             }
           </ul>
-          <a class="mywork-card__more" routerLink="/app/tickets">ดูทั้งหมด</a>
+          <a class="mywork-card__more" routerLink="/app/tickets/mine">เปิดงานของฉัน</a>
         </article>
       }
 
-      <!-- งานของฉัน -->
+      <!-- งานโปรเจค -->
       @if (canTasks()) {
         <article class="mywork-card">
           <header class="mywork-card__head">
             <mat-icon>view_kanban</mat-icon>
-            <h3>งานของฉัน</h3>
+            <h3>งานโปรเจค</h3>
             <span class="mywork-card__count">{{ myTasks().length }}</span>
           </header>
           <ul class="mywork-list">
@@ -116,10 +116,10 @@
                 </a>
               </li>
             } @empty {
-              <li class="mywork-empty">ไม่มีงานที่ค้างอยู่กับคุณ</li>
+              <li class="mywork-empty">ไม่มีงานโปรเจคที่ค้างอยู่กับคุณ</li>
             }
           </ul>
-          <a class="mywork-card__more" routerLink="/app/tasks/me">เปิดงานของฉัน</a>
+          <a class="mywork-card__more" routerLink="/app/tasks/me">เปิดงานโปรเจค</a>
         </article>
       }
 

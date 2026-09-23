@@ -221,7 +221,7 @@ export class HomePageComponent implements OnInit {
       myTickets:
         this.canTickets() && userId
           ? this.ticketsApi
-              .listPending({ assigneeId: userId, limit: 100 })
+              .list({ assigneeId: userId, limit: 100 })
               .pipe(catchError(() => of([] as Ticket[])))
           : of([] as Ticket[]),
       myTasks: this.canTasks()
@@ -249,6 +249,12 @@ export class HomePageComponent implements OnInit {
 
         this.myTickets.set(
           [...data.myTickets]
+            .filter((t) =>
+              t.assignedUserId === userId &&
+              (t.status === 'ASSIGNED' ||
+                t.status === 'IN_PROGRESS' ||
+                t.status === 'REOPENED')
+            )
             .sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue))
             .slice(0, 8)
         );

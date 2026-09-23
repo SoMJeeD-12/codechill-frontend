@@ -30,10 +30,10 @@ import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
 import { createTableSort } from '../../shared/utils/table-sort';
 
 const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
-  { id: 'AWAITING_CLAIM', label: 'รอแอดมินรับเรื่อง' },
-  { id: 'CLAIMED', label: 'รอจัดแจง' },
-  { id: 'AWAITING_REVIEW', label: 'รอส่งซัพพอร์ต' },
-  { id: 'WITH_SUPPORT', label: 'อยู่กับซัพพอร์ต' },
+  { id: 'AWAITING_CLAIM', label: 'รอรับ' },
+  { id: 'CLAIMED', label: 'ของฉัน' },
+  { id: 'AWAITING_REVIEW', label: 'รอตรวจ' },
+  { id: 'WITH_SUPPORT', label: 'ส่งซัพพอร์ตแล้ว' },
 ];
 
 type AdminSortKey =

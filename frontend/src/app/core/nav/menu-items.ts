@@ -2,15 +2,15 @@ import { MenuItem } from '../models/permission.model';
 
 /**
  * เมนู sidebar 3 ชั้น
- *   งานหลัก  = งานที่ทำทุกวัน
- *   ข้อมูล    = ข้อมูลที่ช่วยงานนั้น
+ *   งานหลัก  = คิวใบแจ้งปัญหา + งานของฉัน (ใบ) + คลังค้น
+ *   ข้อมูล    = โปรเจค / งานย่อยโปรเจค / ลูกค้า / MA / ประกัน ฯลฯ
  *   ตั้งค่า    = นาน ๆ ใช้ที
  *
  * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles / ตำแหน่ง)
- * คิวซัพพอร์ต = ticket.view + ticket.update · คิวแอดมิน = ticket.assign
- * หน้าปัญหา / เปิดใบ = ticket.view · ticket.create (คนละชุดกับคิวซัพพอร์ต)
- * เมนูงานย่อยแยกจากโปรเจกต์ — ไม่ปนกับรายการส่งมอบ
- * มุมมองย่อยของ「งานของฉัน」เป็นหัวข้อในหน้า ไม่ใส่เมนูซ้อนใน sidebar
+ * คิวซัพพอร์ต = ticket.support_queue · คิวแอดมิน = ticket.assign
+ * งานของฉัน = ใบที่ assigned ให้ฉัน (ticket.view) — ไม่ใช่งานย่อยโปรเจค
+ * หน้าปัญหา = คลังค้น / เปิดใบ (ticket.view · ticket.create)
+ * 「งาน」ในชื่อเมนูสงวนไว้สำหรับงานย่อยโปรเจคเท่านั้น
  */
 
 /** แบนเมนูรวม children — ใช้ตอนเช็คสิทธิ์ / รหัสเมนู */
@@ -26,45 +26,13 @@ export function flattenMenuItems(items: MenuItem[]): MenuItem[] {
 }
 
 export const MENU_ITEMS: MenuItem[] = [
-  // —— งานหลัก ——
+  // —— งานหลัก (สายงานใบแจ้งปัญหา) ——
   {
     code: 'dashboard',
     label: 'หน้าแรก',
-    description: 'งานที่ต้องทำวันนี้',
+    description: 'สรุปงานวันนี้',
     icon: 'home',
     route: '/app/home',
-    group: 'main',
-  },
-  {
-    code: 'projects',
-    label: 'โปรเจกต์',
-    description: 'รายการและรายละเอียดโปรเจกต์',
-    icon: 'folder_special',
-    route: '/app/projects',
-    group: 'main',
-  },
-  {
-    code: 'tasks-me',
-    label: 'งานของฉัน',
-    description: 'งานที่มอบหมายให้คุณ',
-    icon: 'person',
-    route: '/app/tasks/me',
-    group: 'main',
-  },
-  {
-    code: 'tasks-review',
-    label: 'ตรวจงานโปรเจค',
-    description: 'งานย่อยสถานะ REVIEW — ผู้ตรวจอนุมัติ',
-    icon: 'rate_review',
-    route: '/app/tasks/review',
-    group: 'main',
-  },
-  {
-    code: 'tickets',
-    label: 'ปัญหา',
-    description: 'ใบแจ้งปัญหาหลังส่งมอบ',
-    icon: 'support_agent',
-    route: '/app/tickets',
     group: 'main',
   },
   {
@@ -78,17 +46,25 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'ticket-admin-queue',
     label: 'คิวแอดมิน',
-    description: 'รับเรื่อง · มอบหมาย · ตรวจผ่านส่งซัพพอร์ต',
+    description: 'รับเรื่อง · มอบหมาย · ส่งตรวจ',
     icon: 'assignment_ind',
     route: '/app/tickets/admin-queue',
     group: 'main',
   },
   {
-    code: 'follow-ups',
-    label: 'ติดตามลูกค้า',
-    description: 'นัดติดตามและงานค้าง',
-    icon: 'event_available',
-    route: '/app/follow-ups',
+    code: 'tickets-mine',
+    label: 'งานของฉัน',
+    description: 'ใบที่มอบหมายให้คุณแก้',
+    icon: 'person',
+    route: '/app/tickets/mine',
+    group: 'main',
+  },
+  {
+    code: 'tickets',
+    label: 'ปัญหา',
+    description: 'ค้นหา · เปิดใบ · ดูย้อนหลัง',
+    icon: 'inventory_2',
+    route: '/app/tickets',
     group: 'main',
   },
   {
@@ -99,8 +75,40 @@ export const MENU_ITEMS: MenuItem[] = [
     route: '/app/notifications',
     group: 'main',
   },
+  {
+    code: 'follow-ups',
+    label: 'ติดตามลูกค้า',
+    description: 'นัดติดตามและงานค้าง',
+    icon: 'event_available',
+    route: '/app/follow-ups',
+    group: 'main',
+  },
 
   // —— ข้อมูล ——
+  {
+    code: 'projects',
+    label: 'โปรเจกต์',
+    description: 'รายการและรายละเอียดโปรเจกต์',
+    icon: 'folder_special',
+    route: '/app/projects',
+    group: 'support',
+  },
+  {
+    code: 'tasks-me',
+    label: 'งานโปรเจค',
+    description: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ',
+    icon: 'checklist',
+    route: '/app/tasks/me',
+    group: 'support',
+  },
+  {
+    code: 'tasks-review',
+    label: 'ตรวจงานโปรเจค',
+    description: 'งานย่อยสถานะ REVIEW — ผู้ตรวจอนุมัติ',
+    icon: 'rate_review',
+    route: '/app/tasks/review',
+    group: 'support',
+  },
   {
     code: 'customers',
     label: 'ลูกค้า',

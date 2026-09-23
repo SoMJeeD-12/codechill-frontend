@@ -42,7 +42,7 @@ export const routes: Routes = [
       },
       // ลิงก์เดิม
       { path: 'dashboard', redirectTo: 'home', pathMatch: 'full' },
-      { path: 'my-work', redirectTo: 'tasks/me', pathMatch: 'full' },
+      { path: 'my-work', redirectTo: 'tickets/mine', pathMatch: 'full' },
       {
         path: 'customers',
         canActivate: [permissionGuard('customers')],
@@ -145,6 +145,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/projects/project-detail-page.component').then(
             (m) => m.ProjectDetailPageComponent
+          ),
+      },
+      {
+        path: 'tickets/mine',
+        canActivate: [permissionGuard('tickets-mine')],
+        loadComponent: () =>
+          import('./features/tickets/my-tickets-page.component').then(
+            (m) => m.MyTicketsPageComponent
           ),
       },
       {

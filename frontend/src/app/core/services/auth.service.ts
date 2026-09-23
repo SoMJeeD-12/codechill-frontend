@@ -293,13 +293,17 @@ export class AuthService {
     if (menuCode === 'tasks-review') {
       return this.canAccessTaskReviewQueue();
     }
-    // คิวซัพพอร์ต — ticket.view + ticket.update (ห้ามเปิดด้วยแค่ create)
+    // คิวซัพพอร์ต — ticket.support_queue เท่านั้น
     if (menuCode === 'ticket-workflow') {
       return this.canAccessTicketSupportQueue();
     }
     // คิวแอดมิน — ticket.assign เท่านั้น (USER) · ห้ามใช้ ticket.view เป็นตัวเปิด
     if (menuCode === 'ticket-admin-queue') {
       return this.canAccessTicketAdminQueue();
+    }
+    // งานของฉัน (ใบที่ถูกมอบหมาย) — ticket.view
+    if (menuCode === 'tickets-mine') {
+      return this.canAccessMyTickets();
     }
     // SUPER_ADMIN / ADMIN เห็นและใช้ทุกเมนูอื่น
     if (
@@ -388,6 +392,9 @@ export class AuthService {
         if (item.code === 'ticket-admin-queue') {
           return this.canAccessTicketAdminQueue();
         }
+        if (item.code === 'tickets-mine') {
+          return this.canAccessMyTickets();
+        }
         return this.hasPermission(item.code, 'view');
       })
       .map((item) => item.code);
@@ -408,18 +415,26 @@ export class AuthService {
 
   /**
    * คิวซัพพอร์ต — คนรับเรื่อง/ส่งหัวหน้า/บอกลูกค้า
-   * ต้องมี ticket.view + ticket.update จาก /auth/me
-   * ห้ามเปิดด้วยแค่ ticket.create — คนเปิดใบที่หน้า「ปัญหา」ไม่จำเป็นต้องเข้าคิวนี้
+   * ต้องมี ticket.support_queue จาก /auth/me
+   * ห้ามเปิดด้วย ticket.create / ticket.update
    * ห้ามใช้ roles / ตำแหน่ง
    */
   canAccessTicketSupportQueue(): boolean {
     if (this.isAdminLevel()) {
       return true;
     }
-    return (
-      this.hasPermissionCode('ticket.view') &&
-      this.hasPermissionCode('ticket.update')
-    );
+    return this.hasPermissionCode('ticket.support_queue');
+  }
+
+  /**
+   * 「งานของฉัน」= ใบที่ assigned ให้ผู้ใช้ปัจจุบัน
+   * ต้องมี ticket.view — ห้ามผูกกับ task.*
+   */
+  canAccessMyTickets(): boolean {
+    if (this.isAdminLevel()) {
+      return true;
+    }
+    return this.hasPermissionCode('ticket.view');
   }
 
   /**

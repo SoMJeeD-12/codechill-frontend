@@ -40,7 +40,7 @@ export class MainLayoutComponent implements OnInit {
 
   readonly user = this.auth.currentUser;
   /** เมนูที่มี children ที่กำลังขยาย */
-  readonly expandedMenus = signal<Set<string>>(new Set(['tasks-me']));
+  readonly expandedMenus = signal<Set<string>>(new Set());
 
   /** บันทึกการติดต่อ — สิทธิ์ create log หรืออัปเดตลูกค้า */
   readonly canLogCommunication = computed(() => {

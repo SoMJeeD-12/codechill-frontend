@@ -16,6 +16,8 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   'customer-360': 'customer',
   projects: 'project',
   tickets: 'ticket',
+  /** งานของฉัน = ใบที่ assigned — เช็ค ticket.view แยกใน AuthService */
+  'tickets-mine': 'ticket',
   warranties: 'warranty',
   ma: 'ma',
   'ma-plans': 'ma',
@@ -24,7 +26,7 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   documents: 'document',
   reports: 'report',
   notifications: 'notification',
-  /** คิวซัพพอร์ต — เช็ค view+update แยกใน AuthService (ห้ามเปิดด้วยแค่ create) */
+  /** คิวซัพพอร์ต — เช็ค ticket.support_queue แยกใน AuthService */
   'ticket-workflow': 'ticket',
   /** คิวแอดมิน — เช็ค ticket.assign แยกใน AuthService (ห้ามใช้ .view) */
   'ticket-admin-queue': 'ticket',

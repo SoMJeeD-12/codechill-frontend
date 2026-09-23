@@ -103,10 +103,6 @@ export class TicketsPageComponent implements OnInit {
       this.auth.hasPermission('tickets', 'create')
     );
   });
-  readonly canOpenSupportQueue = computed(() => {
-    this.auth.session();
-    return this.auth.canAccessTicketSupportQueue();
-  });
 
   readonly columns = [
     'ticketNo',

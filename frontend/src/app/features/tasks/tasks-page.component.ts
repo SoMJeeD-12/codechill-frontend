@@ -55,7 +55,7 @@ const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
 
 const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   all: { title: 'งานทั้งหมด', subtitle: '' },
-  me: { title: 'งานที่มอบหมาย', subtitle: '' },
+  me: { title: 'งานโปรเจค', subtitle: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ' },
   unassigned: { title: 'งานที่ยังไม่มอบหมาย', subtitle: '' },
   doing: { title: 'งานกำลังดำเนินการ', subtitle: '' },
   review: {

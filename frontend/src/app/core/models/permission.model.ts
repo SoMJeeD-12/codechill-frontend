@@ -13,6 +13,7 @@ export type MenuCode =
   | 'customer-360'
   | 'projects'
   | 'tickets'
+  | 'tickets-mine'
   | 'warranties'
   | 'ma'
   | 'ma-plans'

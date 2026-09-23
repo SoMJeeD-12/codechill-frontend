@@ -42,6 +42,7 @@ const ACTION_LABELS: Record<string, string> = {
   delete: 'ลบ',
   resolve: 'ปิดงาน',
   assign: 'มอบหมาย',
+  support_queue: 'คิวซัพพอร์ต',
   manage: 'จัดการ',
   renew: 'ต่ออายุ',
   export: 'ส่งออก',
