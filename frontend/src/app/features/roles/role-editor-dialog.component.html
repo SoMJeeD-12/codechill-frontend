@@ -40,42 +40,86 @@
     <mat-slide-toggle formControlName="isActive">เปิดใช้งานบทบาทนี้</mat-slide-toggle>
   </form>
 
+  <section class="presets" aria-label="ชุดสิทธิ์สำเร็จรูป">
+    <p class="presets__label">ชุดสำเร็จรูป — กดแล้วติ๊กให้ แก้ต่อได้</p>
+    <div class="presets__chips">
+      @for (p of presets; track p.id) {
+        <button
+          type="button"
+          class="preset-chip"
+          [class.is-active]="activePresetId() === p.id"
+          [disabled]="loading()"
+          (click)="applyPreset(p)"
+          [attr.title]="p.description"
+        >
+          {{ p.label }}
+        </button>
+      }
+    </div>
+  </section>
+
+  @if (!loading() && menuPreview().length) {
+    <p class="menu-preview">
+      <strong>เมนูที่จะเห็น:</strong>
+      {{ menuPreview().join(' · ') }}
+    </p>
+  } @else if (!loading()) {
+    <p class="menu-preview is-empty">ยังไม่ติ๊กสิทธิ์ — เลือกชุดสำเร็จรูปหรือติ๊กด้านล่าง</p>
+  }
+
   @if (loading()) {
     <div class="perm-loading">
       <mat-spinner diameter="28"></mat-spinner>
       <span>กำลังโหลดรายการสิทธิ์…</span>
     </div>
   } @else {
+    <p class="perm-count">เลือกแล้ว {{ selectedCount() }} สิทธิ์</p>
     <mat-accordion class="perm-groups" multi>
-      @for (group of groups(); track group.module) {
-        <mat-expansion-panel class="perm-group">
+      @for (section of uiSections(); track section.id) {
+        <mat-expansion-panel
+          class="perm-group"
+          [class.is-unused]="section.unused"
+          [expanded]="!section.collapsedByDefault"
+        >
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-checkbox
-                [checked]="isGroupChecked(group)"
-                [indeterminate]="isGroupPartial(group)"
+                [checked]="isSectionChecked(section)"
+                [indeterminate]="isSectionPartial(section)"
                 (click)="$event.stopPropagation()"
-                (change)="toggleGroup(group, $event.checked)"
+                (change)="toggleSection(section, $event.checked)"
               >
-                {{ moduleLabel(group.module) }}
+                {{ section.label }}
               </mat-checkbox>
             </mat-panel-title>
             <mat-panel-description>
-              {{ groupSelectedCount(group) }}/{{ group.permissions.length }}
+              {{ sectionSelectedCount(section) }}/{{ section.rows.length }}
+              @if (section.unused) {
+                <span class="unused-flag">ยังไม่มีผล</span>
+              }
             </mat-panel-description>
           </mat-expansion-panel-header>
           <div class="perm-items">
-            @for (permission of group.permissions; track permission.id) {
-              <mat-checkbox
-                [checked]="isChecked(permission.id)"
-                (change)="toggle(permission.id, $event.checked)"
+            @for (row of section.rows; track row.item.id) {
+              <label
+                class="perm-row"
+                [class.is-locked]="row.locked"
+                [class.is-checked]="isChecked(row.item.id)"
               >
-                {{ permissionLabel(permission) }}
-                <span class="perm-code">{{ permission.code }}</span>
-                @if (permission.superAdminOnly) {
-                  <span class="perm-flag">Super Admin</span>
-                }
-              </mat-checkbox>
+                <mat-checkbox
+                  [checked]="isChecked(row.item.id)"
+                  [disabled]="row.locked"
+                  (change)="toggle(row.item.id, $event.checked, row.locked)"
+                >
+                  <span class="perm-row__title">
+                    {{ row.hint }}
+                    @if (row.locked) {
+                      <span class="perm-flag">สงวน Super Admin</span>
+                    }
+                  </span>
+                  <span class="perm-row__code">{{ row.item.code }}</span>
+                </mat-checkbox>
+              </label>
             }
           </div>
         </mat-expansion-panel>
