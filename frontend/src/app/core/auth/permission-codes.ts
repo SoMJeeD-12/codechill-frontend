@@ -24,8 +24,9 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   documents: 'document',
   reports: 'report',
   notifications: 'notification',
+  /** คิวซัพพอร์ต — เช็ค view+update แยกใน AuthService (ห้ามเปิดด้วยแค่ create) */
   'ticket-workflow': 'ticket',
-  /** คิวแอดมิน — เช็ค ticket.assign แยกใน AuthService (ไม่ใช้ .view) */
+  /** คิวแอดมิน — เช็ค ticket.assign แยกใน AuthService (ห้ามใช้ .view) */
   'ticket-admin-queue': 'ticket',
   users: 'user',
   roles: 'role',

@@ -21,6 +21,7 @@ import {
   AdminQueueTab,
   TicketService,
 } from '../../core/services/ticket.service';
+import { AuthService } from '../../core/services/auth.service';
 import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
@@ -67,6 +68,7 @@ type AdminSortKey =
 export class AdminQueuePageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly usersApi = inject(UserService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -92,6 +94,11 @@ export class AdminQueuePageComponent implements OnInit {
 
   readonly assignableUsers = this.usersApi.assignableTicket;
   readonly tableSort = createTableSort<AdminSortKey>('reportedAt', 'desc');
+
+  readonly canOpenSupportQueue = computed(() => {
+    this.auth.session();
+    return this.auth.canAccessTicketSupportQueue();
+  });
 
   readonly columns = [
     'title',

@@ -6,7 +6,9 @@ import { MenuItem } from '../models/permission.model';
  *   ข้อมูล    = ข้อมูลที่ช่วยงานนั้น
  *   ตั้งค่า    = นาน ๆ ใช้ที
  *
- * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles)
+ * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles / ตำแหน่ง)
+ * คิวซัพพอร์ต = ticket.view + ticket.update · คิวแอดมิน = ticket.assign
+ * หน้าปัญหา / เปิดใบ = ticket.view · ticket.create (คนละชุดกับคิวซัพพอร์ต)
  * เมนูงานย่อยแยกจากโปรเจกต์ — ไม่ปนกับรายการส่งมอบ
  * มุมมองย่อยของ「งานของฉัน」เป็นหัวข้อในหน้า ไม่ใส่เมนูซ้อนใน sidebar
  */

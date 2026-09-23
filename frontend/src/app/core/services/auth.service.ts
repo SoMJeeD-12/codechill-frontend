@@ -289,11 +289,15 @@ export class AuthService {
     }
     // คิวงานรอตรวจ — SUPER_ADMIN/ADMIN จาก accountType หรือ task.review จาก /auth/me
     // ห้ามใช้ task.update (ผู้รับผิดชอบมี update เพื่อส่งตรวจ แต่ยังไม่ใช่ผู้ตรวจ)
-    // ห้ามใช้ roles.length
+    // ห้ามใช้ roles / ตำแหน่ง
     if (menuCode === 'tasks-review') {
       return this.canAccessTaskReviewQueue();
     }
-    // คิวแอดมิน — SUPER_ADMIN/ADMIN หรือ ticket.assign (ซัพพอร์ตเดโมไม่มีโดยเจตนา)
+    // คิวซัพพอร์ต — ticket.view + ticket.update (ห้ามเปิดด้วยแค่ create)
+    if (menuCode === 'ticket-workflow') {
+      return this.canAccessTicketSupportQueue();
+    }
+    // คิวแอดมิน — ticket.assign เท่านั้น (USER) · ห้ามใช้ ticket.view เป็นตัวเปิด
     if (menuCode === 'ticket-admin-queue') {
       return this.canAccessTicketAdminQueue();
     }
@@ -311,6 +315,10 @@ export class AuthService {
       )
     ) {
       return true;
+    }
+    // เมนู「ปัญหา」ต้องมี ticket.view จริง — ห้ามเปิดด้วยแค่ create/assign แล้วไปโหลด list แล้วขึ้น 403
+    if (menuCode === 'tickets' && action === 'view') {
+      return false;
     }
     // บางโมดูลใช้ action พิเศษ (เช่น role.manage) — ถือว่ามีสิทธิ์ดูเมนูได้ถ้ามี permission ของโมดูลนั้น
     if (action === 'view') {
@@ -371,8 +379,11 @@ export class AuthService {
       .filter((item) => {
         if (item.code === 'tasks-review') {
           // เมนูรอตรวจ: accountType SUPER_ADMIN/ADMIN หรือมีสิทธิ์ task.review
-          // ห้ามใช้ task.update / roles.length
+          // ห้ามใช้ task.update / roles / ตำแหน่ง
           return this.canAccessTaskReviewQueue();
+        }
+        if (item.code === 'ticket-workflow') {
+          return this.canAccessTicketSupportQueue();
         }
         if (item.code === 'ticket-admin-queue') {
           return this.canAccessTicketAdminQueue();
@@ -386,7 +397,7 @@ export class AuthService {
    * เข้าคิวงานรอตรวจได้เมื่อเป็น SUPER_ADMIN/ADMIN (accountType)
    * หรือมีสิทธิ์ task.review จาก /auth/me
    * ห้ามใช้ task.update — ผู้รับผิดชอบมักมี update เพื่อส่งรายงาน แต่ยังไม่ใช่ผู้ตรวจ
-   * ห้ามใช้ roles.length
+   * ห้ามใช้ roles / ตำแหน่ง
    */
   canAccessTaskReviewQueue(): boolean {
     if (this.isAdminLevel()) {
@@ -396,8 +407,26 @@ export class AuthService {
   }
 
   /**
-   * คิวแอดมิน — SUPER_ADMIN/ADMIN หรือ ticket.assign
-   * ซัพพอร์ตเดโมมีแค่ ticket.view → ไม่เห็นเมนูนี้โดยเจตนา
+   * คิวซัพพอร์ต — คนรับเรื่อง/ส่งหัวหน้า/บอกลูกค้า
+   * ต้องมี ticket.view + ticket.update จาก /auth/me
+   * ห้ามเปิดด้วยแค่ ticket.create — คนเปิดใบที่หน้า「ปัญหา」ไม่จำเป็นต้องเข้าคิวนี้
+   * ห้ามใช้ roles / ตำแหน่ง
+   */
+  canAccessTicketSupportQueue(): boolean {
+    if (this.isAdminLevel()) {
+      return true;
+    }
+    return (
+      this.hasPermissionCode('ticket.view') &&
+      this.hasPermissionCode('ticket.update')
+    );
+  }
+
+  /**
+   * คิวแอดมิน — จัดแจง/มอบหมาย (สายงาน C-1)
+   * USER: ต้องมี ticket.assign จาก /auth/me เท่านั้น
+   * SUPER_ADMIN/ADMIN: ตามที่ FE เปิดระดับแอดมินอยู่แล้ว
+   * ห้ามใช้ ticket.view · ห้ามใช้ roles / ตำแหน่ง
    */
   canAccessTicketAdminQueue(): boolean {
     if (this.isAdminLevel()) {

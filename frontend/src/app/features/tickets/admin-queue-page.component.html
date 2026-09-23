@@ -5,7 +5,9 @@
       <p class="app-subtitle">รับเรื่อง · มอบหมาย · ตรวจใบแล้วส่งซัพพอร์ต</p>
     </div>
     <div class="app-header-actions">
-      <a mat-stroked-button routerLink="/app/tickets/support-queue">คิวซัพพอร์ต</a>
+      @if (canOpenSupportQueue()) {
+        <a mat-stroked-button routerLink="/app/tickets/support-queue">คิวซัพพอร์ต</a>
+      }
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช
