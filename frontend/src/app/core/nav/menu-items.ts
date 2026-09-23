@@ -51,15 +51,15 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tasks-review',
-    label: 'งานตรวจ',
-    description: 'คิว REVIEW ทั้งระบบ — ผู้ตรวจอนุมัติ',
+    label: 'ตรวจงานโปรเจค',
+    description: 'งานย่อยสถานะ REVIEW — ผู้ตรวจอนุมัติ',
     icon: 'rate_review',
     route: '/app/tasks/review',
     group: 'main',
   },
   {
     code: 'tickets',
-    label: 'ปัญหา / ซัพพอร์ต',
+    label: 'ปัญหา',
     description: 'ใบแจ้งปัญหาหลังส่งมอบ',
     icon: 'support_agent',
     route: '/app/tickets',

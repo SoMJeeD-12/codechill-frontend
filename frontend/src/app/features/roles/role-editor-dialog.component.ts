@@ -34,7 +34,7 @@ const MODULE_LABELS: Record<string, string> = {
   communication_log: 'ประวัติการติดต่อ',
   project: 'โปรเจกต์',
   task: 'งานย่อย',
-  ticket: 'ปัญหา / ซัพพอร์ต',
+  ticket: 'ปัญหา',
   warranty: 'การรับประกัน',
   ma: 'สัญญาบำรุงรักษา',
   follow_up: 'ติดตามลูกค้า',

@@ -79,13 +79,12 @@
       font-weight: 700;
       color: #0f766e;
     }
-  }
 
-  small {
-    display: block;
-    margin-top: 0.35rem;
-    color: #64748b;
-    font-size: 0.75rem;
+    em {
+      font-style: normal;
+      color: #64748b;
+      font-size: 0.8rem;
+    }
   }
 }
 

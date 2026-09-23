@@ -483,7 +483,7 @@ export class TaskEditDialogComponent implements OnInit {
       return;
     }
     if (kind === 'review') {
-      this.error.set('กรุณาตรวจงานจากหน้า「งานตรวจ」');
+      this.error.set('กรุณาตรวจงานจากหน้า「ตรวจงานโปรเจค」');
       return;
     }
     if (this.workflow() === 'assignee' && next === 'DONE') {

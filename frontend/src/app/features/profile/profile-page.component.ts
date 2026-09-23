@@ -21,7 +21,7 @@ const MODULE_LABELS: Record<string, string> = {
   project: 'โปรเจกต์',
   task: 'งานย่อย',
   delivery: 'การส่งมอบ',
-  ticket: 'ปัญหา / ซัพพอร์ต',
+  ticket: 'ปัญหา',
   warranty: 'การรับประกัน',
   ma: 'สัญญาบำรุงรักษา',
   follow_up: 'ติดตามลูกค้า',

@@ -23,18 +23,49 @@
   vertical-align: bottom;
 }
 
+.assignee-empty {
+  color: #94a3b8;
+}
+
 .row-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.45rem;
   align-items: center;
   justify-content: flex-end;
   white-space: nowrap;
 }
 
+/* dropdown + ปุ่มมอบหมาย กว้างกว่า sticky 11rem กลาง — ต้องขยายไม่ให้ปุ่มถูกตัด */
+:host ::ng-deep .data-table {
+  .mat-mdc-header-cell.col-sticky-end,
+  .mat-mdc-cell.col-sticky-end,
+  .mat-column-actions {
+    width: 22.5rem;
+    min-width: 22.5rem;
+    max-width: none;
+    overflow: visible;
+  }
+}
+
+.assign-controls {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .assign-field {
-  width: 10.5rem;
+  width: 11.5rem;
   margin: 0;
+  flex: 0 0 auto;
+}
+
+.assign-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  min-width: 7.5rem;
 }
 
 .muted {
@@ -43,13 +74,28 @@
 }
 
 @media (max-width: 720px) {
-  .row-actions {
+  :host ::ng-deep .data-table {
+    .mat-mdc-header-cell.col-sticky-end,
+    .mat-mdc-cell.col-sticky-end,
+    .mat-column-actions {
+      width: 12rem;
+      min-width: 12rem;
+    }
+  }
+
+  .row-actions,
+  .assign-controls {
+    flex-wrap: wrap;
     white-space: normal;
     justify-content: stretch;
+  }
 
-    button,
-    .assign-field {
-      width: 100%;
-    }
+  .assign-controls {
+    width: 100%;
+  }
+
+  .assign-controls button,
+  .assign-field {
+    width: 100%;
   }
 }

@@ -62,13 +62,11 @@
         <strong>ช่วงประกันโดยประมาณ</strong>
         <p>
           วันเริ่ม <span>{{ period.startLabel }}</span>
-          (= วันถัดจากวันส่งมอบ ตามที่คุยกับพี่เลี้ยง)
+          <em>· วันถัดจากวันส่งมอบ</em>
         </p>
         <p>
-          วันสิ้นสุดโดยประมาณ <span>{{ period.endLabel }}</span>
-          · หลังบันทึกยึดค่าจาก API ถ้ามี
+          วันสิ้นสุด <span>{{ period.endLabel }}</span>
         </p>
-        <small>UI preview — ยังไม่ส่ง startDate แยก (API รับ durationMonth)</small>
       </aside>
     }
 

@@ -631,7 +631,7 @@ export class TicketService {
       receivedByUserId: row.receivedByUserId ?? null,
       claimedByAdminUserId:
         row.claimedByAdminUserId ?? row.claimedByAdminUser?.id ?? null,
-      assignedUserId: row.assignedUserId ?? null,
+      assignedUserId: row.assignedUserId ?? row.assignedUser?.id ?? null,
       warrantyId: row.warrantyId ?? null,
       maContractId: row.maContractId ?? null,
       firstResponseAt: row.firstResponseAt ?? null,

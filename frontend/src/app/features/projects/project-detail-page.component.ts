@@ -93,6 +93,7 @@ import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils
 import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
+import { WarrantyConfirmDialogComponent } from '../warranties/warranty-confirm-dialog.component';
 import { ProjectFormDialogComponent } from './projects-page.component';
 import {
   FollowUpFormDialogComponent,
@@ -1423,29 +1424,29 @@ export class ProjectDetailPageComponent implements OnInit {
   openConfirmExistingWarranty(warranty: Warranty, delivery: Delivery): void {
     const code = warranty.warrantyNo?.trim() || `#${warranty.id}`;
     const already = readWarrantyConfirmMock(this.projectId);
-    openConfirmDialog(this.dialog, {
-      title: 'ยืนยันการรับประกัน',
-      message: already
-        ? `โปรเจกต์นี้มีประกัน「${code}」อยู่แล้ว และเคยยืนยันใน session นี้แล้ว\n\nยืนยันอีกครั้งว่าลูกค้ายังใช้ประกันนี้หลังส่งมอบ「${delivery.title}」?\n\n(mock · ยังไม่ต่อ API)`
-        : `โปรเจกต์นี้มีประกัน「${code}」อยู่แล้ว — ไม่ต้องออกใบใหม่\n\nยืนยันว่าลูกค้ายังใช้ประกันนี้หลังส่งมอบ「${delivery.title}」?\n\n(mock · ยังไม่ต่อ API)`,
-      confirmLabel: 'ยืนยันประกัน',
-      cancelLabel: 'ปิด',
-      danger: false,
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      writeWarrantyConfirmMock({
-        projectId: this.projectId,
-        warrantyId: warranty.id,
-        confirmedAt: new Date().toISOString(),
+    const deliveryLabel = `${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
+    this.dialog
+      .open(WarrantyConfirmDialogComponent, {
+        ...FORM_DIALOG_COMPACT,
+        width: '440px',
+        data: {
+          warrantyCode: code,
+          deliveryTitle: deliveryLabel,
+          alreadyConfirmed: !!already,
+        },
+      })
+      .afterClosed()
+      .subscribe((ok) => {
+        if (!ok) {
+          return;
+        }
+        writeWarrantyConfirmMock({
+          projectId: this.projectId,
+          warrantyId: warranty.id,
+          confirmedAt: new Date().toISOString(),
+        });
+        this.snack.open(`ยืนยันประกัน「${code}」แล้ว`, 'ปิด', { duration: 3000 });
       });
-      this.snack.open(
-        `ยืนยันประกัน「${code}」แล้ว (mock · session เท่านั้น)`,
-        'ปิด',
-        { duration: 3500 }
-      );
-    });
   }
 
   openIssueWarranty(delivery: Delivery): void {

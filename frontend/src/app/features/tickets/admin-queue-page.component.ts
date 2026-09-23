@@ -31,7 +31,7 @@ import { createTableSort } from '../../shared/utils/table-sort';
 const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
   { id: 'AWAITING_CLAIM', label: 'รอแอดมินรับเรื่อง' },
   { id: 'CLAIMED', label: 'รอจัดแจง' },
-  { id: 'AWAITING_REVIEW', label: 'รอตรวจ' },
+  { id: 'AWAITING_REVIEW', label: 'รอส่งซัพพอร์ต' },
   { id: 'WITH_SUPPORT', label: 'อยู่กับซัพพอร์ต' },
 ];
 
@@ -119,9 +119,12 @@ export class AdminQueuePageComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.usersApi.loadForPicker(null, { capability: 'TICKET' }).subscribe({
-      error: () => {
-        /* ignore */
+    // รายชื่อมอบหมาย = GET /users/assignable?capability=TICKET เท่านั้น (ห้าม fallback คนนอก)
+    this.usersApi.listAssignable('TICKET').subscribe({
+      error: (err: Error) => {
+        this.snack.open(err.message || 'โหลดรายชื่อพนักงานไม่สำเร็จ', 'ปิด', {
+          duration: 4500,
+        });
       },
     });
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
@@ -222,6 +225,11 @@ export class AdminQueuePageComponent implements OnInit {
     return this.usersApi.getById(id)?.fullName ?? `#${id}`;
   }
 
+  /** คอลัมน์ผู้แก้ — ชื่อจาก API เท่านั้น */
+  assigneeLabel(row: Ticket): string {
+    return this.userName(row.assignedUserId);
+  }
+
   priorityLabel(p: TicketPriority): string {
     return this.priorityLabels[p] ?? p;
   }
@@ -230,16 +238,24 @@ export class AdminQueuePageComponent implements OnInit {
     return this.statusLabels[row.status] ?? row.status;
   }
 
-  setAssignPick(ticketId: number, userId: number): void {
-    this.assignPick.update((m) => ({ ...m, [ticketId]: userId }));
+  setAssignPick(ticketId: number, userId: number | null | undefined): void {
+    const id = Number(userId);
+    if (!Number.isFinite(id) || id < 1) {
+      return;
+    }
+    // เลือกอย่างเดียว ≠ มอบหมาย — เก็บ draft ในแถว ไม่แตะ assignedUserId
+    this.assignPick.update((m) => ({ ...m, [ticketId]: id }));
   }
 
-  pickFor(row: Ticket): number | null {
-    const picked = this.assignPick()[row.id];
-    if (picked) {
-      return picked;
-    }
-    return this.assignableUsers()[0]?.id ?? null;
+  /** มีการเลือกพนักงานในแถวนี้แล้วหรือยัง (ห้าม default คนแรก) */
+  hasAssignPick(ticketId: number): boolean {
+    return this.pickedAssigneeId(ticketId) != null;
+  }
+
+  /** draft ในแถว — ไม่ใช่ assignedUserId จาก API */
+  pickedAssigneeId(ticketId: number): number | null {
+    const id = this.assignPick()[ticketId];
+    return typeof id === 'number' && id > 0 ? id : null;
   }
 
   claimTicket(row: Ticket): void {
@@ -262,24 +278,33 @@ export class AdminQueuePageComponent implements OnInit {
     });
   }
 
-  assignTicket(row: Ticket): void {
-    const assignedUserId = this.pickFor(row);
+  /** แท็บรอจัดแจง — กด「มอบหมาย」แล้วค่อย PATCH /tickets/:id/assign */
+  assignTicket(row: Ticket, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const assignedUserId = this.pickedAssigneeId(row.id);
     if (!assignedUserId) {
       this.snack.open('เลือกพนักงานก่อนมอบหมาย', 'ปิด', { duration: 3000 });
       return;
     }
+    const name =
+      this.assignableUsers().find((u) => u.id === assignedUserId)?.fullName ??
+      this.userName(assignedUserId);
     this.actingId.set(row.id);
     this.ticketsApi.assign(row.id, assignedUserId).subscribe({
       next: () => {
         this.actingId.set(null);
-        this.snack.open('มอบหมายแล้ว · พนักงานใช้「งานของฉัน」', 'ปิด', {
-          duration: 3200,
+        this.assignPick.update((m) => {
+          const next = { ...m };
+          delete next[row.id];
+          return next;
         });
+        this.snack.open(`มอบหมายให้「${name}」เรียบร้อย`, 'ปิด', { duration: 3200 });
         this.reload();
       },
       error: (err: Error) => {
         this.actingId.set(null);
-        this.snack.open(err.message || 'มอบหมายไม่สำเร็จ (ต้อง claim ก่อน)', 'ปิด', {
+        this.snack.open(err.message || 'มอบหมายไม่สำเร็จ', 'ปิด', {
           duration: 5000,
         });
       },
@@ -296,9 +321,9 @@ export class AdminQueuePageComponent implements OnInit {
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ตรวจผ่าน → ส่งซัพพอร์ต',
+      title: 'ตรวจผ่าน · ส่งซัพพอร์ต',
       message: `ส่งใบ「${row.title}」กลับซัพพอร์ตให้บอกลูกค้า?\n\nสถานะปัจจุบัน: ${this.statusLabel(row)}`,
-      confirmLabel: 'ส่งซัพพอร์ต',
+      confirmLabel: 'ตรวจผ่าน · ส่งซัพพอร์ต',
       cancelLabel: 'ยกเลิก',
       danger: false,
     }).subscribe((ok) => {
