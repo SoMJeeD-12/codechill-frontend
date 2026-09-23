@@ -4,14 +4,18 @@
       <p class="app-eyebrow">คิวซัพพอร์ต</p>
       <h1 class="app-page-title">ปัญหา / ซัพพอร์ต</h1>
     </div>
-    @if (canCreate()) {
-      <div class="app-header-actions">
+    <div class="app-header-actions">
+      <a mat-stroked-button routerLink="/app/tickets/support-queue">
+        <mat-icon>support_agent</mat-icon>
+        คิวซัพพอร์ต
+      </a>
+      @if (canCreate()) {
         <button mat-flat-button color="primary" type="button" (click)="openCreate()">
           <mat-icon>add</mat-icon>
           เปิดใบแจ้งปัญหา
         </button>
-      </div>
-    }
+      }
+    </div>
   </header>
 
   <div class="app-panel">

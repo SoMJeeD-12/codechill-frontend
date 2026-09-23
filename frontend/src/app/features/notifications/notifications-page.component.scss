@@ -1,0 +1,81 @@
+.app-subtitle {
+  margin: 0.35rem 0 0;
+  color: #5b6762;
+  font-size: 0.9rem;
+}
+
+.notifications-table {
+  .notif-row.is-clickable {
+    cursor: pointer;
+  }
+
+  .notif-row.is-unread td {
+    background: rgb(240 253 250 / 0.55);
+  }
+
+  .is-read {
+    color: #64748b;
+  }
+
+  .notif-title-cell.is-unread strong {
+    font-weight: 700;
+    color: #134e4a;
+  }
+
+  .notif-title-cell.is-read strong {
+    font-weight: 500;
+    color: #64748b;
+  }
+}
+
+.notif-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.notif-dot {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: #0f766e;
+}
+
+.notif-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cell-sub {
+  display: block;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.notif-ref {
+  font-size: 0.82rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.status[data-status='FAILED'] {
+  color: #b91c1c;
+}
+
+.status[data-status='READ'] {
+  color: #64748b;
+}
+
+.status[data-status='SENT'] {
+  color: #0f766e;
+}

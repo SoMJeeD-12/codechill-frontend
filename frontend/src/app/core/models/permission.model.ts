@@ -20,6 +20,9 @@ export type MenuCode =
   | 'surveys'
   | 'documents'
   | 'reports'
+  | 'notifications'
+  | 'ticket-workflow'
+  | 'ticket-admin-queue'
   | 'audit-logs';
 
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete';

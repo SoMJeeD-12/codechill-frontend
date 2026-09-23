@@ -23,6 +23,10 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   surveys: 'survey',
   documents: 'document',
   reports: 'report',
+  notifications: 'notification',
+  'ticket-workflow': 'ticket',
+  /** คิวแอดมิน — เช็ค ticket.assign แยกใน AuthService (ไม่ใช้ .view) */
+  'ticket-admin-queue': 'ticket',
   users: 'user',
   roles: 'role',
   'audit-logs': 'audit_log',

@@ -1,0 +1,148 @@
+<section class="app-page">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">การแจ้งเตือน</h1>
+      <p class="app-subtitle">Inbox ของพนักงานในระบบ — ไม่ใช่การส่งหาลูกค้า</p>
+    </div>
+    <div class="app-header-actions">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
+  </header>
+
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="ui-chips" role="tablist" aria-label="กรองสถานะ">
+        <button
+          type="button"
+          class="ui-chip"
+          [class.is-active]="statusFilter() === 'ALL'"
+          (click)="setStatusFilter('ALL')"
+        >
+          ทั้งหมด
+        </button>
+        @for (s of statuses; track s) {
+          <button
+            type="button"
+            class="ui-chip"
+            [class.is-active]="statusFilter() === s"
+            (click)="setStatusFilter(s)"
+          >
+            {{ statusFilterLabel(s) }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="app-panel-body">
+      <table mat-table [dataSource]="items()" class="data-table notifications-table">
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>หัวข้อ</th>
+          <td
+            mat-cell
+            *matCellDef="let row"
+            class="notif-title-cell"
+            [class.is-unread]="isUnread(row)"
+            [class.is-read]="!isUnread(row)"
+          >
+            <div class="notif-title-row">
+              @if (isUnread(row)) {
+                <span class="notif-dot" aria-hidden="true"></span>
+              }
+              <div class="notif-title-text">
+                <strong>{{ row.title }}</strong>
+                @if (messagePreview(row); as msg) {
+                  <span class="cell-sub">{{ msg }}</span>
+                }
+                @if (refLink(row); as link) {
+                  <a
+                    class="app-link notif-ref"
+                    [routerLink]="link"
+                    (click)="$event.stopPropagation()"
+                  >
+                    เปิดรายละเอียด
+                  </a>
+                }
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="eventType">
+          <th mat-header-cell *matHeaderCellDef>ประเภท</th>
+          <td mat-cell *matCellDef="let row" [class.is-read]="!isUnread(row)">
+            {{ eventLabel(row) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+          <td mat-cell *matCellDef="let row" [class.is-read]="!isUnread(row)">
+            <span class="status" [attr.data-status]="row.status">
+              {{ statusLabel(row) }}
+            </span>
+            @if (row.status === 'FAILED' && row.errorMessage) {
+              <span class="cell-sub" [matTooltip]="row.errorMessage">มีข้อผิดพลาด</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="when">
+          <th mat-header-cell *matHeaderCellDef>เวลา</th>
+          <td mat-cell *matCellDef="let row" [class.is-read]="!isUnread(row)">
+            {{ whenAt(row) | thaiDate }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let row" class="row-actions">
+            @if (isUnread(row)) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="markingId() === row.id"
+                (click)="markRead(row, $event)"
+              >
+                อ่านแล้ว
+              </button>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: columns"
+          class="notif-row"
+          [class.is-unread]="isUnread(row)"
+          [class.is-clickable]="isUnread(row)"
+          (click)="onRowClick(row)"
+        ></tr>
+      </table>
+
+      <app-table-paginator
+        [length]="total()"
+        [pageIndex]="pageIndex()"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="pageSizeOptions"
+        [disabled]="loading()"
+        (page)="onPage($event)"
+      />
+
+      @if (items().length === 0) {
+        <p class="data-empty">
+          @if (loading()) {
+            กำลังโหลด…
+          } @else if (statusFilter() !== 'ALL') {
+            ไม่พบการแจ้งเตือนตามตัวกรองนี้
+          } @else {
+            ยังไม่มีการแจ้งเตือน
+          }
+        </p>
+      }
+    </div>
+  </div>
+</section>

@@ -37,6 +37,8 @@ export interface Ticket {
   reportedAt: string;
   reportedByContactId: number | null;
   receivedByUserId: number | null;
+  /** แอดมินผู้รับคิว (claim) — คนละคนกับ assignedUser / receivedByUser */
+  claimedByAdminUserId: number | null;
   assignedUserId: number | null;
   warrantyId: number | null;
   maContractId: number | null;

@@ -1,0 +1,203 @@
+<section class="app-page">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">คิวซัพพอร์ต</h1>
+      <p class="app-subtitle">รอส่งหัวหน้า · แอดมินส่งกลับมา</p>
+    </div>
+    <div class="app-header-actions">
+      @if (canOpenAdminQueue()) {
+        <a mat-stroked-button routerLink="/app/tickets/admin-queue">คิวแอดมิน</a>
+      }
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
+  </header>
+
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="ui-chips" role="tablist" aria-label="มุมมองคิวซัพพอร์ต">
+        <button
+          type="button"
+          role="tab"
+          class="ui-chip"
+          [class.is-active]="tab() === 'AWAITING_SEND'"
+          [attr.aria-selected]="tab() === 'AWAITING_SEND'"
+          (click)="setTab('AWAITING_SEND')"
+        >
+          รอส่งหัวหน้า
+          <span class="ui-chip__count">{{ sendTotal() }}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="ui-chip"
+          [class.is-active]="tab() === 'RETURNED'"
+          [attr.aria-selected]="tab() === 'RETURNED'"
+          (click)="setTab('RETURNED')"
+        >
+          แอดมินส่งกลับมา
+          <span class="ui-chip__count">{{ returnedTotal() }}</span>
+        </button>
+      </div>
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ค้นหาเลขใบ / หัวข้อ / ลูกค้า"
+            aria-label="ค้นหาคิวซัพพอร์ต"
+          />
+        </label>
+      </div>
+    </div>
+
+    <div class="app-panel-body">
+      @if (loading() && items().length === 0) {
+        <p class="data-empty">กำลังโหลด…</p>
+      } @else {
+        <table mat-table [dataSource]="displayedItems()" class="data-table">
+          <ng-container matColumnDef="title">
+            <th mat-header-cell *matHeaderCellDef class="col-sticky-start">
+              <button type="button" class="sort-header" (click)="toggleSort('title')">
+                หัวข้อ
+                <mat-icon>{{ sortIcon('title') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row" class="col-sticky-start">
+              <a
+                class="app-link cell-clip"
+                [routerLink]="['/app/tickets', row.id]"
+                [matTooltip]="row.title"
+                matTooltipShowDelay="400"
+              >
+                {{ row.title }}
+              </a>
+              <span class="cell-sub">{{ row.ticketNo || '#' + row.id }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="project">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('project')">
+                โปรเจกต์
+                <mat-icon>{{ sortIcon('project') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip" [matTooltip]="projectLabel(row)" matTooltipShowDelay="400">
+                {{ projectLabel(row) }}
+              </span>
+              <span class="cell-sub">{{ row.customer?.name || '—' }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="receiver">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('receiver')">
+                ผู้รับเรื่อง
+                <mat-icon>{{ sortIcon('receiver') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip">{{ userName(row.receivedByUserId) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="queueAdmin">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('queueAdmin')">
+                แอดมินผู้รับคิว
+                <mat-icon>{{ sortIcon('queueAdmin') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip">{{ userName(row.claimedByAdminUserId) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="assignee">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('assignee')">
+                ผู้แก้
+                <mat-icon>{{ sortIcon('assignee') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip">{{ userName(row.assignedUserId) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="reportedAt">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('reportedAt')">
+                วันรับเรื่อง
+                <mat-icon>{{ sortIcon('reportedAt') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.reportedAt ? (row.reportedAt | thaiDate: 'date') : '—' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('status')">
+                สถานะ
+                <mat-icon>{{ sortIcon('status') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="status" [attr.data-status]="row.status">{{ statusLabel(row) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="col-sticky-end"></th>
+            <td mat-cell *matCellDef="let row" class="row-actions col-sticky-end">
+              @if (tab() === 'AWAITING_SEND') {
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() === row.id"
+                  (click)="sendToHead(row)"
+                >
+                  ส่งหัวหน้า
+                </button>
+              } @else {
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() === row.id"
+                  (click)="markNotified(row)"
+                >
+                  บอกลูกค้าแล้ว
+                </button>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+
+        <app-table-paginator
+          [length]="total()"
+          [pageIndex]="pageIndex()"
+          [pageSize]="pageSize()"
+          [pageSizeOptions]="pageSizeOptions"
+          [disabled]="loading()"
+          (page)="onPage($event)"
+        />
+
+        @if (displayedItems().length === 0) {
+          <p class="data-empty">ไม่พบใบในมุมมองนี้</p>
+        }
+      }
+    </div>
+  </div>
+</section>

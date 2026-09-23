@@ -1,6 +1,8 @@
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { startWith } from 'rxjs/operators';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -25,6 +27,7 @@ import {
   Warranty,
   WarrantyStatus,
   warrantyMaLinkLabel,
+  warrantyPeriodPreview,
 } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -263,6 +266,8 @@ export type WarrantyFormDialogData =
       /** ล็อกลูกค้า/โครงการ/การส่งมอบ — กรอกแค่ระยะเดือน */
       lockDelivery?: boolean;
       deliveryLabel?: string;
+      /** วันส่งมอบ — ใช้คำนวณ preview วันเริ่ม = วันถัดไป */
+      deliveredAt?: string | null;
     }
   | null;
 
@@ -318,6 +323,12 @@ export class WarrantyFormDialogComponent {
     this.data && !('id' in this.data) && 'deliveryLabel' in this.data
       ? (this.data.deliveryLabel ?? '')
       : '';
+  readonly deliveredAt =
+    this.data && !('id' in this.data) && 'deliveredAt' in this.data
+      ? (this.data.deliveredAt ?? null)
+      : this.data && 'delivery' in this.data
+        ? (this.data.delivery?.deliveredAt ?? null)
+        : null;
 
   readonly form = this.fb.group({
     customerId: [
@@ -349,6 +360,29 @@ export class WarrantyFormDialogComponent {
         ? (this.data.maContractId ?? null)
         : (null as number | null),
     ],
+  });
+
+  private readonly durationMonthLive = toSignal(
+    this.form.controls.durationMonth.valueChanges.pipe(
+      startWith(this.form.controls.durationMonth.value)
+    ),
+    { initialValue: this.form.controls.durationMonth.value }
+  );
+  private readonly deliveryIdLive = toSignal(
+    this.form.controls.deliveryId.valueChanges.pipe(
+      startWith(this.form.controls.deliveryId.value)
+    ),
+    { initialValue: this.form.controls.deliveryId.value }
+  );
+
+  readonly periodPreview = computed(() => {
+    const months = Number(this.durationMonthLive()) || 0;
+    const deliveryId = this.deliveryIdLive();
+    const deliveryDate =
+      this.deliveredAt ??
+      this.deliveries().find((d) => d.id === deliveryId)?.deliveredAt ??
+      null;
+    return warrantyPeriodPreview(deliveryDate, months);
   });
 
   constructor() {

@@ -75,11 +75,29 @@ export interface TicketListParams {
   billingType?: BillingType;
 }
 
+/** GET /tickets/support-queue?tab= */
+export type SupportQueueTab = 'AWAITING_SEND' | 'RETURNED';
+
+/** GET /tickets/admin-queue?tab= */
+export type AdminQueueTab =
+  | 'AWAITING_CLAIM'
+  | 'CLAIMED'
+  | 'AWAITING_REVIEW'
+  | 'WITH_SUPPORT';
+
+export interface TicketQueueListParams {
+  tab: SupportQueueTab | AdminQueueTab;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 interface ApiTicket extends Omit<Ticket, 'extraCharge' | 'resolutions'> {
   extraCharge?: string | number | null;
   resolutions?: ApiResolution[] | null;
   assignedUser?: UserSummary | null;
   receivedByUser?: UserSummary | null;
+  claimedByAdminUser?: UserSummary | null;
 }
 
 interface ApiResolution extends Omit<TicketResolution, 'hoursSpent'> {
@@ -271,6 +289,58 @@ export class TicketService {
       );
   }
 
+  /** GET /tickets/support-queue?tab=AWAITING_SEND|RETURNED */
+  listSupportQueue(
+    params: { tab: SupportQueueTab; page?: number; limit?: number; search?: string }
+  ): Observable<{ items: Ticket[]; total: number }> {
+    return this.listQueuePage('support-queue', params);
+  }
+
+  /**
+   * GET /tickets/admin-queue?tab=
+   * AWAITING_CLAIM | CLAIMED | AWAITING_REVIEW | WITH_SUPPORT
+   */
+  listAdminQueue(
+    params: { tab: AdminQueueTab; page?: number; limit?: number; search?: string }
+  ): Observable<{ items: Ticket[]; total: number }> {
+    return this.listQueuePage('admin-queue', params);
+  }
+
+  private listQueuePage(
+    path: 'support-queue' | 'admin-queue',
+    params: { tab: string; page?: number; limit?: number; search?: string }
+  ): Observable<{ items: Ticket[]; total: number }> {
+    const { page, limit, tab, search } = params;
+    return this.http
+      .get<ApiTicket[] | { items: ApiTicket[]; total?: number }>(`${this.base}/${path}`, {
+        params: toHttpParams({
+          tab,
+          page: page ?? 1,
+          limit: Math.min(limit ?? 20, 100),
+          search: search?.trim() || undefined,
+        }),
+      })
+      .pipe(
+        map((body) => {
+          const pageBody = asPage(body);
+          return {
+            items: pageBody.items.map((row) => this.normalizeTicket(row)),
+            total: pageBody.total,
+          };
+        }),
+        tap((pageBody) => {
+          this.items.update((all) => {
+            const byId = new Map(all.map((t) => [t.id, t]));
+            for (const row of pageBody.items) {
+              byId.set(row.id, this.mergePreservingResolutions(byId.get(row.id), row));
+            }
+            return Array.from(byId.values());
+          });
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   getById(id: number): Ticket | undefined {
     return this.items().find((t) => t.id === id);
   }
@@ -423,6 +493,46 @@ export class TicketService {
       );
   }
 
+  /** PATCH /tickets/:id/send-to-admin — ซัพพอร์ตส่งเข้าคิวกลาง (ไม่มี body) */
+  sendToAdmin(id: number): Observable<Ticket> {
+    return this.patchTicketAction(id, 'send-to-admin');
+  }
+
+  /** PATCH /tickets/:id/claim — แอดมินรับคิว → เป็น claimedByAdminUser */
+  claim(id: number): Observable<Ticket> {
+    return this.patchTicketAction(id, 'claim');
+  }
+
+  /**
+   * PATCH /tickets/:id/return-to-support
+   * ใบต้องเป็น RESOLVED ก่อน (พนักงานบันทึก resolution แล้ว)
+   */
+  returnToSupport(id: number): Observable<Ticket> {
+    return this.patchTicketAction(id, 'return-to-support');
+  }
+
+  /** PATCH /tickets/:id/customer-notified — ซัพพอร์ตบอกลูกค้าแล้ว */
+  customerNotified(id: number, opts?: { note?: string | null }): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(
+        `${this.base}/${id}/customer-notified`,
+        pruneUndefined({ note: opts?.note?.trim() || undefined })
+      )
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  private patchTicketAction(id: number, action: string): Observable<Ticket> {
+    return this.http.patch<ApiTicket>(`${this.base}/${id}/${action}`, {}).pipe(
+      map((row) => this.normalizeTicket(row)),
+      tap((row) => this.items.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
   /**
    * PATCH /tickets/:id/start
    * ผู้รับผิดชอบเท่านั้น — หลังสถานะ ASSIGNED → IN_PROGRESS
@@ -519,6 +629,8 @@ export class TicketService {
       projectId: row.projectId ?? null,
       reportedByContactId: row.reportedByContactId ?? null,
       receivedByUserId: row.receivedByUserId ?? null,
+      claimedByAdminUserId:
+        row.claimedByAdminUserId ?? row.claimedByAdminUser?.id ?? null,
       assignedUserId: row.assignedUserId ?? null,
       warrantyId: row.warrantyId ?? null,
       maContractId: row.maContractId ?? null,
@@ -577,6 +689,9 @@ export class TicketService {
     }
     if (row.receivedByUser) {
       this.usersApi.upsertLocal(row.receivedByUser);
+    }
+    if (row.claimedByAdminUser) {
+      this.usersApi.upsertLocal(row.claimedByAdminUser);
     }
   }
 }

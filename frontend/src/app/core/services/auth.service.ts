@@ -293,6 +293,10 @@ export class AuthService {
     if (menuCode === 'tasks-review') {
       return this.canAccessTaskReviewQueue();
     }
+    // คิวแอดมิน — SUPER_ADMIN/ADMIN หรือ ticket.assign (ซัพพอร์ตเดโมไม่มีโดยเจตนา)
+    if (menuCode === 'ticket-admin-queue') {
+      return this.canAccessTicketAdminQueue();
+    }
     // SUPER_ADMIN / ADMIN เห็นและใช้ทุกเมนูอื่น
     if (
       session.user.accountType === 'SUPER_ADMIN' ||
@@ -370,6 +374,9 @@ export class AuthService {
           // ห้ามใช้ task.update / roles.length
           return this.canAccessTaskReviewQueue();
         }
+        if (item.code === 'ticket-admin-queue') {
+          return this.canAccessTicketAdminQueue();
+        }
         return this.hasPermission(item.code, 'view');
       })
       .map((item) => item.code);
@@ -386,6 +393,17 @@ export class AuthService {
       return true;
     }
     return this.hasPermissionCode('task.review');
+  }
+
+  /**
+   * คิวแอดมิน — SUPER_ADMIN/ADMIN หรือ ticket.assign
+   * ซัพพอร์ตเดโมมีแค่ ticket.view → ไม่เห็นเมนูนี้โดยเจตนา
+   */
+  canAccessTicketAdminQueue(): boolean {
+    if (this.isAdminLevel()) {
+      return true;
+    }
+    return this.hasPermissionCode('ticket.assign');
   }
 
   /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — Admin ระดับระบบเข้าเมนูได้แม้ permissions จาก API ไม่ครบ */

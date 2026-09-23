@@ -62,7 +62,7 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
 } from '../../core/models/ticket.model';
-import { WARRANTY_STATUS_LABELS, Warranty, warrantyMaLinkLabel } from '../../core/models/warranty.model';
+import { WARRANTY_STATUS_LABELS, Warranty, warrantyMaLinkLabel, readWarrantyConfirmMock, writeWarrantyConfirmMock } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
@@ -304,11 +304,14 @@ export class ProjectDetailPageComponent implements OnInit {
       },
     ];
     if (this.canViewWarranties()) {
+      const confirmed = readWarrantyConfirmMock(this.projectId);
       items.push({
         id: 'warranty',
         ok: issuedWarranty || canIssue,
         label: issuedWarranty
-          ? 'ออกประกันแล้ว'
+          ? confirmed
+            ? 'มีประกันแล้ว · ยืนยันแล้ว (mock)'
+            : 'มีประกันแล้ว — ยืนยันหลังส่งมอบได้'
           : canIssue
             ? 'พร้อมออกประกัน'
             : 'ยังออกประกันไม่ได้',
@@ -1381,15 +1384,106 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   deliveryRowActions(row: Delivery): RowAction[] {
-    return [
+    const actions: RowAction[] = [
       { label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openDeliveryDetail(row) },
-      {
+    ];
+    const existing = this.existingWarrantyForDelivery(row);
+    if (existing) {
+      actions.push({
+        label: 'ยืนยันประกัน',
+        icon: 'verified_user',
+        disabled: !(row.canIssueWarranty || row.acceptanceStatus === 'ACCEPTED'),
+        run: () => this.openConfirmExistingWarranty(existing, row),
+      });
+    } else {
+      actions.push({
         label: 'ออกประกัน',
         icon: 'verified',
         disabled: !row.canIssueWarranty,
         run: () => this.openIssueWarranty(row),
+      });
+    }
+    return actions;
+  }
+
+  /** มีประกันของโปรเจกต์/ใบส่งมอบนี้อยู่แล้วหรือไม่ */
+  private existingWarrantyForDelivery(row: Delivery): Warranty | null {
+    const list = this.warranties();
+    const byDelivery = list.find((w) => w.deliveryId === row.id);
+    if (byDelivery) {
+      return byDelivery;
+    }
+    // พี่เลี้ยง: มีประกันก่อนหน้าแล้ว ไม่ต้องโผล่「ออกประกัน」ซ้ำ — ใช้ใบล่าสุดของโปรเจกต์
+    if (list.length > 0 && (row.canIssueWarranty || row.isFinal)) {
+      return list[0];
+    }
+    return null;
+  }
+
+  openConfirmExistingWarranty(warranty: Warranty, delivery: Delivery): void {
+    const code = warranty.warrantyNo?.trim() || `#${warranty.id}`;
+    const already = readWarrantyConfirmMock(this.projectId);
+    openConfirmDialog(this.dialog, {
+      title: 'ยืนยันการรับประกัน',
+      message: already
+        ? `โปรเจกต์นี้มีประกัน「${code}」อยู่แล้ว และเคยยืนยันใน session นี้แล้ว\n\nยืนยันอีกครั้งว่าลูกค้ายังใช้ประกันนี้หลังส่งมอบ「${delivery.title}」?\n\n(mock · ยังไม่ต่อ API)`
+        : `โปรเจกต์นี้มีประกัน「${code}」อยู่แล้ว — ไม่ต้องออกใบใหม่\n\nยืนยันว่าลูกค้ายังใช้ประกันนี้หลังส่งมอบ「${delivery.title}」?\n\n(mock · ยังไม่ต่อ API)`,
+      confirmLabel: 'ยืนยันประกัน',
+      cancelLabel: 'ปิด',
+      danger: false,
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      writeWarrantyConfirmMock({
+        projectId: this.projectId,
+        warrantyId: warranty.id,
+        confirmedAt: new Date().toISOString(),
+      });
+      this.snack.open(
+        `ยืนยันประกัน「${code}」แล้ว (mock · session เท่านั้น)`,
+        'ปิด',
+        { duration: 3500 }
+      );
+    });
+  }
+
+  openIssueWarranty(delivery: Delivery): void {
+    if (!delivery.canIssueWarranty) {
+      this.snack.open(
+        'ต้องเป็นการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว',
+        'ปิด',
+        { duration: 4000 }
+      );
+      return;
+    }
+    const existing = this.existingWarrantyForDelivery(delivery);
+    if (existing) {
+      this.openConfirmExistingWarranty(existing, delivery);
+      return;
+    }
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    const deliveryLabel = `${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
+    const warrantyRef = this.dialog.open(WarrantyFormDialogComponent, {
+      ...FORM_DIALOG,
+      data: {
+        customerId: project.customerId,
+        projectId: project.id,
+        deliveryId: delivery.id,
+        lockDelivery: true,
+        deliveryLabel,
+        deliveredAt: delivery.deliveredAt,
       },
-    ];
+    });
+    warrantyRef.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.snack.open('ออกประกันแล้ว', 'ปิด', { duration: 2500 });
+        this.refresh();
+      }
+    });
   }
 
   documentRowActions(row: ApiProjectDocument): RowAction[] {
@@ -1500,38 +1594,6 @@ export class ProjectDetailPageComponent implements OnInit {
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 6000 }),
       });
-  }
-
-  openIssueWarranty(delivery: Delivery): void {
-    if (!delivery.canIssueWarranty) {
-      this.snack.open(
-        'ต้องเป็นการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว',
-        'ปิด',
-        { duration: 4000 }
-      );
-      return;
-    }
-    const project = this.project();
-    if (!project) {
-      return;
-    }
-    const deliveryLabel = `${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
-    const warrantyRef = this.dialog.open(WarrantyFormDialogComponent, {
-      ...FORM_DIALOG,
-      data: {
-        customerId: project.customerId,
-        projectId: project.id,
-        deliveryId: delivery.id,
-        lockDelivery: true,
-        deliveryLabel,
-      },
-    });
-    warrantyRef.afterClosed().subscribe((saved) => {
-      if (saved) {
-        this.snack.open('ออกประกันแล้ว', 'ปิด', { duration: 2500 });
-        this.refresh();
-      }
-    });
   }
 }
 

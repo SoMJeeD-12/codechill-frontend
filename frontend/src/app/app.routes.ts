@@ -148,10 +148,26 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'tickets',
-        canActivate: [permissionGuard('tickets')],
+        path: 'tickets/support-queue',
+        canActivate: [permissionGuard('ticket-workflow')],
         loadComponent: () =>
-          import('./features/tickets/tickets-page.component').then((m) => m.TicketsPageComponent),
+          import('./features/tickets/support-queue-page.component').then(
+            (m) => m.SupportQueuePageComponent
+          ),
+      },
+      {
+        path: 'tickets/admin-queue',
+        canActivate: [permissionGuard('ticket-admin-queue')],
+        loadComponent: () =>
+          import('./features/tickets/admin-queue-page.component').then(
+            (m) => m.AdminQueuePageComponent
+          ),
+      },
+      /** ลิงก์เก่าจาก mock คิวดึง */
+      {
+        path: 'tickets/workflow-mock',
+        redirectTo: 'tickets/admin-queue',
+        pathMatch: 'full',
       },
       {
         path: 'tickets/create',
@@ -160,6 +176,12 @@ export const routes: Routes = [
           import('./features/tickets/ticket-create-page.component').then(
             (m) => m.TicketCreatePageComponent
           ),
+      },
+      {
+        path: 'tickets',
+        canActivate: [permissionGuard('tickets')],
+        loadComponent: () =>
+          import('./features/tickets/tickets-page.component').then((m) => m.TicketsPageComponent),
       },
       {
         path: 'tickets/:id',
@@ -201,6 +223,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/follow-ups/follow-ups-page.component').then(
             (m) => m.FollowUpsPageComponent
+          ),
+      },
+      {
+        path: 'notifications',
+        canActivate: [permissionGuard('notifications')],
+        loadComponent: () =>
+          import('./features/notifications/notifications-page.component').then(
+            (m) => m.NotificationsPageComponent
           ),
       },
       {

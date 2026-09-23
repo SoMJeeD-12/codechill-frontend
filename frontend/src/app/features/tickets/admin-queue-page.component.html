@@ -1,0 +1,220 @@
+<section class="app-page">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">คิวแอดมิน</h1>
+      <p class="app-subtitle">รับเรื่อง · มอบหมาย · ตรวจผ่านส่งซัพพอร์ต</p>
+    </div>
+    <div class="app-header-actions">
+      <a mat-stroked-button routerLink="/app/tickets/support-queue">คิวซัพพอร์ต</a>
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        รีเฟรช
+      </button>
+    </div>
+  </header>
+
+  <div class="app-panel">
+    <div class="app-panel-toolbar">
+      <div class="ui-chips" role="tablist" aria-label="มุมมองคิวแอดมิน">
+        @for (t of tabs; track t.id) {
+          <button
+            type="button"
+            role="tab"
+            class="ui-chip"
+            [class.is-active]="tab() === t.id"
+            [attr.aria-selected]="tab() === t.id"
+            (click)="setTab(t.id)"
+          >
+            {{ t.label }}
+            <span class="ui-chip__count">{{ tabCount(t.id) }}</span>
+          </button>
+        }
+      </div>
+      <div class="app-panel-toolbar-row">
+        <label class="app-search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="ค้นหาเลขใบ / หัวข้อ / ลูกค้า"
+            aria-label="ค้นหาคิวแอดมิน"
+          />
+        </label>
+      </div>
+    </div>
+
+    <div class="app-panel-body">
+      @if (loading() && items().length === 0) {
+        <p class="data-empty">กำลังโหลด…</p>
+      } @else {
+        <table mat-table [dataSource]="displayedItems()" class="data-table">
+          <ng-container matColumnDef="title">
+            <th mat-header-cell *matHeaderCellDef class="col-sticky-start">
+              <button type="button" class="sort-header" (click)="toggleSort('title')">
+                หัวข้อ
+                <mat-icon>{{ sortIcon('title') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row" class="col-sticky-start">
+              <a
+                class="app-link cell-clip"
+                [routerLink]="['/app/tickets', row.id]"
+                [matTooltip]="row.title"
+                matTooltipShowDelay="400"
+              >
+                {{ row.title }}
+              </a>
+              <span class="cell-sub">{{ row.ticketNo || '#' + row.id }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="project">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('project')">
+                โปรเจกต์
+                <mat-icon>{{ sortIcon('project') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip" [matTooltip]="projectLabel(row)" matTooltipShowDelay="400">
+                {{ projectLabel(row) }}
+              </span>
+              <span class="cell-sub">{{ row.customer?.name || '—' }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="receiver">
+            <th mat-header-cell *matHeaderCellDef class="col-hide-md">
+              <button type="button" class="sort-header" (click)="toggleSort('receiver')">
+                ผู้รับเรื่อง
+                <mat-icon>{{ sortIcon('receiver') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row" class="col-hide-md">
+              <span class="cell-clip">{{ userName(row.receivedByUserId) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="queueAdmin">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('queueAdmin')">
+                แอดมินผู้รับคิว
+                <mat-icon>{{ sortIcon('queueAdmin') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip">{{ userName(row.claimedByAdminUserId) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="assignee">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('assignee')">
+                ผู้แก้
+                <mat-icon>{{ sortIcon('assignee') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip">{{ userName(row.assignedUserId) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="reportedAt">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('reportedAt')">
+                วันรับเรื่อง
+                <mat-icon>{{ sortIcon('reportedAt') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.reportedAt ? (row.reportedAt | thaiDate: 'date') : '—' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('status')">
+                สถานะ
+                <mat-icon>{{ sortIcon('status') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <span class="status" [attr.data-status]="row.status">{{ statusLabel(row) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="col-sticky-end"></th>
+            <td mat-cell *matCellDef="let row" class="row-actions col-sticky-end">
+              @if (tab() === 'AWAITING_CLAIM') {
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() === row.id"
+                  (click)="claimTicket(row)"
+                >
+                  รับเรื่อง
+                </button>
+              } @else if (tab() === 'CLAIMED') {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="assign-field">
+                  <mat-label>พนักงาน</mat-label>
+                  <mat-select
+                    [value]="pickFor(row)"
+                    (selectionChange)="setAssignPick(row.id, $event.value)"
+                  >
+                    @for (u of assignableUsers(); track u.id) {
+                      <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() === row.id || !pickFor(row)"
+                  (click)="assignTicket(row)"
+                >
+                  มอบหมาย
+                </button>
+              } @else if (tab() === 'AWAITING_REVIEW') {
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() === row.id || row.status !== 'RESOLVED'"
+                  [matTooltip]="
+                    row.status !== 'RESOLVED'
+                      ? 'ใบต้องเป็น RESOLVED ก่อน'
+                      : 'ตรวจผ่านแล้วส่งซัพพอร์ต'
+                  "
+                  (click)="returnToSupport(row)"
+                >
+                  ส่งซัพพอร์ต
+                </button>
+              } @else {
+                <span class="muted">รอซัพพอร์ตบอกลูกค้า</span>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+
+        <app-table-paginator
+          [length]="total()"
+          [pageIndex]="pageIndex()"
+          [pageSize]="pageSize()"
+          [pageSizeOptions]="pageSizeOptions"
+          [disabled]="loading()"
+          (page)="onPage($event)"
+        />
+
+        @if (displayedItems().length === 0) {
+          <p class="data-empty">ไม่พบใบในมุมมองนี้</p>
+        }
+      }
+    </div>
+  </div>
+</section>
