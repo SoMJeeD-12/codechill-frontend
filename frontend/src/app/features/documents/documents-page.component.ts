@@ -1,4 +1,4 @@
-﻿import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -466,7 +466,7 @@ export class DocumentUploadDialogComponent {
     const raw = this.form.getRawValue();
     const project = this.projectsApi.getProject(Number(raw.projectId));
     if (!project) {
-      this.error.set('ไม่พบโปรเจค');
+      this.error.set('ไม่พบโปรเจกต์');
       return;
     }
     this.saving.set(true);

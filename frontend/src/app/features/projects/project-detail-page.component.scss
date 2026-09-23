@@ -215,6 +215,23 @@
   }
 }
 
+.ma-quota-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  &.is-exhausted,
+  .is-over {
+    color: #b91c1c;
+  }
+
+  &__warn {
+    margin-left: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #b91c1c;
+  }
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.75rem;

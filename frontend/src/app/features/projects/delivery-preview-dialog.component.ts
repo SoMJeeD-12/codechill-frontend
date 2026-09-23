@@ -126,7 +126,7 @@ export interface DeliveryPreviewDialogData {
                 } @else {
                   <span>{{ attachment?.fileName || '—' }}</span>
                   <p class="file-miss">
-                    {{ filesError() || 'ไม่พบไฟล์ในเอกสารโปรเจค จึงเปิดดูหรือดาวน์โหลดไม่ได้' }}
+                    {{ filesError() || 'ไม่พบไฟล์ในเอกสารโปรเจกต์ จึงเปิดดูหรือดาวน์โหลดไม่ได้' }}
                   </p>
                 }
               </dd>

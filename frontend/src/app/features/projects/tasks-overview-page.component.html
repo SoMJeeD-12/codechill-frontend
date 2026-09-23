@@ -4,7 +4,7 @@
       <h1 class="app-page-title">ภาพรวมงาน</h1>
     </div>
     <div class="app-header-actions">
-      <a mat-stroked-button routerLink="/app/projects">รายการโปรเจค</a>
+      <a mat-stroked-button routerLink="/app/projects">รายการโปรเจกต์</a>
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช
@@ -206,7 +206,7 @@
             </td>
           </ng-container>
           <ng-container matColumnDef="project">
-            <th mat-header-cell *matHeaderCellDef>โปรเจค</th>
+            <th mat-header-cell *matHeaderCellDef>โปรเจกต์</th>
             <td mat-cell *matCellDef="let row" [class.dim]="isClosedProject(row)">
               <span class="cell-clip" [title]="projectLabel(row)">{{ projectLabel(row) }}</span>
             </td>

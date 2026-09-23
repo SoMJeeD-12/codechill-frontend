@@ -52,7 +52,7 @@ export interface Project {
   updatedAt: string;
 }
 
-/** GET /projects/:id/report — สรุปตัวเลขรายโปรเจค (สิทธิ์ project.view) */
+/** GET /projects/:id/report — สรุปตัวเลขรายโปรเจกต์ (สิทธิ์ project.view) */
 export interface ProjectReport {
   projectId: number | null;
   /** object เสมอ — ไม่มีงาน percent=0, totalTasks=0 */
@@ -166,7 +166,7 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   DRAFT: 'ร่าง',
   IN_PROGRESS: 'กำลังดำเนินการ',
   DELIVERED: 'ส่งมอบแล้ว',
-  CLOSED: 'ปิดโปรเจค',
+  CLOSED: 'ปิดโปรเจกต์',
   CANCELLED: 'ยกเลิก',
 };
 

@@ -131,7 +131,7 @@ export class FollowUpService {
     const hasProject = input.projectId != null && input.projectId > 0;
     const hasCustomer = input.customerId != null && input.customerId > 0;
     if (!input.title.trim() || !input.dueDate || (!hasProject && !hasCustomer)) {
-      return throwError(() => new Error('กรุณากรอกหัวข้อ โปรเจคหรือลูกค้า และวันครบกำหนด'));
+      return throwError(() => new Error('กรุณากรอกหัวข้อ โปรเจกต์หรือลูกค้า และวันครบกำหนด'));
     }
     return this.http
       .post<FollowUp>(

@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
@@ -53,7 +53,7 @@ import { CustomerRecordPreviewDialogComponent } from '../customers/customer-reco
 import { createTableSort } from '../../shared/utils/table-sort';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
-/** preset เมื่อสร้างจากหน้าโปรเจค/ลูกค้า */
+/** preset เมื่อสร้างจากหน้าโปรเจกต์/ลูกค้า */
 export type FollowUpFormPreset = {
   customerId?: number;
   projectId?: number;
@@ -577,7 +577,7 @@ export class FollowUpFormDialogComponent {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       if (!this.withoutProject() && !this.form.getRawValue().projectId) {
-        this.error.set('กรุณาเลือกโปรเจค');
+        this.error.set('กรุณาเลือกโปรเจกต์');
         this.projectSearchControl.markAsTouched();
       }
       return;

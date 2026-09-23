@@ -2,7 +2,7 @@
 
 const FORM_DIALOG_PANEL = 'app-form-dialog';
 
-/** ฟอร์มใหญ่ 2 คอลัมน์ (โปรเจค · ใบแจ้งปัญหา · บทบาท ฯลฯ) */
+/** ฟอร์มใหญ่ 2 คอลัมน์ (โปรเจกต์ · ใบแจ้งปัญหา · บทบาท ฯลฯ) */
 export const FORM_DIALOG_WIDE = {
   width: '1280px',
   maxWidth: '98vw',

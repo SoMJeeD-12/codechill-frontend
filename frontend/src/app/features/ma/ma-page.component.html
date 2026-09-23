@@ -19,7 +19,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="เลขที่สัญญา / แผน / ลูกค้า / โปรเจค"
+            placeholder="เลขที่สัญญา / แผน / ลูกค้า / โปรเจกต์"
             aria-label="ค้นหาสัญญา MA"
           />
         </label>
@@ -54,7 +54,7 @@
         <ng-container matColumnDef="project">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('project')">
-              โปรเจค / ลูกค้า
+              โปรเจกต์ / ลูกค้า
               <mat-icon>{{ sortIcon('project') }}</mat-icon>
             </button>
           </th>
@@ -99,7 +99,7 @@
         <ng-container matColumnDef="fee">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('fee')">
-              มูลค่ารวมสัญญา
+              มูลค่า
               <mat-icon>{{ sortIcon('fee') }}</mat-icon>
             </button>
           </th>

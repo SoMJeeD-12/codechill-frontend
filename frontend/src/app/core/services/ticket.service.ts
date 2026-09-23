@@ -183,11 +183,11 @@ export class TicketService {
       );
   }
 
-  /** ดึงครบทุกหน้า (limit ≤ 100 ต่อครั้ง) — ใช้แท็บปัญหาของโปรเจค / รายการที่ต้องครบ */
+  /** ดึงครบทุกหน้า (limit ≤ 100 ต่อครั้ง) — ใช้แท็บปัญหาของโปรเจกต์ / รายการที่ต้องครบ */
   listAll(params: Omit<TicketListParams, 'page' | 'limit'> = {}): Observable<Ticket[]> {
     return fetchAllPages((page, limit) => this.listPage({ ...params, page, limit })).pipe(
       tap((rows) => {
-        // merge — ห้าม set ทับทั้ง store (เช่นโหลดแค่ใบของโปรเจคเดียว)
+        // merge — ห้าม set ทับทั้ง store (เช่นโหลดแค่ใบของโปรเจกต์เดียว)
         // คง resolutions จาก cache ถ้า list ไม่ส่งมา
         this.items.update((all) => {
           const byId = new Map(all.map((t) => [t.id, t]));

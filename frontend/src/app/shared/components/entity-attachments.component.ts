@@ -20,7 +20,7 @@ import { ThaiDatePipe } from '../pipes/thai-date.pipe';
 
 /**
  * รายการไฟล์แนบตาม refType + refId — GET/POST/DELETE /api/attachments
- * ไม่ใช้กับเอกสารโปรเจค
+ * ไม่ใช้กับเอกสารโปรเจกต์
  */
 @Component({
   selector: 'app-entity-attachments',

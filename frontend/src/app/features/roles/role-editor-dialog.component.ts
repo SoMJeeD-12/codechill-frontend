@@ -32,7 +32,7 @@ const MODULE_LABELS: Record<string, string> = {
   customer: 'ลูกค้า',
   contact: 'ผู้ติดต่อ',
   communication_log: 'ประวัติการติดต่อ',
-  project: 'โปรเจค',
+  project: 'โปรเจกต์',
   task: 'งานย่อย',
   ticket: 'ปัญหา / ซัพพอร์ต',
   warranty: 'การรับประกัน',

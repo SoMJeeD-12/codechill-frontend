@@ -58,7 +58,7 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   me: { title: 'งานที่มอบหมาย', subtitle: '' },
   unassigned: { title: 'งานที่ยังไม่มอบหมาย', subtitle: '' },
   doing: { title: 'งานกำลังดำเนินการ', subtitle: '' },
-  review: { title: 'งานรอตรวจ', subtitle: 'งานที่ส่งตรวจแล้ว รออนุมัติ' },
+  review: { title: 'งานตรวจ', subtitle: 'งานที่ส่งตรวจแล้ว รออนุมัติ' },
   overdue: { title: 'งานเกินกำหนด', subtitle: '' },
   board: { title: 'กระดานงาน', subtitle: '' },
 };
@@ -480,7 +480,7 @@ export class TasksPageComponent implements OnInit {
 
   /**
    * ปุ่มเปลี่ยนสถานะในตาราง
-   * - หน้างานรอตรวจ: ไม่มีปุ่มสถานะในแถว (ใช้「ตรวจงาน」อย่างเดียว)
+   * - หน้างานตรวจ: ไม่มีปุ่มสถานะในแถว (ใช้「ตรวจงาน」อย่างเดียว)
    * - หน้างานที่มอบหมาย: ส่งตรวจได้ ห้ามทำเสร็จ/อนุมัติเอง
    */
   taskRowActions(task: TaskItem): RowAction[] {

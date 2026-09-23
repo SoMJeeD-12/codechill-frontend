@@ -117,7 +117,7 @@ export class TaskEditDialogComponent implements OnInit {
   readonly currentTask = signal<TaskItem | null>(this.data.task);
   readonly status = signal<TaskStatus>(this.data.task?.status ?? 'TODO');
   readonly projectDocs = signal<ApiProjectDocument[]>([]);
-  /** จำนวนเอกสารทั้งโปรเจคตอนยังไม่ค้น — ใช้ตัดสินใจโชว์ช่องค้นหา */
+  /** จำนวนเอกสารทั้งโปรเจกต์ตอนยังไม่ค้น — ใช้ตัดสินใจโชว์ช่องค้นหา */
   readonly projectDocsCatalogTotal = signal(0);
   readonly projectDocSearchControl = this.fb.nonNullable.control('');
   readonly submissionSearchControl = this.fb.nonNullable.control('');
@@ -130,14 +130,14 @@ export class TaskEditDialogComponent implements OnInit {
   readonly submissionsLoading = signal(
     this.isEdit && !(this.data.task?.submissions?.length)
   );
-  /** คลังเอกสารโปรเจค — ค่าเริ่มต้นหุบ เพื่อไม่ปนกับไฟล์ของงาน */
+  /** คลังเอกสารโปรเจกต์ — ค่าเริ่มต้นหุบ เพื่อไม่ปนกับไฟล์ของงาน */
   readonly projectDocsOpen = signal(false);
   readonly showProjectDocSearch = computed(
     () =>
       Math.max(this.projectDocsCatalogTotal(), this.projectDocs().length) >
       this.projectDocsSearchMin
   );
-  /** จำนวนแถวในตารางไฟล์ของงาน — โชว์ค้นหาเมื่อเยอะกว่าเกณฑ์เดียวกับเอกสารโปรเจค */
+  /** จำนวนแถวในตารางไฟล์ของงาน — โชว์ค้นหาเมื่อเยอะกว่าเกณฑ์เดียวกับเอกสารโปรเจกต์ */
   readonly submissionRowCount = computed(() =>
     this.taskSubmissions().reduce((count, sub) => count + Math.max(sub.files.length, 1), 0)
   );
@@ -483,7 +483,7 @@ export class TaskEditDialogComponent implements OnInit {
       return;
     }
     if (kind === 'review') {
-      this.error.set('กรุณาตรวจงานจากหน้า「งานรอตรวจ」');
+      this.error.set('กรุณาตรวจงานจากหน้า「งานตรวจ」');
       return;
     }
     if (this.workflow() === 'assignee' && next === 'DONE') {

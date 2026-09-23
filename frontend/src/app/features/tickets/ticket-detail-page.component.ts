@@ -1,4 +1,4 @@
-﻿import { Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -1459,7 +1459,7 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
 <p class="meta">${escapeHtml(input.ticketNo)} · งานครั้งที่ ${input.round}</p>
 <dl>
   <dt>ลูกค้า</dt><dd>${escapeHtml(input.customerName)}</dd>
-  <dt>โปรเจค</dt><dd>${escapeHtml(input.projectName)}</dd>
+  <dt>โปรเจกต์</dt><dd>${escapeHtml(input.projectName)}</dd>
   <dt>หัวข้อปัญหา</dt><dd>${escapeHtml(input.title)}</dd>
   <dt>สาเหตุ</dt><dd>${escapeHtml(input.rootCause?.trim() || '—')}</dd>
   <dt>วิธีแก้ไข</dt><dd>${escapeHtml(input.detail || '—')}</dd>

@@ -39,7 +39,7 @@ export interface Warranty {
   isCurrentlyActive: boolean;
   daysRemaining: number;
   scopeNote: string | null;
-  /** อ้างอิงสัญญา MA ของโปรเจคเดียวกัน — ไม่บังคับ · ไม่คิดรวมโควตา */
+  /** อ้างอิงสัญญา MA ของโปรเจกต์เดียวกัน — ไม่บังคับ · ไม่คิดรวมโควตา */
   maContractId: number | null;
   maContract: WarrantyMaContractSummary | null;
   createdAt: string;

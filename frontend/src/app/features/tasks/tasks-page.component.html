@@ -8,7 +8,7 @@
     </div>
     <div class="app-header-actions">
       @if (filterProjectId(); as pid) {
-        <a mat-stroked-button [routerLink]="['/app/projects', pid]">กลับโปรเจค</a>
+        <a mat-stroked-button [routerLink]="['/app/projects', pid]">กลับโปรเจกต์</a>
       }
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
@@ -99,7 +99,7 @@
             <ng-container matColumnDef="project">
               <th mat-header-cell *matHeaderCellDef>
                 <button type="button" class="sort-header" (click)="toggleSort('project')">
-                  โปรเจค
+                  โปรเจกต์
                   <mat-icon>{{ sortIcon('project') }}</mat-icon>
                 </button>
               </th>

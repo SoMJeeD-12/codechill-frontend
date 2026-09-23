@@ -23,9 +23,10 @@ import {
   TaskSubmissionFile,
   TaskSummary,
 } from '../models/project.model';
+import { ProjectMaQuotaResponse } from '../models/ma.model';
 import { UserSummary } from '../models/user.model';
 
-/** newCustomer บน CreateProjectDto — สร้างลูกค้าพร้อมโปรเจค (ไม่มี customerId) */
+/** newCustomer บน CreateProjectDto — สร้างลูกค้าพร้อมโปรเจกต์ (ไม่มี customerId) */
 export interface ProjectNewCustomerInput {
   name: string;
   taxId?: string;
@@ -236,7 +237,7 @@ export class ProjectService {
           this.projectsSignal.update((prev) => {
             const prevById = new Map(prev.map((p) => [p.id, p]));
             const merged = list.map((p) => this.mergeProjectRow(p, prevById.get(p.id)));
-            // แบบผู้ติดต่อ: เมื่อกรองตามลูกค้า แทนที่เฉพาะโปรเจคของลูกค้านั้น · รวม CLOSED
+            // แบบผู้ติดต่อ: เมื่อกรองตามลูกค้า แทนที่เฉพาะโปรเจกต์ของลูกค้านั้น · รวม CLOSED
             if (customerId != null && customerId > 0) {
               return [...prev.filter((p) => p.customerId !== customerId), ...merged];
             }
@@ -248,7 +249,7 @@ export class ProjectService {
   }
 
   /**
-   * GET /projects?customerId= — โปรเจคของลูกค้า (รวม CLOSED · ห้ามตัดสถานะ)
+   * GET /projects?customerId= — โปรเจกต์ของลูกค้า (รวม CLOSED · ห้ามตัดสถานะ)
    * ใช้กับดรอปดาวน์หลังเลือกลูกค้า — อย่าใส่รายการทั้งระบบ
    */
   listProjectsByCustomer(customerId: number, limit = 100): Observable<Project[]> {
@@ -273,6 +274,50 @@ export class ProjectService {
       map((row) => this.normalizeProjectReport(row)),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
+  }
+
+  /**
+   * GET /projects/:id/ma-quota — โควตา MA ของโปรเจกต์นี้ (ประเภทเดียว)
+   * สูตรเดียวกับ GET /ma-contracts/:id/quota — ห้ามนับเอง
+   */
+  getProjectMaQuota(
+    projectId: number,
+    onDate?: string
+  ): Observable<ProjectMaQuotaResponse> {
+    return this.http
+      .get<ProjectMaQuotaResponse>(`${this.base}/${projectId}/ma-quota`, {
+        params: toHttpParams({ onDate }),
+      })
+      .pipe(
+        map((body) => this.normalizeProjectMaQuota(projectId, body)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  private normalizeProjectMaQuota(
+    projectId: number,
+    body: ProjectMaQuotaResponse | null | undefined
+  ): ProjectMaQuotaResponse {
+    const items = Array.isArray(body?.items) ? body.items : [];
+    return {
+      projectId: Number(body?.projectId) || projectId,
+      items: items
+        .filter((row) => row?.contract && row?.quota)
+        .map((row) => ({
+          contract: row.contract,
+          quota: {
+            contractId: Number(row.quota.contractId) || row.contract.id,
+            periodYear: Number(row.quota.periodYear) || 0,
+            periodMonth: Number(row.quota.periodMonth) || 0,
+            periodStart: row.quota.periodStart ?? '',
+            periodEnd: row.quota.periodEnd ?? '',
+            quota: Number(row.quota.quota) || 0,
+            used: Number(row.quota.used) || 0,
+            remaining: Number(row.quota.remaining) || 0,
+            isExhausted: row.quota.isExhausted === true,
+          },
+        })),
+    };
   }
 
   getProjectsByCustomer(customerId: number): Project[] {
@@ -389,7 +434,7 @@ export class ProjectService {
     );
   }
 
-  /** PATCH /tasks/{id}/status — เริ่มงาน (DOING) ครั้งแรกจะดันโปรเจคจากร่าง → กำลังดำเนินการ */
+  /** PATCH /tasks/{id}/status — เริ่มงาน (DOING) ครั้งแรกจะดันโปรเจกต์จากร่าง → กำลังดำเนินการ */
   updateTaskStatus(taskId: number, status: TaskStatus): Observable<TaskItem> {
     return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/status`, { status }).pipe(
       map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
@@ -399,7 +444,7 @@ export class ProjectService {
     );
   }
 
-  /** กดเริ่มงานแล้ว โปรเจคยังเป็นร่าง → เปลี่ยนเป็นกำลังดำเนินการอัตโนมัติ */
+  /** กดเริ่มงานแล้ว โปรเจกต์ยังเป็นร่าง → เปลี่ยนเป็นกำลังดำเนินการอัตโนมัติ */
   private promoteDraftProjectIfStarting(
     task: TaskItem,
     status: TaskStatus
@@ -756,7 +801,7 @@ export class ProjectService {
     };
   }
 
-  /** รายการโปรเจคบางครั้งไม่ส่ง progress — เก็บค่าที่เคยโหลดจาก GET รายตัวไว้ */
+  /** รายการโปรเจกต์บางครั้งไม่ส่ง progress — เก็บค่าที่เคยโหลดจาก GET รายตัวไว้ */
   private mergeProjectRow(incoming: Project, existing?: Project): Project {
     if (!existing?.progress || incoming.progress) {
       return incoming;

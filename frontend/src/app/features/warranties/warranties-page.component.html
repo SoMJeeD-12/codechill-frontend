@@ -13,7 +13,7 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="รหัส / ลูกค้า / โปรเจค / การส่งมอบ"
+            placeholder="รหัส / ลูกค้า / โปรเจกต์ / การส่งมอบ"
             aria-label="ค้นหาการรับประกัน"
           />
         </label>
@@ -51,7 +51,7 @@
         <ng-container matColumnDef="project">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('project')">
-              โปรเจค / ลูกค้า
+              โปรเจกต์ / ลูกค้า
               <mat-icon>{{ sortIcon('project') }}</mat-icon>
             </button>
           </th>

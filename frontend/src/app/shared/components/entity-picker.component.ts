@@ -63,7 +63,7 @@ export function searchViaBackend<T>(
 export const searchWithClientFallback = searchViaBackend;
 
 /**
- * ช่องค้นหาแบบเลือกข้อมูล (ลูกค้า / โปรเจค / ผู้ใช้)
+ * ช่องค้นหาแบบเลือกข้อมูล (ลูกค้า / โปรเจกต์ / ผู้ใช้)
  *
  * กติกาตามที่ตกลงไว้:
  * - ยังไม่พิมพ์ = ไม่แสดงรายการอะไรเลย (ไม่ preload ทั้งตาราง)

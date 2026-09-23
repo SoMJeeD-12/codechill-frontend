@@ -1,4 +1,4 @@
-﻿import { Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -686,11 +686,11 @@ export class CustomerDetailPageComponent implements OnInit {
   openLifetimeDetail(lv: CustomerLifetimeValue): void {
     const amount = formatMoneyDisplay(lv.totalContractValue);
     const lines = [
-      `มูลค่าตามสัญญา: ${amount ? `฿${amount}` : '—'}`,
+      `มูลค่า: ${amount ? `฿${amount}` : '—'}`,
       this.oneTimeCompletenessLabel(lv),
       this.lifetimeTooltip(lv),
     ].filter((line) => !!line?.trim());
-    this.openFieldDetail('มูลค่าตามสัญญา', lines.join('\n'));
+    this.openFieldDetail('มูลค่า', lines.join('\n'));
   }
 
   openTicketDetail(ticket: Ticket): void {

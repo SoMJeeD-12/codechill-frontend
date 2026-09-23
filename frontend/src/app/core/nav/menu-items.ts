@@ -7,7 +7,7 @@ import { MenuItem } from '../models/permission.model';
  *   ตั้งค่า    = นาน ๆ ใช้ที
  *
  * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles)
- * เมนูงานย่อยแยกจากโปรเจค — ไม่ปนกับรายการส่งมอบ
+ * เมนูงานย่อยแยกจากโปรเจกต์ — ไม่ปนกับรายการส่งมอบ
  * มุมมองย่อยของ「งานของฉัน」เป็นหัวข้อในหน้า ไม่ใส่เมนูซ้อนใน sidebar
  */
 
@@ -35,8 +35,8 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'projects',
-    label: 'โปรเจค',
-    description: 'รายการและรายละเอียดโปรเจค',
+    label: 'โปรเจกต์',
+    description: 'รายการและรายละเอียดโปรเจกต์',
     icon: 'folder_special',
     route: '/app/projects',
     group: 'main',
@@ -51,7 +51,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tasks-review',
-    label: 'งานรอตรวจ',
+    label: 'งานตรวจ',
     description: 'คิว REVIEW ทั้งระบบ — ผู้ตรวจอนุมัติ',
     icon: 'rate_review',
     route: '/app/tasks/review',
@@ -86,7 +86,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'customer-360',
     label: 'มุมมอง 360°',
-    description: 'เลือกลูกค้า 1 ราย แล้วดูโปรเจค ประกัน MA ปัญหา ติดตาม ในหน้าเดียว',
+    description: 'เลือกลูกค้า 1 ราย แล้วดูโปรเจกต์ ประกัน MA ปัญหา ติดตาม ในหน้าเดียว',
     icon: 'travel_explore',
     route: '/app/customer-360',
     group: 'support',

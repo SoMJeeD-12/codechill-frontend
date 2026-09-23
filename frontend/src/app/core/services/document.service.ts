@@ -52,7 +52,7 @@ export interface DocumentListParams {
   search?: string;
 }
 
-/** พารามิเตอร์รายการเอกสารโปรเจคจาก API จริง */
+/** พารามิเตอร์รายการเอกสารโปรเจกต์จาก API จริง */
 export type ProjectDocumentSortBy =
   | 'id'
   | 'title'
@@ -84,7 +84,7 @@ export interface ProjectDocumentUpdateInput {
 
 /**
  * เอกสารโครงการ (M9)
- * — API จริงใต้โปรเจค: listByProject / uploadToProject / update / remove / download
+ * — API จริงใต้โปรเจกต์: listByProject / uploadToProject / update / remove / download
  * — mock methods เดิมยังอยู่สำหรับ documents-page
  */
 @Injectable({ providedIn: 'root' })
@@ -267,7 +267,7 @@ export class DocumentService {
 
   create(input: DocumentCreateInput): Observable<ProjectDocument> {
     if (!input.title.trim() || !input.projectId || !input.fileName.trim()) {
-      return throwError(() => new Error('กรุณาระบุชื่อเอกสาร โปรเจค และชื่อไฟล์'));
+      return throwError(() => new Error('กรุณาระบุชื่อเอกสาร โปรเจกต์ และชื่อไฟล์'));
     }
     const version = (input.version || 'v1.0').trim();
     const fileName = input.fileName.trim();

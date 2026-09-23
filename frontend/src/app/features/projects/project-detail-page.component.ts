@@ -50,7 +50,13 @@ import {
 import { Contact } from '../../core/models/customer.model';
 import { User } from '../../core/models/user.model';
 import { FollowUp, followUpDisplayStatus } from '../../core/models/follow-up.model';
-import { MA_STATUS_LABELS, MaContract } from '../../core/models/ma.model';
+import {
+  MaContract,
+  ProjectMaQuotaItem,
+  maCoverageLabel,
+  maPlanDisplayName,
+  resolveMaCoverageState,
+} from '../../core/models/ma.model';
 import {
   TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
@@ -61,7 +67,6 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
-import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketService } from '../../core/services/ticket.service';
@@ -131,7 +136,6 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly ticketsApi = inject(TicketService);
   private readonly ticketDemoOverlay = inject(TicketDemoOverlayService);
-  private readonly maApi = inject(MaService);
   private readonly quickActions = inject(QuickActionsService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
@@ -170,17 +174,17 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly followUpsLoading = signal(false);
   readonly followUpSearch = signal('');
   readonly followUpSearchControl = this.fb.nonNullable.control('');
-  /** ประกันที่ออกแล้วของโปรเจคนี้ — แสดงในแท็บส่งมอบ */
+  /** ประกันที่ออกแล้วของโปรเจกต์นี้ — แสดงในแท็บส่งมอบ */
   readonly warranties = signal<Warranty[]>([]);
-  /** ใบแจ้งปัญหาของโปรเจคนี้ */
+  /** ใบแจ้งปัญหาของโปรเจกต์นี้ */
   readonly projectTickets = signal<Ticket[]>([]);
   readonly ticketsLoading = signal(false);
   readonly ticketsLoadError = signal<string | null>(null);
   readonly ticketSearch = signal('');
   readonly ticketSearchControl = this.fb.nonNullable.control('');
-  /** สัญญา MA ของโปรเจคนี้ */
-  readonly maContracts = signal<MaContract[]>([]);
-  readonly maLoading = signal(false);
+  /** GET /projects/:id/ma-quota — สัญญา + โควตา (ประเภทเดียว) ของโปรเจกต์ */
+  readonly maQuotaItems = signal<ProjectMaQuotaItem[]>([]);
+  readonly maQuotaLoading = signal(false);
   /** สรุปตัวเลขจาก GET /projects/:id/report — ไม่ประกอบเองจากแท็บ */
   readonly projectReport = signal<ProjectReport | null>(null);
   readonly statusLabels = PROJECT_STATUS_LABELS;
@@ -192,7 +196,6 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantyStatusLabels = WARRANTY_STATUS_LABELS;
   readonly ticketStatusLabels = TICKET_STATUS_LABELS;
   readonly ticketPriorityLabels = TICKET_PRIORITY_LABELS;
-  readonly maStatusLabels = MA_STATUS_LABELS;
   readonly acceptanceLabels = DELIVERY_ACCEPTANCE_LABELS;
   readonly acceptances = Object.keys(DELIVERY_ACCEPTANCE_LABELS) as DeliveryAcceptance[];
   readonly users = this.usersApi.assignableTask;
@@ -210,7 +213,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantyColumns = ['warrantyNo', 'delivery', 'period', 'daysLeft', 'maLink', 'status'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
-  readonly maColumns = ['contractNo', 'plan', 'period', 'status'];
+  readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod'];
   readonly documentColumns = ['title', 'fileSize', 'uploadedBy', 'createdAt', 'actions'];
 
   /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
@@ -252,7 +255,7 @@ export class ProjectDetailPageComponent implements OnInit {
   /**
    * ขั้นถัดไปที่กดมือได้:
    * - ร่าง → กำลังดำเนินการ
-   * - ส่งมอบแล้ว → ปิดโปรเจค (ถึงขั้นนี้ได้ก็ต่อเมื่อ BE ยอมรับรอบสุดท้ายแล้ว)
+   * - ส่งมอบแล้ว → ปิดโปรเจกต์ (ถึงขั้นนี้ได้ก็ต่อเมื่อ BE ยอมรับรอบสุดท้ายแล้ว)
    * ส่งมอบแล้วจาก IN_PROGRESS ให้ BE เปลี่ยนเอง — ห้ามกดมือ
    */
   readonly nextProjectStatus = computed((): ProjectStatus | null => {
@@ -315,7 +318,7 @@ export class ProjectDetailPageComponent implements OnInit {
   });
   /**
    * แถบขั้นถัดไปในแท็บส่งมอบ — โชว์เฉพาะตอนยังมีสิ่งที่ต้องทำ
-   * (ไม่โชว์เช็คลิสต์ครบแล้ว / โปรเจคปิด — รบกวนตอนเข้ามาดู)
+   * (ไม่โชว์เช็คลิสต์ครบแล้ว / โปรเจกต์ปิด — รบกวนตอนเข้ามาดู)
    */
   readonly deliveryNextHint = computed(() => {
     const status = this.project()?.status;
@@ -329,7 +332,7 @@ export class ProjectDetailPageComponent implements OnInit {
     if (status === 'DRAFT') {
       // ปุ่มเริ่มอยู่ที่หัวหน้า「เริ่มงาน」แล้ว — แถบนี้แค่บอกเหตุผล ไม่ซ้ำปุ่ม
       return {
-        title: 'โปรเจคยังเป็นร่าง',
+        title: 'โปรเจกต์ยังเป็นร่าง',
         detail:
           'กด「เริ่มงาน」ด้านบนก่อน จึงจะบันทึกส่งมอบและออกประกันได้',
         blockers: [] as string[],
@@ -553,6 +556,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantiesPager = createClientPager(this.filteredWarranties);
   readonly followUpsPager = createClientPager(this.filteredFollowUps);
   readonly projectTicketsPager = createClientPager(this.filteredProjectTickets);
+  readonly maQuotaPager = createClientPager(this.maQuotaItems);
 
   private projectId = 0;
 
@@ -582,7 +586,7 @@ export class ProjectDetailPageComponent implements OnInit {
     }
   }
 
-  /** แท็บถูกสร้างหลังโปรเจคโหลด — ตั้ง index อีกรอบหลัง MatTabGroup init */
+  /** แท็บถูกสร้างหลังโปรเจกต์โหลด — ตั้ง index อีกรอบหลัง MatTabGroup init */
   private queueDocumentsTab(): void {
     if (!this.canViewDocuments()) {
       return;
@@ -748,7 +752,7 @@ export class ProjectDetailPageComponent implements OnInit {
   openEditProject(): void {
     const project = this.project();
     if (!project || !this.canUpdateProject()) {
-      this.snack.open('ไม่มีสิทธิ์แก้ไขโปรเจค', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์แก้ไขโปรเจกต์', 'ปิด', { duration: 3000 });
       return;
     }
     const ref = this.dialog.open(ProjectFormDialogComponent, {
@@ -774,7 +778,7 @@ export class ProjectDetailPageComponent implements OnInit {
         );
       } else if (status === 'DELIVERED') {
         this.snack.open(
-          'ปิดโปรเจคได้เมื่อมีการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว',
+          'ปิดโปรเจกต์ได้เมื่อมีการส่งมอบครั้งสุดท้ายที่ลูกค้ายอมรับแล้ว',
           'ปิด',
           { duration: 4000 }
         );
@@ -800,7 +804,7 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     if (status === 'CLOSED') {
       if (project.status !== 'DELIVERED') {
-        this.snack.open('ต้องเป็นสถานะ「ส่งมอบแล้ว」ก่อนปิดโปรเจค', 'ปิด', {
+        this.snack.open('ต้องเป็นสถานะ「ส่งมอบแล้ว」ก่อนปิดโปรเจกต์', 'ปิด', {
           duration: 3500,
         });
         return;
@@ -830,20 +834,20 @@ export class ProjectDetailPageComponent implements OnInit {
   removeProject(): void {
     const project = this.project();
     if (!project || !this.canDeleteProject()) {
-      this.snack.open('ไม่มีสิทธิ์ลบโปรเจค', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์ลบโปรเจกต์', 'ปิด', { duration: 3000 });
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ลบโปรเจค',
-      message: `ต้องการลบโปรเจค「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
-      confirmLabel: 'ลบโปรเจค',
+      title: 'ลบโปรเจกต์',
+      message: `ต้องการลบโปรเจกต์「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
+      confirmLabel: 'ลบโปรเจกต์',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
       this.projectsApi.deleteProject(project.id).subscribe({
         next: () => {
-          this.snack.open('ลบโปรเจคแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('ลบโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
           void this.router.navigate(['/app/projects']);
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
@@ -948,10 +952,10 @@ export class ProjectDetailPageComponent implements OnInit {
 
     this.loadWarranties();
     this.loadProjectTickets();
-    this.loadMaContracts();
+    this.loadProjectMaQuota();
   }
 
-  /** ประกันที่ออกจากการส่งมอบของโปรเจคนี้ */
+  /** ประกันที่ออกจากการส่งมอบของโปรเจกต์นี้ */
   private loadWarranties(): void {
     if (!this.canViewWarranties()) {
       this.warranties.set([]);
@@ -1016,22 +1020,38 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  private loadMaContracts(): void {
+  /** สัญญา + โควตา MA ของโปรเจกต์ — เรียกเฉพาะเมื่อมี ma.view (เลี่ยง 403) */
+  private loadProjectMaQuota(): void {
     if (!this.canViewMa()) {
-      this.maContracts.set([]);
+      this.maQuotaItems.set([]);
+      this.maQuotaLoading.set(false);
       return;
     }
-    this.maLoading.set(true);
-    this.maApi.list({ projectId: this.projectId, limit: 100 }).subscribe({
-      next: (rows) => {
-        this.maContracts.set(rows);
-        this.maLoading.set(false);
+    this.maQuotaLoading.set(true);
+    this.projectsApi.getProjectMaQuota(this.projectId).subscribe({
+      next: (body) => {
+        this.maQuotaItems.set(body.items);
+        this.maQuotaPager.reset();
+        this.maQuotaLoading.set(false);
       },
       error: () => {
-        this.maContracts.set([]);
-        this.maLoading.set(false);
+        this.maQuotaItems.set([]);
+        this.maQuotaPager.reset();
+        this.maQuotaLoading.set(false);
       },
     });
+  }
+
+  maPlanName(contract: MaContract): string {
+    return maPlanDisplayName(contract);
+  }
+
+  maCoverageLabelOf(contract: MaContract): string {
+    return maCoverageLabel(contract);
+  }
+
+  maCoverageStateOf(contract: MaContract): string {
+    return resolveMaCoverageState(contract);
   }
 
   /* ——— ป้ายชื่อสำหรับตาราง (แถวจาก mat-table เป็น any) ——— */
@@ -1062,11 +1082,7 @@ export class ProjectDetailPageComponent implements OnInit {
     return this.ticketPriorityLabels[priority] ?? priority;
   }
 
-  maStatusLabel(status: MaContract['status']): string {
-    return this.maStatusLabels[status] ?? status;
-  }
-
-  /** เปิดใบแจ้งปัญหาของโปรเจคนี้ — ไม่ต้องเด้งไปเมนูปัญหา */
+  /** เปิดใบแจ้งปัญหาของโปรเจกต์นี้ — ไม่ต้องเด้งไปเมนูปัญหา */
   openTicketForProject(): void {
     const project = this.project();
     if (!project) {
@@ -1337,7 +1353,7 @@ export class ProjectDetailPageComponent implements OnInit {
         this.snack.open('ไม่มีสิทธิ์บันทึกการส่งมอบ', 'ปิด', { duration: 3000 });
       } else if (status === 'DRAFT') {
         this.snack.open(
-          'โปรเจคยังเป็นร่าง — กด「เริ่มงาน」ก่อนจึงบันทึกการส่งมอบได้',
+          'โปรเจกต์ยังเป็นร่าง — กด「เริ่มงาน」ก่อนจึงบันทึกการส่งมอบได้',
           'ปิด',
           { duration: 4500 }
         );
@@ -1452,7 +1468,7 @@ export class ProjectDetailPageComponent implements OnInit {
           next: () => {
             this.snack.open(
               result.isFinal
-                ? 'ยอมรับรอบสุดท้ายแล้ว — ระบบจะเปลี่ยนสถานะโปรเจคเป็น「ส่งมอบแล้ว」'
+                ? 'ยอมรับรอบสุดท้ายแล้ว — ระบบจะเปลี่ยนสถานะโปรเจกต์เป็น「ส่งมอบแล้ว」'
                 : 'บันทึกการยอมรับการส่งมอบแล้ว',
               'ปิด',
               { duration: 4000 }
@@ -1757,7 +1773,7 @@ type EvidenceMode = 'text' | 'file';
           } @else {
             <app-file-picker
               label="เลือกไฟล์หลักฐาน"
-              hint="ไม่เกิน 20 MB · เก็บในเอกสารของโปรเจคนี้"
+              hint="ไม่เกิน 20 MB · เก็บในเอกสารของโปรเจกต์นี้"
               [accept]="accept"
               [fileName]="selectedFileName()"
               (picked)="onFilePicked($event)"
@@ -1768,7 +1784,7 @@ type EvidenceMode = 'text' | 'file';
         <label class="final-check">
           <mat-checkbox formControlName="isFinal"></mat-checkbox>
           <span>
-            นี่คือการส่งมอบครั้งสุดท้ายของโปรเจค
+            นี่คือการส่งมอบครั้งสุดท้ายของโปรเจกต์
             <span class="final-hint">ติ๊กเฉพาะเมื่อปิดงานจริง — เฟส/เวอร์ชันทดลองไม่ต้องติ๊ก</span>
           </span>
         </label>

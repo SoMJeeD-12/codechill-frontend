@@ -1,7 +1,7 @@
 <section class="app-page">
   <header class="app-page-header">
     <div>
-      <h1 class="app-page-title">โปรเจค</h1>
+      <h1 class="app-page-title">โปรเจกต์</h1>
     </div>
     <div class="app-header-actions">
       <button
@@ -11,7 +11,7 @@
         (click)="openCreate()"
       >
         <mat-icon>add</mat-icon>
-        สร้างโปรเจค
+        สร้างโปรเจกต์
       </button>
     </div>
   </header>
@@ -24,12 +24,12 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ค้นหา รหัส · ชื่อโปรเจค · ชื่อลูกค้า"
-            aria-label="ค้นหาโปรเจค"
+            placeholder="ค้นหา รหัส · ชื่อโปรเจกต์ · ชื่อลูกค้า"
+            aria-label="ค้นหาโปรเจกต์"
           />
         </label>
       </div>
-      <div class="ui-chips" role="tablist" aria-label="กรองสถานะโปรเจค">
+      <div class="ui-chips" role="tablist" aria-label="กรองสถานะโปรเจกต์">
         <button
           type="button"
           class="ui-chip"
@@ -67,7 +67,7 @@
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('name')">
-              ชื่อโปรเจค
+              ชื่อโปรเจกต์
               <mat-icon>{{ sortIcon('name') }}</mat-icon>
             </button>
           </th>
@@ -150,7 +150,7 @@
               mat-icon-button
               type="button"
               [matMenuTriggerFor]="manageMenu"
-              aria-label="จัดการโปรเจค"
+              aria-label="จัดการโปรเจกต์"
             >
               <mat-icon>more_vert</mat-icon>
             </button>
@@ -185,7 +185,7 @@
         (page)="pager.onPage($event)"
       />
       @if (filtered().length === 0) {
-        <p class="data-empty">ไม่พบโปรเจคตามคำค้นหา/ตัวกรอง</p>
+        <p class="data-empty">ไม่พบโปรเจกต์ตามคำค้นหา/ตัวกรอง</p>
       }
     </div>
   </div>

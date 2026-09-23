@@ -2,8 +2,8 @@
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
     <!--
-      ตอนสร้างต้องเลือกโปรเจคเสมอ — ระบบใช้ลูกค้าของโปรเจคให้เอง
-      ตัวเลือก "ไม่ระบุโปรเจค" เหลือไว้เฉพาะตอนแก้ไขงานเก่าที่ยังไม่ได้ผูกโปรเจค
+      ตอนสร้างต้องเลือกโปรเจกต์เสมอ — ระบบใช้ลูกค้าของโปรเจกต์ให้เอง
+      ตัวเลือก "ไม่ระบุโปรเจกต์" เหลือไว้เฉพาะตอนแก้ไขงานเก่าที่ยังไม่ได้ผูกโปรเจกต์
     -->
     @if (isEdit) {
       <mat-checkbox
@@ -11,19 +11,19 @@
         (change)="setWithoutProject($event.checked)"
         [disabled]="projectLocked"
       >
-        ติดตามลูกค้าโดยไม่ระบุโปรเจค
+        ติดตามลูกค้าโดยไม่ระบุโปรเจกต์
       </mat-checkbox>
     }
 
     @if (!withoutProject()) {
       <mat-form-field appearance="outline" class="full">
-        <mat-label>โปรเจค</mat-label>
+        <mat-label>โปรเจกต์</mat-label>
         <input
           matInput
           [formControl]="projectSearchControl"
           [matAutocomplete]="projectAuto"
           [readonly]="projectLocked"
-          placeholder="พิมพ์ชื่อโปรเจค"
+          placeholder="พิมพ์ชื่อโปรเจกต์"
         />
         <mat-autocomplete
           #projectAuto="matAutocomplete"

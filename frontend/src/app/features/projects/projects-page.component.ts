@@ -262,20 +262,20 @@ export class ProjectsPageComponent implements OnInit {
 
   remove(project: Project): void {
     if (!this.canDelete()) {
-      this.snack.open('ไม่มีสิทธิ์ลบโปรเจค', 'ปิด', { duration: 3000 });
+      this.snack.open('ไม่มีสิทธิ์ลบโปรเจกต์', 'ปิด', { duration: 3000 });
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ลบโปรเจค',
-      message: `ต้องการลบโปรเจค「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
-      confirmLabel: 'ลบโปรเจค',
+      title: 'ลบโปรเจกต์',
+      message: `ต้องการลบโปรเจกต์「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
+      confirmLabel: 'ลบโปรเจกต์',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
       this.projectsApi.deleteProject(project.id).subscribe({
         next: () => {
-          this.snack.open('ลบโปรเจคแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('ลบโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
           this.reload();
         },
         error: (err: Error) => this.toast.error(err),
@@ -339,20 +339,10 @@ export class ProjectFormDialogComponent {
   /** สร้างจากหน้าลูกค้า — ล็อกเลือกลูกค้า */
   readonly customerLocked = !this.data.project && !!this.data.customerId;
 
-  /** วิซาร์ดสร้างโปรเจค — ห้ามข้ามขั้นที่ยังไม่ปลดล็อก */
-  readonly createSteps = [
-    { id: 'project', label: 'ข้อมูลโปรเจค' },
-    { id: 'customer', label: 'ลูกค้า' },
-    { id: 'contact', label: 'ผู้ติดต่อหลัก' },
-  ] as const;
-  readonly createStep = signal(0);
-  /** ขั้นสูงสุดที่ไปถึงแล้ว (ผ่าน「ถัดไป」หรือเริ่มต้น) */
-  readonly maxReachedStep = signal(0);
-
   /** none | existing | new */
   readonly customerMode = signal<'none' | 'existing' | 'new'>('none');
   readonly customerSuggestions = signal<Customer[]>([]);
-  /** true เมื่อพิมพ์ค้นหาอย่างน้อย 1 ตัว — ถึงจะโชว์ตัวเลือก autocomplete */
+  /** true เมื่อพิมพ์ค้นหาอย่างน้อย 2 ตัว — ถึงจะโชว์ตัวเลือก autocomplete */
   readonly customerQueryReady = signal(false);
   readonly newCustomerToken = NEW_CUSTOMER_TOKEN;
 
@@ -380,20 +370,21 @@ export class ProjectFormDialogComponent {
     priority: ['NORMAL' as ProjectPriority, Validators.required],
     managerUserId: [null as number | null],
     description: [''],
-    // ฟอร์มสร้างโปรเจคเก็บเฉพาะข้อมูลลูกค้าที่จำเป็น
-    // (LINE / Facebook / หมายเหตุ แก้ได้ที่หน้าลูกค้า)
     customer: this.fb.group({
       name: [''],
       taxId: [''],
       address: [''],
       phone: ['', thaiPhoneValidator],
       email: ['', Validators.email],
+      lineOfficialId: [''],
+      facebookUrl: [''],
     }),
     contact: this.fb.group({
       name: [''],
       phone: ['', thaiPhoneValidator],
       email: ['', Validators.email],
       position: [''],
+      lineId: [''],
     }),
   });
 
@@ -461,58 +452,30 @@ export class ProjectFormDialogComponent {
     this.error.set(null);
   }
 
-  goToCreateStep(index: number): void {
-    if (this.isEdit || index < 0 || index > this.maxReachedStep()) {
-      return;
-    }
-    this.createStep.set(index);
-    this.error.set(null);
-  }
-
-  goCreateBack(): void {
-    if (this.isEdit || this.createStep() <= 0) {
-      return;
-    }
-    this.createStep.update((s) => s - 1);
-    this.error.set(null);
-  }
-
-  goCreateNext(): void {
-    if (this.isEdit) {
-      return;
-    }
-    if (!this.validateCreateStep(this.createStep())) {
-      return;
-    }
-    const next = this.createStep() + 1;
-    this.createStep.set(next);
-    this.maxReachedStep.update((m) => Math.max(m, next));
-    this.error.set(null);
-  }
-
   save(): void {
-    if (!this.isEdit) {
-      // บันทึกได้เฉพาะขั้นสุดท้าย — กันข้าม
-      if (this.createStep() !== this.createSteps.length - 1) {
-        this.goCreateNext();
-        return;
-      }
-      if (!this.validateCreateStep(2)) {
-        return;
-      }
+    if (!this.isEdit && !this.validateCreateForm()) {
+      return;
     }
 
     this.syncCustomerValidators();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       if (this.form.controls.targetEndDate.hasError('endBeforeStart')) {
-        this.error.set('กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจค');
+        this.error.set('กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจกต์');
       } else if (
         !this.isEdit &&
         this.form.controls.contact.controls.name.invalid &&
         (this.customerMode() === 'new' || this.customerMode() === 'existing')
       ) {
         this.error.set('กรุณาระบุชื่อผู้ติดต่อหลัก เพื่อใช้เป็นผู้รับมอบตอนส่งมอบ');
+      } else if (!this.isEdit && this.form.controls.name.invalid) {
+        this.error.set('กรอกชื่อโปรเจกต์');
+      } else if (
+        !this.isEdit &&
+        this.form.controls.customer.controls.name.invalid &&
+        (this.customerMode() === 'new' || this.customerMode() === 'existing')
+      ) {
+        this.error.set('กรอกชื่อบริษัท');
       } else {
         this.error.set(null);
       }
@@ -526,71 +489,61 @@ export class ProjectFormDialogComponent {
     this.saveCreate();
   }
 
-  /** ตรวจขั้นปัจจุบันก่อนไปต่อ / บันทึก */
-  private validateCreateStep(step: number): boolean {
+  /** ตรวจทั้งฟอร์มในหน้าเดียวก่อนบันทึก */
+  private validateCreateForm(): boolean {
     this.syncCustomerValidators();
-    if (step === 0) {
-      const controls = [
-        this.form.controls.name,
-        this.form.controls.priority,
-        this.form.controls.status,
-        this.form.controls.contractValue,
-        this.form.controls.startDate,
-        this.form.controls.targetEndDate,
-      ];
-      const invalid = controls.some((c) => c.invalid);
-      if (invalid) {
-        controls.forEach((c) => c.markAsTouched());
-        if (this.form.controls.targetEndDate.hasError('endBeforeStart')) {
-          this.error.set('กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจค');
-        } else if (this.form.controls.name.invalid) {
-          this.error.set('กรอกชื่อโปรเจคก่อนไปขั้นถัดไป');
-        } else {
-          this.error.set('กรอกข้อมูลโปรเจคให้ครบก่อนไปขั้นถัดไป');
-        }
-        return false;
+
+    const projectControls = [
+      this.form.controls.name,
+      this.form.controls.priority,
+      this.form.controls.status,
+      this.form.controls.contractValue,
+      this.form.controls.startDate,
+      this.form.controls.targetEndDate,
+    ];
+    const projectInvalid = projectControls.some((c) => c.invalid);
+    if (projectInvalid) {
+      projectControls.forEach((c) => c.markAsTouched());
+      if (this.form.controls.targetEndDate.hasError('endBeforeStart')) {
+        this.error.set('กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจกต์');
+      } else if (this.form.controls.name.invalid) {
+        this.error.set('กรอกชื่อโปรเจกต์');
+      } else {
+        this.error.set('กรอกข้อมูลโปรเจกต์ให้ครบ');
       }
-      return true;
+      return false;
     }
 
-    if (step === 1) {
-      const mode = this.customerMode();
-      if (mode === 'none') {
-        this.error.set('เลือกลูกค้าหรือสร้างลูกค้าใหม่ก่อนไปขั้นถัดไป');
-        this.customerSearchControl.markAsTouched();
-        return false;
-      }
-      const customer = this.form.controls.customer;
-      if (customer.invalid) {
-        customer.markAllAsTouched();
-        this.error.set(
-          customer.controls.name.invalid
-            ? 'กรอกชื่อบริษัทก่อนไปขั้นถัดไป'
-            : 'ตรวจข้อมูลลูกค้าให้ถูกต้องก่อนไปขั้นถัดไป'
-        );
-        return false;
-      }
-      return true;
+    const mode = this.customerMode();
+    if (mode === 'none') {
+      this.error.set('เลือกลูกค้าหรือสร้างลูกค้าใหม่');
+      this.customerSearchControl.markAsTouched();
+      return false;
     }
 
-    if (step === 2) {
-      const mode = this.customerMode();
-      if (mode === 'none') {
-        this.error.set('เลือกลูกค้าก่อนบันทึก');
-        this.createStep.set(1);
-        return false;
-      }
-      const contact = this.form.controls.contact;
-      if (contact.invalid) {
-        contact.markAllAsTouched();
-        this.error.set(
-          contact.controls.name.invalid
-            ? 'กรุณาระบุชื่อผู้ติดต่อหลัก เพื่อใช้เป็นผู้รับมอบตอนส่งมอบ'
-            : 'ตรวจข้อมูลผู้ติดต่อให้ถูกต้องก่อนบันทึก'
-        );
-        return false;
-      }
-      return true;
+    if (mode === 'new' && !this.canCreateCustomer()) {
+      this.error.set('ไม่มีสิทธิ์สร้างลูกค้าใหม่ (ต้องมี customer.create)');
+      return false;
+    }
+
+    const customer = this.form.controls.customer;
+    if (customer.invalid) {
+      customer.markAllAsTouched();
+      this.error.set(
+        customer.controls.name.invalid ? 'กรอกชื่อบริษัท' : 'ตรวจข้อมูลลูกค้าให้ถูกต้อง'
+      );
+      return false;
+    }
+
+    const contact = this.form.controls.contact;
+    if (contact.invalid) {
+      contact.markAllAsTouched();
+      this.error.set(
+        contact.controls.name.invalid
+          ? 'กรุณาระบุชื่อผู้ติดต่อหลัก เพื่อใช้เป็นผู้รับมอบตอนส่งมอบ'
+          : 'ตรวจข้อมูลผู้ติดต่อให้ถูกต้อง'
+      );
+      return false;
     }
 
     return true;
@@ -604,7 +557,7 @@ export class ProjectFormDialogComponent {
     this.api.updateProject(projectId, payload).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snack.open('บันทึกโปรเจคแล้ว', 'ปิด', { duration: 2500 });
+        this.snack.open('บันทึกโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
         this.ref.close(true);
       },
       error: (err: Error) => {
@@ -647,7 +600,7 @@ export class ProjectFormDialogComponent {
           const codeHint = project.code?.trim() ? ` · รหัส ${project.code.trim()}` : '';
           const text =
             message?.trim() ||
-            (codeHint ? `สร้างโปรเจคแล้ว${codeHint}` : 'บันทึกโปรเจคแล้ว');
+            (codeHint ? `สร้างโปรเจกต์แล้ว${codeHint}` : 'บันทึกโปรเจกต์แล้ว');
           this.snack.open(text, 'ปิด', { duration: message || codeHint ? 5000 : 2500 });
           this.ref.close(true);
         },
@@ -658,7 +611,7 @@ export class ProjectFormDialogComponent {
       });
   }
 
-  /** หลังสร้างโปรเจค: อัปเดตลูกค้าถ้าแก้ฟิลด์ / สร้างผู้ติดต่อถ้ากรอก */
+  /** หลังสร้างโปรเจกต์: อัปเดตลูกค้าถ้าแก้ฟิลด์ / สร้างผู้ติดต่อถ้ากรอก */
   private afterCreateSideEffects(project: Project): Observable<unknown> {
     const customerId = project.customerId;
     let chain$: Observable<unknown> = of(null);
@@ -706,10 +659,11 @@ export class ProjectFormDialogComponent {
       contractValue: raw.contractValue == null ? undefined : String(raw.contractValue),
       startDate: toDateOnlyString(raw.startDate) || undefined,
       targetEndDate: toDateOnlyString(raw.targetEndDate) || undefined,
-      // สถานะเดินตาม workflow บนหน้ารายละเอียด — ฟอร์มสร้าง/แก้ไม่เปลี่ยนสถานะ
+      // แก้ไข: สถานะเดินตาม workflow บนหน้ารายละเอียด
+      // สร้าง: ให้ผู้ใช้เลือกเอง (ไม่บังคับ DRAFT)
       status: this.isEdit
         ? (this.data.project?.status ?? 'DRAFT')
-        : 'DRAFT',
+        : (raw.status as ProjectStatus),
       priority: raw.priority as ProjectPriority,
       managerUserId: raw.managerUserId ?? undefined,
       description: (raw.description ?? '').trim() || undefined,
@@ -724,6 +678,8 @@ export class ProjectFormDialogComponent {
       address: (c.address ?? '').trim() || undefined,
       phone: sanitizePhoneDigits(c.phone) || undefined,
       email: (c.email ?? '').trim() || undefined,
+      lineOfficialId: (c.lineOfficialId ?? '').trim() || undefined,
+      facebookUrl: (c.facebookUrl ?? '').trim() || undefined,
     };
   }
 
@@ -735,6 +691,8 @@ export class ProjectFormDialogComponent {
       address: (c.address ?? '').trim() || undefined,
       phone: sanitizePhoneDigits(c.phone) || undefined,
       email: (c.email ?? '').trim() || undefined,
+      lineOfficialId: (c.lineOfficialId ?? '').trim() || undefined,
+      facebookUrl: (c.facebookUrl ?? '').trim() || undefined,
     };
   }
 
@@ -744,7 +702,8 @@ export class ProjectFormDialogComponent {
     const phone = sanitizePhoneDigits(c.phone);
     const email = (c.email ?? '').trim();
     const position = (c.position ?? '').trim();
-    if (!name && !phone && !email && !position) {
+    const lineId = (c.lineId ?? '').trim();
+    if (!name && !phone && !email && !position && !lineId) {
       return null;
     }
     if (!name) {
@@ -755,6 +714,7 @@ export class ProjectFormDialogComponent {
       phone: phone || undefined,
       email: email || undefined,
       position: position || undefined,
+      lineId: lineId || undefined,
       isPrimary: true,
     };
   }
@@ -771,7 +731,9 @@ export class ProjectFormDialogComponent {
       norm(c.taxId) !== norm(snap.taxId) ||
       norm(c.address) !== norm(snap.address) ||
       sanitizePhoneDigits(c.phone) !== sanitizePhoneDigits(snap.phone) ||
-      norm(c.email) !== norm(snap.email)
+      norm(c.email) !== norm(snap.email) ||
+      norm(c.lineOfficialId) !== norm(snap.lineOfficialId) ||
+      norm(c.facebookUrl) !== norm(snap.facebookUrl)
     );
   }
 
@@ -871,6 +833,8 @@ export class ProjectFormDialogComponent {
       address: '',
       phone: '',
       email: '',
+      lineOfficialId: '',
+      facebookUrl: '',
     });
   }
 
@@ -880,6 +844,7 @@ export class ProjectFormDialogComponent {
       phone: '',
       email: '',
       position: '',
+      lineId: '',
     });
   }
 
@@ -899,6 +864,7 @@ export class ProjectFormDialogComponent {
           phone: sanitizePhoneDigits(primary.phone),
           email: primary.email ?? '',
           position: primary.position ?? '',
+          lineId: primary.lineId ?? '',
         });
       },
       error: () => undefined,
@@ -912,6 +878,8 @@ export class ProjectFormDialogComponent {
       address: c.address ?? '',
       phone: sanitizePhoneDigits(c.phone),
       email: c.email ?? '',
+      lineOfficialId: c.lineOfficialId ?? '',
+      facebookUrl: c.facebookUrl ?? '',
     });
   }
 
@@ -928,6 +896,7 @@ export class ProjectFormDialogComponent {
       managerUserId: p.managerUserId,
       description: p.description ?? '',
     });
+    this.form.controls.status.disable({ emitEvent: false });
     this.customerMode.set('existing');
     this.customerSearchControl.disable({ emitEvent: false });
     const existing = this.customersApi.getCustomer(p.customerId);
@@ -979,7 +948,7 @@ export class ProjectFormDialogComponent {
   }
 }
 
-/** กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจค */
+/** กำหนดส่งมอบต้องไม่ก่อนวันเริ่มโปรเจกต์ */
 const endNotBeforeStartValidator: ValidatorFn = (
   control: AbstractControl
 ): ValidationErrors | null => {

@@ -16,7 +16,7 @@ import { ProjectService } from './project.service';
 export interface WarrantyCreateInput {
   durationMonth: number;
   scopeNote?: string | null;
-  /** ไม่บังคับ — สัญญาต้องเป็นของโปรเจคเดียวกับใบส่งมอบ */
+  /** ไม่บังคับ — สัญญาต้องเป็นของโปรเจกต์เดียวกับใบส่งมอบ */
   maContractId?: number | null;
 }
 

@@ -23,7 +23,7 @@ export interface CustomerPreviewDialogData {
 
 /**
  * การ์ดป๊อปอัปทะเบียนลูกค้าเท่านั้น (ชื่อ ภาษี ที่อยู่ ผู้ติดต่อ)
- * โปรเจค / ประกัน / MA / ปัญหา / ติดตาม ไปที่มุมมอง 360°
+ * โปรเจกต์ / ประกัน / MA / ปัญหา / ติดตาม ไปที่มุมมอง 360°
  */
 @Component({
   selector: 'app-customer-preview-dialog',

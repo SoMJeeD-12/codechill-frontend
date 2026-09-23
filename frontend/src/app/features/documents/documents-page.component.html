@@ -1,7 +1,7 @@
 <section class="app-page">
   <header class="app-page-header">
     <div>
-      <h1 class="app-page-title">เอกสารโปรเจค</h1>
+      <h1 class="app-page-title">เอกสารโปรเจกต์</h1>
     </div>
   </header>
 
@@ -13,20 +13,20 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ชื่อเอกสาร / ชื่อไฟล์ / ลูกค้า / โปรเจค"
+            placeholder="ชื่อเอกสาร / ชื่อไฟล์ / ลูกค้า / โปรเจกต์"
             aria-label="ค้นหาเอกสาร"
           />
         </label>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
-          <mat-label>กรองโปรเจค</mat-label>
+          <mat-label>กรองโปรเจกต์</mat-label>
           <input
             matInput
             [formControl]="projectFilterControl"
             [matAutocomplete]="projectFilterAuto"
             (focus)="onProjectFilterFocus()"
             (blur)="onProjectFilterBlur()"
-            placeholder="ค้นหาโค้ด / ชื่อโปรเจค"
-            aria-label="กรองโปรเจค"
+            placeholder="ค้นหาโค้ด / ชื่อโปรเจกต์"
+            aria-label="กรองโปรเจกต์"
           />
           <mat-autocomplete
             #projectFilterAuto="matAutocomplete"
@@ -39,7 +39,7 @@
               <mat-option [value]="p.id">{{ p.name }}</mat-option>
             }
             @if (filteredProjects().length === 0) {
-              <mat-option disabled>ไม่พบโปรเจค</mat-option>
+              <mat-option disabled>ไม่พบโปรเจกต์</mat-option>
             }
           </mat-autocomplete>
         </mat-form-field>
@@ -66,7 +66,7 @@
         <ng-container matColumnDef="project">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('project')">
-              โปรเจค
+              โปรเจกต์
               <mat-icon>{{ sortIcon('project') }}</mat-icon>
             </button>
           </th>

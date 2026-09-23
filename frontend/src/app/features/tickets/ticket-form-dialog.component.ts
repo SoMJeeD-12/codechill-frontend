@@ -70,7 +70,7 @@ export interface TicketFormDialogData {
   ticket?: Ticket | null;
   /** ล็อกลูกค้าไว้ล่วงหน้า (เปิดจากหน้าลูกค้า) */
   customer?: PickerOption | null;
-  /** ล็อกโปรเจคไว้ล่วงหน้า (เปิดจากหน้าโปรเจค) */
+  /** ล็อกโปรเจกต์ไว้ล่วงหน้า (เปิดจากหน้าโปรเจกต์) */
   project?: PickerOption | null;
 }
 
@@ -141,7 +141,7 @@ export class TicketFormDialogComponent {
 
   readonly customer = signal<PickerOption | null>(null);
   readonly project = signal<PickerOption | null>(null);
-  /** true เมื่อลูกค้าถูกเติมจากโปรเจค — ห้ามแก้มือ */
+  /** true เมื่อลูกค้าถูกเติมจากโปรเจกต์ — ห้ามแก้มือ */
   readonly customerFromProject = signal(false);
 
   readonly billingSelection = signal<BillingType | null>(null);
@@ -304,7 +304,7 @@ export class TicketFormDialogComponent {
           this.customer.set({
             id: project.customer.id,
             label: project.customer.name,
-            meta: 'เติมจากโปรเจคที่เลือก',
+            meta: 'เติมจากโปรเจกต์ที่เลือก',
           });
           this.customerFromProject.set(true);
         }
@@ -330,7 +330,7 @@ export class TicketFormDialogComponent {
 
   /**
    * GET /tickets/billing-suggestion — ยิงเมื่อมี projectId + reportedAt
-   * ยังไม่เลือกโปรเจค = ซ่อนแถบ อย่าเรียก API
+   * ยังไม่เลือกโปรเจกต์ = ซ่อนแถบ อย่าเรียก API
    */
   private loadBillingSuggestion(projectId: number | null): void {
     if (this.isEdit || projectId == null || projectId <= 0) {
@@ -381,7 +381,7 @@ export class TicketFormDialogComponent {
   save(): void {
     const customerId = this.customer()?.id ?? null;
     if (customerId == null) {
-      this.error.set('เลือกโปรเจค หรือเลือกลูกค้าก่อนเปิดใบ');
+      this.error.set('เลือกโปรเจกต์ หรือเลือกลูกค้าก่อนเปิดใบ');
       return;
     }
     if (this.form.invalid) {

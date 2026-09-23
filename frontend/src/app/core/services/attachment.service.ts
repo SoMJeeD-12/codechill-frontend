@@ -34,7 +34,7 @@ type ApiAttachment = {
 
 /**
  * API กลางไฟล์แนบ — /api/attachments
- * ห้ามใช้กับเอกสารโปรเจค (ยังใช้ POST /projects/:id/documents)
+ * ห้ามใช้กับเอกสารโปรเจกต์ (ยังใช้ POST /projects/:id/documents)
  */
 @Injectable({ providedIn: 'root' })
 export class AttachmentService {

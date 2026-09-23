@@ -7,7 +7,7 @@
         @if (deliveryLabel) {
           <strong>{{ deliveryLabel }}</strong>
         }
-        — กรอกระยะประกัน และเลือกสัญญา MA ของโปรเจคนี้ได้ (ไม่บังคับ · ไม่รวมโควตา/เงินกับประกัน)
+        — กรอกระยะประกัน และเลือกสัญญา MA ของโปรเจกต์นี้ได้ (ไม่บังคับ · ไม่รวมโควตา/เงินกับประกัน)
       </p>
     } @else {
       <mat-form-field appearance="outline" class="full">
@@ -20,7 +20,7 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full">
-        <mat-label>โปรเจค</mat-label>
+        <mat-label>โปรเจกต์</mat-label>
         <mat-select formControlName="projectId">
           @for (p of filteredProjects(); track p.id) {
             <mat-option [value]="p.id">{{ p.name }}</mat-option>
@@ -71,7 +71,7 @@
       @if (canCreateMa()) {
         <button mat-stroked-button type="button" class="ma-create-btn" (click)="openCreateMaForProject()">
           <mat-icon>handshake</mat-icon>
-          สร้างสัญญา MA ของโปรเจคนี้
+          สร้างสัญญา MA ของโปรเจกต์นี้
         </button>
       } @else {
         <p class="ma-create-hint">

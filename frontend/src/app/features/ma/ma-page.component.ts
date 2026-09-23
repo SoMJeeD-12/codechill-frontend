@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -237,7 +237,7 @@ export class MaPageComponent implements OnInit {
     if (project) {
       return project.name;
     }
-    return c.projectId ? `โปรเจค #${c.projectId}` : '—';
+    return c.projectId ? `โปรเจกต์ #${c.projectId}` : '—';
   }
 
   /** โชว์เลขที่สัญญา ถ้าไม่มีใช้ #id */
@@ -366,7 +366,7 @@ export class MaFormDialogComponent {
     this.data && 'id' in this.data && this.data.id ? this.data : null;
 
   readonly customers = this.customersApi.customers;
-  /** โปรเจคของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
+  /** โปรเจกต์ของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
   readonly customerProjects = signal<Project[]>([]);
   readonly plans = this.api.plans;
   readonly statusLabels = MA_STATUS_LABELS;
@@ -455,7 +455,7 @@ export class MaFormDialogComponent {
       if (!this.form.controls.startDate.value) {
         this.form.patchValue({ startDate: new Date() });
       }
-      // จากฟอร์มประกัน — ล็อกโปรเจค/ลูกค้าตามที่ส่งมา
+      // จากฟอร์มประกัน — ล็อกโปรเจกต์/ลูกค้าตามที่ส่งมา
       const presetProjectId = this.data?.projectId;
       if (presetProjectId) {
         const applyProject = (p: { id: number; customerId: number }) => {

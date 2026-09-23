@@ -129,6 +129,17 @@ export interface MaAddon {
   createdAt: string;
 }
 
+/** GET /projects/:id/ma-quota — โควตา MA ของโปรเจกต์ (ประเภทเดียว) */
+export interface ProjectMaQuotaItem {
+  contract: MaContract;
+  quota: MaQuotaStatus;
+}
+
+export interface ProjectMaQuotaResponse {
+  projectId: number;
+  items: ProjectMaQuotaItem[];
+}
+
 export const MA_STATUS_LABELS: Record<MaContractStatus, string> = {
   DRAFT: 'แบบร่าง',
   ACTIVE: 'ใช้งานอยู่',

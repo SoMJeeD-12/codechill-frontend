@@ -1,4 +1,4 @@
-﻿import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';

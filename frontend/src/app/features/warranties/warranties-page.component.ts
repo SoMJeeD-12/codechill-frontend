@@ -1,4 +1,4 @@
-﻿import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -169,7 +169,7 @@ export class WarrantiesPageComponent implements OnInit {
     if (project?.name) {
       return project.name;
     }
-    return w.projectId ? `โปรเจค #${w.projectId}` : '—';
+    return w.projectId ? `โปรเจกต์ #${w.projectId}` : '—';
   }
 
   customerName(w: Warranty): string {
@@ -237,7 +237,7 @@ export class WarrantiesPageComponent implements OnInit {
   remove(row: Warranty): void {
     openConfirmDialog(this.dialog, {
       title: 'ลบประกัน',
-      message: `ต้องการลบประกันของ「${row.project?.name || 'โปรเจค'}」หรือไม่?`,
+      message: `ต้องการลบประกันของ「${row.project?.name || 'โปรเจกต์'}」หรือไม่?`,
       confirmLabel: 'ลบประกัน',
     }).subscribe((ok) => {
       if (!ok) {
@@ -295,7 +295,7 @@ export class WarrantyFormDialogComponent {
   readonly data = inject<WarrantyFormDialogData>(MAT_DIALOG_DATA);
 
   readonly customers = this.customersApi.customers;
-  /** โปรเจคของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
+  /** โปรเจกต์ของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
   readonly customerProjects = signal<Project[]>([]);
   readonly deliveries = signal<Delivery[]>([]);
   readonly maContracts = signal<MaContract[]>([]);
@@ -432,7 +432,7 @@ export class WarrantyFormDialogComponent {
     return `${no} · ${plan} (${status})`;
   }
 
-  /** สร้างสัญญา MA ของโปรเจคนี้แล้วกลับมาเลือกลงในประกัน */
+  /** สร้างสัญญา MA ของโปรเจกต์นี้แล้วกลับมาเลือกลงในประกัน */
   openCreateMaForProject(): void {
     if (!this.canCreateMa()) {
       this.error.set('ไม่มีสิทธิ์สร้างสัญญา MA — ติดต่อผู้ดูแลระบบ');
@@ -441,7 +441,7 @@ export class WarrantyFormDialogComponent {
     const projectId = Number(this.form.getRawValue().projectId) || 0;
     const customerId = Number(this.form.getRawValue().customerId) || 0;
     if (!projectId) {
-      this.error.set('เลือกโปรเจคก่อนจึงสร้างสัญญา MA ได้');
+      this.error.set('เลือกโปรเจกต์ก่อนจึงสร้างสัญญา MA ได้');
       return;
     }
     const ref = this.dialog.open(MaFormDialogComponent, {

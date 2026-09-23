@@ -243,7 +243,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   openCreateTask(): void {
     const projectId = this.activeProjectId();
     if (!projectId) {
-      this.snack.open('เลือกโปรเจคก่อนจึงเพิ่มงานได้', 'ปิด', { duration: 3000 });
+      this.snack.open('เลือกโปรเจกต์ก่อนจึงเพิ่มงานได้', 'ปิด', { duration: 3000 });
       return;
     }
     if (!this.canCreateTask()) {

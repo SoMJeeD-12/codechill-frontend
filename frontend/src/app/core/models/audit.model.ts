@@ -56,7 +56,7 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   customers: 'ลูกค้า',
   contacts: 'ผู้ติดต่อ',
   communication_logs: 'ประวัติการติดต่อ',
-  projects: 'โปรเจค',
+  projects: 'โปรเจกต์',
   tasks: 'งานย่อย',
 };
 
