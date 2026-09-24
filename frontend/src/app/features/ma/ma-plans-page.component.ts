@@ -7,7 +7,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import {
@@ -42,7 +41,6 @@ type ActiveFilter = 'all' | 'active' | 'inactive';
   selector: 'app-ma-plans-page',
   standalone: true,
   imports: [
-    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

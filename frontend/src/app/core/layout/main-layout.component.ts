@@ -12,6 +12,7 @@ import { MenuItem } from '../models/permission.model';
 import { MENU_ITEMS } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
+import { NavAttentionService } from '../services/nav-attention.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 
 @Component({
@@ -37,6 +38,8 @@ export class MainLayoutComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly quickActions = inject(QuickActionsService);
   private readonly router = inject(Router);
+  /** จุดแดงเมนู — อ่าน counts() ใน template ให้ reactive */
+  readonly attention = inject(NavAttentionService);
 
   readonly user = this.auth.currentUser;
   /** เมนูที่มี children ที่กำลังขยาย */
@@ -85,9 +88,21 @@ export class MainLayoutComponent implements OnInit {
   ngOnInit(): void {
     this.auth.refreshSession();
     this.syncExpandedFromUrl(this.router.url);
+    this.attention.refresh();
+    // รอ /auth/me เสร็จแล้วดึง badge อีกรอบ
+    window.setTimeout(() => this.attention.refresh(), 1200);
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe((e) => this.syncExpandedFromUrl(e.urlAfterRedirects));
+      .subscribe((e) => {
+        this.syncExpandedFromUrl(e.urlAfterRedirects);
+        this.attention.refresh();
+      });
+  }
+
+  badgeCount(code: string): number {
+    // อ่าน signal ผ่าน counts() ให้ template re-render เมื่ออัปเดต
+    this.attention.counts();
+    return this.attention.badge(code as MenuItem['code']);
   }
 
   hasChildren(item: MenuItem): boolean {

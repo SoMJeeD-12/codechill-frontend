@@ -143,7 +143,12 @@ export class MaDetailPageComponent implements OnInit {
   readonly addonScoped = signal(false);
 
   goBack(): void {
-    navigateBack(this.location, this.router, '/app/ma');
+    const projectId = this.contract()?.projectId;
+    navigateBack(
+      this.location,
+      this.router,
+      projectId ? `/app/projects/${projectId}` : '/app/ma/plans'
+    );
   }
 
   ngOnInit(): void {

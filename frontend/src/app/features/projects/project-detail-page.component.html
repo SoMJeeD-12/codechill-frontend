@@ -770,6 +770,18 @@
               <div class="app-panel-toolbar">
                 <div class="app-panel-toolbar-row tab-toolbar">
                   <h3 class="tab-heading">สัญญา MA ของโปรเจกต์นี้</h3>
+                  @if (canCreateMa()) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      class="ui-add-btn"
+                      (click)="openCreateMa()"
+                    >
+                      <mat-icon>add</mat-icon>
+                      สร้างสัญญา
+                    </button>
+                  }
                 </div>
               </div>
               <div class="app-panel-body">
@@ -820,6 +832,12 @@
                     <td mat-cell *matCellDef="let row">
                       {{ row.quota.periodStart | thaiDate: 'date' }} –
                       {{ row.quota.periodEnd | thaiDate: 'date' }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef class="col-actions"></th>
+                    <td mat-cell *matCellDef="let row" class="col-actions">
+                      <app-row-actions [actions]="maRowActions(row)" />
                     </td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="maColumns"></tr>

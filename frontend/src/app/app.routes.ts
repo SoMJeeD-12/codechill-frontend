@@ -208,16 +208,16 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'ma',
-        canActivate: [permissionGuard('ma')],
-        loadComponent: () =>
-          import('./features/ma/ma-page.component').then((m) => m.MaPageComponent),
-      },
-      {
         path: 'ma/plans',
         canActivate: [permissionGuard('ma-plans')],
         loadComponent: () =>
           import('./features/ma/ma-plans-page.component').then((m) => m.MaPlansPageComponent),
+      },
+      {
+        /** รายการสัญญาทั้งระบบเลิกใช้ — สัญญาอยู่ที่โปรเจกต์ · เหลือแค่แผน */
+        path: 'ma',
+        pathMatch: 'full',
+        redirectTo: 'ma/plans',
       },
       {
         path: 'ma/:id',

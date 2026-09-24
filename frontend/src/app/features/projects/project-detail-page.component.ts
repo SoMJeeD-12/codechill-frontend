@@ -94,6 +94,7 @@ import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared
 import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
 import { WarrantyConfirmDialogComponent } from '../warranties/warranty-confirm-dialog.component';
+import { MaFormDialogComponent } from '../ma/ma-page.component';
 import { ProjectFormDialogComponent } from './projects-page.component';
 import {
   FollowUpFormDialogComponent,
@@ -214,7 +215,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantyColumns = ['warrantyNo', 'delivery', 'period', 'daysLeft', 'maLink', 'status'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
-  readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod'];
+  readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod', 'actions'];
   readonly documentColumns = ['title', 'fileSize', 'uploadedBy', 'createdAt', 'actions'];
 
   /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
@@ -414,6 +415,14 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canViewMa = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('ma.view');
+  });
+  readonly canCreateMa = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.create');
+  });
+  readonly canUpdateMa = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.update');
   });
   readonly deliveriesDenied = signal(false);
   readonly tasksDenied = signal(false);
@@ -1054,6 +1063,65 @@ export class ProjectDetailPageComponent implements OnInit {
 
   maCoverageStateOf(contract: MaContract): string {
     return resolveMaCoverageState(contract);
+  }
+
+  /** สร้างสัญญา MA ของโปรเจกต์นี้ */
+  openCreateMa(): void {
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    if (!this.canCreateMa()) {
+      this.snack.open('ไม่มีสิทธิ์สร้างสัญญา MA', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(MaFormDialogComponent, {
+      ...FORM_DIALOG_WIDE,
+      data: { projectId: project.id, customerId: project.customerId },
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.loadProjectMaQuota();
+        this.loadProjectReport();
+      }
+    });
+  }
+
+  /** แก้ไขสัญญา MA จากแถวในโปรเจกต์ */
+  openEditMa(contract: MaContract): void {
+    if (!this.canUpdateMa()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขสัญญา MA', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const ref = this.dialog.open(MaFormDialogComponent, {
+      ...FORM_DIALOG_WIDE,
+      data: contract,
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
+        this.loadProjectMaQuota();
+        this.loadProjectReport();
+      }
+    });
+  }
+
+  maRowActions(row: ProjectMaQuotaItem): RowAction[] {
+    const actions: RowAction[] = [
+      {
+        label: 'รายละเอียด',
+        primary: true,
+        icon: 'visibility',
+        run: () => void this.router.navigate(['/app/ma', row.contract.id]),
+      },
+    ];
+    if (this.canUpdateMa()) {
+      actions.push({
+        label: 'แก้ไข',
+        icon: 'edit',
+        run: () => this.openEditMa(row.contract),
+      });
+    }
+    return actions;
   }
 
   /* ——— ป้ายชื่อสำหรับตาราง (แถวจาก mat-table เป็น any) ——— */

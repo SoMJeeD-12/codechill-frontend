@@ -133,11 +133,11 @@ export const MENU_ITEMS: MenuItem[] = [
     group: 'support',
   },
   {
-    code: 'ma',
-    label: 'สัญญา MA',
-    description: 'สัญญาบำรุงรักษาและโควตา',
-    icon: 'handshake',
-    route: '/app/ma',
+    code: 'ma-plans',
+    label: 'แผน MA',
+    description: 'แม่แบบแพ็กเกจโควตา — สัญญาจริงสร้างที่โปรเจกต์',
+    icon: 'playlist_add_check',
+    route: '/app/ma/plans',
     group: 'support',
   },
   {
@@ -172,14 +172,6 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'กำหนดสิทธิ์ตามหน้าที่',
     icon: 'admin_panel_settings',
     route: '/app/roles',
-    group: 'settings',
-  },
-  {
-    code: 'ma-plans',
-    label: 'แผน MA',
-    description: 'แพ็กเกจโควตา',
-    icon: 'playlist_add_check',
-    route: '/app/ma/plans',
     group: 'settings',
   },
   {
