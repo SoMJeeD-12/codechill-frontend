@@ -9,7 +9,11 @@ export type NotificationEventType =
   | 'FOLLOWUP_DUE'
   | 'TICKET_SLA'
   | 'CUSTOMER_IDLE'
-  | 'DELIVERY_DUE';
+  | 'DELIVERY_DUE'
+  /** C-3 สายงานใบปัญหา (inbox ในแอป) */
+  | 'TICKET_SENT_TO_ADMIN'
+  | 'TICKET_AWAITING_REVIEW'
+  | 'TICKET_RETURNED_TO_SUPPORT';
 
 /** รายการแจ้งเตือน — ของพนักงานในระบบเท่านั้น (BR-11) */
 export interface AppNotification {
@@ -43,6 +47,11 @@ export interface NotificationListResult {
   limit: number;
 }
 
+export interface NotificationNavTarget {
+  commands: string[];
+  queryParams?: Record<string, string>;
+}
+
 export const NOTIFICATION_STATUSES: NotificationStatus[] = [
   'PENDING',
   'SENT',
@@ -65,6 +74,9 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   TICKET_SLA: 'SLA ใบปัญหา',
   CUSTOMER_IDLE: 'ลูกค้าไม่ได้ติดต่อ',
   DELIVERY_DUE: 'ใกล้กำหนดส่งมอบ',
+  TICKET_SENT_TO_ADMIN: 'ส่งใบไปคิวแอดมิน',
+  TICKET_AWAITING_REVIEW: 'รอตรวจผลแก้',
+  TICKET_RETURNED_TO_SUPPORT: 'แอดมินส่งกลับซัพพอร์ต',
 };
 
 export function notificationEventLabel(eventType: string): string {
@@ -108,4 +120,42 @@ export function notificationRefLink(
     default:
       return null;
   }
+}
+
+/**
+ * นำทางตาม event C-3 + สิทธิ์คิว — ไม่มีคิวที่เข้าถึงได้แล้วไปหน้ารายละเอียดใบ
+ */
+export function notificationNavTarget(
+  n: Pick<AppNotification, 'eventType' | 'refType' | 'refId'>,
+  access: { canAdminQueue: boolean; canSupportQueue: boolean }
+): NotificationNavTarget | null {
+  const event = String(n.eventType ?? '').toUpperCase();
+  const refType = String(n.refType ?? '').trim().toUpperCase();
+  const refId = n.refId;
+
+  if (event === 'TICKET_SENT_TO_ADMIN' && access.canAdminQueue) {
+    return {
+      commands: ['/app/tickets/admin-queue'],
+      queryParams: { tab: 'AWAITING_CLAIM' },
+    };
+  }
+  if (event === 'TICKET_AWAITING_REVIEW' && access.canAdminQueue) {
+    return {
+      commands: ['/app/tickets/admin-queue'],
+      queryParams: { tab: 'AWAITING_REVIEW' },
+    };
+  }
+  if (event === 'TICKET_RETURNED_TO_SUPPORT' && access.canSupportQueue) {
+    return {
+      commands: ['/app/tickets/support-queue'],
+      queryParams: { tab: 'RETURNED' },
+    };
+  }
+
+  if (refType === 'TICKET' && refId != null && Number.isFinite(refId) && refId > 0) {
+    return { commands: ['/app/tickets', String(refId)] };
+  }
+
+  const fallback = notificationRefLink(n.refType, n.refId);
+  return fallback ? { commands: fallback } : null;
 }

@@ -4,27 +4,66 @@
   font-size: 0.9rem;
 }
 
-.notifications-table {
-  .notif-row.is-clickable {
+/* คอลัมน์เดียว = first+last ของ .data-table → โดน text-align:right / sticky — ต้องบังคับซ้าย */
+:host ::ng-deep .notifications-table.data-table {
+  width: 100%;
+  table-layout: fixed;
+
+  .mat-mdc-header-row,
+  .mat-mdc-row {
+    height: auto;
+  }
+
+  .mat-mdc-cell,
+  .mat-mdc-header-cell {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    overflow: visible;
+    white-space: normal;
+    vertical-align: middle;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    text-align: left !important;
+  }
+
+  .mat-mdc-cell {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 3.5rem;
+    padding-top: 0.85rem !important;
+    padding-bottom: 0.85rem !important;
+  }
+
+  .mat-mdc-cell :is(a, span, strong, button, p, div, small, time) {
+    max-width: none;
+    overflow: visible;
+    text-overflow: unset;
+    white-space: inherit;
+    vertical-align: baseline;
+  }
+
+  .mat-column-title {
+    width: 100% !important;
+  }
+
+  .notif-data-row.is-clickable {
     cursor: pointer;
   }
 
-  .notif-row.is-unread td {
-    background: rgb(240 253 250 / 0.55);
+  .notif-data-row.is-unread .mat-mdc-cell {
+    background: #f0fdf9;
   }
 
-  .is-read {
-    color: #64748b;
+  .notif-data-row:hover .mat-mdc-cell {
+    background: #f7faf9;
   }
 
-  .notif-title-cell.is-unread strong {
-    font-weight: 700;
-    color: #134e4a;
-  }
-
-  .notif-title-cell.is-read strong {
-    font-weight: 500;
-    color: #64748b;
+  .notif-data-row.is-unread:hover .mat-mdc-cell {
+    background: #e6f7f2;
   }
 }
 
@@ -32,6 +71,9 @@
   display: flex;
   align-items: flex-start;
   gap: 0.55rem;
+  min-width: 0;
+  width: 100%;
+  text-align: left;
 }
 
 .notif-dot {
@@ -40,42 +82,89 @@
   height: 0.5rem;
   margin-top: 0.45rem;
   border-radius: 999px;
-  background: #0f766e;
+  background: #dc2626;
+
+  &--empty {
+    background: transparent;
+  }
 }
 
-.notif-title-text {
+.notif-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.notif-copy {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  align-items: flex-start;
+  gap: 0.2rem;
   min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+
+  strong {
+    display: block;
+    max-width: 100%;
+    font-weight: 700;
+    color: #134e4a;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.is-read {
+      font-weight: 500;
+      color: #64748b;
+    }
+  }
 }
 
 .cell-sub {
   display: block;
-  font-size: 0.82rem;
+  max-width: 100%;
+  font-size: 0.86rem;
   color: #64748b;
-  line-height: 1.35;
-}
-
-.notif-ref {
-  font-size: 0.82rem;
-  font-weight: 600;
-  width: fit-content;
-}
-
-.row-actions {
-  text-align: right;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.status[data-status='FAILED'] {
-  color: #b91c1c;
-}
-
-.status[data-status='READ'] {
+.notif-meta-status {
+  font-size: 0.78rem;
+  font-weight: 600;
   color: #64748b;
+
+  &.is-unread {
+    color: #b45309;
+  }
 }
 
-.status[data-status='SENT'] {
-  color: #0f766e;
+.notif-aside {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.notif-when {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.notif-mark-btn {
+  font-size: 0.8rem !important;
+  line-height: 1.2 !important;
+  min-width: auto !important;
+  padding: 0 0.35rem !important;
+  color: #0f766e !important;
+  white-space: nowrap !important;
 }

@@ -1,0 +1,33 @@
+<div class="inbox-toast-stack" aria-live="polite">
+  @for (item of toasts.items(); track item.uid) {
+    <article
+      class="inbox-toast"
+      [attr.data-tone]="item.tone"
+      (mouseenter)="toasts.pause(item.uid)"
+      (mouseleave)="toasts.resume(item.uid)"
+    >
+      <button
+        type="button"
+        class="inbox-toast__body"
+        (click)="toasts.open(item.uid)"
+      >
+        <strong class="inbox-toast__title">{{ item.notification.title }}</strong>
+        @if (messageText(item.notification.message); as msg) {
+          <span class="inbox-toast__msg">{{ msg }}</span>
+        }
+        <time class="inbox-toast__when">
+          {{ whenAt(item.notification.sentAt, item.notification.createdAt) | thaiDate }}
+        </time>
+      </button>
+      <button
+        type="button"
+        class="inbox-toast__close"
+        mat-icon-button
+        aria-label="ปิดการแจ้งเตือน"
+        (click)="toasts.dismiss(item.uid)"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </article>
+  }
+</div>

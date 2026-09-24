@@ -243,3 +243,58 @@ button.back.mat-mdc-outlined-button {
   appearance: none !important;
   -webkit-appearance: none !important;
 }
+
+/* Toast ชนิด A — หลัง action ของตัวเอง (ไม่ใช่แถบดำยาว) */
+.mat-mdc-snack-bar-container.app-toast {
+  --mdc-snackbar-container-shape: 12px;
+  border: 1px solid transparent;
+  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.12);
+  min-width: 0 !important;
+  max-width: min(420px, 92vw);
+
+  .mdc-snackbar__surface {
+    padding-left: 0.85rem;
+    padding-right: 0.35rem;
+  }
+
+  .mdc-snackbar__label {
+    font-family: 'Sarabun', 'Segoe UI', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    padding: 0.55rem 0.35rem 0.55rem 0;
+  }
+
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    font-weight: 650;
+  }
+}
+
+.mat-mdc-snack-bar-container.app-toast--success {
+  --mdc-snackbar-container-color: #ecfdf5;
+  --mdc-snackbar-supporting-text-color: #115e59;
+  --mat-snack-bar-button-color: #0f766e;
+  border-color: #a7f3d0;
+
+  .mdc-snackbar__label::before {
+    content: '✓';
+    display: inline-block;
+    margin-right: 0.45rem;
+    font-weight: 700;
+    color: #0f766e;
+  }
+}
+
+.mat-mdc-snack-bar-container.app-toast--error {
+  --mdc-snackbar-container-color: #fef2f2;
+  --mdc-snackbar-supporting-text-color: #991b1b;
+  --mat-snack-bar-button-color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.mat-mdc-snack-bar-container.app-toast--info {
+  --mdc-snackbar-container-color: #f0fdfa;
+  --mdc-snackbar-supporting-text-color: #134e4a;
+  --mat-snack-bar-button-color: #0f766e;
+  border-color: #99f6e4;
+}

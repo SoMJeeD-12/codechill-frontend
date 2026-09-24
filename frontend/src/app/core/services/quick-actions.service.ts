@@ -23,6 +23,10 @@ export class QuickActionsService {
   private readonly ticketCreatedCount = signal(0);
   readonly ticketCreated = this.ticketCreatedCount.asReadonly();
 
+  /** นับครั้งบันทึกการติดต่อสำเร็จจากปุ่มลัด — หน้ารายละเอียดลูกค้าฯ โหลดลูกตาม */
+  private readonly communicationLoggedCount = signal(0);
+  readonly communicationLogged = this.communicationLoggedCount.asReadonly();
+
   canOpenTicket(): boolean {
     return this.auth.hasPermissionCode('ticket.create');
   }
@@ -74,7 +78,12 @@ export class QuickActionsService {
           })
           .afterClosed()
       ),
-      switchMap((saved) => of(!!saved))
+      switchMap((saved) => of(!!saved)),
+      tap((saved) => {
+        if (saved) {
+          this.communicationLoggedCount.update((n) => n + 1);
+        }
+      })
     );
   }
 }

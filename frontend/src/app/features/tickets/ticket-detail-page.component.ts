@@ -423,12 +423,6 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.ticketId = Number(this.route.snapshot.paramMap.get('id'));
-    if (!this.ticketId) {
-      this.notFound.set(true);
-      this.loading.set(false);
-      return;
-    }
     this.resolutionSearchControl.valueChanges.subscribe((v) => {
       this.resolutionSearch.set(v);
       this.resolutionsPager.reset();
@@ -438,7 +432,20 @@ export class TicketDetailPageComponent implements OnInit {
       .subscribe();
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.projectsApi.listProjects().subscribe({ error: () => undefined });
-    this.loadTicket();
+
+    this.route.paramMap.subscribe((params) => {
+      const id = Number(params.get('id'));
+      if (!id) {
+        this.notFound.set(true);
+        this.loading.set(false);
+        return;
+      }
+      if (this.ticketId === id) {
+        return;
+      }
+      this.ticketId = id;
+      this.loadTicket();
+    });
   }
 
   loadTicket(): void {
@@ -765,16 +772,32 @@ export class TicketDetailPageComponent implements OnInit {
   /** ASSIGNED → PATCH /tickets/:id/start (ผู้รับผิดชอบเท่านั้น) */
   startAssignedWork(): void {
     if (!this.canStartTicket()) {
-      this.snack.open('เฉพาะผู้รับผิดชอบเท่านั้นที่เริ่มงานได้', 'ปิด', { duration: 3500 });
+      this.snack.open('เฉพาะผู้รับผิดชอบเท่านั้นที่เริ่มงานได้', 'ปิด', {
+        duration: 3500,
+        panelClass: ['app-toast', 'app-toast--info'],
+        horizontalPosition: 'end',
+        verticalPosition: 'bottom',
+      });
       return;
     }
     this.ticketsApi.start(this.ticketId).subscribe({
       next: () => {
         this.demoOverlay.markStarted(this.ticketId);
-        this.snack.open('เริ่มดำเนินการแล้ว', 'ปิด', { duration: 2500 });
+        this.snack.open('เริ่มดำเนินการแล้ว', 'ปิด', {
+          duration: 3500,
+          panelClass: ['app-toast', 'app-toast--success'],
+          horizontalPosition: 'end',
+          verticalPosition: 'bottom',
+        });
         this.loadTicket();
       },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4500 }),
+      error: (err: Error) =>
+        this.snack.open(err.message, 'ปิด', {
+          duration: 4500,
+          panelClass: ['app-toast', 'app-toast--error'],
+          horizontalPosition: 'end',
+          verticalPosition: 'bottom',
+        }),
     });
   }
 

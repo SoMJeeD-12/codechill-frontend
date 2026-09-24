@@ -2,9 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { MenuCode } from '../models/permission.model';
-import { isNotificationUnread } from '../models/notification.model';
 import { AuthService } from './auth.service';
-import { NotificationService } from './notification.service';
 import { ProjectService } from './project.service';
 import { TicketService } from './ticket.service';
 
@@ -21,7 +19,6 @@ export class NavAttentionService {
   private readonly auth = inject(AuthService);
   private readonly tickets = inject(TicketService);
   private readonly projects = inject(ProjectService);
-  private readonly notifications = inject(NotificationService);
 
   private readonly countsSignal = signal<Partial<Record<MenuCode, number>>>({});
   private refreshing = false;
@@ -92,17 +89,7 @@ export class NavAttentionService {
       );
     }
 
-    if (this.auth.hasPermissionCode('notification.view')) {
-      jobs.push(
-        this.notifications.list({ page: 1, limit: 50 }).pipe(
-          map((body) => ({
-            code: 'notifications' as const,
-            n: body.items.filter((row) => isNotificationUnread(row)).length,
-          })),
-          catchError(() => of({ code: 'notifications' as const, n: 0 }))
-        )
-      );
-    }
+    // badge กระดิ่ง = NotificationInboxService (poll แยก)
 
     if (!jobs.length) {
       this.countsSignal.set({});

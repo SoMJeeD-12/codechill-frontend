@@ -2,6 +2,7 @@
 .notif-menu-panel.mat-mdc-menu-panel {
   max-width: min(380px, 94vw) !important;
   overflow: hidden;
+  border-radius: 10px !important;
 }
 
 app-notification-bell .notif-bell,
@@ -22,6 +23,45 @@ app-notification-bell .notif-bell,
     font-size: 22px;
     width: 22px;
     height: 22px;
+    transform-origin: 50% 0%;
+  }
+
+  &.is-ringing mat-icon {
+    animation: notif-bell-ring 0.55s ease-in-out 3;
+    color: #0f766e;
+  }
+
+  &.is-ringing .notif-bell__badge {
+    animation: notif-badge-pop 0.55s ease-in-out 3;
+  }
+}
+
+@keyframes notif-bell-ring {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(14deg);
+  }
+  40% {
+    transform: rotate(-12deg);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+  80% {
+    transform: rotate(-6deg);
+  }
+}
+
+@keyframes notif-badge-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
   }
 }
 
@@ -46,7 +86,7 @@ app-notification-bell .notif-bell,
 
 .notif-panel {
   width: min(360px, 92vw);
-  max-height: min(70vh, 480px);
+  max-height: min(60vh, 420px);
   display: flex;
   flex-direction: column;
 }
@@ -56,17 +96,17 @@ app-notification-bell .notif-bell,
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.85rem 1rem 0.55rem;
+  padding: 0.75rem 0.9rem 0.5rem;
   border-bottom: 1px solid var(--app-border, #e8e4dc);
 
   strong {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 }
 
 .notif-panel__count {
-  font-size: 0.75rem;
-  color: #b45309;
+  font-size: 0.72rem;
+  color: #0f766e;
   font-weight: 600;
 }
 
@@ -76,16 +116,16 @@ app-notification-bell .notif-bell,
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  padding: 1.5rem 1rem;
+  padding: 1.35rem 1rem;
   margin: 0;
   color: #6b7280;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
 
 .notif-panel__list {
   list-style: none;
   margin: 0;
-  padding: 0.25rem 0;
+  padding: 0.2rem 0;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
@@ -93,19 +133,23 @@ app-notification-bell .notif-bell,
 
 .notif-row {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.25rem;
+  align-items: flex-start;
+  gap: 0.55rem;
   width: 100%;
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 0.9rem;
   border: 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
   background: transparent;
   text-align: left;
   cursor: pointer;
   color: inherit;
 
+  &:last-child {
+    border-bottom: 0;
+  }
+
   &:hover:not(:disabled) {
-    background: rgba(15, 118, 110, 0.07);
+    background: rgba(15, 118, 110, 0.06);
   }
 
   &:disabled {
@@ -113,20 +157,10 @@ app-notification-bell .notif-bell,
     cursor: wait;
   }
 
-  &.is-unread {
-    background: rgba(254, 243, 199, 0.45);
-
-    .notif-row__title {
-      font-weight: 700;
-    }
+  &.is-unread .notif-row__title {
+    font-weight: 650;
+    color: #134e4a;
   }
-}
-
-.notif-row__main {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.45rem;
-  min-width: 0;
 }
 
 .notif-row__dot {
@@ -136,10 +170,22 @@ app-notification-bell .notif-bell,
   margin-top: 0.4rem;
   border-radius: 50%;
   background: #dc2626;
+
+  &--empty {
+    background: transparent;
+  }
+}
+
+.notif-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .notif-row__title {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   line-height: 1.35;
   overflow: hidden;
   display: -webkit-box;
@@ -147,22 +193,37 @@ app-notification-bell .notif-bell,
   -webkit-box-orient: vertical;
 }
 
+.notif-row__msg {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .notif-row__meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-left: 1.05rem;
+  margin-top: 0.1rem;
   font-size: 0.72rem;
   color: #6b7280;
 }
 
 .notif-row__status {
   flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.notif-row.is-unread .notif-row__status {
+  color: #b45309;
 }
 
 .notif-panel__foot {
   border-top: 1px solid var(--app-border, #e8e4dc);
-  padding: 0.35rem 0.5rem;
+  padding: 0.25rem 0.4rem;
   display: flex;
   justify-content: center;
 }

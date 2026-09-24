@@ -3,6 +3,7 @@
     mat-icon-button
     type="button"
     class="notif-bell"
+    [class.is-ringing]="ringing()"
     [matMenuTriggerFor]="notifMenu"
     (menuOpened)="onMenuOpened()"
     matTooltip="การแจ้งเตือน"
@@ -20,14 +21,13 @@
       <header class="notif-panel__head">
         <strong>การแจ้งเตือน</strong>
         @if (unreadCount() > 0) {
-          <span class="notif-panel__count">ยังไม่อ่าน {{ unreadCount() }}</span>
+          <span class="notif-panel__count">{{ unreadCount() }} ใหม่</span>
         }
       </header>
 
       @if (loading()) {
         <div class="notif-panel__state">
-          <mat-spinner diameter="28" />
-          <span>กำลังโหลด…</span>
+          <mat-spinner diameter="24" />
         </div>
       } @else if (items().length === 0) {
         <p class="notif-panel__empty">ยังไม่มีการแจ้งเตือน</p>
@@ -42,16 +42,19 @@
                 [disabled]="markingId() === row.id"
                 (click)="openItem(row)"
               >
-                <span class="notif-row__main">
-                  @if (isUnread(row)) {
-                    <span class="notif-row__dot" aria-hidden="true"></span>
-                  }
+                @if (isUnread(row)) {
+                  <span class="notif-row__dot" aria-hidden="true"></span>
+                } @else {
+                  <span class="notif-row__dot notif-row__dot--empty" aria-hidden="true"></span>
+                }
+                <span class="notif-row__body">
                   <span class="notif-row__title">{{ row.title }}</span>
-                </span>
-                <span class="notif-row__meta">
-                  <time>{{ whenAt(row) | thaiDate }}</time>
-                  <span class="notif-row__status">
-                    {{ isUnread(row) ? 'ยังไม่อ่าน' : 'อ่านแล้ว' }}
+                  @if (messageText(row); as msg) {
+                    <span class="notif-row__msg">{{ msg }}</span>
+                  }
+                  <span class="notif-row__meta">
+                    <time>{{ whenAt(row) | thaiDate }}</time>
+                    <span class="notif-row__status">{{ statusText(row) }}</span>
                   </span>
                 </span>
               </button>
@@ -61,7 +64,13 @@
       }
 
       <footer class="notif-panel__foot">
-        <a mat-button color="primary" routerLink="/app/notifications" class="notif-panel__all">
+        <a
+          mat-button
+          color="primary"
+          routerLink="/app/notifications"
+          class="notif-panel__all"
+          (click)="closeMenu()"
+        >
           ดูทั้งหมด
         </a>
       </footer>

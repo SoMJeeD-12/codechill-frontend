@@ -1,10 +1,10 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
@@ -17,6 +17,7 @@ import {
   TicketPriority,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
+import { QuickActionsService } from '../../core/services/quick-actions.service';
 import {
   SupportQueueTab,
   TicketService,
@@ -25,6 +26,7 @@ import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ApiToastService } from '../../shared/services/api-toast.service';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
 import { createTableSort } from '../../shared/utils/table-sort';
 
@@ -59,9 +61,13 @@ export class SupportQueuePageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly quickActions = inject(QuickActionsService);
+  private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
-  private readonly snack = inject(MatSnackBar);
+  private readonly toast = inject(ApiToastService);
   private readonly fb = inject(FormBuilder);
+
+  private loadedOnce = false;
 
   readonly tab = signal<SupportQueueTab>('AWAITING_SEND');
   readonly search = signal('');
@@ -97,6 +103,15 @@ export class SupportQueuePageComponent implements OnInit {
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
   readonly channelLabels = REPORTED_CHANNEL_LABELS;
 
+  constructor() {
+    effect(() => {
+      this.quickActions.ticketCreated();
+      if (this.loadedOnce) {
+        this.reload();
+      }
+    });
+  }
+
   readonly displayedItems = computed(() => {
     const rows = [...this.items()];
     const key = this.tableSort.sortKey();
@@ -109,6 +124,19 @@ export class SupportQueuePageComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadedOnce = true;
+    this.route.queryParamMap.subscribe((params) => {
+      const tabParam = String(params.get('tab') ?? '').trim().toUpperCase();
+      if (
+        (tabParam === 'AWAITING_SEND' || tabParam === 'RETURNED') &&
+        this.tab() !== tabParam
+      ) {
+        this.tab.set(tabParam);
+        this.pageIndex.set(0);
+        this.reload();
+      }
+    });
+
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
       this.search.set(v);
       this.pageIndex.set(0);
@@ -170,9 +198,7 @@ export class SupportQueuePageComponent implements OnInit {
           this.items.set([]);
           this.total.set(0);
           this.loading.set(false);
-          this.snack.open(err.message || 'โหลดคิวซัพพอร์ตไม่สำเร็จ', 'ปิด', {
-            duration: 4500,
-          });
+          this.toast.error(err, 'โหลดคิวซัพพอร์ตไม่สำเร็จ');
         },
       });
   }
@@ -221,16 +247,12 @@ export class SupportQueuePageComponent implements OnInit {
     this.ticketsApi.sendToAdmin(row.id).subscribe({
       next: () => {
         this.actingId.set(null);
-        this.snack.open('ส่งเข้าคิว「รอแอดมินรับเรื่อง」แล้ว', 'ปิด', {
-          duration: 3000,
-        });
+        this.toast.success('ส่งเข้าคิว「รอแอดมินรับเรื่อง」แล้ว');
         this.reload();
       },
       error: (err: Error) => {
         this.actingId.set(null);
-        this.snack.open(err.message || 'ส่งหัวหน้าไม่สำเร็จ', 'ปิด', {
-          duration: 5000,
-        });
+        this.toast.error(err, 'ส่งหัวหน้าไม่สำเร็จ');
       },
     });
   }
@@ -250,14 +272,12 @@ export class SupportQueuePageComponent implements OnInit {
       this.ticketsApi.customerNotified(row.id).subscribe({
         next: () => {
           this.actingId.set(null);
-          this.snack.open('บันทึกว่าบอกลูกค้าแล้ว', 'ปิด', { duration: 3000 });
+          this.toast.success('บันทึกว่าบอกลูกค้าแล้ว');
           this.reload();
         },
         error: (err: Error) => {
           this.actingId.set(null);
-          this.snack.open(err.message || 'บันทึกไม่สำเร็จ', 'ปิด', {
-            duration: 5000,
-          });
+          this.toast.error(err, 'บันทึกไม่สำเร็จ');
         },
       });
     });

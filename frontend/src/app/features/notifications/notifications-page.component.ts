@@ -1,39 +1,31 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
 import {
   AppNotification,
-  NOTIFICATION_STATUSES,
-  NotificationStatus,
   isNotificationUnread,
-  notificationEventLabel,
-  notificationRefLink,
-  notificationStatusLabel,
 } from '../../core/models/notification.model';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
 
-type StatusFilter = 'ALL' | NotificationStatus;
+type InboxFilter = 'ALL' | 'UNREAD' | 'READ';
 
 @Component({
   selector: 'app-notifications-page',
   standalone: true,
   imports: [
     ThaiDatePipe,
-    RouterLink,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
     MatTableModule,
-    MatTooltipModule,
     TablePaginatorComponent,
   ],
   templateUrl: './notifications-page.component.html',
@@ -42,19 +34,19 @@ type StatusFilter = 'ALL' | NotificationStatus;
 export class NotificationsPageComponent implements OnInit {
   private readonly api = inject(NotificationService);
   private readonly auth = inject(AuthService);
+  private readonly inbox = inject(NotificationInboxService);
   private readonly snack = inject(MatSnackBar);
 
   readonly items = signal<AppNotification[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly markingId = signal<number | null>(null);
-  readonly statusFilter = signal<StatusFilter>('ALL');
+  readonly statusFilter = signal<InboxFilter>('ALL');
   readonly pageIndex = signal(0);
   readonly pageSize = signal(20);
   readonly pageSizeOptions = [...DEFAULT_PAGE_SIZE_OPTIONS];
 
-  readonly columns = ['title', 'eventType', 'status', 'when', 'actions'];
-  readonly statuses = NOTIFICATION_STATUSES;
+  readonly columns = ['title'];
 
   readonly canView = computed(() => {
     this.auth.session();
@@ -65,7 +57,7 @@ export class NotificationsPageComponent implements OnInit {
     this.reload();
   }
 
-  setStatusFilter(value: StatusFilter): void {
+  setStatusFilter(value: InboxFilter): void {
     this.statusFilter.set(value);
     this.pageIndex.set(0);
     this.reload();
@@ -84,17 +76,25 @@ export class NotificationsPageComponent implements OnInit {
       return;
     }
     this.loading.set(true);
-    const status = this.statusFilter();
+    const filter = this.statusFilter();
+    const unreadMode = filter === 'UNREAD';
     this.api
       .list({
-        page: this.pageIndex() + 1,
-        limit: this.pageSize(),
-        status: status === 'ALL' ? undefined : status,
+        page: unreadMode ? 1 : this.pageIndex() + 1,
+        limit: unreadMode ? 50 : this.pageSize(),
+        status: filter === 'READ' ? 'READ' : undefined,
       })
       .subscribe({
         next: (body) => {
-          this.items.set(body.items);
-          this.total.set(body.total);
+          let rows = body.items ?? [];
+          let total = body.total;
+          if (unreadMode) {
+            rows = rows.filter((row) => isNotificationUnread(row));
+            total = rows.length;
+            this.pageIndex.set(0);
+          }
+          this.items.set(rows);
+          this.total.set(total);
           this.loading.set(false);
         },
         error: (err: Error) => {
@@ -112,39 +112,22 @@ export class NotificationsPageComponent implements OnInit {
     return isNotificationUnread(row);
   }
 
-  eventLabel(row: AppNotification): string {
-    return notificationEventLabel(row.eventType);
-  }
-
-  statusLabel(row: AppNotification): string {
-    return notificationStatusLabel(row.status);
-  }
-
-  statusFilterLabel(status: NotificationStatus): string {
-    return notificationStatusLabel(status);
-  }
-
-  /** แสดง sentAt ถ้ามี ไม่เช่นนั้น createdAt */
   whenAt(row: AppNotification): string {
     return row.sentAt || row.createdAt;
   }
 
   messagePreview(row: AppNotification): string {
-    const text = row.message?.trim() ?? '';
-    if (!text) {
-      return '';
-    }
-    return text.length > 120 ? `${text.slice(0, 120)}…` : text;
-  }
-
-  refLink(row: AppNotification): string[] | null {
-    return notificationRefLink(row.refType, row.refId);
+    return row.message?.trim() ?? '';
   }
 
   onRowClick(row: AppNotification): void {
-    if (this.isUnread(row)) {
-      this.markRead(row);
-    }
+    this.markingId.set(row.id);
+    this.inbox.openNotification(row);
+    window.setTimeout(() => {
+      this.markingId.set(null);
+      this.reload();
+      this.inbox.refreshQuiet();
+    }, 600);
   }
 
   markRead(row: AppNotification, event?: Event): void {
@@ -155,8 +138,7 @@ export class NotificationsPageComponent implements OnInit {
     this.markingId.set(row.id);
     this.api.markRead(row.id).subscribe({
       next: (updated) => {
-        const filter = this.statusFilter();
-        if (filter !== 'ALL' && filter !== 'READ' && updated.status === 'READ') {
+        if (this.statusFilter() === 'UNREAD') {
           this.items.update((list) => list.filter((n) => n.id !== updated.id));
           this.total.update((t) => Math.max(0, t - 1));
         } else {
@@ -164,6 +146,7 @@ export class NotificationsPageComponent implements OnInit {
             list.map((n) => (n.id === updated.id ? updated : n))
           );
         }
+        this.inbox.refreshQuiet();
         this.markingId.set(null);
       },
       error: (err: Error) => {

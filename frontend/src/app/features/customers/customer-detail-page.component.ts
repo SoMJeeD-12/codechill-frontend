@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
@@ -49,6 +49,7 @@ import { CustomerService } from '../../core/services/customer.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
+import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { WarrantyService } from '../../core/services/warranty.service';
 import {
@@ -104,9 +105,12 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly maApi = inject(MaService);
   private readonly followUpsApi = inject(FollowUpService);
   private readonly auth = inject(AuthService);
+  private readonly quickActions = inject(QuickActionsService);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
+
+  private ready = false;
 
   /** จากเมนูมุมมอง 360° — โหมดสรุปทุกอย่างของลูกค้ารายเดียว */
   readonly is360Mode = this.route.snapshot.data['mode'] === '360';
@@ -395,12 +399,27 @@ export class CustomerDetailPageComponent implements OnInit {
         this.customer.set(customer);
         this.notFound.set(false);
         this.refreshChildren();
+        this.ready = true;
       },
       error: () => this.notFound.set(true),
     });
     this.api.getOverview(id).subscribe({
       next: (overview) => this.overview.set(overview),
       error: () => this.overview.set(null),
+    });
+  }
+
+  constructor() {
+    effect(() => {
+      this.quickActions.ticketCreated();
+      this.quickActions.communicationLogged();
+      if (this.ready && this.customerId) {
+        this.refreshChildren();
+        this.api.getOverview(this.customerId).subscribe({
+          next: (overview) => this.overview.set(overview),
+          error: () => undefined,
+        });
+      }
     });
   }
 

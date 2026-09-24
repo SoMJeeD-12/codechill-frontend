@@ -117,7 +117,6 @@
               </button>
             </th>
             <td mat-cell *matCellDef="let row">
-              <!-- แสดงเฉพาะ assignedUser จาก API — ห้ามโชว์ค่าจาก dropdown ที่ยังไม่กดมอบหมาย -->
               @if (row.assignedUserId) {
                 <span class="cell-clip">{{ assigneeLabel(row) }}</span>
               } @else {
@@ -138,18 +137,6 @@
             </td>
           </ng-container>
 
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>
-              <button type="button" class="sort-header" (click)="toggleSort('status')">
-                สถานะ
-                <mat-icon>{{ sortIcon('status') }}</mat-icon>
-              </button>
-            </th>
-            <td mat-cell *matCellDef="let row">
-              <span class="status" [attr.data-status]="row.status">{{ statusLabel(row) }}</span>
-            </td>
-          </ng-container>
-
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef class="col-sticky-end"></th>
             <td mat-cell *matCellDef="let row" class="row-actions col-sticky-end">
@@ -164,44 +151,19 @@
                   รับเรื่อง
                 </button>
               } @else if (tab() === 'CLAIMED') {
-                <div class="assign-controls" (click)="$event.stopPropagation()">
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    floatLabel="always"
-                    class="assign-field"
-                  >
-                    <mat-label>เลือกพนักงาน</mat-label>
-                    <mat-select
-                      [value]="pickedAssigneeId(row.id)"
-                      placeholder="ยังไม่เลือก"
-                      (selectionChange)="setAssignPick(row.id, $event.value)"
-                    >
-                      @for (u of assignableUsers(); track u.id) {
-                        <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                  <button
-                    mat-flat-button
-                    color="primary"
-                    type="button"
-                    class="assign-btn"
-                    [disabled]="actingId() === row.id || !hasAssignPick(row.id)"
-                    [matTooltip]="
-                      hasAssignPick(row.id)
-                        ? 'กดเพื่อมอบหมาย — เลือกอย่างเดียวยังไม่นับ'
-                        : 'เลือกพนักงานก่อน แล้วกดมอบหมาย'
-                    "
-                    (click)="assignTicket(row, $event)"
-                  >
-                    @if (actingId() === row.id) {
-                      กำลังมอบหมาย…
-                    } @else {
-                      มอบหมาย
-                    }
-                  </button>
-                </div>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() === row.id"
+                  (click)="openAssign(row)"
+                >
+                  @if (actingId() === row.id) {
+                    กำลังมอบหมาย…
+                  } @else {
+                    มอบหมาย
+                  }
+                </button>
               } @else if (tab() === 'AWAITING_REVIEW') {
                 <button
                   mat-flat-button
@@ -217,7 +179,7 @@
                 >
                   ตรวจผ่าน · ส่งซัพพอร์ต
                 </button>
-              } @else {
+              } @else if (tab() === 'WITH_SUPPORT') {
                 <span class="muted">รอซัพพอร์ตบอกลูกค้า</span>
               }
             </td>

@@ -1,18 +1,16 @@
-import { Component, ViewEncapsulation, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, ViewChild, ViewEncapsulation, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AppNotification,
   isNotificationUnread,
-  notificationRefLink,
 } from '../models/notification.model';
 import { AuthService } from '../services/auth.service';
-import { NavAttentionService } from '../services/nav-attention.service';
-import { NotificationService } from '../services/notification.service';
+import { NotificationInboxService } from '../services/notification-inbox.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 
 @Component({
@@ -33,12 +31,11 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 })
 export class NotificationBellComponent {
   private readonly auth = inject(AuthService);
-  private readonly api = inject(NotificationService);
-  private readonly attention = inject(NavAttentionService);
-  private readonly router = inject(Router);
+  private readonly inbox = inject(NotificationInboxService);
+
+  @ViewChild(MatMenuTrigger) private menuTrigger?: MatMenuTrigger;
 
   readonly loading = signal(false);
-  readonly items = signal<AppNotification[]>([]);
   readonly markingId = signal<number | null>(null);
 
   readonly canView = computed(() => {
@@ -46,11 +43,9 @@ export class NotificationBellComponent {
     return this.auth.hasPermissionCode('notification.view');
   });
 
-  /** จำนวนยังไม่อ่าน — จาก NavAttention (GET /notifications · ไม่ใช่ READ) */
-  readonly unreadCount = computed(() => {
-    this.attention.counts();
-    return this.attention.badge('notifications');
-  });
+  readonly unreadCount = this.inbox.unreadCount;
+  readonly items = this.inbox.recentItems;
+  readonly ringing = this.inbox.ringing;
 
   readonly badgeText = computed(() => {
     const n = this.unreadCount();
@@ -61,26 +56,9 @@ export class NotificationBellComponent {
   });
 
   onMenuOpened(): void {
-    this.loadRecent();
-  }
-
-  loadRecent(): void {
-    if (!this.canView()) {
-      this.items.set([]);
-      return;
-    }
     this.loading.set(true);
-    this.api.list({ page: 1, limit: 8 }).subscribe({
-      next: (body) => {
-        this.items.set(body.items);
-        this.loading.set(false);
-        this.attention.refresh();
-      },
-      error: () => {
-        this.items.set([]);
-        this.loading.set(false);
-      },
-    });
+    this.inbox.refreshQuiet();
+    window.setTimeout(() => this.loading.set(false), 400);
   }
 
   isUnread(row: AppNotification): boolean {
@@ -91,34 +69,23 @@ export class NotificationBellComponent {
     return row.sentAt || row.createdAt;
   }
 
-  openItem(row: AppNotification): void {
-    const go = () => {
-      const link = notificationRefLink(row.refType, row.refId);
-      if (link) {
-        void this.router.navigate(link);
-      } else {
-        void this.router.navigate(['/app/notifications']);
-      }
-    };
+  /** รายละเอียดจาก API — ว่าง/null ไม่โชว์ */
+  messageText(row: AppNotification): string {
+    return row.message?.trim() ?? '';
+  }
 
-    if (!this.isUnread(row)) {
-      go();
-      return;
-    }
+  statusText(row: AppNotification): string {
+    return this.isUnread(row) ? 'ยังไม่อ่าน' : 'อ่านแล้ว';
+  }
+
+  openItem(row: AppNotification): void {
     this.markingId.set(row.id);
-    this.api.markRead(row.id).subscribe({
-      next: (updated) => {
-        this.items.update((list) =>
-          list.map((n) => (n.id === updated.id ? updated : n))
-        );
-        this.markingId.set(null);
-        this.attention.refresh();
-        go();
-      },
-      error: () => {
-        this.markingId.set(null);
-        go();
-      },
-    });
+    this.menuTrigger?.closeMenu();
+    this.inbox.openNotification(row);
+    window.setTimeout(() => this.markingId.set(null), 800);
+  }
+
+  closeMenu(): void {
+    this.menuTrigger?.closeMenu();
   }
 }

@@ -1,9 +1,8 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { debounceTime } from 'rxjs/operators';
@@ -13,9 +12,11 @@ import {
   TicketStatus,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
+import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ApiToastService } from '../../shared/services/api-toast.service';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { createTableSort } from '../../shared/utils/table-sort';
 
@@ -31,7 +32,6 @@ type MineTab = 'active' | 'all';
     RouterLink,
     MatButtonModule,
     MatIconModule,
-    MatSnackBarModule,
     MatTableModule,
     MatTooltipModule,
     ThaiDatePipe,
@@ -43,8 +43,11 @@ type MineTab = 'active' | 'all';
 export class MyTicketsPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly auth = inject(AuthService);
-  private readonly snack = inject(MatSnackBar);
+  private readonly quickActions = inject(QuickActionsService);
+  private readonly toast = inject(ApiToastService);
   private readonly fb = inject(FormBuilder);
+
+  private loadedOnce = false;
 
   readonly tab = signal<MineTab>('active');
   readonly search = signal('');
@@ -98,7 +101,17 @@ export class MyTicketsPageComponent implements OnInit {
 
   readonly pager = createClientPager(this.filtered);
 
+  constructor() {
+    effect(() => {
+      this.quickActions.ticketCreated();
+      if (this.loadedOnce) {
+        this.reload();
+      }
+    });
+  }
+
   ngOnInit(): void {
+    this.loadedOnce = true;
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
       this.search.set(v);
       this.pager.reset();
@@ -151,9 +164,7 @@ export class MyTicketsPageComponent implements OnInit {
       error: (err: Error) => {
         this.items.set([]);
         this.loading.set(false);
-        this.snack.open(err.message || 'โหลดใบของฉันไม่สำเร็จ', 'ปิด', {
-          duration: 4500,
-        });
+        this.toast.error(err, 'โหลดใบของฉันไม่สำเร็จ');
       },
     });
   }
@@ -166,14 +177,12 @@ export class MyTicketsPageComponent implements OnInit {
     this.ticketsApi.start(row.id).subscribe({
       next: () => {
         this.actingId.set(null);
-        this.snack.open('เริ่มงานแล้ว', 'ปิด', { duration: 2800 });
+        this.toast.success('เริ่มงานแล้ว');
         this.reload();
       },
       error: (err: Error) => {
         this.actingId.set(null);
-        this.snack.open(err.message || 'เริ่มงานไม่สำเร็จ', 'ปิด', {
-          duration: 5000,
-        });
+        this.toast.error(err, 'เริ่มงานไม่สำเร็จ');
       },
     });
   }

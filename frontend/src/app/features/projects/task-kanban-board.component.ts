@@ -189,7 +189,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
 
     this.projectsApi.updateTaskStatus(task.id, targetStatus).subscribe({
       next: () => {
-        this.loadSummary();
+        this.reload();
       },
       error: (err: Error) => {
         // revert

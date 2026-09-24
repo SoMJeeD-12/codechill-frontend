@@ -1,0 +1,119 @@
+:host {
+  position: fixed;
+  top: 4.75rem;
+  right: 1rem;
+  z-index: 1200;
+  pointer-events: none;
+  display: block;
+  width: min(380px, calc(100vw - 1.5rem));
+}
+
+.inbox-toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  pointer-events: none;
+}
+
+.inbox-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.75rem 0.35rem 0.75rem 0;
+  background: var(--app-surface, #fff);
+  border: 1px solid var(--app-line, #dde8e4);
+  border-radius: 12px;
+  border-left: 4px solid #94a3b8;
+  box-shadow: 0 10px 28px rgba(28, 43, 40, 0.12);
+  animation: inbox-toast-in 0.22s ease-out;
+
+  &[data-tone='admin'] {
+    border-left-color: #2563eb;
+  }
+
+  &[data-tone='review'] {
+    border-left-color: #ea580c;
+  }
+
+  &[data-tone='support'] {
+    border-left-color: #0f766e;
+  }
+
+  &[data-tone='default'] {
+    border-left-color: var(--app-accent, #0f766e);
+  }
+}
+
+.inbox-toast__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0 0.35rem 0 0.85rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.inbox-toast__title {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--app-ink, #1c2b28);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-toast__msg {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--app-muted, #5f6d68);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-toast__when {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.inbox-toast__close {
+  flex: 0 0 auto;
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  color: #64748b !important;
+}
+
+@keyframes inbox-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  :host {
+    top: auto;
+    bottom: 1rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+}

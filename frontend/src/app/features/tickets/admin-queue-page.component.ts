@@ -1,12 +1,10 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
@@ -22,12 +20,16 @@ import {
   TicketService,
 } from '../../core/services/ticket.service';
 import { AuthService } from '../../core/services/auth.service';
+import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { ApiToastService } from '../../shared/services/api-toast.service';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
+import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
+import { TicketAssignDialogComponent } from './ticket-detail-page.component';
 
 const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
   { id: 'AWAITING_CLAIM', label: 'รอรับ' },
@@ -42,8 +44,7 @@ type AdminSortKey =
   | 'receiver'
   | 'queueAdmin'
   | 'assignee'
-  | 'reportedAt'
-  | 'status';
+  | 'reportedAt';
 
 @Component({
   selector: 'app-admin-queue-page',
@@ -53,9 +54,7 @@ type AdminSortKey =
     RouterLink,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatSelectModule,
     MatSnackBarModule,
     MatTableModule,
     MatTooltipModule,
@@ -69,9 +68,13 @@ export class AdminQueuePageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly quickActions = inject(QuickActionsService);
+  private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
-  private readonly snack = inject(MatSnackBar);
+  private readonly toast = inject(ApiToastService);
   private readonly fb = inject(FormBuilder);
+
+  private loadedOnce = false;
 
   readonly tabs = ADMIN_TABS;
   readonly tab = signal<AdminQueueTab>('AWAITING_CLAIM');
@@ -87,7 +90,6 @@ export class AdminQueuePageComponent implements OnInit {
   });
   readonly loading = signal(false);
   readonly actingId = signal<number | null>(null);
-  readonly assignPick = signal<Record<number, number>>({});
   readonly pageIndex = signal(0);
   readonly pageSize = signal(20);
   readonly pageSizeOptions = [...DEFAULT_PAGE_SIZE_OPTIONS];
@@ -107,7 +109,6 @@ export class AdminQueuePageComponent implements OnInit {
     'queueAdmin',
     'assignee',
     'reportedAt',
-    'status',
     'actions',
   ];
 
@@ -125,13 +126,30 @@ export class AdminQueuePageComponent implements OnInit {
     return rows;
   });
 
+  constructor() {
+    effect(() => {
+      this.quickActions.ticketCreated();
+      if (this.loadedOnce) {
+        this.reload();
+      }
+    });
+  }
+
   ngOnInit(): void {
+    this.loadedOnce = true;
+    this.route.queryParamMap.subscribe((params) => {
+      const tabParam = String(params.get('tab') ?? '').trim().toUpperCase();
+      if (ADMIN_TABS.some((t) => t.id === tabParam) && this.tab() !== tabParam) {
+        this.tab.set(tabParam as AdminQueueTab);
+        this.pageIndex.set(0);
+        this.reload();
+      }
+    });
+
     // รายชื่อมอบหมาย = GET /users/assignable?capability=TICKET เท่านั้น (ห้าม fallback คนนอก)
     this.usersApi.listAssignable('TICKET').subscribe({
       error: (err: Error) => {
-        this.snack.open(err.message || 'โหลดรายชื่อพนักงานไม่สำเร็จ', 'ปิด', {
-          duration: 4500,
-        });
+        this.toast.error(err, 'โหลดรายชื่อพนักงานไม่สำเร็จ');
       },
     });
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
@@ -195,9 +213,7 @@ export class AdminQueuePageComponent implements OnInit {
           this.items.set([]);
           this.total.set(0);
           this.loading.set(false);
-          this.snack.open(err.message || 'โหลดคิวแอดมินไม่สำเร็จ', 'ปิด', {
-            duration: 4500,
-          });
+          this.toast.error(err, 'โหลดคิวแอดมินไม่สำเร็จ');
         },
       });
   }
@@ -245,85 +261,67 @@ export class AdminQueuePageComponent implements OnInit {
     return this.statusLabels[row.status] ?? row.status;
   }
 
-  setAssignPick(ticketId: number, userId: number | null | undefined): void {
-    const id = Number(userId);
-    if (!Number.isFinite(id) || id < 1) {
-      return;
-    }
-    // เลือกอย่างเดียว ≠ มอบหมาย — เก็บ draft ในแถว ไม่แตะ assignedUserId
-    this.assignPick.update((m) => ({ ...m, [ticketId]: id }));
-  }
-
-  /** มีการเลือกพนักงานในแถวนี้แล้วหรือยัง (ห้าม default คนแรก) */
-  hasAssignPick(ticketId: number): boolean {
-    return this.pickedAssigneeId(ticketId) != null;
-  }
-
-  /** draft ในแถว — ไม่ใช่ assignedUserId จาก API */
-  pickedAssigneeId(ticketId: number): number | null {
-    const id = this.assignPick()[ticketId];
-    return typeof id === 'number' && id > 0 ? id : null;
-  }
-
   claimTicket(row: Ticket): void {
     this.actingId.set(row.id);
     this.ticketsApi.claim(row.id).subscribe({
       next: (updated) => {
         this.actingId.set(null);
         const name = this.userName(updated.claimedByAdminUserId);
-        this.snack.open(`รับคิวแล้ว · แอดมินผู้รับคิว = 「${name}」`, 'ปิด', {
-          duration: 3200,
-        });
+        this.toast.success(`รับคิวแล้ว · แอดมินผู้รับคิว = 「${name}」`);
         this.reload();
       },
       error: (err: Error) => {
         this.actingId.set(null);
-        this.snack.open(err.message || 'รับเรื่องไม่สำเร็จ', 'ปิด', {
-          duration: 5000,
-        });
+        this.toast.error(err, 'รับเรื่องไม่สำเร็จ');
       },
     });
   }
 
-  /** แท็บรอจัดแจง — กด「มอบหมาย」แล้วค่อย PATCH /tickets/:id/assign */
-  assignTicket(row: Ticket, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    const assignedUserId = this.pickedAssigneeId(row.id);
-    if (!assignedUserId) {
-      this.snack.open('เลือกพนักงานก่อนมอบหมาย', 'ปิด', { duration: 3000 });
+  /** แท็บของฉัน — กดมอบหมายแล้วเลือกพนักงานใน dialog */
+  openAssign(row: Ticket): void {
+    const users = this.assignableUsers();
+    if (!users.length) {
+      this.toast.info('ยังไม่มีรายชื่อผู้รับผิดชอบ — โหลดหรือเพิ่มผู้ใช้ที่มีสิทธิ์รับใบก่อน');
+      this.usersApi.listAssignable('TICKET').subscribe({
+        error: (err: Error) => this.toast.error(err, 'โหลดรายชื่อพนักงานไม่สำเร็จ'),
+      });
       return;
     }
-    const name =
-      this.assignableUsers().find((u) => u.id === assignedUserId)?.fullName ??
-      this.userName(assignedUserId);
-    this.actingId.set(row.id);
-    this.ticketsApi.assign(row.id, assignedUserId).subscribe({
-      next: () => {
-        this.actingId.set(null);
-        this.assignPick.update((m) => {
-          const next = { ...m };
-          delete next[row.id];
-          return next;
-        });
-        this.snack.open(`มอบหมายให้「${name}」เรียบร้อย`, 'ปิด', { duration: 3200 });
-        this.reload();
+
+    const ref = this.dialog.open(TicketAssignDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: {
+        users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
+        defaultUserId: null,
+        title: `มอบหมาย「${row.title}」`,
       },
-      error: (err: Error) => {
-        this.actingId.set(null);
-        this.snack.open(err.message || 'มอบหมายไม่สำเร็จ', 'ปิด', {
-          duration: 5000,
-        });
-      },
+    });
+
+    ref.afterClosed().subscribe((userId: number | null | undefined) => {
+      if (userId == null || !Number.isFinite(userId) || userId < 1) {
+        return;
+      }
+      const name =
+        users.find((u) => u.id === userId)?.fullName ?? this.userName(userId);
+      this.actingId.set(row.id);
+      this.ticketsApi.assign(row.id, userId).subscribe({
+        next: () => {
+          this.actingId.set(null);
+          this.toast.success(`มอบหมายให้「${name}」เรียบร้อย`);
+          this.reload();
+        },
+        error: (err: Error) => {
+          this.actingId.set(null);
+          this.toast.error(err, 'มอบหมายไม่สำเร็จ');
+        },
+      });
     });
   }
 
   returnToSupport(row: Ticket): void {
     if (row.status !== 'RESOLVED') {
-      this.snack.open(
-        'ใบต้องเป็น「แก้ไขแล้ว」ก่อน — ให้พนักงานบันทึก resolution ให้จบ',
-        'ปิด',
-        { duration: 4500 }
+      this.toast.info(
+        'ใบต้องเป็น「แก้ไขแล้ว」ก่อน — ให้พนักงานบันทึก resolution ให้จบ'
       );
       return;
     }
@@ -341,14 +339,12 @@ export class AdminQueuePageComponent implements OnInit {
       this.ticketsApi.returnToSupport(row.id).subscribe({
         next: () => {
           this.actingId.set(null);
-          this.snack.open('ส่งซัพพอร์ตแล้ว', 'ปิด', { duration: 3000 });
+          this.toast.success('ส่งซัพพอร์ตแล้ว');
           this.reload();
         },
         error: (err: Error) => {
           this.actingId.set(null);
-          this.snack.open(err.message || 'ส่งซัพพอร์ตไม่สำเร็จ', 'ปิด', {
-            duration: 5000,
-          });
+          this.toast.error(err, 'ส่งซัพพอร์ตไม่สำเร็จ');
         },
       });
     });
@@ -368,8 +364,6 @@ export class AdminQueuePageComponent implements OnInit {
         return this.userName(row.assignedUserId);
       case 'reportedAt':
         return row.reportedAt;
-      case 'status':
-        return row.status;
       default:
         return null;
     }

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,8 +13,10 @@ import { MENU_ITEMS, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
 import { NavAttentionService } from '../services/nav-attention.service';
+import { NotificationInboxService } from '../services/notification-inbox.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { NotificationBellComponent } from './notification-bell.component';
+import { InboxToastHostComponent } from '../../shared/toasts/inbox-toast-host.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -32,16 +34,18 @@ import { NotificationBellComponent } from './notification-bell.component';
     MatTooltipModule,
     HasPermissionDirective,
     NotificationBellComponent,
+    InboxToastHostComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
-export class MainLayoutComponent implements OnInit {
+export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly quickActions = inject(QuickActionsService);
   private readonly router = inject(Router);
   /** จุดแดงเมนู — อ่าน counts() ใน template ให้ reactive */
   readonly attention = inject(NavAttentionService);
+  private readonly inbox = inject(NotificationInboxService);
 
   readonly user = this.auth.currentUser;
   /** เมนูที่มี children ที่กำลังขยาย */
@@ -108,14 +112,22 @@ export class MainLayoutComponent implements OnInit {
     this.auth.refreshSession();
     this.syncExpandedFromUrl(this.router.url);
     this.attention.refresh();
-    // รอ /auth/me เสร็จแล้วดึง badge อีกรอบ
-    window.setTimeout(() => this.attention.refresh(), 1200);
+    this.inbox.start();
+    // รอ /auth/me เสร็จแล้วดึง badge / เริ่ม poll แจ้งเตือนอีกรอบ
+    window.setTimeout(() => {
+      this.attention.refresh();
+      this.inbox.start();
+    }, 1200);
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => {
         this.syncExpandedFromUrl(e.urlAfterRedirects);
         this.attention.refresh();
       });
+  }
+
+  ngOnDestroy(): void {
+    this.inbox.stop();
   }
 
   badgeCount(code: string): number {
@@ -185,12 +197,20 @@ export class MainLayoutComponent implements OnInit {
 
   /** + เปิดใบแจ้งปัญหา */
   openTicketForm(): void {
-    this.quickActions.openTicketForm().subscribe();
+    this.quickActions.openTicketForm().subscribe((saved) => {
+      if (saved) {
+        this.attention.refresh();
+      }
+    });
   }
 
   /** + บันทึกการติดต่อ — พนักงานเพิ่งวางสายแล้วบันทึกได้ทันที */
   openCommunicationLog(): void {
-    this.quickActions.openCommunicationLog().subscribe();
+    this.quickActions.openCommunicationLog().subscribe((saved) => {
+      if (saved) {
+        this.attention.refresh();
+      }
+    });
   }
 
   accountTypeLabel(type: string | undefined): string {
@@ -205,6 +225,7 @@ export class MainLayoutComponent implements OnInit {
   }
 
   logout(): void {
+    this.inbox.stop();
     this.auth.logout();
   }
 }
