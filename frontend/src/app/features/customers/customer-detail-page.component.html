@@ -177,10 +177,12 @@
                     aria-label="ค้นหาผู้ติดต่อ"
                   />
                 </label>
-                <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openContactForm()">
-                  <mat-icon>person_add</mat-icon>
-                  เพิ่มผู้ติดต่อ
-                </button>
+                @if (canCreateContact()) {
+                  <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openContactForm()">
+                    <mat-icon>person_add</mat-icon>
+                    เพิ่มผู้ติดต่อ
+                  </button>
+                }
               </div>
             </div>
             <div class="app-panel-body">
@@ -236,14 +238,18 @@
                         <mat-icon>visibility</mat-icon>
                         <span>รายละเอียด</span>
                       </button>
-                      <button mat-menu-item type="button" (click)="openContactForm(row)">
-                        <mat-icon>edit</mat-icon>
-                        <span>แก้ไข</span>
-                      </button>
-                      <button mat-menu-item type="button" class="menu-danger" (click)="removeContact(row)">
-                        <mat-icon>delete</mat-icon>
-                        <span>ลบ</span>
-                      </button>
+                      @if (canUpdateContact()) {
+                        <button mat-menu-item type="button" (click)="openContactForm(row)">
+                          <mat-icon>edit</mat-icon>
+                          <span>แก้ไข</span>
+                        </button>
+                      }
+                      @if (canDeleteContact()) {
+                        <button mat-menu-item type="button" class="menu-danger" (click)="removeContact(row)">
+                          <mat-icon>delete</mat-icon>
+                          <span>ลบ</span>
+                        </button>
+                      }
                     </mat-menu>
                   </td>
                 </ng-container>
@@ -290,10 +296,12 @@
                     aria-label="ค้นหาประวัติการติดต่อ"
                   />
                 </label>
-                <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openLogForm()">
-                  <mat-icon>add</mat-icon>
-                  บันทึกการติดต่อ
-                </button>
+                @if (canCreateCommunication()) {
+                  <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openLogForm()">
+                    <mat-icon>add</mat-icon>
+                    บันทึกการติดต่อ
+                  </button>
+                }
               </div>
             </div>
             <div class="app-panel-body">
@@ -335,14 +343,18 @@
                         <mat-icon>visibility</mat-icon>
                         <span>รายละเอียด</span>
                       </button>
-                      <button mat-menu-item type="button" (click)="openLogForm(row)">
-                        <mat-icon>edit</mat-icon>
-                        <span>แก้ไข</span>
-                      </button>
-                      <button mat-menu-item type="button" class="menu-danger" (click)="removeLog(row)">
-                        <mat-icon>delete</mat-icon>
-                        <span>ลบ</span>
-                      </button>
+                      @if (canUpdateCommunication()) {
+                        <button mat-menu-item type="button" (click)="openLogForm(row)">
+                          <mat-icon>edit</mat-icon>
+                          <span>แก้ไข</span>
+                        </button>
+                      }
+                      @if (canDeleteCommunication()) {
+                        <button mat-menu-item type="button" class="menu-danger" (click)="removeLog(row)">
+                          <mat-icon>delete</mat-icon>
+                          <span>ลบ</span>
+                        </button>
+                      }
                     </mat-menu>
                   </td>
                 </ng-container>

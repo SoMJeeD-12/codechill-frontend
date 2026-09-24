@@ -70,9 +70,18 @@ export class MaPlansPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly activeFilter = signal<ActiveFilter>('all');
 
-  readonly canCreate = this.auth.hasPermissionCode('ma.create');
-  readonly canUpdate = this.auth.hasPermissionCode('ma.update');
-  readonly canDelete = this.auth.hasPermissionCode('ma.delete');
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.create');
+  });
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.update');
+  });
+  readonly canDelete = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.delete');
+  });
 
   readonly columns = [
     'name',
@@ -128,21 +137,21 @@ export class MaPlansPageComponent implements OnInit {
   }
 
   openCreate(): void {
-    if (!this.canCreate) {
+    if (!this.canCreate()) {
       return;
     }
     this.openForm();
   }
 
   openEdit(plan: MaPlan): void {
-    if (!this.canUpdate) {
+    if (!this.canUpdate()) {
       return;
     }
     this.openForm(plan);
   }
 
   remove(plan: MaPlan): void {
-    if (!this.canDelete) {
+    if (!this.canDelete()) {
       return;
     }
     if (!confirm(`ลบแผน "${plan.name}" ?\nถ้าแผนถูกใช้ในสัญญาแล้ว ระบบจะไม่อนุญาต — ให้ปิดใช้งานแทน`)) {
@@ -169,7 +178,7 @@ export class MaPlansPageComponent implements OnInit {
   }
 
   deactivate(plan: MaPlan): void {
-    if (!this.canUpdate && !this.canDelete) {
+    if (!this.canUpdate() && !this.canDelete()) {
       return;
     }
     if (!confirm(`ปิดการใช้งานแผน "${plan.name}" ?\nสัญญาที่ใช้แผนนี้อยู่แล้วไม่ถูกลบ`)) {
@@ -185,7 +194,7 @@ export class MaPlansPageComponent implements OnInit {
   }
 
   activate(plan: MaPlan): void {
-    if (!this.canUpdate) {
+    if (!this.canUpdate()) {
       return;
     }
     this.api.updatePlan(plan.id, { isActive: true }).subscribe({

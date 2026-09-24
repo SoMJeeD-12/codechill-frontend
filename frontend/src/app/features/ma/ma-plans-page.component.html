@@ -23,7 +23,7 @@
             aria-label="ค้นหาแผน MA"
           />
         </label>
-        @if (canCreate) {
+        @if (canCreate()) {
           <button
             mat-flat-button
             color="primary"
@@ -105,19 +105,19 @@
               <mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
             <mat-menu #manageMenu="matMenu">
-              @if (canUpdate) {
+              @if (canUpdate()) {
                 <button mat-menu-item type="button" (click)="openEdit(row)">
                   <mat-icon>edit</mat-icon>
                   <span>แก้ไข</span>
                 </button>
               }
-              @if (canUpdate && row.isActive) {
+              @if (canUpdate() && row.isActive) {
                 <button mat-menu-item type="button" (click)="deactivate(row)">
                   <mat-icon>block</mat-icon>
                   <span>ปิดใช้งาน</span>
                 </button>
               }
-              @if (canUpdate && !row.isActive) {
+              @if (canUpdate() && !row.isActive) {
                 <button mat-menu-item type="button" (click)="activate(row)">
                   <mat-icon>check_circle</mat-icon>
                   <span>เปิดใช้งาน</span>

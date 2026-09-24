@@ -17,10 +17,12 @@
             aria-label="ค้นหาการรับประกัน"
           />
         </label>
-        <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
-          <mat-icon>add</mat-icon>
-          เพิ่มประกัน
-        </button>
+        @if (canCreate()) {
+          <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
+            <mat-icon>add</mat-icon>
+            เพิ่มประกัน
+          </button>
+        }
       </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองประกัน">
         <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
@@ -130,7 +132,7 @@
               <mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
             <mat-menu #manageMenu="matMenu">
-              <button mat-menu-item type="button" (click)="openCreate(row)">
+              <button mat-menu-item type="button" (click)="openCreate(row)" [disabled]="!canUpdate()">
                 <mat-icon>edit</mat-icon>
                 <span>แก้ไข</span>
               </button>

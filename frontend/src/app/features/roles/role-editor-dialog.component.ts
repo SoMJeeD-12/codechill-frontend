@@ -10,6 +10,7 @@ import {
 } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -23,7 +24,77 @@ import {
   PICKER_MIN_CHARS,
 } from '../../shared/components/entity-picker.component';
 
-/** คำอธิบายสั้นใต้แต่ละสิทธิ์ — เปิดเมนู/ปุ่มอะไร */
+/** ชื่อสั้นไทย — หัวข้อหลักของแต่ละสิทธิ์ */
+const PERMISSION_LABELS: Record<string, string> = {
+  'ticket.support_queue': 'คิวซัพพอร์ต',
+  'ticket.assign': 'คิวแอดมิน / มอบหมาย',
+  'ticket.view': 'ดูใบปัญหา',
+  'ticket.create': 'เปิดใบใหม่',
+  'ticket.update': 'แก้ไขใบ',
+  'ticket.resolve': 'บันทึกรอบแก้',
+  'ticket.reopen': 'เปิดใบกลับ',
+  'ticket.close': 'ปิดใบ',
+  'ticket.delete': 'ลบใบ',
+  'project.view': 'ดูโปรเจกต์',
+  'project.create': 'สร้างโปรเจกต์',
+  'project.update': 'แก้ไขโปรเจกต์',
+  'project.delete': 'ลบโปรเจกต์',
+  'task.view': 'งานโปรเจค',
+  'task.create': 'เพิ่มงานย่อย',
+  'task.update': 'แก้งานย่อย',
+  'task.assign': 'มอบหมายงานย่อย',
+  'task.review': 'ตรวจงานโปรเจค',
+  'task.delete': 'ลบงานย่อย',
+  'customer.view': 'ดูลูกค้า',
+  'customer.create': 'สร้างลูกค้า',
+  'customer.update': 'แก้ไขลูกค้า',
+  'customer.delete': 'ลบลูกค้า',
+  'customer.export': 'ส่งออกลูกค้า',
+  'followup.view': 'ติดตามโปรเจค',
+  'followup.create': 'สร้างงานติดตาม',
+  'followup.update': 'แก้ไขงานติดตาม',
+  'followup.complete': 'ปิดงานติดตาม',
+  'followup.delete': 'ลบงานติดตาม',
+  'communication.view': 'ดูประวัติติดต่อ',
+  'communication.create': 'บันทึกการติดต่อ',
+  'communication.update': 'แก้ไขประวัติติดต่อ',
+  'communication.delete': 'ลบประวัติติดต่อ',
+  'ma.view': 'สัญญา MA',
+  'ma.create': 'สร้างสัญญา MA',
+  'ma.update': 'แก้ไขสัญญา MA',
+  'ma.renew': 'ต่ออายุ MA',
+  'ma.delete': 'ลบสัญญา MA',
+  'warranty.view': 'การรับประกัน',
+  'warranty.create': 'ออกประกัน',
+  'warranty.update': 'แก้ไขประกัน',
+  'warranty.delete': 'ลบประกัน',
+  'document.view': 'ดูเอกสาร',
+  'document.create': 'อัปโหลดเอกสาร',
+  'document.update': 'แก้ไขเอกสาร',
+  'document.delete': 'ลบเอกสาร',
+  'report.view': 'รายงาน',
+  'report.export': 'ส่งออกรายงาน',
+  'survey.view': 'แบบประเมิน',
+  'survey.create': 'สร้างแบบประเมิน',
+  'survey.update': 'แก้ไขแบบประเมิน',
+  'survey.delete': 'ลบแบบประเมิน',
+  'notification.view': 'การแจ้งเตือน',
+  'notification.manage': 'จัดการแจ้งเตือน',
+  'dashboard.view': 'หน้าแรก',
+  'user.view': 'ผู้ใช้',
+  'user.create': 'สร้างผู้ใช้',
+  'user.update': 'แก้ไขผู้ใช้',
+  'role.view': 'บทบาท',
+  'role.manage': 'จัดการบทบาท',
+  'audit_log.view': 'ประวัติการใช้งาน',
+  'delivery.view': 'ดูการส่งมอบ',
+  'delivery.create': 'บันทึกส่งมอบ',
+  'delivery.update': 'แก้ไขส่งมอบ',
+  'delivery.accept': 'ตรวจรับส่งมอบ',
+  'delivery.delete': 'ลบส่งมอบ',
+};
+
+/** คำอธิบาย 1 บรรทัด — เปิดเมนู/ปุ่มอะไร */
 const PERMISSION_HINTS: Record<string, string> = {
   'ticket.support_queue': 'เมนูคิวซัพพอร์ต · ส่งหัวหน้า · บอกลูกค้า',
   'ticket.assign': 'เมนูคิวแอดมิน · รับคิว · มอบหมาย · ส่งกลับซัพพอร์ต',
@@ -33,11 +104,11 @@ const PERMISSION_HINTS: Record<string, string> = {
   'ticket.resolve': 'บันทึกรอบแก้ / ปิดรอบแก้ไข',
   'ticket.reopen': 'เปิดปัญหาเดิมกลับมา',
   'ticket.close': 'ปิดใบแจ้งปัญหา',
-  'ticket.delete': 'ลบใบ — ยังไม่มีผลบนหน้าจอหลัก',
+  'ticket.delete': 'ลบใบ — ยังไม่มีผลในระบบ',
   'project.view': 'เมนูโปรเจกต์',
   'project.create': 'สร้างโปรเจกต์',
   'project.update': 'แก้ไขโปรเจกต์',
-  'project.delete': 'ลบโปรเจกต์ — ยังไม่มีผลบนหน้าจอหลัก',
+  'project.delete': 'ลบโปรเจกต์ — ยังไม่มีผลในระบบ',
   'task.view': 'เมนูงานโปรเจค',
   'task.create': 'เพิ่มงานย่อยในโปรเจกต์',
   'task.update': 'แก้งานย่อย · ส่งตรวจ',
@@ -62,11 +133,11 @@ const PERMISSION_HINTS: Record<string, string> = {
   'ma.create': 'สร้างสัญญา MA',
   'ma.update': 'แก้ไขสัญญา MA',
   'ma.renew': 'ต่ออายุสัญญา MA',
-  'ma.delete': 'ลบสัญญา MA — ยังไม่มีผลบนหน้าจอหลัก',
+  'ma.delete': 'ลบสัญญา MA — ยังไม่มีผลในระบบ',
   'warranty.view': 'เมนูการรับประกัน',
   'warranty.create': 'ออกประกัน',
   'warranty.update': 'แก้ไขประกัน',
-  'warranty.delete': 'ลบประกัน — ยังไม่มีผลบนหน้าจอหลัก',
+  'warranty.delete': 'ลบประกัน — ยังไม่มีผลในระบบ',
   'document.view': 'ดูเอกสาร',
   'document.create': 'อัปโหลดเอกสาร',
   'document.update': 'แก้ไขเอกสาร',
@@ -93,20 +164,17 @@ const PERMISSION_HINTS: Record<string, string> = {
   'delivery.delete': 'ลบการส่งมอบ',
 };
 
-/** ลำดับกลุ่มในฟอร์ม */
 type UiGroupId =
-  | 'daily'
-  | 'ticket_mgmt'
+  | 'queue'
+  | 'ticket_ops'
   | 'project'
   | 'customer'
   | 'ops'
-  | 'admin'
-  | 'unused';
+  | 'other';
 
 interface UiGroupDef {
   id: UiGroupId;
   label: string;
-  /** รหัสสิทธิ์ที่จัดเข้ากลุ่มนี้ — ลำดับในอาร์เรย์ = ลำดับแสดง */
   codes: string[];
   collapsedByDefault?: boolean;
   unused?: boolean;
@@ -114,13 +182,13 @@ interface UiGroupDef {
 
 const UI_GROUPS: UiGroupDef[] = [
   {
-    id: 'daily',
-    label: 'A. งานประจำวัน (ใบปัญหา)',
+    id: 'queue',
+    label: 'คิวและการมอบหมายใบ',
     codes: ['ticket.support_queue', 'ticket.assign', 'ticket.view'],
   },
   {
-    id: 'ticket_mgmt',
-    label: 'B. การจัดการใบ',
+    id: 'ticket_ops',
+    label: 'เปิด / แก้ / ปิดใบ',
     codes: [
       'ticket.create',
       'ticket.update',
@@ -131,7 +199,7 @@ const UI_GROUPS: UiGroupDef[] = [
   },
   {
     id: 'project',
-    label: 'C. โปรเจค & งานโปรเจค',
+    label: 'โปรเจคและงานโปรเจค',
     codes: [
       'project.view',
       'project.create',
@@ -149,7 +217,7 @@ const UI_GROUPS: UiGroupDef[] = [
   },
   {
     id: 'customer',
-    label: 'D. ลูกค้า & ติดตาม & การติดต่อ',
+    label: 'ลูกค้า ติดตาม การติดต่อ',
     codes: [
       'customer.view',
       'customer.create',
@@ -166,7 +234,7 @@ const UI_GROUPS: UiGroupDef[] = [
   },
   {
     id: 'ops',
-    label: 'E. MA / ประกัน / เอกสาร / รายงาน / แบบประเมิน / แจ้งเตือน',
+    label: 'MA ประกัน เอกสาร รายงาน แบบประเมิน แจ้งเตือน',
     codes: [
       'ma.view',
       'ma.create',
@@ -190,13 +258,8 @@ const UI_GROUPS: UiGroupDef[] = [
     ],
   },
   {
-    id: 'admin',
-    label: 'F. ผู้ใช้ & อื่น ๆ',
-    codes: ['user.view', 'user.create', 'user.update', 'role.view', 'audit_log.view'],
-  },
-  {
-    id: 'unused',
-    label: 'G. สิทธิ์ที่ยังไม่ใช้ / ลบ',
+    id: 'other',
+    label: 'อื่น ๆ / ยังไม่ใช้',
     codes: [
       'ticket.delete',
       'project.delete',
@@ -208,26 +271,33 @@ const UI_GROUPS: UiGroupDef[] = [
       'warranty.delete',
       'delivery.delete',
       'survey.delete',
+      'user.view',
+      'user.create',
+      'user.update',
+      'role.view',
       'role.manage',
+      'audit_log.view',
     ],
     collapsedByDefault: true,
     unused: true,
   },
 ];
 
-interface RolePreset {
+interface JobPack {
   id: string;
   label: string;
-  description: string;
-  /** รหัสสิทธิ์ที่จะติ๊ก — เฉพาะที่มีใน API */
+  blurb: string;
+  /** เมนูตัวอย่างบนการ์ด */
+  menuHint: string[];
   codes: string[];
 }
 
-const ROLE_PRESETS: RolePreset[] = [
+const JOB_PACKS: JobPack[] = [
   {
     id: 'support',
     label: 'ซัพพอร์ตรับเรื่อง',
-    description: 'คิวซัพพอร์ต · เปิดใบ · ไม่จัดแจง',
+    blurb: 'รับเรื่องลูกค้า ส่งต่อหัวหน้า',
+    menuHint: ['คิวซัพพอร์ต', 'ปัญหา'],
     codes: [
       'ticket.view',
       'ticket.create',
@@ -249,7 +319,8 @@ const ROLE_PRESETS: RolePreset[] = [
   {
     id: 'resolver',
     label: 'พนักงานแก้ใบ',
-    description: 'งานของฉัน · แก้ใบ · ไม่เข้าคิว',
+    blurb: 'รับใบที่มอบหมายแล้วแก้',
+    menuHint: ['งานของฉัน', 'ปัญหา'],
     codes: [
       'ticket.view',
       'ticket.create',
@@ -265,7 +336,8 @@ const ROLE_PRESETS: RolePreset[] = [
   {
     id: 'lead',
     label: 'หัวหน้าจัดแจง',
-    description: 'คิวแอดมิน · มอบหมาย',
+    blurb: 'จัดคิว มอบหมายงาน',
+    menuHint: ['คิวแอดมิน', 'ปัญหา'],
     codes: [
       'ticket.view',
       'ticket.assign',
@@ -283,7 +355,8 @@ const ROLE_PRESETS: RolePreset[] = [
   {
     id: 'sales',
     label: 'ดูแลลูกค้า/ขาย',
-    description: 'ลูกค้า · ติดตาม · ไม่มีคิวใบ',
+    blurb: 'ลูกค้า ติดตาม ไม่เข้าคิวใบ',
+    menuHint: ['ลูกค้า', 'โปรเจกต์', 'ติดตามโปรเจค', 'รายงาน'],
     codes: [
       'customer.view',
       'customer.create',
@@ -299,61 +372,35 @@ const ROLE_PRESETS: RolePreset[] = [
       'warranty.view',
       'notification.view',
       'dashboard.view',
-    ],
-  },
-  {
-    id: 'support_sales',
-    label: 'ซัพพอร์ต+ขาย (รวม)',
-    description: 'ซัพพอร์ต + ลูกค้า · ยังไม่มี assign',
-    codes: [
-      'ticket.view',
-      'ticket.create',
-      'ticket.update',
-      'ticket.reopen',
-      'ticket.close',
-      'ticket.support_queue',
-      'customer.view',
-      'customer.create',
-      'customer.update',
-      'project.view',
-      'followup.view',
-      'followup.create',
-      'followup.update',
-      'communication.view',
-      'communication.create',
-      'ma.view',
-      'warranty.view',
-      'notification.view',
-      'dashboard.view',
+      'report.view',
     ],
   },
 ];
 
-/** เมนูที่จะเห็นจากสิทธิ์ที่ติ๊ก — สรุปให้คนตั้งบทบาท */
-const MENU_PREVIEW_RULES: { label: string; requires: string[] }[] = [
-  { label: 'หน้าแรก', requires: ['dashboard.view', 'ticket.view', 'task.view', 'followup.view', 'project.view'] },
-  { label: 'โปรเจกต์', requires: ['project.view'] },
-  { label: 'งานโปรเจค', requires: ['task.view'] },
-  { label: 'ตรวจงานโปรเจค', requires: ['task.review'] },
+const CUSTOM_PACK_ID = 'custom';
+
+/** ลำดับเมนูสำหรับ chip สรุป (สูงสุด 6) — คำนวณจาก permissions จริง */
+const MENU_CHIP_RULES: { label: string; requires: string[] }[] = [
   { label: 'คิวซัพพอร์ต', requires: ['ticket.support_queue'] },
   { label: 'คิวแอดมิน', requires: ['ticket.assign'] },
   { label: 'งานของฉัน', requires: ['ticket.view'] },
   { label: 'ปัญหา', requires: ['ticket.view'] },
-  { label: 'ติดตามโปรเจค', requires: ['followup.view'] },
-  { label: 'การแจ้งเตือน', requires: ['notification.view'] },
   { label: 'ลูกค้า', requires: ['customer.view'] },
-  { label: 'มุมมอง 360°', requires: ['customer.view'] },
-  { label: 'การรับประกัน', requires: ['warranty.view'] },
-  { label: 'สัญญา MA', requires: ['ma.view'] },
-  { label: 'แบบประเมิน', requires: ['survey.view'] },
+  { label: 'โปรเจกต์', requires: ['project.view'] },
+  { label: 'งานโปรเจค', requires: ['task.view'] },
+  { label: 'ติดตามโปรเจค', requires: ['followup.view'] },
   { label: 'รายงาน', requires: ['report.view'] },
+  { label: 'สัญญา MA', requires: ['ma.view'] },
+  { label: 'การรับประกัน', requires: ['warranty.view'] },
+  { label: 'แบบประเมิน', requires: ['survey.view'] },
+  { label: 'การแจ้งเตือน', requires: ['notification.view'] },
   { label: 'ผู้ใช้', requires: ['user.view'] },
   { label: 'บทบาท', requires: ['role.view', 'role.manage'] },
-  { label: 'ประวัติการใช้งาน', requires: ['audit_log.view', 'audit.view'] },
 ];
 
 interface UiPermissionRow {
   item: PermissionItem;
+  label: string;
   hint: string;
   locked: boolean;
 }
@@ -378,6 +425,7 @@ interface UiSection {
     MatButtonModule,
     MatCheckboxModule,
     MatExpansionModule,
+    MatIconModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
@@ -400,9 +448,17 @@ export class RoleEditorDialogComponent {
   readonly roleSuggestions = signal<Role[]>([]);
   readonly roleQueryReady = signal(false);
   readonly templateFromName = signal<string | null>(null);
-  readonly activePresetId = signal<string | null>(null);
+  /** ชุดงานที่เลือก — รวม custom */
+  readonly activePackId = signal<string | null>(null);
+  readonly permQuery = signal('');
+  /** มีการติ๊กมือหลังเลือกชุดงาน */
+  private readonly dirtyManual = signal(false);
+  /** ชุดสิทธิ์ตอนเลือก pack ล่าสุด — ใช้เทียบ dirty */
+  private packBaseline = new Set<number>();
 
-  readonly presets = ROLE_PRESETS;
+  readonly jobPacks = JOB_PACKS;
+  readonly customPackId = CUSTOM_PACK_ID;
+  readonly permSearchControl = this.fb.nonNullable.control('');
 
   private readonly selected = signal<ReadonlySet<number>>(new Set<number>());
   readonly isCreate = !this.data.role;
@@ -412,7 +468,6 @@ export class RoleEditorDialogComponent {
     isActive: this.fb.nonNullable.control(true),
   });
 
-  /** แผนที่ code → PermissionItem จาก API */
   private readonly byCode = computed(() => {
     const map = new Map<string, PermissionItem>();
     for (const g of this.groups()) {
@@ -436,25 +491,14 @@ export class RoleEditorDialogComponent {
           continue;
         }
         used.add(code);
-        rows.push({
-          item,
-          hint: PERMISSION_HINTS[code] || item.description || code,
-          locked: !!item.superAdminOnly,
-        });
+        rows.push(this.toRow(item, code));
       }
-      if (def.id === 'unused') {
+      if (def.id === 'other') {
         for (const [, item] of map) {
           if (used.has(item.code)) {
             continue;
           }
-          rows.push({
-            item,
-            hint:
-              PERMISSION_HINTS[item.code] ||
-              item.description ||
-              (item.superAdminOnly ? 'สงวนให้ Super Admin' : 'ยังไม่มีคำอธิบาย'),
-            locked: !!item.superAdminOnly,
-          });
+          rows.push(this.toRow(item, item.code));
           used.add(item.code);
         }
       }
@@ -471,18 +515,52 @@ export class RoleEditorDialogComponent {
     return sections;
   });
 
-  readonly menuPreview = computed(() => {
-    const codes = new Set(
-      Array.from(this.selected())
-        .map((id) => this.findById(id)?.code)
-        .filter((c): c is string => !!c)
-    );
-    return MENU_PREVIEW_RULES.filter((rule) =>
-      rule.requires.some((r) => codes.has(r))
-    ).map((r) => r.label);
+  readonly filteredSections = computed((): UiSection[] => {
+    const q = this.permQuery().trim().toLowerCase();
+    if (!q) {
+      return this.uiSections();
+    }
+    return this.uiSections()
+      .map((section) => ({
+        ...section,
+        collapsedByDefault: false,
+        rows: section.rows.filter(
+          (row) =>
+            row.label.toLowerCase().includes(q) ||
+            row.hint.toLowerCase().includes(q) ||
+            row.item.code.toLowerCase().includes(q) ||
+            (row.item.description ?? '').toLowerCase().includes(q) ||
+            section.label.toLowerCase().includes(q)
+        ),
+      }))
+      .filter((section) => section.rows.length > 0);
+  });
+
+  /** chip เมนู 3–6 ตัว จากสิทธิ์ที่ติ๊กจริง */
+  readonly menuChips = computed(() => {
+    const codes = this.selectedCodes();
+    const chips: string[] = [];
+    for (const rule of MENU_CHIP_RULES) {
+      if (chips.length >= 6) {
+        break;
+      }
+      if (rule.requires.some((r) => codes.has(r)) && !chips.includes(rule.label)) {
+        chips.push(rule.label);
+      }
+    }
+    return chips;
   });
 
   readonly selectedCount = computed(() => this.selected().size);
+  readonly isFiltering = computed(() => this.permQuery().trim().length > 0);
+  readonly activePack = computed(() => {
+    const id = this.activePackId();
+    if (!id || id === CUSTOM_PACK_ID) {
+      return null;
+    }
+    return JOB_PACKS.find((p) => p.id === id) ?? null;
+  });
+  readonly isCustomPack = computed(() => this.activePackId() === CUSTOM_PACK_ID);
 
   constructor() {
     const role = this.data.role;
@@ -499,12 +577,19 @@ export class RoleEditorDialogComponent {
       next: (groups) => {
         this.groups.set(groups);
         this.loading.set(false);
+        if (role) {
+          this.matchClosestPack();
+        }
       },
       error: (err: Error) => {
         this.error.set(err.message);
         this.loading.set(false);
       },
     });
+
+    this.permSearchControl.valueChanges
+      .pipe(debounceTime(150), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((value) => this.permQuery.set(value));
 
     if (this.isCreate) {
       this.rolesApi.list({ limit: 100 }).subscribe({
@@ -519,6 +604,10 @@ export class RoleEditorDialogComponent {
         )
         .subscribe((value) => this.onNameSearchChanged(value));
     }
+  }
+
+  clearPermSearch(): void {
+    this.permSearchControl.setValue('');
   }
 
   readonly displayRoleName = (value: string | Role | null): string => {
@@ -538,45 +627,39 @@ export class RoleEditorDialogComponent {
     this.form.controls.name.setValue(role.name, { emitEvent: false });
     this.roleSuggestions.set([]);
     this.roleQueryReady.set(false);
-    this.activePresetId.set(null);
+    this.matchClosestPack();
   }
 
-  applyPreset(preset: RolePreset): void {
-    const map = this.byCode();
-    const next = new Set<number>();
-    let missing = 0;
-    for (const code of preset.codes) {
-      const item = map.get(code);
-      if (!item) {
-        missing += 1;
-        continue;
-      }
-      if (item.superAdminOnly) {
-        continue;
-      }
-      next.add(item.id);
+  selectJobPack(pack: JobPack): void {
+    if (!this.confirmReplaceIfDirty(pack.label)) {
+      return;
     }
-    this.selected.set(next);
-    this.activePresetId.set(preset.id);
+    this.applyCodes(pack.codes);
+    this.activePackId.set(pack.id);
+    this.dirtyManual.set(false);
     this.templateFromName.set(null);
+
     if (!this.form.controls.description.value.trim()) {
-      this.form.patchValue({ description: preset.description }, { emitEvent: false });
+      this.form.patchValue({ description: pack.blurb }, { emitEvent: false });
     }
     if (this.isCreate) {
       const nameCtrl = this.form.controls.name;
       const current =
         typeof nameCtrl.value === 'string' ? nameCtrl.value.trim() : nameCtrl.value?.name ?? '';
       if (!current) {
-        nameCtrl.setValue(preset.label, { emitEvent: false });
+        nameCtrl.setValue(pack.label, { emitEvent: false });
       }
     }
-    if (missing > 0) {
-      this.snack.open(
-        `ใช้ชุด「${preset.label}」แล้ว · มี ${missing} สิทธิ์ที่ API ยังไม่มี ข้ามไป`,
-        'ปิด',
-        { duration: 4000 }
-      );
+  }
+
+  selectCustomPack(): void {
+    if (!this.confirmReplaceIfDirty('กำหนดเอง')) {
+      return;
     }
+    this.activePackId.set(CUSTOM_PACK_ID);
+    this.dirtyManual.set(false);
+    this.packBaseline = new Set(this.selected());
+    this.templateFromName.set(null);
   }
 
   isChecked(permissionId: number): boolean {
@@ -594,7 +677,7 @@ export class RoleEditorDialogComponent {
       next.delete(permissionId);
     }
     this.selected.set(next);
-    this.activePresetId.set(null);
+    this.afterManualEdit();
   }
 
   isSectionChecked(section: UiSection): boolean {
@@ -625,7 +708,7 @@ export class RoleEditorDialogComponent {
       }
     }
     this.selected.set(next);
-    this.activePresetId.set(null);
+    this.afterManualEdit();
   }
 
   save(): void {
@@ -670,6 +753,146 @@ export class RoleEditorDialogComponent {
     });
   }
 
+  private toRow(item: PermissionItem, code: string): UiPermissionRow {
+    return {
+      item,
+      label: PERMISSION_LABELS[code] || item.description || code,
+      hint:
+        PERMISSION_HINTS[code] ||
+        item.description ||
+        (item.superAdminOnly ? 'สงวนให้ Super Admin' : 'ยังไม่มีคำอธิบาย'),
+      locked: !!item.superAdminOnly,
+    };
+  }
+
+  private selectedCodes(): Set<string> {
+    return new Set(
+      Array.from(this.selected())
+        .map((id) => this.findById(id)?.code)
+        .filter((c): c is string => !!c)
+    );
+  }
+
+  private applyCodes(codes: string[]): void {
+    const map = this.byCode();
+    const next = new Set<number>();
+    let missing = 0;
+    for (const code of codes) {
+      const item = map.get(code);
+      if (!item) {
+        missing += 1;
+        continue;
+      }
+      if (item.superAdminOnly) {
+        continue;
+      }
+      next.add(item.id);
+    }
+    this.selected.set(next);
+    this.packBaseline = new Set(next);
+    if (missing > 0) {
+      this.snack.open(`มี ${missing} สิทธิ์ที่ API ยังไม่มี — ข้ามไป`, 'ปิด', {
+        duration: 3500,
+      });
+    }
+  }
+
+  private afterManualEdit(): void {
+    this.dirtyManual.set(true);
+    const current = this.selected();
+    const baseline = this.packBaseline;
+    const sameSize = current.size === baseline.size;
+    const same =
+      sameSize && Array.from(current).every((id) => baseline.has(id));
+    if (!same) {
+      const closest = this.findClosestPackId(this.selectedCodes());
+      this.activePackId.set(closest ?? CUSTOM_PACK_ID);
+      if (closest) {
+        const pack = JOB_PACKS.find((p) => p.id === closest);
+        if (pack) {
+          const packIds = this.idsForCodes(pack.codes);
+          const exact =
+            packIds.size === current.size &&
+            Array.from(packIds).every((id) => current.has(id));
+          if (!exact) {
+            this.activePackId.set(CUSTOM_PACK_ID);
+          } else {
+            this.dirtyManual.set(false);
+            this.packBaseline = new Set(current);
+          }
+        }
+      }
+    }
+  }
+
+  private confirmReplaceIfDirty(nextLabel: string): boolean {
+    if (!this.dirtyManual()) {
+      return true;
+    }
+    return window.confirm(
+      `มีการปรับสิทธิ์ด้วยมือไว้แล้ว\nเปลี่ยนเป็น「${nextLabel}」จะแทนที่การติ๊กทั้งหมด ทำต่อหรือไม่?`
+    );
+  }
+
+  private matchClosestPack(): void {
+    const closest = this.findClosestPackId(this.selectedCodes());
+    this.activePackId.set(closest ?? CUSTOM_PACK_ID);
+    if (closest) {
+      const pack = JOB_PACKS.find((p) => p.id === closest)!;
+      this.packBaseline = this.idsForCodes(pack.codes);
+      const current = this.selected();
+      const exact =
+        this.packBaseline.size === current.size &&
+        Array.from(this.packBaseline).every((id) => current.has(id));
+      this.dirtyManual.set(!exact);
+      if (!exact) {
+        this.activePackId.set(CUSTOM_PACK_ID);
+        this.packBaseline = new Set(current);
+      }
+    } else {
+      this.packBaseline = new Set(this.selected());
+      this.dirtyManual.set(false);
+    }
+  }
+
+  /** จับคู่ชุดงานเมื่อชุดสิทธิ์หลักตรง (≥80% ของรหัสใน pack และครอบคลุมรหัสหลัก) */
+  private findClosestPackId(codes: Set<string>): string | null {
+    if (codes.size === 0) {
+      return null;
+    }
+    let best: { id: string; score: number } | null = null;
+    for (const pack of JOB_PACKS) {
+      const packCodes = pack.codes.filter((c) => this.byCode().has(c));
+      if (!packCodes.length) {
+        continue;
+      }
+      const hit = packCodes.filter((c) => codes.has(c)).length;
+      const coverage = hit / packCodes.length;
+      const extra = Array.from(codes).filter((c) => !packCodes.includes(c)).length;
+      const precision = hit / (hit + extra || 1);
+      const score = coverage * 0.7 + precision * 0.3;
+      if (coverage < 0.8) {
+        continue;
+      }
+      if (!best || score > best.score) {
+        best = { id: pack.id, score };
+      }
+    }
+    return best?.id ?? null;
+  }
+
+  private idsForCodes(codes: string[]): Set<number> {
+    const map = this.byCode();
+    const ids = new Set<number>();
+    for (const code of codes) {
+      const item = map.get(code);
+      if (item && !item.superAdminOnly) {
+        ids.add(item.id);
+      }
+    }
+    return ids;
+  }
+
   private findById(id: number): PermissionItem | undefined {
     for (const g of this.groups()) {
       const found = g.permissions.find((p) => p.id === id);
@@ -705,6 +928,8 @@ export class RoleEditorDialogComponent {
 
   private applyPermissionTemplate(role: Role): void {
     this.selected.set(new Set(role.permissions.map((p) => p.id)));
+    this.packBaseline = new Set(this.selected());
+    this.dirtyManual.set(false);
     if (role.description?.trim() && !this.form.controls.description.value.trim()) {
       this.form.patchValue({ description: role.description }, { emitEvent: false });
     }

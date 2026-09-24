@@ -15,7 +15,6 @@ import { UserService } from '../../core/services/user.service';
 import { RoleEditorDialogComponent } from './role-editor-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 
 @Component({
@@ -152,7 +151,11 @@ export class RolesPageComponent implements OnInit {
 
   private openEditor(role?: Role): void {
     const ref = this.dialog.open(RoleEditorDialogComponent, {
-      ...FORM_DIALOG_WIDE,
+      width: 'min(960px, 96vw)',
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+      panelClass: ['app-form-dialog', 'role-editor-dialog'],
+      autoFocus: 'first-tabbable',
       data: { role: role ?? null },
     });
     ref.afterClosed().subscribe((saved) => {

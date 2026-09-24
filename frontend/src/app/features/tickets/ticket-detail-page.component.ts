@@ -106,7 +106,10 @@ export class TicketDetailPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('ticket.reopen');
   });
-  readonly canChangeResolver = this.auth.isAdminLevel();
+  readonly canChangeResolver = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.assign');
+  });
 
   /** ผู้รับผิดชอบใบนี้เท่านั้นที่กดเริ่มได้ (BE ตรวจอีกชั้น) */
   readonly canStartTicket = computed(() => {
@@ -616,7 +619,7 @@ export class TicketDetailPageComponent implements OnInit {
       ...FORM_DIALOG,
       data: {
         ticketId: this.ticketId,
-        canChangeResolver: this.canChangeResolver,
+        canChangeResolver: this.canChangeResolver(),
         canHandoff: this.canAssign(),
         defaultResolverId:
           this.auth.currentUser()?.id ?? this.ticket()?.assignedUserId ?? 0,

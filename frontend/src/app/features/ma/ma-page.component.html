@@ -23,10 +23,12 @@
             aria-label="ค้นหาสัญญา MA"
           />
         </label>
-        <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
-          <mat-icon>add</mat-icon>
-          สร้างสัญญา
-        </button>
+        @if (canCreate()) {
+          <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
+            <mat-icon>add</mat-icon>
+            สร้างสัญญา
+          </button>
+        }
       </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองสัญญา MA">
         <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
@@ -141,7 +143,7 @@
                 <mat-icon>open_in_new</mat-icon>
                 <span>เปิดรายละเอียด</span>
               </a>
-              <button mat-menu-item type="button" (click)="openCreate(row)">
+              <button mat-menu-item type="button" (click)="openCreate(row)" [disabled]="!canUpdate()">
                 <mat-icon>edit</mat-icon>
                 <span>แก้ไข</span>
               </button>

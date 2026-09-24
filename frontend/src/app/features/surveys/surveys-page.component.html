@@ -17,10 +17,12 @@
             aria-label="ค้นหาแบบประเมิน"
           />
         </label>
-        <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
-          <mat-icon>add</mat-icon>
-          สร้างแบบประเมิน
-        </button>
+        @if (canCreate()) {
+          <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
+            <mat-icon>add</mat-icon>
+            สร้างแบบประเมิน
+          </button>
+        }
       </div>
     </div>
 
@@ -100,22 +102,24 @@
                 <mat-icon>open_in_new</mat-icon>
                 <span>เปิดรายละเอียด</span>
               </a>
-              @if (row.status === 'DRAFT') {
+              @if (row.status === 'DRAFT' && canUpdate()) {
                 <button mat-menu-item type="button" (click)="setStatus(row, 'ACTIVE')">
                   <mat-icon>play_circle</mat-icon>
                   <span>เปิดรับคำตอบ</span>
                 </button>
               }
-              @if (row.status === 'ACTIVE') {
+              @if (row.status === 'ACTIVE' && canUpdate()) {
                 <button mat-menu-item type="button" (click)="setStatus(row, 'CLOSED')">
                   <mat-icon>stop_circle</mat-icon>
                   <span>ปิดแบบประเมิน</span>
                 </button>
               }
-              <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                <mat-icon>delete</mat-icon>
-                <span>ลบ</span>
-              </button>
+              @if (canDelete()) {
+                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                  <mat-icon>delete</mat-icon>
+                  <span>ลบ</span>
+                </button>
+              }
             </mat-menu>
           </td>
         </ng-container>

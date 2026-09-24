@@ -4,15 +4,17 @@
       <h1 class="app-page-title">โปรเจกต์</h1>
     </div>
     <div class="app-header-actions">
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        (click)="openCreate()"
-      >
-        <mat-icon>add</mat-icon>
-        สร้างโปรเจกต์
-      </button>
+      @if (canCreate()) {
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="openCreate()"
+        >
+          <mat-icon>add</mat-icon>
+          สร้างโปรเจกต์
+        </button>
+      }
     </div>
   </header>
 

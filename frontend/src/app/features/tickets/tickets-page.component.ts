@@ -86,11 +86,8 @@ export class TicketsPageComponent implements OnInit {
     );
   });
   readonly canDelete = computed(() => {
-    this.auth.session();
-    return (
-      this.auth.hasPermissionCode('ticket.delete') ||
-      this.auth.hasPermission('tickets', 'delete')
-    );
+    // ไม่มี DELETE ใบ — ห้ามโชว์ปุ่มลบ
+    return false;
   });
   readonly canClose = computed(() => {
     this.auth.session();

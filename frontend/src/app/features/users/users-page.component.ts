@@ -122,6 +122,14 @@ export class UsersPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('user.reset_password');
   });
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('user.create');
+  });
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('user.update');
+  });
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
@@ -171,10 +179,18 @@ export class UsersPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canCreate()) {
+      this.snack.open('ไม่มีสิทธิ์สร้างผู้ใช้', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.openForm();
   }
 
   openEdit(user: User): void {
+    if (!this.canUpdate()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขผู้ใช้', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.openForm(user);
   }
 

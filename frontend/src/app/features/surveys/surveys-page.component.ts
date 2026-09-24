@@ -24,6 +24,7 @@ import {
   SurveyStatus,
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
+import { AuthService } from '../../core/services/auth.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
@@ -51,9 +52,23 @@ import { createTableSort } from '../../shared/utils/table-sort';
 })
 export class SurveysPageComponent implements OnInit {
   private readonly api = inject(SurveyService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('survey.create');
+  });
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('survey.update');
+  });
+  readonly canDelete = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('survey.delete');
+  });
 
   readonly surveys = signal<Survey[]>([]);
   readonly search = signal('');
@@ -120,6 +135,10 @@ export class SurveysPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canCreate()) {
+      this.snack.open('ไม่มีสิทธิ์สร้างแบบประเมิน', 'ปิด', { duration: 3000 });
+      return;
+    }
     const ref = this.dialog.open(SurveyFormDialogComponent, {
       ...FORM_DIALOG,
     });
@@ -131,6 +150,10 @@ export class SurveysPageComponent implements OnInit {
   }
 
   setStatus(row: Survey, status: SurveyStatus): void {
+    if (!this.canUpdate()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขแบบประเมิน', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.api.updateStatus(row.id, status).subscribe({
       next: () => {
         this.snack.open('อัปเดตสถานะแล้ว', 'ปิด', { duration: 2200 });
@@ -141,6 +164,10 @@ export class SurveysPageComponent implements OnInit {
   }
 
   remove(row: Survey): void {
+    if (!this.canDelete()) {
+      this.snack.open('ไม่มีสิทธิ์ลบแบบประเมิน', 'ปิด', { duration: 3000 });
+      return;
+    }
     openConfirmDialog(this.dialog, {
       title: 'ลบแบบประเมิน',
       message: `ต้องการลบ「${row.title}」หรือไม่?`,

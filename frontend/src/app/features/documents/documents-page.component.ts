@@ -143,6 +143,14 @@ export class DocumentsPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('document.delete');
   });
+  readonly canCreateDocument = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.create');
+  });
+  readonly canUpdateDocument = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('document.update');
+  });
 
   readonly documents = signal<ProjectDocument[]>([]);
   readonly projectFilter = signal<number | 'ALL'>('ALL');
@@ -342,6 +350,10 @@ export class DocumentsPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canCreateDocument()) {
+      this.snack.open('ไม่มีสิทธิ์อัปโหลดเอกสาร', 'ปิด', { duration: 3000 });
+      return;
+    }
     const ref = this.dialog.open(DocumentUploadDialogComponent, {
       ...FORM_DIALOG,
       data: { mode: 'create' as const },

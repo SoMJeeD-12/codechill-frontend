@@ -103,12 +103,38 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly maApi = inject(MaService);
   private readonly followUpsApi = inject(FollowUpService);
+  private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
 
   /** จากเมนูมุมมอง 360° — โหมดสรุปทุกอย่างของลูกค้ารายเดียว */
   readonly is360Mode = this.route.snapshot.data['mode'] === '360';
+
+  readonly canCreateContact = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('contact.create');
+  });
+  readonly canUpdateContact = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('contact.update');
+  });
+  readonly canDeleteContact = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('contact.delete');
+  });
+  readonly canCreateCommunication = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('communication.create');
+  });
+  readonly canUpdateCommunication = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('communication.update');
+  });
+  readonly canDeleteCommunication = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('communication.delete');
+  });
 
   readonly customer = signal<Customer | null>(null);
   readonly overview = signal<CustomerOverview | null>(null);
@@ -520,6 +546,14 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   openContactForm(contact?: Contact): void {
+    if (contact ? !this.canUpdateContact() : !this.canCreateContact()) {
+      this.snack.open(
+        contact ? 'ไม่มีสิทธิ์แก้ไขผู้ติดต่อ' : 'ไม่มีสิทธิ์เพิ่มผู้ติดต่อ',
+        'ปิด',
+        { duration: 3000 }
+      );
+      return;
+    }
     const ref = this.dialog.open(CustomerContactFormDialogComponent, {
       ...FORM_DIALOG,
       data: { customerId: this.customerId, contact: contact ?? null },
@@ -552,6 +586,10 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   removeContact(contact: Contact): void {
+    if (!this.canDeleteContact()) {
+      this.snack.open('ไม่มีสิทธิ์ลบผู้ติดต่อ', 'ปิด', { duration: 3000 });
+      return;
+    }
     openConfirmDialog(this.dialog, {
       title: 'ลบผู้ติดต่อ',
       message: `ต้องการลบผู้ติดต่อ「${contact.name}」หรือไม่?`,
@@ -571,6 +609,14 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   openLogForm(log?: CommunicationLog): void {
+    if (log ? !this.canUpdateCommunication() : !this.canCreateCommunication()) {
+      this.snack.open(
+        log ? 'ไม่มีสิทธิ์แก้ไขบันทึกการติดต่อ' : 'ไม่มีสิทธิ์บันทึกการติดต่อ',
+        'ปิด',
+        { duration: 3000 }
+      );
+      return;
+    }
     const ref = this.dialog.open(CustomerLogFormDialogComponent, {
       ...FORM_DIALOG,
       data: {
@@ -607,6 +653,10 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   removeLog(log: CommunicationLog): void {
+    if (!this.canDeleteCommunication()) {
+      this.snack.open('ไม่มีสิทธิ์ลบบันทึกการติดต่อ', 'ปิด', { duration: 3000 });
+      return;
+    }
     const label = log.subject?.trim() || this.channelLabels[log.channel];
     openConfirmDialog(this.dialog, {
       title: 'ลบประวัติการติดต่อ',

@@ -129,8 +129,15 @@ export class ProjectsPageComponent implements OnInit {
       this.auth.hasPermission('projects', 'update')
     );
   });
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('project.create') ||
+      this.auth.hasPermission('projects', 'create')
+    );
+  });
   readonly canDelete = computed(() => {
-    // BE ยังไม่มี DELETE /api/projects/:id (Swagger มีแค่ GET/PUT) — ซ่อนกันกดแล้ว error ตอนสาธิต
+    // BE ยังไม่มี DELETE /api/projects/:id — ใช้สถานะ CANCELLED ผ่าน update
     return false;
   });
 
@@ -249,6 +256,10 @@ export class ProjectsPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canCreate()) {
+      this.snack.open('ไม่มีสิทธิ์สร้างโปรเจกต์', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.openForm();
   }
 

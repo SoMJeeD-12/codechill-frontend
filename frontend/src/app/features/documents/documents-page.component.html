@@ -43,10 +43,12 @@
             }
           </mat-autocomplete>
         </mat-form-field>
-        <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
-          <mat-icon>upload_file</mat-icon>
-          อัปโหลดเอกสาร
-        </button>
+        @if (canCreateDocument()) {
+          <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
+            <mat-icon>upload_file</mat-icon>
+            อัปโหลดเอกสาร
+          </button>
+        }
       </div>
     </div>
 

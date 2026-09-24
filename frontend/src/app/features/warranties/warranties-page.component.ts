@@ -71,10 +71,20 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly api = inject(WarrantyService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('warranty.create');
+  });
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('warranty.update');
+  });
 
   readonly warranties = signal<Warranty[]>([]);
   readonly view = signal<'near' | 'active' | 'all'>('all');
@@ -225,6 +235,14 @@ export class WarrantiesPageComponent implements OnInit {
   }
 
   openCreate(row?: Warranty): void {
+    if (row ? !this.canUpdate() : !this.canCreate()) {
+      this.snack.open(
+        row ? 'ไม่มีสิทธิ์แก้ไขประกัน' : 'ไม่มีสิทธิ์ออกประกัน',
+        'ปิด',
+        { duration: 3000 }
+      );
+      return;
+    }
     const ref = this.dialog.open(WarrantyFormDialogComponent, {
       ...FORM_DIALOG,
       data: row ?? null,

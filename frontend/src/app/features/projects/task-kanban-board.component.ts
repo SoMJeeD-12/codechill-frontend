@@ -96,9 +96,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
 
   readonly canCreateTask = computed(() => {
     this.auth.session();
-    return (
-      this.auth.hasPermissionCode('task.create') || this.auth.hasPermissionCode('task.update')
-    );
+    return this.auth.hasPermissionCode('task.create');
   });
 
   readonly activeProjectId = computed(() => this.effectiveProjectId());

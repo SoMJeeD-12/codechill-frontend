@@ -1,141 +1,224 @@
 <h2 mat-dialog-title>{{ data.role ? 'แก้ไขบทบาท' : 'สร้างบทบาทใหม่' }}</h2>
-<mat-dialog-content>
-  <form [formGroup]="form" class="form">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>ชื่อบทบาท</mat-label>
-      @if (isCreate) {
-        <input matInput formControlName="name" [matAutocomplete]="roleAuto" />
-        <mat-autocomplete
-          #roleAuto="matAutocomplete"
-          [displayWith]="displayRoleName"
-          (optionSelected)="onTemplateSelected($event)"
-        >
-          @if (roleQueryReady()) {
-            @for (r of roleSuggestions(); track r.id) {
-              <mat-option [value]="r">
-                <span class="role-opt__name">{{ r.name }}</span>
-                <span class="role-opt__meta">
-                  {{ r.permissions.length }} สิทธิ์
-                  @if (!r.isActive) {
-                    · ปิดใช้งาน
-                  }
-                </span>
-              </mat-option>
-            }
-          }
-        </mat-autocomplete>
-        @if (templateFromName()) {
-          <mat-hint>
-            คัดลอกสิทธิ์จาก「{{ templateFromName() }}」แล้ว — แก้ชื่อหรือติ๊กต่อได้
-          </mat-hint>
-        }
-      } @else {
-        <input matInput formControlName="name" />
-      }
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>คำอธิบาย</mat-label>
-      <textarea matInput rows="2" formControlName="description"></textarea>
-    </mat-form-field>
-    <mat-slide-toggle formControlName="isActive">เปิดใช้งานบทบาทนี้</mat-slide-toggle>
-  </form>
 
-  <section class="presets" aria-label="ชุดสิทธิ์สำเร็จรูป">
-    <p class="presets__label">ชุดสำเร็จรูป — กดแล้วติ๊กให้ แก้ต่อได้</p>
-    <div class="presets__chips">
-      @for (p of presets; track p.id) {
-        <button
-          type="button"
-          class="preset-chip"
-          [class.is-active]="activePresetId() === p.id"
-          [disabled]="loading()"
-          (click)="applyPreset(p)"
-          [attr.title]="p.description"
-        >
-          {{ p.label }}
-        </button>
-      }
-    </div>
-  </section>
-
-  @if (!loading() && menuPreview().length) {
-    <p class="menu-preview">
-      <strong>เมนูที่จะเห็น:</strong>
-      {{ menuPreview().join(' · ') }}
-    </p>
-  } @else if (!loading()) {
-    <p class="menu-preview is-empty">ยังไม่ติ๊กสิทธิ์ — เลือกชุดสำเร็จรูปหรือติ๊กด้านล่าง</p>
-  }
-
-  @if (loading()) {
-    <div class="perm-loading">
-      <mat-spinner diameter="28"></mat-spinner>
-      <span>กำลังโหลดรายการสิทธิ์…</span>
-    </div>
-  } @else {
-    <p class="perm-count">เลือกแล้ว {{ selectedCount() }} สิทธิ์</p>
-    <mat-accordion class="perm-groups" multi>
-      @for (section of uiSections(); track section.id) {
-        <mat-expansion-panel
-          class="perm-group"
-          [class.is-unused]="section.unused"
-          [expanded]="!section.collapsedByDefault"
-        >
-          <mat-expansion-panel-header>
-            <mat-panel-title>
-              <mat-checkbox
-                [checked]="isSectionChecked(section)"
-                [indeterminate]="isSectionPartial(section)"
-                (click)="$event.stopPropagation()"
-                (change)="toggleSection(section, $event.checked)"
-              >
-                {{ section.label }}
-              </mat-checkbox>
-            </mat-panel-title>
-            <mat-panel-description>
-              {{ sectionSelectedCount(section) }}/{{ section.rows.length }}
-              @if (section.unused) {
-                <span class="unused-flag">ยังไม่มีผล</span>
-              }
-            </mat-panel-description>
-          </mat-expansion-panel-header>
-          <div class="perm-items">
-            @for (row of section.rows; track row.item.id) {
-              <label
-                class="perm-row"
-                [class.is-locked]="row.locked"
-                [class.is-checked]="isChecked(row.item.id)"
-              >
-                <mat-checkbox
-                  [checked]="isChecked(row.item.id)"
-                  [disabled]="row.locked"
-                  (change)="toggle(row.item.id, $event.checked, row.locked)"
-                >
-                  <span class="perm-row__title">
-                    {{ row.hint }}
-                    @if (row.locked) {
-                      <span class="perm-flag">สงวน Super Admin</span>
+<mat-dialog-content class="role-editor__body">
+  <section class="meta">
+    <form [formGroup]="form" class="meta__form">
+      <mat-form-field appearance="outline" class="full" subscriptSizing="dynamic">
+        <mat-label>ชื่อบทบาท</mat-label>
+        @if (isCreate) {
+          <input matInput formControlName="name" [matAutocomplete]="roleAuto" />
+          <mat-autocomplete
+            #roleAuto="matAutocomplete"
+            [displayWith]="displayRoleName"
+            (optionSelected)="onTemplateSelected($event)"
+          >
+            @if (roleQueryReady()) {
+              @for (r of roleSuggestions(); track r.id) {
+                <mat-option [value]="r">
+                  <span class="role-opt__name">{{ r.name }}</span>
+                  <span class="role-opt__meta">
+                    {{ r.permissions.length }} สิทธิ์
+                    @if (!r.isActive) {
+                      · ปิดใช้งาน
                     }
                   </span>
-                  <span class="perm-row__code">{{ row.item.code }}</span>
-                </mat-checkbox>
-              </label>
+                </mat-option>
+              }
+            }
+          </mat-autocomplete>
+          @if (templateFromName()) {
+            <mat-hint>
+              คัดลอกสิทธิ์จาก「{{ templateFromName() }}」แล้ว — แก้ชื่อหรือติ๊กต่อได้
+            </mat-hint>
+          }
+        } @else {
+          <input matInput formControlName="name" />
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full" subscriptSizing="dynamic">
+        <mat-label>คำอธิบาย</mat-label>
+        <input
+          matInput
+          formControlName="description"
+          placeholder="เช่น รับเรื่องลูกค้า ส่งต่อหัวหน้า"
+        />
+      </mat-form-field>
+
+      <mat-slide-toggle formControlName="isActive" class="meta__toggle">
+        เปิดใช้งานบทบาทนี้
+      </mat-slide-toggle>
+    </form>
+  </section>
+
+  <section class="job-mode" aria-label="เลือกชุดงาน">
+    <header class="job-mode__head">
+      <h3 class="job-mode__title">บทบาทนี้ทำงานอะไรเป็นหลัก</h3>
+      <p class="job-mode__sub">เลือก 1 ชุด — ระบบติ๊กสิทธิ์ให้ แก้เพิ่มทีหลังได้</p>
+    </header>
+
+    @if (loading()) {
+      <div class="perm-loading">
+        <mat-spinner diameter="28"></mat-spinner>
+        <span>กำลังโหลดสิทธิ์…</span>
+      </div>
+    } @else {
+      <div class="job-grid" role="radiogroup" aria-label="ชุดงาน">
+        @for (pack of jobPacks; track pack.id) {
+          <button
+            type="button"
+            class="job-card"
+            role="radio"
+            [attr.aria-checked]="activePackId() === pack.id"
+            [class.is-selected]="activePackId() === pack.id"
+            (click)="selectJobPack(pack)"
+          >
+            <span class="job-card__label">{{ pack.label }}</span>
+            <span class="job-card__blurb">{{ pack.blurb }}</span>
+            <span class="job-card__menus">{{ pack.menuHint.join(' · ') }}</span>
+          </button>
+        }
+        <button
+          type="button"
+          class="job-card job-card--custom"
+          role="radio"
+          [attr.aria-checked]="isCustomPack()"
+          [class.is-selected]="isCustomPack()"
+          (click)="selectCustomPack()"
+        >
+          <span class="job-card__label">กำหนดเอง</span>
+          <span class="job-card__blurb">ติ๊กสิทธิ์ทีละช่อง</span>
+          <span class="job-card__menus">เปิดโหมดปรับละเอียด</span>
+        </button>
+      </div>
+
+      @if (menuChips().length) {
+        <div class="menu-chips" aria-label="เมนูที่จะเห็น">
+          <span class="menu-chips__label">เมนูที่จะเห็น</span>
+          <div class="menu-chips__list">
+            @for (chip of menuChips(); track chip) {
+              <span class="menu-chip">{{ chip }}</span>
             }
           </div>
-        </mat-expansion-panel>
-      } @empty {
-        <p class="empty">ไม่พบรายการสิทธิ์จากเซิร์ฟเวอร์</p>
+        </div>
+      } @else if (activePackId()) {
+        <p class="menu-chips menu-chips--empty">ยังไม่มีเมนูจากสิทธิ์ที่เลือก</p>
       }
-    </mat-accordion>
+    }
+  </section>
+
+  @if (!loading()) {
+    <section class="fine-mode" aria-label="ปรับสิทธิ์ละเอียด">
+      <header class="fine-mode__head">
+        <h3 class="fine-mode__title">ปรับสิทธิ์ละเอียด</h3>
+        <p class="fine-mode__sub">ติ๊กเพิ่มหรือลดจากชุดงานด้านบน</p>
+      </header>
+
+      <label class="perm-search">
+        <mat-icon>search</mat-icon>
+        <input
+          type="search"
+          [formControl]="permSearchControl"
+          placeholder="ค้นหา เช่น คิวซัพพอร์ต, assign, ลูกค้า"
+          aria-label="ค้นหาสิทธิ์"
+        />
+        @if (isFiltering()) {
+          <button
+            type="button"
+            class="perm-search__clear"
+            (click)="clearPermSearch()"
+            aria-label="ล้างคำค้น"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </label>
+
+      <mat-accordion class="perm-groups" multi>
+        @for (section of filteredSections(); track section.id) {
+          <mat-expansion-panel
+            class="perm-group"
+            [class.is-unused]="section.unused"
+            [expanded]="isFiltering() || !section.collapsedByDefault"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <mat-checkbox
+                  [checked]="isSectionChecked(section)"
+                  [indeterminate]="isSectionPartial(section)"
+                  (click)="$event.stopPropagation()"
+                  (change)="toggleSection(section, $event.checked)"
+                >
+                  {{ section.label }}
+                </mat-checkbox>
+              </mat-panel-title>
+              <mat-panel-description>
+                {{ sectionSelectedCount(section) }}/{{ section.rows.length }}
+                @if (section.unused) {
+                  <span class="unused-flag">ยังไม่มีผลในระบบ</span>
+                }
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <ul class="perm-list">
+              @for (row of section.rows; track row.item.id) {
+                <li
+                  class="perm-row"
+                  [class.is-locked]="row.locked"
+                  [class.is-checked]="isChecked(row.item.id)"
+                >
+                  <mat-checkbox
+                    [checked]="isChecked(row.item.id)"
+                    [disabled]="row.locked"
+                    (change)="toggle(row.item.id, $event.checked, row.locked)"
+                  >
+                    <span class="perm-row__main">
+                      <span class="perm-row__label">
+                        {{ row.label }}
+                        @if (row.locked) {
+                          <span class="perm-flag">สงวน Super Admin</span>
+                        }
+                      </span>
+                      <span class="perm-row__hint">{{ row.hint }}</span>
+                    </span>
+                    <span class="perm-row__code" [attr.title]="row.item.code">
+                      {{ row.item.code }}
+                    </span>
+                  </mat-checkbox>
+                </li>
+              }
+            </ul>
+          </mat-expansion-panel>
+        } @empty {
+          <p class="empty">
+            @if (isFiltering()) {
+              ไม่พบสิทธิ์ตามคำค้น「{{ permQuery() }}」
+            } @else {
+              ไม่พบรายการสิทธิ์จากเซิร์ฟเวอร์
+            }
+          </p>
+        }
+      </mat-accordion>
+    </section>
   }
 
   @if (error()) {
     <p class="error">{{ error() }}</p>
   }
 </mat-dialog-content>
-<mat-dialog-actions align="end">
-  <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
-    บันทึก
-  </button>
+
+<mat-dialog-actions class="role-editor__footer">
+  <span class="footer-count">เลือกแล้ว {{ selectedCount() }} สิทธิ์</span>
+  <div class="footer-actions">
+    <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      [disabled]="saving() || loading()"
+      (click)="save()"
+    >
+      บันทึก
+    </button>
+  </div>
 </mat-dialog-actions>

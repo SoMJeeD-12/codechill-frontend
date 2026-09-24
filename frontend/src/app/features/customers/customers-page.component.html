@@ -18,7 +18,7 @@
             aria-label="ค้นหาลูกค้า"
           />
         </label>
-        @if (!is360Mode) {
+        @if (!is360Mode && canCreate()) {
           <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
             <mat-icon>add_business</mat-icon>
             เพิ่มลูกค้า

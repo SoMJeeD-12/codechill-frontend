@@ -37,6 +37,7 @@ import {
   maPlanDisplayName,
   resolveMaCoverageState,
 } from '../../core/models/ma.model';
+import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import {
   MaContractCreateInput,
@@ -91,9 +92,23 @@ export class MaPageComponent implements OnInit {
   private readonly api = inject(MaService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.create');
+  });
+  readonly canUpdate = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.update');
+  });
+  readonly canRenew = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ma.renew');
+  });
 
   readonly contracts = signal<MaContract[]>([]);
   /** โควตารอบปัจจุบัน — list API ไม่พ่วง ต้องโหลด GET /ma-contracts/:id/quota */
@@ -295,6 +310,14 @@ export class MaPageComponent implements OnInit {
   }
 
   openCreate(row?: MaContract): void {
+    if (row ? !this.canUpdate() : !this.canCreate()) {
+      this.snack.open(
+        row ? 'ไม่มีสิทธิ์แก้ไขสัญญา MA' : 'ไม่มีสิทธิ์สร้างสัญญา MA',
+        'ปิด',
+        { duration: 3000 }
+      );
+      return;
+    }
     const ref = this.dialog.open(MaFormDialogComponent, {
       ...FORM_DIALOG_WIDE,
       data: row ?? null,

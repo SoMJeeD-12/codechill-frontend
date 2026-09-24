@@ -16,7 +16,6 @@ import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   permissionCandidates,
-  hasAnyModulePermission,
   actionAliases,
   moduleAliases,
 } from '../auth/permission-codes';
@@ -265,19 +264,18 @@ export class AuthService {
     if (!session) {
       return false;
     }
-    // เมนูบทบาททั้งหมดสงวนไว้เฉพาะ Super Admin (Admin มองไม่เห็น/เข้าไม่ได้)
+    // เมนูบทบาท — สงวน Super Admin (role.view/manage ติ๊กใน Role ไม่ผ่าน)
     if (menuCode === 'roles') {
       return session.user.accountType === 'SUPER_ADMIN';
     }
-    // ประวัติการใช้งาน — backend กั้นระดับ ADMIN ไม่ใช่แค่ audit.view
+    // ประวัติการใช้งาน — กั้นด้วย accountType ADMIN ขึ้นไป (ไม่ใช่ audit.view)
     if (menuCode === 'audit-logs') {
       return (
         session.user.accountType === 'SUPER_ADMIN' ||
         session.user.accountType === 'ADMIN'
       );
     }
-    // หน้าแรก — เป็นแค่หน้ารวมของงานที่มีสิทธิ์ดูอยู่แล้ว
-    // ไม่มี permission แยก จึงเปิดให้เมื่อมีสิทธิ์ดูอย่างน้อยหนึ่งส่วน (ห้ามเช็ค roles)
+    // หน้าแรก — รวมงานที่มีสิทธิ์ดู (ไม่มี permission แยกเป็นหลัก)
     if (menuCode === 'dashboard') {
       return (
         this.hasPermissionCode('dashboard.view') ||
@@ -287,31 +285,19 @@ export class AuthService {
         this.hasPermissionCode('project.view')
       );
     }
-    // คิวงานรอตรวจ — SUPER_ADMIN/ADMIN จาก accountType หรือ task.review จาก /auth/me
-    // ห้ามใช้ task.update (ผู้รับผิดชอบมี update เพื่อส่งตรวจ แต่ยังไม่ใช่ผู้ตรวจ)
-    // ห้ามใช้ roles / ตำแหน่ง
     if (menuCode === 'tasks-review') {
       return this.canAccessTaskReviewQueue();
     }
-    // คิวซัพพอร์ต — ticket.support_queue เท่านั้น
     if (menuCode === 'ticket-workflow') {
       return this.canAccessTicketSupportQueue();
     }
-    // คิวแอดมิน — ticket.assign เท่านั้น (USER) · ห้ามใช้ ticket.view เป็นตัวเปิด
     if (menuCode === 'ticket-admin-queue') {
       return this.canAccessTicketAdminQueue();
     }
-    // งานของฉัน (ใบที่ถูกมอบหมาย) — ticket.view
     if (menuCode === 'tickets-mine') {
       return this.canAccessMyTickets();
     }
-    // SUPER_ADMIN / ADMIN เห็นและใช้ทุกเมนูอื่น
-    if (
-      session.user.accountType === 'SUPER_ADMIN' ||
-      session.user.accountType === 'ADMIN'
-    ) {
-      return true;
-    }
+    // เมนู/ปุ่มอื่น — ใช้ permissions[] จาก /auth/me เท่านั้น (ห้าม bypass ด้วย accountType)
     const perms = session.permissions;
     if (
       permissionCandidates(menuCode, action).some((code) =>
@@ -320,25 +306,20 @@ export class AuthService {
     ) {
       return true;
     }
-    // เมนู「ปัญหา」ต้องมี ticket.view จริง — ห้ามเปิดด้วยแค่ create/assign แล้วไปโหลด list แล้วขึ้น 403
+    // เมนู「ปัญหา」ต้องมี ticket.view จริง — ห้ามเปิดด้วยแค่ create/assign
     if (menuCode === 'tickets' && action === 'view') {
       return false;
     }
-    // บางโมดูลใช้ action พิเศษ (เช่น role.manage) — ถือว่ามีสิทธิ์ดูเมนูได้ถ้ามี permission ของโมดูลนั้น
-    if (action === 'view') {
-      return hasAnyModulePermission(perms, menuCode);
-    }
+    // เมนูใช้ *.view — ห้ามเปิดเมนูด้วยแค่ create/update ของโมดูล
     return false;
   }
 
   /** เช็ครหัสสิทธิ์ตรงๆ เช่น task.update, delivery.create */
   hasPermissionCode(code: string): boolean {
     const [module, action] = code.split('.');
-    if (module === 'role') {
+    // role.* สงวน Super Admin — ติ๊กใน Role ไม่ผ่าน
+    if (module === 'role' || module === 'permission') {
       return this.isSuperAdmin();
-    }
-    if (this.isAdminLevel()) {
-      return true;
     }
     const perms = this.sessionSignal()?.permissions ?? [];
     if (perms.includes(code)) {
@@ -354,11 +335,8 @@ export class AuthService {
 
   /** มีสิทธิ์ใดๆ ของโมดูลนี้หรือไม่ เช่น task / delivery */
   hasModuleAccess(module: string): boolean {
-    if (module === 'role') {
+    if (module === 'role' || module === 'permission') {
       return this.isSuperAdmin();
-    }
-    if (this.isAdminLevel()) {
-      return true;
     }
     const perms = this.sessionSignal()?.permissions ?? [];
     return moduleAliases(module).some(
@@ -367,92 +345,45 @@ export class AuthService {
   }
 
   getVisibleMenuCodes(): MenuCode[] {
-    const flat = flattenMenuItems(MENU_ITEMS);
-    if (this.isSuperAdmin()) {
-      return flat.map((item) => item.code);
-    }
-    // Admin เห็นทุกเมนูยกเว้นบทบาทและสิทธิ์
-    if (this.isAdminLevel()) {
-      return flat.filter((item) => item.code !== 'roles').map((item) => item.code);
-    }
-    const perms = this.sessionSignal()?.permissions ?? [];
-    if (!perms.length) {
-      return [];
-    }
-    return flat
-      .filter((item) => {
-        if (item.code === 'tasks-review') {
-          // เมนูรอตรวจ: accountType SUPER_ADMIN/ADMIN หรือมีสิทธิ์ task.review
-          // ห้ามใช้ task.update / roles / ตำแหน่ง
-          return this.canAccessTaskReviewQueue();
-        }
-        if (item.code === 'ticket-workflow') {
-          return this.canAccessTicketSupportQueue();
-        }
-        if (item.code === 'ticket-admin-queue') {
-          return this.canAccessTicketAdminQueue();
-        }
-        if (item.code === 'tickets-mine') {
-          return this.canAccessMyTickets();
-        }
-        return this.hasPermission(item.code, 'view');
-      })
+    return flattenMenuItems(MENU_ITEMS)
+      .filter((item) => this.hasPermission(item.code, 'view'))
       .map((item) => item.code);
   }
 
   /**
-   * เข้าคิวงานรอตรวจได้เมื่อเป็น SUPER_ADMIN/ADMIN (accountType)
-   * หรือมีสิทธิ์ task.review จาก /auth/me
-   * ห้ามใช้ task.update — ผู้รับผิดชอบมักมี update เพื่อส่งรายงาน แต่ยังไม่ใช่ผู้ตรวจ
-   * ห้ามใช้ roles / ตำแหน่ง
+   * คิวงานรอตรวจ — task.review จาก /auth/me เท่านั้น
+   * ห้ามใช้ task.update · ห้าม bypass accountType
    */
   canAccessTaskReviewQueue(): boolean {
-    if (this.isAdminLevel()) {
-      return true;
-    }
     return this.hasPermissionCode('task.review');
   }
 
   /**
-   * คิวซัพพอร์ต — คนรับเรื่อง/ส่งหัวหน้า/บอกลูกค้า
-   * ต้องมี ticket.support_queue จาก /auth/me
+   * คิวซัพพอร์ต — ticket.support_queue เท่านั้น
    * ห้ามเปิดด้วย ticket.create / ticket.update
-   * ห้ามใช้ roles / ตำแหน่ง
    */
   canAccessTicketSupportQueue(): boolean {
-    if (this.isAdminLevel()) {
-      return true;
-    }
     return this.hasPermissionCode('ticket.support_queue');
   }
 
   /**
-   * 「งานของฉัน」= ใบที่ assigned ให้ผู้ใช้ปัจจุบัน
-   * ต้องมี ticket.view — ห้ามผูกกับ task.*
+   * 「งานของฉัน」= ใบที่ assigned ให้ผู้ใช้ปัจจุบัน — ticket.view
    */
   canAccessMyTickets(): boolean {
-    if (this.isAdminLevel()) {
-      return true;
-    }
     return this.hasPermissionCode('ticket.view');
   }
 
   /**
-   * คิวแอดมิน — จัดแจง/มอบหมาย (สายงาน C-1)
-   * USER: ต้องมี ticket.assign จาก /auth/me เท่านั้น
-   * SUPER_ADMIN/ADMIN: ตามที่ FE เปิดระดับแอดมินอยู่แล้ว
-   * ห้ามใช้ ticket.view · ห้ามใช้ roles / ตำแหน่ง
+   * คิวแอดมิน — ticket.assign จาก /auth/me เท่านั้น
+   * ห้ามใช้ ticket.view
    */
   canAccessTicketAdminQueue(): boolean {
-    if (this.isAdminLevel()) {
-      return true;
-    }
     return this.hasPermissionCode('ticket.assign');
   }
 
-  /** SUPER_ADMIN/ADMIN มี roles: [] เสมอ — Admin ระดับระบบเข้าเมนูได้แม้ permissions จาก API ไม่ครบ */
+  /** มีเมนูอย่างน้อยหนึ่งรายการ (permissions จาก /auth/me หรือเมนูตั้งค่าตาม accountType) */
   hasAnyMenuAccess(): boolean {
-    if (this.isAdminLevel()) {
+    if (this.isSuperAdmin() || this.isAdminLevel()) {
       return true;
     }
     return (this.sessionSignal()?.permissions.length ?? 0) > 0;

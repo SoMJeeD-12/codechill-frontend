@@ -228,9 +228,7 @@ export class ProjectDetailPageComponent implements OnInit {
   });
   readonly canCreateTask = computed(() => {
     this.auth.session();
-    return (
-      this.auth.hasPermissionCode('task.create') || this.auth.hasPermissionCode('task.update')
-    );
+    return this.auth.hasPermissionCode('task.create');
   });
   readonly canUpdateTask = computed(() => {
     this.auth.session();

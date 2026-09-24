@@ -80,12 +80,18 @@ export class CustomersPageComponent implements OnInit {
       this.auth.hasPermission('customers', 'update')
     );
   });
+  readonly canCreate = computed(() => {
+    this.auth.session();
+    return (
+      this.auth.hasPermissionCode('customer.create') ||
+      this.auth.hasPermission('customers', 'create')
+    );
+  });
   readonly canDelete = computed(() => {
     this.auth.session();
     return (
       this.auth.hasPermissionCode('customer.delete') ||
-      this.auth.hasPermission('customers', 'delete') ||
-      this.canUpdate()
+      this.auth.hasPermission('customers', 'delete')
     );
   });
 
@@ -128,6 +134,10 @@ export class CustomersPageComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canCreate()) {
+      this.snack.open('ไม่มีสิทธิ์สร้างลูกค้า', 'ปิด', { duration: 3000 });
+      return;
+    }
     this.openForm();
   }
 
