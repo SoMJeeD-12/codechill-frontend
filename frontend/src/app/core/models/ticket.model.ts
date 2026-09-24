@@ -1,3 +1,5 @@
+import type { Attachment } from './attachment.model';
+
 export type TicketStatus =
   | 'RECEIVED'
   | 'ASSIGNED'
@@ -19,6 +21,14 @@ export type BillingType =
 export type ReportedChannel = 'LINE' | 'FACEBOOK' | 'PHONE' | 'EMAIL' | 'OTHER';
 
 export type ResolutionResult = 'SUCCESS' | 'PARTIAL' | 'FAILED';
+
+/** ขั้นในรอบแก้ไข — จาก GET /tickets/:id → resolutions[].steps */
+export interface TicketResolutionStep {
+  code: string;
+  label: string;
+  at: string | null;
+  result: ResolutionResult | string | null;
+}
 
 export interface Ticket {
   id: number;
@@ -64,9 +74,18 @@ export interface TicketResolution {
   detail: string;
   rootCause: string | null;
   resolvedByUserId: number | null;
+  /** สรุปผู้แก้จาก API (ถ้ามี) */
+  resolvedBy?: { id: number; username: string; fullName: string } | null;
   startedAt: string | null;
   resolvedAt: string;
   hoursSpent: number | null;
+  /** ลำดับงานในรอบ — ใช้เป็น stepper */
+  steps: TicketResolutionStep[];
+  /**
+   * ไฟล์แนบของรอบ (รวมสแกนใบยืนยัน)
+   * อัปโหลดผ่าน POST /attachments ตาม attachScanHint จาก confirmation-print
+   */
+  attachments: Attachment[];
   createdAt?: string;
 }
 

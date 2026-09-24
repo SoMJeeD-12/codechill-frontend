@@ -346,11 +346,18 @@
                     </span>
                   </div>
                   <div class="round-row__side">
-                    <span class="muted">{{ userName(row.resolvedByUserId) }}</span>
+                    <span class="muted">{{
+                      row.resolvedBy?.fullName || userName(row.resolvedByUserId)
+                    }}</span>
                     @if (row.hoursSpent != null) {
                       <span class="pill">{{ row.hoursSpent }} ชม.</span>
                     } @else {
                       <span class="not-filled">ยังไม่กรอกชม.</span>
+                    }
+                    @if (row.attachments.length) {
+                      <span class="pill" title="ไฟล์แนบรอบนี้">
+                        {{ row.attachments.length }} ไฟล์
+                      </span>
                     }
                     <mat-icon>chevron_right</mat-icon>
                   </div>

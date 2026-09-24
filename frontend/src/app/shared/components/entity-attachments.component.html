@@ -7,7 +7,11 @@
           @if (loading()) {
             กำลังโหลด…
           } @else {
-            {{ items().length }} ไฟล์
+            @if (subtitle()?.trim(); as hint) {
+              {{ hint }} · {{ items().length }} ไฟล์
+            } @else {
+              {{ items().length }} ไฟล์
+            }
           }
         </p>
       </div>

@@ -13,7 +13,9 @@ import {
   Ticket,
   TicketPriority,
   TicketResolution,
+  TicketResolutionStep,
 } from '../models/ticket.model';
+import { Attachment, AttachmentRefType } from '../models/attachment.model';
 import { TicketQuotaSummary } from '../models/ma.model';
 import { UserSummary } from '../models/user.model';
 import { TicketDemoOverlayService } from './ticket-demo-overlay.service';
@@ -100,10 +102,27 @@ interface ApiTicket extends Omit<Ticket, 'extraCharge' | 'resolutions'> {
   claimedByAdminUser?: UserSummary | null;
 }
 
-interface ApiResolution extends Omit<TicketResolution, 'hoursSpent'> {
+interface ApiResolution
+  extends Omit<TicketResolution, 'hoursSpent' | 'steps' | 'attachments'> {
   hoursSpent?: string | number | null;
   resolvedBy?: UserSummary | null;
+  steps?: TicketResolutionStep[] | null;
+  attachments?: ApiEmbeddedAttachment[] | null;
 }
+
+type ApiEmbeddedAttachment = {
+  id?: number;
+  refType?: string;
+  refId?: number;
+  fileName?: string;
+  originalName?: string;
+  fileSize?: number | null;
+  sizeBytes?: number | null;
+  mimeType?: string | null;
+  note?: string | null;
+  downloadUrl?: string | null;
+  createdAt?: string;
+};
 
 interface ResolutionCreatedDto {
   ticket: ApiTicket;
@@ -115,6 +134,48 @@ interface ResolutionCreatedDto {
 export interface ResolutionCreatedResult {
   resolution: TicketResolution;
   quota: TicketQuotaSummary | null;
+}
+
+/** GET /tickets/:id/confirmation-print — ข้อมูลจัดหน้าใบยืนยัน (ห้าม e-sign) */
+export interface TicketConfirmationPrintPayload {
+  documentTitle: string;
+  ticket: {
+    id: number;
+    ticketNo: string | null;
+    title: string;
+    description: string | null;
+    status: string;
+    priority: string;
+    billingType: string;
+    reportedChannel: string;
+    reportedAt: string;
+    resolvedAt: string | null;
+    closedAt: string | null;
+  };
+  customer: {
+    id: number;
+    code: string | null;
+    name: string;
+    taxId: string | null;
+    address: string | null;
+    phone: string | null;
+  };
+  project: { id: number; code: string | null; name: string } | null;
+  reportedByContact: {
+    id: number;
+    name: string;
+    phone: string | null;
+    email: string | null;
+  } | null;
+  resolution: TicketResolution;
+  allResolutions: TicketResolution[];
+  signatureBlocks: Array<{ role: string; label: string }>;
+  /** หลังสแกนใบที่เซ็นแล้ว — POST /attachments ตามนี้ */
+  attachScanHint: {
+    refType: AttachmentRefType;
+    refId: number;
+    noteSuggestion: string | null;
+  };
 }
 
 /**
@@ -581,6 +642,29 @@ export class TicketService {
     return [...(ticket?.resolutions ?? [])].sort((a, b) => a.round - b.round);
   }
 
+  /**
+   * GET /tickets/:id/confirmation-print?round=
+   * FE จัดหน้าพิมพ์จาก JSON · ไม่ทำ e-sign
+   */
+  getConfirmationPrint(
+    ticketId: number,
+    round?: number | null
+  ): Observable<TicketConfirmationPrintPayload> {
+    return this.http
+      .get<TicketConfirmationPrintPayload>(
+        `${this.base}/${ticketId}/confirmation-print`,
+        {
+          params: toHttpParams({
+            round: round != null && round > 0 ? round : undefined,
+          }),
+        }
+      )
+      .pipe(
+        map((body) => this.normalizeConfirmationPrint(body)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   addResolution(
     ticketId: number,
     input: ResolutionCreateInput
@@ -674,12 +758,84 @@ export class TicketService {
     if (row.resolvedBy) {
       this.usersApi.upsertLocal(row.resolvedBy);
     }
+    const steps = (row.steps ?? []).map((s) => ({
+      code: String(s?.code ?? ''),
+      label: String(s?.label ?? s?.code ?? '—'),
+      at: s?.at ?? null,
+      result: s?.result ?? null,
+    }));
     return {
-      ...row,
+      id: row.id,
+      ticketId: row.ticketId,
+      round: row.round,
+      result: row.result,
+      detail: row.detail ?? '',
       rootCause: row.rootCause ?? null,
-      resolvedByUserId: row.resolvedByUserId ?? null,
+      resolvedByUserId: row.resolvedByUserId ?? row.resolvedBy?.id ?? null,
+      resolvedBy: row.resolvedBy ?? null,
       startedAt: row.startedAt ?? null,
+      resolvedAt: row.resolvedAt,
       hoursSpent: toNullableNumber(row.hoursSpent),
+      steps,
+      attachments: (row.attachments ?? []).map((a) =>
+        this.normalizeEmbeddedAttachment(a, row.id)
+      ),
+      createdAt: row.createdAt,
+    };
+  }
+
+  private normalizeConfirmationPrint(
+    body: TicketConfirmationPrintPayload
+  ): TicketConfirmationPrintPayload {
+    const resolution = this.normalizeResolution(
+      body.resolution as unknown as ApiResolution
+    );
+    const allResolutions = (body.allResolutions ?? []).map((r) =>
+      this.normalizeResolution(r as unknown as ApiResolution)
+    );
+    const hint = body.attachScanHint;
+    return {
+      ...body,
+      documentTitle: body.documentTitle?.trim() || 'ใบยืนยันการแก้ไขปัญหา',
+      resolution,
+      allResolutions,
+      signatureBlocks: Array.isArray(body.signatureBlocks)
+        ? body.signatureBlocks
+        : [],
+      attachScanHint: {
+        refType: (hint?.refType ?? 'TICKET_RESOLUTION') as AttachmentRefType,
+        refId: Number(hint?.refId) || resolution.id,
+        noteSuggestion: hint?.noteSuggestion?.trim() || null,
+      },
+    };
+  }
+
+  private normalizeEmbeddedAttachment(
+    row: ApiEmbeddedAttachment | null | undefined,
+    fallbackRefId: number
+  ): Attachment {
+    const id = Number(row?.id) || 0;
+    const fileName =
+      (typeof row?.fileName === 'string' && row.fileName.trim()) ||
+      (typeof row?.originalName === 'string' && row.originalName.trim()) ||
+      `attachment-${id || 'file'}`;
+    const fileSizeRaw = row?.fileSize ?? row?.sizeBytes;
+    const fileSize =
+      typeof fileSizeRaw === 'number' && Number.isFinite(fileSizeRaw)
+        ? fileSizeRaw
+        : null;
+    return {
+      id,
+      refType: (row?.refType ?? 'TICKET_RESOLUTION') as AttachmentRefType,
+      refId: Number(row?.refId) || fallbackRefId,
+      fileName,
+      fileSize,
+      mimeType: row?.mimeType?.trim() || null,
+      note: row?.note?.trim() || null,
+      downloadUrl:
+        (typeof row?.downloadUrl === 'string' && row.downloadUrl.trim()) ||
+        `/api/attachments/${id}/download`,
+      createdAt: row?.createdAt ?? '',
     };
   }
 

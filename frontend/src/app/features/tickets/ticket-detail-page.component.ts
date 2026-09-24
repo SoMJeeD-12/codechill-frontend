@@ -37,8 +37,10 @@ import {
   TicketDemoOverlayService,
 } from '../../core/services/ticket-demo-overlay.service';
 import { TicketService } from '../../core/services/ticket.service';
+import type { TicketConfirmationPrintPayload } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { navigateBack } from '../../core/utils/navigation.util';
+import { formatThaiDateTime } from '../../core/utils/date.util';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
@@ -48,6 +50,7 @@ import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { EMPTY, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 const TIMELINE_PREVIEW_COUNT = 5;
 const RESOLUTION_PAGE_SIZE = 5;
@@ -645,37 +648,33 @@ export class TicketDetailPageComponent implements OnInit {
     if (!ticket) {
       return;
     }
-    this.dialog.open(TicketWorkRoundDetailDialogComponent, {
+    const ref = this.dialog.open(TicketWorkRoundDetailDialogComponent, {
       ...FORM_DIALOG,
       data: {
         ticket,
         resolution: r,
         customerName: this.customerName(),
         projectName: this.projectName(),
-        resolverName: this.userName(r.resolvedByUserId),
+        resolverName:
+          r.resolvedBy?.fullName?.trim() || this.userName(r.resolvedByUserId),
         ticketNo: ticket.ticketNo || `ใบ #${ticket.id}`,
       } satisfies TicketWorkRoundDetailDialogData,
     });
+    ref.afterClosed().subscribe(() => this.loadTicket());
   }
 
-  /** พิมพ์ใบยืนยันการแก้ให้ลูกค้าเซ็น (FE จัดหน้า — ยังไม่มี API print) */
+  /** พิมพ์ใบยืนยัน — GET /tickets/:id/confirmation-print?round= */
   printResolutionConfirm(r: TicketResolution): void {
     const ticket = this.ticket();
     if (!ticket) {
       return;
     }
-    printTicketResolutionConfirm({
-      ticketNo: ticket.ticketNo || `ใบ #${ticket.id}`,
-      title: ticket.title,
-      customerName: this.customerName(),
-      projectName: this.projectName(),
-      round: r.round,
-      rootCause: r.rootCause,
-      detail: r.detail,
-      resultLabel: this.resultLabels[r.result],
-      resolverName: this.userName(r.resolvedByUserId),
-      resolvedAt: r.resolvedAt,
-      hoursSpent: r.hoursSpent,
+    this.ticketsApi.getConfirmationPrint(ticket.id, r.round).subscribe({
+      next: (payload) => printTicketConfirmationFromPayload(payload),
+      error: (err: Error) =>
+        this.snack.open(err.message || 'โหลดใบยืนยันไม่สำเร็จ', 'ปิด', {
+          duration: 4000,
+        }),
     });
   }
 
@@ -1427,7 +1426,7 @@ export class TicketProblemReturnedDialogComponent {
   }
 }
 
-/* ——— รายละเอียดงานแก้ไข 1 ครั้ง + พิมพ์ใบยืนยัน ——— */
+/* ——— รายละเอียดงานแก้ไข 1 ครั้ง + พิมพ์ใบยืนยัน (B-11/B-12) ——— */
 
 export interface TicketWorkRoundDetailDialogData {
   ticket: Ticket;
@@ -1438,67 +1437,88 @@ export interface TicketWorkRoundDetailDialogData {
   ticketNo: string;
 }
 
-export interface TicketResolutionPrintInput {
-  ticketNo: string;
-  title: string;
-  customerName: string;
-  projectName: string;
-  round: number;
-  rootCause: string | null;
-  detail: string;
-  resultLabel: string;
-  resolverName: string;
-  resolvedAt: string;
-  hoursSpent: number | null;
-}
-
-function escapeHtml(value: string): string {
-  return value
+function escapeHtml(value: string | number | null | undefined): string {
+  return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
 
-/** ใบยืนยันการแก้ปัญหาให้ลูกค้าเซ็น — จัดหน้าฝั่ง FE (ยังไม่มี API print) */
-export function printTicketResolutionConfirm(input: TicketResolutionPrintInput): void {
+/** จัดหน้าใบยืนยันจาก GET confirmation-print — ช่องเซ็นว่าง (ห้าม e-sign) */
+export function printTicketConfirmationFromPayload(
+  payload: TicketConfirmationPrintPayload
+): void {
   const win = window.open('', '_blank');
   if (!win) {
     return;
   }
+  const r = payload.resolution;
+  const resultLabel =
+    RESOLUTION_RESULT_LABELS[r.result as ResolutionResult] ?? r.result;
+  const resolver =
+    r.resolvedBy?.fullName?.trim() ||
+    (r.resolvedByUserId != null ? `#${r.resolvedByUserId}` : '—');
   const hours =
-    input.hoursSpent != null ? `${input.hoursSpent} ชั่วโมง` : '—';
+    r.hoursSpent != null ? `${r.hoursSpent} ชั่วโมง` : '—';
+  const customerAddr = [
+    payload.customer.address,
+    payload.customer.phone ? `โทร ${payload.customer.phone}` : null,
+  ]
+    .filter(Boolean)
+    .join('<br>');
+  const projectLabel = payload.project
+    ? [payload.project.code, payload.project.name].filter(Boolean).join(' · ')
+    : '—';
+  const contact = payload.reportedByContact;
+  const signBlocks = (payload.signatureBlocks?.length
+    ? payload.signatureBlocks
+    : [
+        { role: 'PROVIDER', label: 'ผู้ให้บริการ / ผู้แก้ไข' },
+        { role: 'CUSTOMER', label: 'ลูกค้า / ผู้รับมอบงาน' },
+      ]
+  )
+    .map(
+      (b) =>
+        `<div class="sign-block"><div class="sign-line"></div><p>${escapeHtml(b.label)}</p></div>`
+    )
+    .join('');
+
   win.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8" />
-<title>ใบยืนยันการแก้ไข · ${escapeHtml(input.ticketNo)}</title>
+<title>${escapeHtml(payload.documentTitle)} · ${escapeHtml(payload.ticket.ticketNo || '#' + payload.ticket.id)}</title>
 <style>
   body{font-family:Sarabun,Segoe UI,sans-serif;margin:1.5rem;color:#0f172a;line-height:1.5}
   h1{font-size:1.25rem;margin:0 0 .35rem}
   .meta{color:#475569;font-size:.9rem;margin:0 0 1rem}
-  dl{display:grid;grid-template-columns:8rem 1fr;gap:.35rem .75rem;margin:0 0 1.25rem}
+  dl{display:grid;grid-template-columns:8.5rem 1fr;gap:.35rem .75rem;margin:0 0 1.25rem}
   dt{color:#64748b;font-size:.85rem} dd{margin:0;white-space:pre-wrap}
-  .sign{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2.5rem}
-  .sign div{border-top:1px solid #94a3b8;padding-top:.5rem;text-align:center;font-size:.88rem}
+  .sign{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:2rem;margin-top:2.75rem}
+  .sign-block{text-align:center;font-size:.88rem}
+  .sign-line{border-top:1px solid #94a3b8;margin:3.25rem 0 .5rem;height:0}
+  .sign-block p{margin:0;color:#334155}
   @media print{button{display:none}}
 </style></head><body>
 <button type="button" onclick="window.print()" style="margin-bottom:1rem">พิมพ์</button>
-<h1>ใบยืนยันการแก้ไขปัญหา</h1>
-<p class="meta">${escapeHtml(input.ticketNo)} · งานครั้งที่ ${input.round}</p>
+<h1>${escapeHtml(payload.documentTitle)}</h1>
+<p class="meta">${escapeHtml(payload.ticket.ticketNo || 'ใบ #' + payload.ticket.id)} · งานครั้งที่ ${r.round}</p>
 <dl>
-  <dt>ลูกค้า</dt><dd>${escapeHtml(input.customerName)}</dd>
-  <dt>โปรเจกต์</dt><dd>${escapeHtml(input.projectName)}</dd>
-  <dt>หัวข้อปัญหา</dt><dd>${escapeHtml(input.title)}</dd>
-  <dt>สาเหตุ</dt><dd>${escapeHtml(input.rootCause?.trim() || '—')}</dd>
-  <dt>วิธีแก้ไข</dt><dd>${escapeHtml(input.detail || '—')}</dd>
-  <dt>ผลลัพธ์</dt><dd>${escapeHtml(input.resultLabel)}</dd>
-  <dt>ผู้แก้ไข</dt><dd>${escapeHtml(input.resolverName)}</dd>
+  <dt>ลูกค้า</dt><dd><strong>${escapeHtml(payload.customer.name)}</strong>${payload.customer.code ? ' · ' + escapeHtml(payload.customer.code) : ''}${customerAddr ? '<br>' + customerAddr : ''}</dd>
+  <dt>โปรเจกต์</dt><dd>${escapeHtml(projectLabel)}</dd>
+  <dt>หัวข้อปัญหา</dt><dd>${escapeHtml(payload.ticket.title)}</dd>
+  ${
+    contact
+      ? `<dt>ผู้แจ้ง</dt><dd>${escapeHtml(contact.name)}${contact.phone ? ' · ' + escapeHtml(contact.phone) : ''}</dd>`
+      : ''
+  }
+  <dt>สาเหตุ</dt><dd>${escapeHtml(r.rootCause?.trim() || '—')}</dd>
+  <dt>วิธีแก้ไข</dt><dd>${escapeHtml(r.detail || '—')}</dd>
+  <dt>ผลลัพธ์</dt><dd>${escapeHtml(resultLabel)}</dd>
+  <dt>ผู้แก้ไข</dt><dd>${escapeHtml(resolver)}</dd>
   <dt>เวลาที่ใช้</dt><dd>${escapeHtml(hours)}</dd>
-  <dt>แก้เสร็จเมื่อ</dt><dd>${escapeHtml(input.resolvedAt || '—')}</dd>
+  <dt>แก้เสร็จเมื่อ</dt><dd>${escapeHtml(formatThaiDateTime(r.resolvedAt) || r.resolvedAt || '—')}</dd>
 </dl>
 <p>ข้าพเจ้าได้ตรวจสอบผลการแก้ไขแล้ว และยืนยันว่าปัญหาได้รับการแก้ไขตามรายละเอียดข้างต้น</p>
-<div class="sign">
-  <div>ผู้แก้ไข / วันที่</div>
-  <div>ลูกค้า / ผู้รับมอบ / วันที่</div>
-</div>
+<div class="sign">${signBlocks}</div>
 <script>window.onload=function(){setTimeout(function(){window.print()},80)}</script>
 </body></html>`);
   win.document.close();
@@ -1507,18 +1527,44 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
 @Component({
   selector: 'app-ticket-work-round-detail-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, EntityAttachmentsComponent],
+  imports: [
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    EntityAttachmentsComponent,
+    ThaiDatePipe,
+  ],
   template: `
     <h2 mat-dialog-title>งานครั้งที่ {{ data.resolution.round }}</h2>
     <mat-dialog-content>
       <p class="ticket-ref">{{ data.ticketNo }} · {{ data.ticket.title }}</p>
 
-      <ol class="round-steps" aria-label="ลำดับงานครั้งนี้">
-        <li class="is-done">รับเรื่องในใบนี้</li>
-        <li class="is-done">มอบหมาย / ดำเนินการ</li>
-        <li class="is-done">บันทึกการแก้ไข</li>
-        <li class="is-done">พร้อมให้ลูกค้ายืนยัน</li>
-      </ol>
+      @if (data.resolution.steps.length) {
+        <ol class="round-steps" aria-label="ลำดับงานครั้งนี้">
+          @for (step of data.resolution.steps; track step.code + (step.at || '')) {
+            <li
+              [class.is-done]="!!step.at"
+              [class.is-failed]="step.result === 'FAILED'"
+              [class.is-partial]="step.result === 'PARTIAL'"
+            >
+              <div class="round-steps__main">
+                <strong>{{ step.label }}</strong>
+                @if (step.result) {
+                  <span class="round-steps__result">
+                    {{ stepResultLabel(step.result) }}
+                  </span>
+                }
+              </div>
+              @if (step.at) {
+                <time class="round-steps__at">{{ step.at | thaiDate }}</time>
+              } @else {
+                <span class="round-steps__at muted">ยังไม่ถึงขั้นนี้</span>
+              }
+            </li>
+          }
+        </ol>
+      }
 
       <dl class="detail-grid">
         <div>
@@ -1541,7 +1587,7 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
         </div>
         <div>
           <dt>แก้เสร็จเมื่อ</dt>
-          <dd>{{ data.resolution.resolvedAt || '—' }}</dd>
+          <dd>{{ data.resolution.resolvedAt | thaiDate }}</dd>
         </div>
         <div class="full">
           <dt>สาเหตุ</dt>
@@ -1554,15 +1600,26 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
       </dl>
 
       <app-entity-attachments
-        refType="TICKET_RESOLUTION"
-        [refId]="data.resolution.id"
-        heading="ไฟล์แนบรอบแก้ไข"
+        [refType]="attachRefType()"
+        [refId]="attachRefId()"
+        [heading]="attachHeading"
+        [subtitle]="attachSubtitle()"
+        [defaultNote]="attachDefaultNote()"
       />
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>ปิด</button>
-      <button mat-stroked-button type="button" (click)="print()">
-        <mat-icon>print</mat-icon>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="printing()"
+        (click)="print()"
+      >
+        @if (printing()) {
+          <mat-spinner diameter="18" />
+        } @else {
+          <mat-icon>print</mat-icon>
+        }
         พิมพ์ใบยืนยัน
       </button>
     </mat-dialog-actions>
@@ -1574,21 +1631,74 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
       font-size: 0.86rem;
     }
     .round-steps {
+      list-style: none;
       margin: 0 0 1rem;
-      padding: 0.65rem 0.85rem 0.65rem 1.35rem;
+      padding: 0.65rem 0.85rem;
       border-radius: 10px;
       background: #f0fdfa;
       border: 1px solid #ccfbf1;
       display: grid;
-      gap: 0.25rem;
+      gap: 0.45rem;
       font-size: 0.86rem;
       color: #0f766e;
+      counter-reset: step;
+    }
+    .round-steps li {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.35rem 0.75rem;
+      align-items: baseline;
+      padding-left: 1.35rem;
+      position: relative;
+      opacity: 0.55;
+    }
+    .round-steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0.05rem;
+      width: 1.05rem;
+      height: 1.05rem;
+      border-radius: 999px;
+      background: #99f6e4;
+      color: #115e59;
+      font-size: 0.68rem;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+    .round-steps li.is-done {
+      opacity: 1;
+    }
+    .round-steps li.is-failed {
+      color: #b91c1c;
+    }
+    .round-steps li.is-partial {
+      color: #b45309;
+    }
+    .round-steps__main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.65rem;
+      align-items: baseline;
+    }
+    .round-steps__result {
+      font-size: 0.78rem;
+      color: #475569;
+    }
+    .round-steps__at {
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+    .round-steps__at.muted {
+      font-style: italic;
     }
     .detail-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0.65rem 0.85rem;
-      margin: 0;
+      margin: 0 0 1rem;
     }
     .detail-grid .full {
       grid-column: 1 / -1;
@@ -1604,7 +1714,8 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
       line-height: 1.45;
       color: #0f172a;
     }
-    mat-dialog-actions mat-icon {
+    mat-dialog-actions mat-icon,
+    mat-dialog-actions mat-spinner {
       margin-right: 0.25rem;
       font-size: 1.1rem;
       width: 1.1rem;
@@ -1615,26 +1726,67 @@ export function printTicketResolutionConfirm(input: TicketResolutionPrintInput):
       .detail-grid {
         grid-template-columns: 1fr;
       }
+      .round-steps li {
+        grid-template-columns: 1fr;
+      }
     }
   `,
 })
 export class TicketWorkRoundDetailDialogComponent {
+  private readonly ticketsApi = inject(TicketService);
+  private readonly snack = inject(MatSnackBar);
+
   readonly data = inject<TicketWorkRoundDetailDialogData>(MAT_DIALOG_DATA);
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
+  readonly printing = signal(false);
+
+  readonly attachHeading = 'สแกนใบยืนยัน / ไฟล์แนบรอบแก้ไข';
+  readonly attachRefType = signal<'TICKET_RESOLUTION'>('TICKET_RESOLUTION');
+  readonly attachRefId = signal(this.data.resolution.id);
+  readonly attachSubtitle = signal(
+    this.data.resolution.attachments.length
+      ? `${this.data.resolution.attachments.length} ไฟล์จากรายละเอียดใบ`
+      : `อัปโหลดสแกนใบที่ลูกค้าเซ็นแล้ว · รอบที่ ${this.data.resolution.round}`
+  );
+  readonly attachDefaultNote = signal(
+    `สแกนใบยืนยันรอบที่ ${this.data.resolution.round} ที่ลูกค้าเซ็นแล้ว`
+  );
+
+  stepResultLabel(result: string): string {
+    return (
+      this.resultLabels[result as ResolutionResult] ?? result
+    );
+  }
 
   print(): void {
-    printTicketResolutionConfirm({
-      ticketNo: this.data.ticketNo,
-      title: this.data.ticket.title,
-      customerName: this.data.customerName,
-      projectName: this.data.projectName,
-      round: this.data.resolution.round,
-      rootCause: this.data.resolution.rootCause,
-      detail: this.data.resolution.detail,
-      resultLabel: this.resultLabels[this.data.resolution.result],
-      resolverName: this.data.resolverName,
-      resolvedAt: this.data.resolution.resolvedAt,
-      hoursSpent: this.data.resolution.hoursSpent,
-    });
+    if (this.printing()) {
+      return;
+    }
+    this.printing.set(true);
+    this.ticketsApi
+      .getConfirmationPrint(this.data.ticket.id, this.data.resolution.round)
+      .subscribe({
+        next: (payload) => {
+          this.printing.set(false);
+          const hint = payload.attachScanHint;
+          if (hint?.refType === 'TICKET_RESOLUTION' && hint.refId) {
+            this.attachRefType.set('TICKET_RESOLUTION');
+            this.attachRefId.set(hint.refId);
+          }
+          if (hint?.noteSuggestion?.trim()) {
+            const note = hint.noteSuggestion.trim();
+            this.attachDefaultNote.set(note);
+            this.attachSubtitle.set(note);
+          }
+          printTicketConfirmationFromPayload(payload);
+        },
+        error: (err: Error) => {
+          this.printing.set(false);
+          this.snack.open(err.message || 'โหลดใบยืนยันไม่สำเร็จ', 'ปิด', {
+            duration: 4000,
+          });
+        },
+      });
   }
 }
+

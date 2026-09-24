@@ -46,6 +46,10 @@ export class EntityAttachmentsComponent {
   readonly refId = input.required<number>();
   /** หัวข้อแผง — ค่าว่างใช้ตามประเภท */
   readonly heading = input<string | null>(null);
+  /** คำอธิบายใต้หัวข้อ — เช่น hint จาก attachScanHint */
+  readonly subtitle = input<string | null>(null);
+  /** หมายเหตุเริ่มต้นตอนอัปโหลด (เช่น noteSuggestion จาก confirmation-print) */
+  readonly defaultNote = input<string | null>(null);
 
   readonly accept = ATTACHMENT_ACCEPT;
   readonly items = signal<Attachment[]>([]);
@@ -134,7 +138,8 @@ export class EntityAttachmentsComponent {
       return;
     }
     this.uploading.set(true);
-    this.api.upload({ file, refType: this.refType(), refId }).subscribe({
+    const note = this.defaultNote()?.trim() || undefined;
+    this.api.upload({ file, refType: this.refType(), refId, note }).subscribe({
       next: (row) => {
         this.uploading.set(false);
         this.items.update((list) => [row, ...list.filter((x) => x.id !== row.id)]);
