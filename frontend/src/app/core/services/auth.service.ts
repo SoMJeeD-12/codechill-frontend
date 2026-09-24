@@ -367,7 +367,7 @@ export class AuthService {
   }
 
   /**
-   * 「งานของฉัน」= ใบที่ assigned ให้ผู้ใช้ปัจจุบัน — ticket.view
+   * 「ใบของฉัน」= ใบที่ assigned ให้ผู้ใช้ปัจจุบัน — ticket.view
    */
   canAccessMyTickets(): boolean {
     return this.hasPermissionCode('ticket.view');

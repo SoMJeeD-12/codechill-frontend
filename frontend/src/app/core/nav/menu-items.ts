@@ -1,15 +1,16 @@
 import { MenuItem } from '../models/permission.model';
 
 /**
- * เมนู sidebar 3 ชั้น (ตามพี่เลี้ยง — โปรเจคเป็นพระเอก)
- *   งานหลัก  = ของทำทุกวัน · โปรเจคอยู่ชั้นนี้
+ * เมนู sidebar 3 ชั้น (ตามพี่เลี้ยง — โปรเจกต์เป็นพระเอก)
+ *   งานหลัก  = ของทำทุกวัน · โปรเจกต์อยู่ชั้นนี้
  *   ข้อมูล    = ซัพพอร์ตงานหลัก (ลูกค้า · ประกัน · MA ฯลฯ) — ห้ามมีโปรเจกต์ซ้ำ
  *   ตั้งค่า    = นาน ๆ ใช้ที
  *
  * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles / ตำแหน่ง)
  * คิวซัพพอร์ต = ticket.support_queue · คิวแอดมิน = ticket.assign
- * งานของฉัน = ใบที่ assigned ให้ฉัน (ticket.view) — ไม่ใช่งานย่อยโปรเจค
- * งานโปรเจค / ตรวจงานโปรเจค = งานย่อย · อยู่ชั้นงานหลักถัดจากโปรเจกต์ (ทางเลือก A)
+ * ใบของฉัน = ใบที่ assigned ให้ฉัน (ticket.view) — ไม่ใช่งานย่อยโปรเจกต์
+ * งานโปรเจกต์ / ตรวจงานโปรเจกต์ = งานย่อย · อยู่ชั้นงานหลักถัดจากโปรเจกต์
+ * การแจ้งเตือน = ไอคอนกระดิ่งบน header (ไม่ใส่ซ้ายซ้ำ)
  */
 
 /** แบนเมนูรวม children — ใช้ตอนเช็คสิทธิ์ / รหัสเมนู */
@@ -22,6 +23,68 @@ export function flattenMenuItems(items: MenuItem[]): MenuItem[] {
     }
   }
   return out;
+}
+
+/**
+ * ลำดับเมนูงานหลักตามสิทธิ์คิว
+ * แอดมิน (ticket.assign) → คิวแอดมินใกล้หน้าแรก
+ * ซัพพอร์ต (ticket.support_queue) → คิวซัพพอร์ตใกล้หน้าแรก
+ */
+export function mainMenuOrder(opts: {
+  hasAdminQueue: boolean;
+  hasSupportQueue: boolean;
+}): string[] {
+  const { hasAdminQueue, hasSupportQueue } = opts;
+  if (hasAdminQueue && hasSupportQueue) {
+    return [
+      'dashboard',
+      'ticket-admin-queue',
+      'ticket-workflow',
+      'projects',
+      'tasks-me',
+      'tasks-review',
+      'tickets-mine',
+      'tickets',
+      'follow-ups',
+    ];
+  }
+  if (hasAdminQueue) {
+    return [
+      'dashboard',
+      'ticket-admin-queue',
+      'projects',
+      'tasks-me',
+      'tasks-review',
+      'tickets-mine',
+      'tickets',
+      'follow-ups',
+      'ticket-workflow',
+    ];
+  }
+  if (hasSupportQueue) {
+    return [
+      'dashboard',
+      'ticket-workflow',
+      'projects',
+      'tasks-me',
+      'tasks-review',
+      'tickets-mine',
+      'tickets',
+      'follow-ups',
+      'ticket-admin-queue',
+    ];
+  }
+  return [
+    'dashboard',
+    'projects',
+    'tasks-me',
+    'tasks-review',
+    'ticket-workflow',
+    'ticket-admin-queue',
+    'tickets-mine',
+    'tickets',
+    'follow-ups',
+  ];
 }
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -44,7 +107,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tasks-me',
-    label: 'งานโปรเจค',
+    label: 'งานโปรเจกต์',
     description: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ',
     icon: 'checklist',
     route: '/app/tasks/me',
@@ -52,7 +115,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tasks-review',
-    label: 'ตรวจงานโปรเจค',
+    label: 'ตรวจงานโปรเจกต์',
     description: 'งานย่อยสถานะ REVIEW — ผู้ตรวจอนุมัติ',
     icon: 'rate_review',
     route: '/app/tasks/review',
@@ -76,7 +139,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tickets-mine',
-    label: 'งานของฉัน',
+    label: 'ใบของฉัน',
     description: 'ใบที่มอบหมายให้คุณแก้',
     icon: 'person',
     route: '/app/tickets/mine',
@@ -92,18 +155,10 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'follow-ups',
-    label: 'ติดตามโปรเจค',
+    label: 'งานติดตาม',
     description: 'นัดติดตามและงานค้าง',
     icon: 'event_available',
     route: '/app/follow-ups',
-    group: 'main',
-  },
-  {
-    code: 'notifications',
-    label: 'การแจ้งเตือน',
-    description: 'Inbox การแจ้งเตือนของพนักงานในระบบ',
-    icon: 'notifications',
-    route: '/app/notifications',
     group: 'main',
   },
 

@@ -9,11 +9,12 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { filter } from 'rxjs/operators';
 import { MenuItem } from '../models/permission.model';
-import { MENU_ITEMS } from '../nav/menu-items';
+import { MENU_ITEMS, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
 import { NavAttentionService } from '../services/nav-attention.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
+import { NotificationBellComponent } from './notification-bell.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -30,6 +31,7 @@ import { HasPermissionDirective } from '../../shared/directives/has-permission.d
     MatMenuModule,
     MatTooltipModule,
     HasPermissionDirective,
+    NotificationBellComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -63,6 +65,7 @@ export class MainLayoutComponent implements OnInit {
   });
 
   readonly visibleMenus = computed(() => {
+    this.auth.session();
     const codes = new Set(this.auth.getVisibleMenuCodes());
     return MENU_ITEMS.filter((item) => codes.has(item.code)).map((item) => ({
       ...item,
@@ -71,15 +74,31 @@ export class MainLayoutComponent implements OnInit {
   });
 
   readonly menuGroups = computed(() => {
+    this.auth.session();
     const groups: { key: string; label: string; items: MenuItem[] }[] = [
       { key: 'main', label: 'งานหลัก', items: [] },
       { key: 'support', label: 'ข้อมูล', items: [] },
       { key: 'settings', label: 'ตั้งค่า', items: [] },
     ];
 
+    const order = mainMenuOrder({
+      hasAdminQueue: this.auth.canAccessTicketAdminQueue(),
+      hasSupportQueue: this.auth.canAccessTicketSupportQueue(),
+    });
+    const orderIndex = new Map(order.map((code, i) => [code, i]));
+
     for (const item of this.visibleMenus()) {
       const group = groups.find((g) => g.key === item.group);
       group?.items.push(item);
+    }
+
+    const main = groups.find((g) => g.key === 'main');
+    if (main) {
+      main.items.sort((a, b) => {
+        const ai = orderIndex.get(a.code) ?? 999;
+        const bi = orderIndex.get(b.code) ?? 999;
+        return ai - bi;
+      });
     }
 
     return groups.filter((g) => g.items.length > 0);

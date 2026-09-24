@@ -55,11 +55,11 @@ const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
 
 const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   all: { title: 'งานทั้งหมด', subtitle: '' },
-  me: { title: 'งานโปรเจค', subtitle: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ' },
+  me: { title: 'งานโปรเจกต์', subtitle: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ' },
   unassigned: { title: 'งานที่ยังไม่มอบหมาย', subtitle: '' },
   doing: { title: 'งานกำลังดำเนินการ', subtitle: '' },
   review: {
-    title: 'ตรวจงานโปรเจค',
+    title: 'ตรวจงานโปรเจกต์',
     subtitle: 'งานย่อยที่ส่งตรวจแล้ว รออนุมัติ',
   },
   overdue: { title: 'งานเกินกำหนด', subtitle: '' },
@@ -483,7 +483,7 @@ export class TasksPageComponent implements OnInit {
 
   /**
    * ปุ่มเปลี่ยนสถานะในตาราง
-   * - หน้าตรวจงานโปรเจค: ไม่มีปุ่มสถานะในแถว (ใช้「ตรวจงาน」อย่างเดียว)
+   * - หน้าตรวจงานโปรเจกต์: ไม่มีปุ่มสถานะในแถว (ใช้「ตรวจงาน」อย่างเดียว)
    * - หน้างานที่มอบหมาย: ส่งตรวจได้ ห้ามทำเสร็จ/อนุมัติเอง
    */
   taskRowActions(task: TaskItem): RowAction[] {

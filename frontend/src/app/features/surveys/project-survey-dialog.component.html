@@ -1,0 +1,124 @@
+<h2 mat-dialog-title>
+  @if (step() === 'pick') {
+    ส่งแบบประเมินให้โปรเจกต์นี้
+  } @else {
+    บันทึกคำตอบ
+  }
+</h2>
+
+<mat-dialog-content>
+  @if (step() === 'pick') {
+    @if (loading()) {
+      <div class="state">
+        <mat-spinner diameter="36"></mat-spinner>
+        <span>กำลังโหลดแบบประเมิน…</span>
+      </div>
+    } @else if (usableSurveys().length === 0) {
+      <p class="empty">
+        ยังไม่มีแบบประเมินที่เปิดใช้ได้ตอนนี้ — ไปเมนูแบบประเมิน สร้างชุดคำถามแล้วตั้งเป็น「เปิดรับคำตอบ」ก่อน
+      </p>
+    } @else {
+      <form [formGroup]="pickForm" class="form" (ngSubmit)="startSend()">
+        <p class="hint">ลูกค้าและโปรเจกต์ล็อกตามหน้านี้แล้ว — ส่งแล้วค่อยกด「บันทึกคำตอบ」ในแถวเมื่อพร้อมคีย์</p>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>แบบประเมิน *</mat-label>
+          <mat-select formControlName="surveyId">
+            @for (s of usableSurveys(); track s.id) {
+              <mat-option [value]="s.id">{{ s.title }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ผู้ติดต่อ (ถ้ามี)</mat-label>
+          <mat-select formControlName="contactId">
+            <mat-option [value]="null">— ไม่ระบุ —</mat-option>
+            @for (c of data.contacts; track c.id) {
+              <mat-option [value]="c.id">{{ c.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </form>
+    }
+  } @else {
+    @if (activeSurvey(); as s) {
+    <div class="form">
+      <p class="hint">{{ s.title }} · คีย์ตามที่ลูกค้าตอบนอกระบบ</p>
+      @for (q of s.questions; track q.id) {
+        <div class="question">
+          <label>
+            {{ q.questionText }}
+            @if (q.isRequired) {
+              <span class="req">*</span>
+            }
+            <small>{{ typeLabel(q.questionType) }}</small>
+          </label>
+
+          @if (q.questionType === 'RATING') {
+            <mat-radio-group [formControl]="answerControls[q.id]" class="rating">
+              @for (n of ratingRange(q); track n) {
+                <mat-radio-button [value]="n">{{ n }}</mat-radio-button>
+              }
+            </mat-radio-group>
+          } @else if (q.questionType === 'CHOICE') {
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>เลือก</mat-label>
+              <mat-select [formControl]="answerControls[q.id]">
+                @for (opt of q.options ?? []; track opt) {
+                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          } @else if (q.questionType === 'MULTI_CHOICE') {
+            <div class="multi-choices">
+              @for (opt of q.options ?? []; track opt) {
+                <mat-checkbox
+                  [checked]="isChoiceChecked(q.id, opt)"
+                  (change)="toggleChoice(q.id, opt, $event.checked)"
+                >
+                  {{ opt }}
+                </mat-checkbox>
+              }
+            </div>
+          } @else {
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>คำตอบ</mat-label>
+              <textarea matInput rows="2" [formControl]="answerControls[q.id]"></textarea>
+            </mat-form-field>
+          }
+        </div>
+      }
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>หมายเหตุ (ถ้ามี)</mat-label>
+        <textarea matInput rows="2" [formControl]="commentControl"></textarea>
+      </mat-form-field>
+    </div>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()" [disabled]="saving()">ปิด</button>
+  @if (step() === 'pick' && usableSurveys().length > 0) {
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      (click)="startSend()"
+      [disabled]="saving() || loading()"
+    >
+      บันทึกการส่ง
+    </button>
+  }
+  @if (step() === 'answer') {
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      (click)="submitAnswers()"
+      [disabled]="saving()"
+    >
+      บันทึกคำตอบ
+    </button>
+  }
+</mat-dialog-actions>

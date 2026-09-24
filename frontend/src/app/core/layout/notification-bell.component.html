@@ -1,0 +1,70 @@
+@if (canView()) {
+  <button
+    mat-icon-button
+    type="button"
+    class="notif-bell"
+    [matMenuTriggerFor]="notifMenu"
+    (menuOpened)="onMenuOpened()"
+    matTooltip="การแจ้งเตือน"
+    matTooltipPosition="below"
+    aria-label="การแจ้งเตือน"
+  >
+    <mat-icon>notifications</mat-icon>
+    @if (badgeText(); as badge) {
+      <span class="notif-bell__badge" aria-hidden="true">{{ badge }}</span>
+    }
+  </button>
+
+  <mat-menu #notifMenu="matMenu" class="notif-menu-panel" panelClass="notif-menu-panel" xPosition="before">
+    <div class="notif-panel" (click)="$event.stopPropagation()">
+      <header class="notif-panel__head">
+        <strong>การแจ้งเตือน</strong>
+        @if (unreadCount() > 0) {
+          <span class="notif-panel__count">ยังไม่อ่าน {{ unreadCount() }}</span>
+        }
+      </header>
+
+      @if (loading()) {
+        <div class="notif-panel__state">
+          <mat-spinner diameter="28" />
+          <span>กำลังโหลด…</span>
+        </div>
+      } @else if (items().length === 0) {
+        <p class="notif-panel__empty">ยังไม่มีการแจ้งเตือน</p>
+      } @else {
+        <ul class="notif-panel__list" role="list">
+          @for (row of items(); track row.id) {
+            <li>
+              <button
+                type="button"
+                class="notif-row"
+                [class.is-unread]="isUnread(row)"
+                [disabled]="markingId() === row.id"
+                (click)="openItem(row)"
+              >
+                <span class="notif-row__main">
+                  @if (isUnread(row)) {
+                    <span class="notif-row__dot" aria-hidden="true"></span>
+                  }
+                  <span class="notif-row__title">{{ row.title }}</span>
+                </span>
+                <span class="notif-row__meta">
+                  <time>{{ whenAt(row) | thaiDate }}</time>
+                  <span class="notif-row__status">
+                    {{ isUnread(row) ? 'ยังไม่อ่าน' : 'อ่านแล้ว' }}
+                  </span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <footer class="notif-panel__foot">
+        <a mat-button color="primary" routerLink="/app/notifications" class="notif-panel__all">
+          ดูทั้งหมด
+        </a>
+      </footer>
+    </div>
+  </mat-menu>
+}

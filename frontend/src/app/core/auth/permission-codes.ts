@@ -16,7 +16,7 @@ export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   'customer-360': 'customer',
   projects: 'project',
   tickets: 'ticket',
-  /** งานของฉัน = ใบที่ assigned — เช็ค ticket.view แยกใน AuthService */
+  /** ใบของฉัน = ใบที่ assigned — เช็ค ticket.view แยกใน AuthService */
   'tickets-mine': 'ticket',
   warranties: 'warranty',
   ma: 'ma',

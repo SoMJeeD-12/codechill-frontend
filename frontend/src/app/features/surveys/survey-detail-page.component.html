@@ -144,194 +144,92 @@
       }
     </mat-card>
 
-    <div class="two-col">
-      <div class="left-stack">
-        <mat-card>
-          <h2>การส่งแบบประเมิน</h2>
-          <table mat-table [dataSource]="assignmentsPager.paged()" class="data-table full-table">
-            <ng-container matColumnDef="customer">
-              <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
-              <td mat-cell *matCellDef="let row">
-                {{ row.customerName || ('#' + row.customerId) }}
-                @if (row.contactName) {
-                  <div class="muted">{{ row.contactName }}</div>
-                }
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>สถานะ</th>
-              <td mat-cell *matCellDef="let row">{{ assignmentStatusLabel(row.status) }}</td>
-            </ng-container>
-            <ng-container matColumnDef="sentAt">
-              <th mat-header-cell *matHeaderCellDef>ส่งเมื่อ</th>
-              <td mat-cell *matCellDef="let row">{{ row.sentAt ? (row.sentAt | thaiDate) : '—' }}</td>
-            </ng-container>
-            <ng-container matColumnDef="answeredAt">
-              <th mat-header-cell *matHeaderCellDef>ตอบเมื่อ</th>
-              <td mat-cell *matCellDef="let row">{{ row.answeredAt ? (row.answeredAt | thaiDate) : '—' }}</td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="assignmentColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: assignmentColumns"></tr>
-          </table>
-          <app-table-paginator
-            [length]="assignmentsPager.length()"
-            [pageIndex]="assignmentsPager.pageIndex()"
-            [pageSize]="assignmentsPager.pageSize()"
-            [pageSizeOptions]="assignmentsPager.pageSizeOptions"
-            (page)="assignmentsPager.onPage($event)"
-          />
-          @if (assignments().length === 0) {
-            <p class="empty">ยังไม่มีการส่ง</p>
-          }
-        </mat-card>
-
-        <mat-card>
-          <h2>คำตอบล่าสุด</h2>
-          <table mat-table [dataSource]="responsesPager.paged()" class="data-table full-table">
-            <ng-container matColumnDef="customer">
-              <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
-              <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>
-            </ng-container>
-            <ng-container matColumnDef="score">
-              <th mat-header-cell *matHeaderCellDef>คะแนนรวม</th>
-              <td mat-cell *matCellDef="let row">{{ scoreDisplay(row.overallScore) }}</td>
-            </ng-container>
-            <ng-container matColumnDef="at">
-              <th mat-header-cell *matHeaderCellDef>เมื่อ</th>
-              <td mat-cell *matCellDef="let row">{{ row.submittedAt | thaiDate }}</td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="responseColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: responseColumns"></tr>
-          </table>
-          <app-table-paginator
-            [length]="responsesPager.length()"
-            [pageIndex]="responsesPager.pageIndex()"
-            [pageSize]="responsesPager.pageSize()"
-            [pageSizeOptions]="responsesPager.pageSizeOptions"
-            (page)="responsesPager.onPage($event)"
-          />
-          @if (responses().length === 0) {
-            <p class="empty">ยังไม่มีคำตอบ</p>
-          }
-        </mat-card>
-      </div>
-
-      <div class="right-stack">
-        <mat-card class="form-card">
-          <h2>บันทึกการส่ง</h2>
-          @if (!s.isCurrentlyUsable) {
-            <p class="empty">ต้องเปิดรับและอยู่ในช่วงวันที่ใช้งานจึงจะบันทึกการส่งได้</p>
-          } @else {
-            <form [formGroup]="assignmentForm" (ngSubmit)="createAssignment()" class="form">
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ลูกค้า</mat-label>
-                <mat-select formControlName="customerId">
-                  @for (c of customers(); track c.id) {
-                    <mat-option [value]="c.id">{{ c.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>ผู้ติดต่อ (ถ้ามี)</mat-label>
-                <mat-select formControlName="contactId">
-                  <mat-option [value]="null">— ไม่ระบุ —</mat-option>
-                  @for (c of contacts(); track c.id) {
-                    <mat-option [value]="c.id">{{ c.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>โปรเจกต์ (ถ้ามี)</mat-label>
-                <mat-select formControlName="projectId">
-                  <mat-option [value]="null">— ไม่ระบุ —</mat-option>
-                  @for (p of customerProjects(); track p.id) {
-                    <mat-option [value]="p.id">{{ p.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <button mat-flat-button color="primary" type="submit" [disabled]="savingAssignment()">
-                บันทึกการส่ง
-              </button>
-            </form>
-          }
-        </mat-card>
-
-        <mat-card class="form-card">
-          <h2>บันทึกคำตอบ</h2>
-          @if (!s.isCurrentlyUsable) {
-            <p class="empty">ต้องเปิดรับและอยู่ในช่วงวันที่ใช้งานจึงจะบันทึกคำตอบได้</p>
-          } @else if (sentAssignments().length === 0) {
-            <p class="empty">ยังไม่มีการส่งสถานะ「ส่งแล้ว」ให้บันทึกคำตอบ</p>
-          } @else {
-            <form [formGroup]="answerForm" (ngSubmit)="submitAnswers()" class="form">
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>เลือกการส่ง</mat-label>
-                <mat-select formControlName="assignmentId">
-                  @for (a of sentAssignments(); track a.id) {
-                    <mat-option [value]="a.id">
-                      #{{ a.id }} · {{ a.customerName || ('ลูกค้า #' + a.customerId) }}
-                    </mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              @for (q of s.questions; track q.id) {
-                <div class="question">
-                  <label>
-                    {{ q.questionText }}
-                    @if (q.isRequired) {
-                      <span class="req">*</span>
-                    }
-                    <small>{{ typeLabel(q.questionType) }}</small>
-                  </label>
-
-                  @if (q.questionType === 'RATING') {
-                    <mat-radio-group [formControl]="answerControls[q.id]" class="rating">
-                      @for (n of ratingRange(q); track n) {
-                        <mat-radio-button [value]="n">{{ n }}</mat-radio-button>
-                      }
-                    </mat-radio-group>
-                  } @else if (q.questionType === 'CHOICE') {
-                    <mat-form-field appearance="outline" class="full">
-                      <mat-label>เลือก</mat-label>
-                      <mat-select [formControl]="answerControls[q.id]">
-                        @for (opt of q.options ?? []; track opt) {
-                          <mat-option [value]="opt">{{ opt }}</mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
-                  } @else if (q.questionType === 'MULTI_CHOICE') {
-                    <div class="multi-choices">
-                      @for (opt of q.options ?? []; track opt) {
-                        <mat-checkbox
-                          [checked]="isChoiceChecked(q.id, opt)"
-                          (change)="toggleChoice(q.id, opt, $event.checked)"
-                        >
-                          {{ opt }}
-                        </mat-checkbox>
-                      }
-                    </div>
-                  } @else {
-                    <mat-form-field appearance="outline" class="full">
-                      <mat-label>คำตอบ</mat-label>
-                      <textarea matInput rows="2" [formControl]="answerControls[q.id]"></textarea>
-                    </mat-form-field>
-                  }
-                </div>
+    <div class="stack">
+      <mat-card>
+        <div class="card-head">
+          <h2>ประวัติการส่ง</h2>
+        </div>
+        <p class="hint">ส่งและคีย์คำตอบทำที่แท็บ「แบบประเมิน」ในโปรเจกต์</p>
+        <table mat-table [dataSource]="assignmentsPager.paged()" class="data-table full-table">
+          <ng-container matColumnDef="customer">
+            <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.customerName || ('#' + row.customerId) }}
+              @if (row.contactName) {
+                <div class="muted">{{ row.contactName }}</div>
               }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="project">
+            <th mat-header-cell *matHeaderCellDef>โปรเจกต์</th>
+            <td mat-cell *matCellDef="let row">
+              @if (row.projectId) {
+                <a class="app-link" [routerLink]="['/app/projects', row.projectId]">
+                  {{ row.projectName || ('#' + row.projectId) }}
+                </a>
+              } @else {
+                —
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>สถานะ</th>
+            <td mat-cell *matCellDef="let row">{{ assignmentStatusLabel(row.status) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="sentAt">
+            <th mat-header-cell *matHeaderCellDef>ส่งเมื่อ</th>
+            <td mat-cell *matCellDef="let row">{{ row.sentAt ? (row.sentAt | thaiDate) : '—' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="answeredAt">
+            <th mat-header-cell *matHeaderCellDef>ตอบเมื่อ</th>
+            <td mat-cell *matCellDef="let row">{{ row.answeredAt ? (row.answeredAt | thaiDate) : '—' }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="assignmentColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: assignmentColumns"></tr>
+        </table>
+        <app-table-paginator
+          [length]="assignmentsPager.length()"
+          [pageIndex]="assignmentsPager.pageIndex()"
+          [pageSize]="assignmentsPager.pageSize()"
+          [pageSizeOptions]="assignmentsPager.pageSizeOptions"
+          (page)="assignmentsPager.onPage($event)"
+        />
+        @if (assignments().length === 0) {
+          <p class="empty">ยังไม่มีการส่ง</p>
+        }
+      </mat-card>
 
-              <mat-form-field appearance="outline" class="full">
-                <mat-label>หมายเหตุ (ถ้ามี)</mat-label>
-                <textarea matInput rows="2" formControlName="comment"></textarea>
-              </mat-form-field>
-
-              <button mat-flat-button color="primary" type="submit" [disabled]="savingResponse()">
-                บันทึกคำตอบ
-              </button>
-            </form>
-          }
-        </mat-card>
-      </div>
+      <mat-card>
+        <div class="card-head">
+          <h2>คำตอบล่าสุด</h2>
+        </div>
+        <table mat-table [dataSource]="responsesPager.paged()" class="data-table full-table">
+          <ng-container matColumnDef="customer">
+            <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
+            <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="score">
+            <th mat-header-cell *matHeaderCellDef>คะแนนรวม</th>
+            <td mat-cell *matCellDef="let row">{{ scoreDisplay(row.overallScore) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="at">
+            <th mat-header-cell *matHeaderCellDef>เมื่อ</th>
+            <td mat-cell *matCellDef="let row">{{ row.submittedAt | thaiDate }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="responseColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: responseColumns"></tr>
+        </table>
+        <app-table-paginator
+          [length]="responsesPager.length()"
+          [pageIndex]="responsesPager.pageIndex()"
+          [pageSize]="responsesPager.pageSize()"
+          [pageSizeOptions]="responsesPager.pageSizeOptions"
+          (page)="responsesPager.onPage($event)"
+        />
+        @if (responses().length === 0) {
+          <p class="empty">ยังไม่มีคำตอบ</p>
+        }
+      </mat-card>
     </div>
   </section>
   }

@@ -23,7 +23,8 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
   Delivery,
@@ -58,6 +59,12 @@ import {
   resolveMaCoverageState,
 } from '../../core/models/ma.model';
 import {
+  ASSIGNMENT_STATUS_LABELS,
+  AssignmentStatus,
+  Survey,
+  SurveyAssignment,
+} from '../../core/models/survey.model';
+import {
   TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
   Ticket,
@@ -69,6 +76,7 @@ import { DocumentService } from '../../core/services/document.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
+import { SurveyService } from '../../core/services/survey.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { TicketDemoOverlayService } from '../../core/services/ticket-demo-overlay.service';
 import { UserService } from '../../core/services/user.service';
@@ -95,6 +103,10 @@ import { DocumentPreviewDialogComponent } from '../documents/document-preview-di
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
 import { WarrantyConfirmDialogComponent } from '../warranties/warranty-confirm-dialog.component';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
+import {
+  ProjectSurveyDialogComponent,
+  ProjectSurveyDialogData,
+} from '../surveys/project-survey-dialog.component';
 import { ProjectFormDialogComponent } from './projects-page.component';
 import {
   FollowUpFormDialogComponent,
@@ -139,6 +151,7 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly ticketDemoOverlay = inject(TicketDemoOverlayService);
   private readonly quickActions = inject(QuickActionsService);
+  private readonly surveysApi = inject(SurveyService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
@@ -187,6 +200,10 @@ export class ProjectDetailPageComponent implements OnInit {
   /** GET /projects/:id/ma-quota — สัญญา + โควตา (ประเภทเดียว) ของโปรเจกต์ */
   readonly maQuotaItems = signal<ProjectMaQuotaItem[]>([]);
   readonly maQuotaLoading = signal(false);
+  /** แบบประเมินที่ส่งของโปรเจกต์นี้ (กรองจาก assignments ทุกแบบ) */
+  readonly projectSurveyRows = signal<ProjectSurveyRow[]>([]);
+  readonly projectSurveysLoading = signal(false);
+  readonly assignmentStatusLabels = ASSIGNMENT_STATUS_LABELS;
   /** สรุปตัวเลขจาก GET /projects/:id/report — ไม่ประกอบเองจากแท็บ */
   readonly projectReport = signal<ProjectReport | null>(null);
   readonly statusLabels = PROJECT_STATUS_LABELS;
@@ -216,6 +233,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod', 'actions'];
+  readonly surveyColumns = ['survey', 'status', 'sentAt', 'answeredAt', 'actions'];
   readonly documentColumns = ['title', 'fileSize', 'uploadedBy', 'createdAt', 'actions'];
 
   /** ซ่อนแท็บ/ยิง API ตามสิทธิ์จริงจาก /auth/me */
@@ -424,6 +442,14 @@ export class ProjectDetailPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('ma.update');
   });
+  readonly canViewSurvey = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('survey.view');
+  });
+  readonly canSendSurvey = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('survey.send');
+  });
   readonly deliveriesDenied = signal(false);
   readonly tasksDenied = signal(false);
 
@@ -568,6 +594,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly followUpsPager = createClientPager(this.filteredFollowUps);
   readonly projectTicketsPager = createClientPager(this.filteredProjectTickets);
   readonly maQuotaPager = createClientPager(this.maQuotaItems);
+  readonly projectSurveysPager = createClientPager(this.projectSurveyRows);
 
   private projectId = 0;
 
@@ -964,6 +991,7 @@ export class ProjectDetailPageComponent implements OnInit {
     this.loadWarranties();
     this.loadProjectTickets();
     this.loadProjectMaQuota();
+    this.loadProjectSurveys();
   }
 
   /** ประกันที่ออกจากการส่งมอบของโปรเจกต์นี้ */
@@ -1119,6 +1147,155 @@ export class ProjectDetailPageComponent implements OnInit {
         label: 'แก้ไข',
         icon: 'edit',
         run: () => this.openEditMa(row.contract),
+      });
+    }
+    return actions;
+  }
+
+  /** โหลดการส่งแบบประเมินของโปรเจกต์ — รวมจากทุกแบบแล้วกรอง projectId */
+  private loadProjectSurveys(): void {
+    if (!this.canViewSurvey()) {
+      this.projectSurveyRows.set([]);
+      this.projectSurveysLoading.set(false);
+      return;
+    }
+    this.projectSurveysLoading.set(true);
+    this.surveysApi.list({ limit: 100 }).subscribe({
+      next: (surveys) => {
+        if (!surveys.length) {
+          this.projectSurveyRows.set([]);
+          this.projectSurveysPager.reset();
+          this.projectSurveysLoading.set(false);
+          return;
+        }
+        forkJoin(
+          surveys.map((survey) =>
+            this.surveysApi.listAssignments(survey.id).pipe(
+              map((rows) =>
+                rows
+                  .filter((a) => a.projectId === this.projectId)
+                  .map(
+                    (assignment): ProjectSurveyRow => ({
+                      assignment,
+                      surveyId: survey.id,
+                      surveyTitle: survey.title,
+                      survey,
+                    })
+                  )
+              ),
+              catchError(() => of([] as ProjectSurveyRow[]))
+            )
+          )
+        ).subscribe({
+          next: (chunks) => {
+            const rows = chunks.flat().sort((a, b) => {
+              const aAt = a.assignment.sentAt ?? a.assignment.createdAt;
+              const bAt = b.assignment.sentAt ?? b.assignment.createdAt;
+              return new Date(bAt).getTime() - new Date(aAt).getTime();
+            });
+            this.projectSurveyRows.set(rows);
+            this.projectSurveysPager.reset();
+            this.projectSurveysLoading.set(false);
+          },
+          error: () => {
+            this.projectSurveyRows.set([]);
+            this.projectSurveysPager.reset();
+            this.projectSurveysLoading.set(false);
+          },
+        });
+      },
+      error: () => {
+        this.projectSurveyRows.set([]);
+        this.projectSurveysPager.reset();
+        this.projectSurveysLoading.set(false);
+      },
+    });
+  }
+
+  assignmentStatusLabel(status: AssignmentStatus): string {
+    return this.assignmentStatusLabels[status] ?? status;
+  }
+
+  openSendSurvey(): void {
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    if (!this.canSendSurvey()) {
+      this.snack.open('ไม่มีสิทธิ์ส่งแบบประเมิน', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const data: ProjectSurveyDialogData = {
+      projectId: project.id,
+      customerId: project.customerId,
+      contacts: this.contacts(),
+    };
+    this.dialog
+      .open(ProjectSurveyDialogComponent, {
+        ...FORM_DIALOG,
+        data,
+      })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) {
+          this.loadProjectSurveys();
+        }
+      });
+  }
+
+  openAnswerSurvey(row: ProjectSurveyRow): void {
+    const project = this.project();
+    if (!project) {
+      return;
+    }
+    if (!this.canSendSurvey()) {
+      this.snack.open('ไม่มีสิทธิ์บันทึกคำตอบแบบประเมิน', 'ปิด', { duration: 3000 });
+      return;
+    }
+    const openWith = (survey: Survey) => {
+      const data: ProjectSurveyDialogData = {
+        projectId: project.id,
+        customerId: project.customerId,
+        contacts: this.contacts(),
+        assignment: row.assignment,
+        survey,
+      };
+      this.dialog
+        .open(ProjectSurveyDialogComponent, {
+          ...FORM_DIALOG,
+          data,
+        })
+        .afterClosed()
+        .subscribe((saved) => {
+          if (saved) {
+            this.loadProjectSurveys();
+          }
+        });
+    };
+    if (row.survey?.questions?.length) {
+      openWith(row.survey);
+      return;
+    }
+    this.surveysApi.get(row.surveyId).subscribe({
+      next: openWith,
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
+    });
+  }
+
+  surveyRowActions(row: ProjectSurveyRow): RowAction[] {
+    const actions: RowAction[] = [
+      {
+        label: 'ดูแบบประเมิน',
+        primary: true,
+        icon: 'visibility',
+        run: () => void this.router.navigate(['/app/surveys', row.surveyId]),
+      },
+    ];
+    if (this.canSendSurvey() && row.assignment.status === 'SENT') {
+      actions.push({
+        label: 'บันทึกคำตอบ',
+        icon: 'edit_note',
+        run: () => this.openAnswerSurvey(row),
       });
     }
     return actions;
@@ -1665,6 +1842,13 @@ export class ProjectDetailPageComponent implements OnInit {
 }
 
 /* ——— Add delivery dialog ——— */
+
+export interface ProjectSurveyRow {
+  assignment: SurveyAssignment;
+  surveyId: number;
+  surveyTitle: string;
+  survey: Survey | null;
+}
 
 export interface DeliveryFormDialogData {
   projectId: number;

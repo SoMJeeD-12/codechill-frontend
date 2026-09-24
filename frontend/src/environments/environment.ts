@@ -12,5 +12,6 @@ export const environment = {
     { key: '2', label: 'Admin (somchai)', username: 'somchai', password: 'Demo@1234' },
     { key: '3', label: 'User (pranee)', username: 'pranee', password: 'Demo@1234' },
     { key: '4', label: 'User (wichai)', username: 'wichai', password: 'Demo@1234' },
+    { key: '5', label: 'User (tom)', username: 'tom', password: 'Demo@1234' },
   ] as DevAccount[],
 };
