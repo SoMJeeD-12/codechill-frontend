@@ -61,58 +61,18 @@
     width: auto;
   }
 
+  /* ไม่มีเส้นสีความเร่งด่วนข้างซ้ายแถว */
+  .mat-mdc-header-cell.col-sticky-start,
+  .mat-mdc-cell.col-sticky-start,
+  .mat-mdc-cell:first-of-type,
+  .ticket-row .mat-mdc-cell:first-of-type {
+    box-shadow: none !important;
+  }
+
   .ticket-row {
-    .mat-mdc-cell:first-of-type {
-      box-shadow:
-        1px 0 0 #eef2f0,
-        inset 3px 0 0 transparent;
-    }
-
-    &[data-priority='NORMAL'] .mat-mdc-cell:first-of-type {
-      box-shadow:
-        1px 0 0 #eef2f0,
-        inset 3px 0 0 #eab308;
-    }
-
-    &[data-priority='HIGH'] .mat-mdc-cell:first-of-type {
-      box-shadow:
-        1px 0 0 #eef2f0,
-        inset 3px 0 0 #ea580c;
-    }
-
-    &[data-priority='URGENT'] .mat-mdc-cell:first-of-type {
-      box-shadow:
-        1px 0 0 #eef2f0,
-        inset 3px 0 0 #dc2626;
-    }
-
-    &[data-priority='LOW'] .mat-mdc-cell:first-of-type {
-      box-shadow:
-        1px 0 0 #eef2f0,
-        inset 3px 0 0 #22c55e;
-    }
-
     &:hover .mat-mdc-cell {
       background: #f4faf8;
     }
-  }
-
-  .ticket-code {
-    display: inline-flex;
-    align-items: center;
-    max-width: 100%;
-    padding: 0.28rem 0.55rem;
-    border-radius: 0.55rem;
-    border: 1px solid #d7e4df;
-    background: linear-gradient(180deg, #fff 0%, #f3faf7 100%);
-    color: #334155;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .ticket-title {

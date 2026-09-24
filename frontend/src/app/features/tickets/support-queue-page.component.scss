@@ -28,6 +28,14 @@
   white-space: nowrap;
 }
 
+:host ::ng-deep .data-table {
+  .mat-mdc-header-cell.col-sticky-start,
+  .mat-mdc-cell.col-sticky-start,
+  .mat-mdc-cell:first-of-type {
+    box-shadow: none !important;
+  }
+}
+
 @media (max-width: 720px) {
   .row-actions {
     white-space: normal;

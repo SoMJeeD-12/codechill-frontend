@@ -64,7 +64,6 @@
   gap: 0.15rem 0.6rem;
   padding: 1.1rem 1.2rem 0.9rem;
   border: 1px solid var(--app-line);
-  border-left: 4px solid #cbd5d1;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 4px 16px rgba(28, 43, 40, 0.04);
@@ -138,8 +137,6 @@
 
 /* น้ำหนักสีตามความเร่งด่วน — ตัวเลข 0 จะกลายเป็น calm เสมอ */
 .todo-card[data-tone='urgent'] {
-  border-left-color: #b91c1c;
-
   .todo-card__icon,
   .todo-card__count {
     color: #b91c1c;
@@ -147,8 +144,6 @@
 }
 
 .todo-card[data-tone='warn'] {
-  border-left-color: #c2410c;
-
   .todo-card__icon,
   .todo-card__count {
     color: #c2410c;
@@ -156,8 +151,6 @@
 }
 
 .todo-card[data-tone='calm'] {
-  border-left-color: #cbd5d1;
-
   .todo-card__count {
     color: #8a9792;
   }
