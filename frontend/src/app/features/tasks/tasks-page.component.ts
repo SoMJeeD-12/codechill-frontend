@@ -23,7 +23,6 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
-import { TaskKanbanBoardComponent } from '../projects/task-kanban-board.component';
 import { TaskEditDialogComponent } from '../projects/task-edit-dialog.component';
 import { TaskReviewDialogComponent } from '../projects/task-review-dialog.component';
 import { TaskSubmitReportDialogComponent } from '../projects/task-submit-report-dialog.component';
@@ -38,8 +37,7 @@ export type TasksPageMode =
   | 'unassigned'
   | 'doing'
   | 'review'
-  | 'overdue'
-  | 'board';
+  | 'overdue';
 
 /** มุมมองย่อยในหน้างานของฉัน — ไม่กรอง REVIEW เพราะ /tasks/me ไม่คืนงานที่ส่งตรวจแล้ว */
 export type MyTasksView = 'all' | 'todo' | 'doing' | 'done' | 'overdue';
@@ -63,7 +61,6 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
     subtitle: 'งานย่อยที่ส่งตรวจแล้ว รออนุมัติ',
   },
   overdue: { title: 'งานเกินกำหนด', subtitle: '' },
-  board: { title: 'กระดานงาน', subtitle: '' },
 };
 
 @Component({
@@ -80,7 +77,6 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
     ThaiDatePipe,
     RowActionsComponent,
     TablePaginatorComponent,
-    TaskKanbanBoardComponent,
   ],
   templateUrl: './tasks-page.component.html',
   styleUrl: './tasks-page.component.scss',
@@ -107,7 +103,6 @@ export class TasksPageComponent implements OnInit {
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;
-
   readonly canUpdateTask = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('task.update');
@@ -203,12 +198,11 @@ export class TasksPageComponent implements OnInit {
     });
 
     this.route.data.subscribe((data) => {
-      const mode = (data['taskMode'] as TasksPageMode) || 'all';
+      const raw = (data['taskMode'] as string) || 'all';
+      const mode: TasksPageMode =
+        raw === 'board' ? 'all' : (raw as TasksPageMode);
       this.mode.set(mode);
-      const qProject = Number(this.route.snapshot.queryParamMap.get('projectId'));
-      this.filterProjectId.set(
-        Number.isFinite(qProject) && qProject > 0 ? qProject : null
-      );
+      this.syncQueryFilters(this.route.snapshot.queryParamMap);
       if (mode === 'me') {
         const fromData = data['myView'] as MyTasksView | undefined;
         const fromQuery = this.route.snapshot.queryParamMap.get('view');
@@ -225,12 +219,21 @@ export class TasksPageComponent implements OnInit {
     });
 
     this.route.queryParamMap.subscribe((params) => {
-      if (this.mode() !== 'me') {
-        return;
+      this.syncQueryFilters(params);
+      if (this.mode() === 'me') {
+        this.applyViewFromQuery(params.get('view'));
+        this.pager.reset();
       }
-      this.applyViewFromQuery(params.get('view'));
-      this.pager.reset();
     });
+  }
+
+  private syncQueryFilters(params: {
+    get(name: string): string | null;
+  }): void {
+    const qProject = Number(params.get('projectId'));
+    this.filterProjectId.set(
+      Number.isFinite(qProject) && qProject > 0 ? qProject : null
+    );
   }
 
   setMyView(view: MyTasksView): void {
@@ -276,10 +279,6 @@ export class TasksPageComponent implements OnInit {
 
   reload(): void {
     const mode = this.mode();
-    if (mode === 'board') {
-      this.loading.set(false);
-      return;
-    }
     this.loading.set(true);
     const q = this.search().trim() || undefined;
     const projectId = this.filterProjectId() ?? undefined;

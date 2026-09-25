@@ -27,17 +27,9 @@
     <button type="button" class="ui-chip" [class.is-active]="view() === 'list'" (click)="setView('list')">
       รายการงาน
     </button>
-    <button type="button" class="ui-chip" [class.is-active]="view() === 'board'" (click)="setView('board')">
-      กระดาน
-    </button>
   </div>
 
-  @if (view() === 'board') {
-    <app-task-kanban-board
-      [projectId]="filterProjectId()"
-      [showProjectFilter]="filterProjectId() == null"
-    />
-  } @else if (loading()) {
+  @if (loading()) {
     <p class="data-empty">กำลังโหลด…</p>
   } @else if (view() === 'summary') {
     @if (summary(); as s) {

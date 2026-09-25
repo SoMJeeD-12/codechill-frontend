@@ -17,13 +17,7 @@
     </div>
   </header>
 
-  @if (mode() === 'board') {
-    <app-task-kanban-board
-      [projectId]="filterProjectId()"
-      [showProjectFilter]="filterProjectId() == null"
-    />
-  } @else {
-    <div class="app-panel">
+  <div class="app-panel">
       <div class="app-panel-toolbar">
         @if (mode() === 'me') {
           <div class="ui-chips" role="tablist" aria-label="มุมมองงานโปรเจกต์">
@@ -227,5 +221,4 @@
         }
       </div>
     </div>
-  }
 </section>

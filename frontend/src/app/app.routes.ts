@@ -122,11 +122,12 @@ export const routes: Routes = [
         data: { taskMode: 'me', myView: 'overdue' },
       },
       {
+        // มุมมองกระดานเลิกใช้เป็นทางเข้าหลัก — เปิดตารางงานแทน (คง query เช่น projectId)
         path: 'tasks/board',
         canActivate: [permissionGuard('tasks')],
         loadComponent: () =>
           import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
-        data: { taskMode: 'board' },
+        data: { taskMode: 'all' },
       },
       // ลิงก์เก่าจากหน้าภาพรวมงาน
       {
@@ -136,7 +137,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects/board',
-        redirectTo: '/app/tasks/board',
+        redirectTo: '/app/tasks',
         pathMatch: 'full',
       },
       {

@@ -88,27 +88,34 @@
               cdkDrag
               [cdkDragDisabled]="!canDrag()"
               [class.is-closed]="showProjectFilter && isClosedProject(task)"
+              [class.is-saving]="savingId() === task.id"
+              (cdkDragStarted)="onDragStarted()"
+              (cdkDragEnded)="onDragEnded()"
+              (click)="onCardClick(task)"
             >
               <ng-template cdkDragPlaceholder>
                 <div class="kanban-card__drag"></div>
               </ng-template>
               <h4 class="kanban-card__title">{{ task.title }}</h4>
 
-              @if (showProjectFilter) {
-                <div class="kanban-card__project">
-                  <a [routerLink]="['/app/projects', task.projectId]">{{ projectLabel(task) }}</a>
-                  @if (isClosedProject(task) && task.project) {
-                    <span class="project-status-badge" [attr.data-status]="task.project.status">
-                      {{ projectStatusLabel(task.project.status) }}
-                    </span>
-                  }
-                </div>
-              }
+              <div class="kanban-card__project">
+                <a
+                  [routerLink]="['/app/projects', task.projectId]"
+                  (click)="$event.stopPropagation()"
+                >
+                  {{ projectLabel(task) }}
+                </a>
+                @if (isClosedProject(task) && task.project) {
+                  <span class="project-status-badge" [attr.data-status]="task.project.status">
+                    {{ projectStatusLabel(task.project.status) }}
+                  </span>
+                }
+              </div>
 
               <div class="kanban-card__meta">
                 <span class="assignee">{{ assigneeName(task) }}</span>
                 <span class="due" [class.is-overdue]="task.isOverdue">
-                  {{ task.dueDate || '—' }}
+                  {{ task.dueDate ? (task.dueDate | thaiDate: 'date') : '—' }}
                 </span>
               </div>
 
@@ -120,6 +127,21 @@
                   <span class="overdue-badge">เกินกำหนด</span>
                 }
               </div>
+
+              @if (canSubmit(task) || canReview(task)) {
+                <div class="kanban-card__actions" (click)="$event.stopPropagation()">
+                  @if (canSubmit(task)) {
+                    <button mat-stroked-button type="button" (click)="openSubmit(task, $event)">
+                      ส่งตรวจ
+                    </button>
+                  }
+                  @if (canReview(task)) {
+                    <button mat-flat-button color="primary" type="button" (click)="openReview(task, $event)">
+                      ตรวจงาน
+                    </button>
+                  }
+                </div>
+              }
             </article>
           }
         </div>

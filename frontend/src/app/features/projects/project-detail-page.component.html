@@ -44,10 +44,6 @@
             <mat-icon>list_alt</mat-icon>
             ดูงานของโปรเจกต์
           </a>
-          <a mat-stroked-button routerLink="/app/tasks/board" [queryParams]="{ projectId: p.id }">
-            <mat-icon>view_kanban</mat-icon>
-            กระดานงาน
-          </a>
         }
         @if (canUpdateTask() || canCreateTask()) {
           <button mat-flat-button color="primary" type="button" (click)="openAssignTask()">

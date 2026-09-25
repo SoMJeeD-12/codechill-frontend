@@ -6,10 +6,11 @@ import { MenuItem } from '../models/permission.model';
  *   ข้อมูล    = ซัพพอร์ตงานหลัก (ลูกค้า · ประกัน · MA ฯลฯ) — ห้ามมีโปรเจกต์ซ้ำ
  *   ตั้งค่า    = นาน ๆ ใช้ที
  *
+ * แยกให้ชัด:
+ *   งานโปรเจกต์ / ตรวจงาน = งานย่อยในโปรเจกต์
+ *   คิวซัพพอร์ต / คิวแอดมิน / ใบของฉัน / ปัญหา = ใบแจ้งปัญหาจากลูกค้า
+ *
  * กั้นด้วย permissions จาก /api/auth/me เท่านั้น (ห้ามใช้ roles / ตำแหน่ง)
- * คิวซัพพอร์ต = ticket.support_queue · คิวแอดมิน = ticket.assign
- * ใบของฉัน = ใบที่ assigned ให้ฉัน (ticket.view) — ไม่ใช่งานย่อยโปรเจกต์
- * งานโปรเจกต์ / ตรวจงานโปรเจกต์ = งานย่อย · อยู่ชั้นงานหลักถัดจากโปรเจกต์
  * การแจ้งเตือน = ไอคอนกระดิ่งบน header (ไม่ใส่ซ้ายซ้ำ)
  */
 
@@ -92,7 +93,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'dashboard',
     label: 'หน้าแรก',
-    description: 'สรุปงานวันนี้',
+    description: 'ดูสรุปงานวันนี้',
     icon: 'home',
     route: '/app/home',
     group: 'main',
@@ -100,7 +101,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'projects',
     label: 'โปรเจกต์',
-    description: 'รายการและรายละเอียดโปรเจกต์',
+    description: 'ดูและจัดการโปรเจกต์ลูกค้า',
     icon: 'folder_special',
     route: '/app/projects',
     group: 'main',
@@ -108,7 +109,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'tasks-me',
     label: 'งานโปรเจกต์',
-    description: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ',
+    description: 'งานในโปรเจกต์ที่ได้รับมอบหมาย',
     icon: 'checklist',
     route: '/app/tasks/me',
     group: 'main',
@@ -116,7 +117,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'tasks-review',
     label: 'ตรวจงานโปรเจกต์',
-    description: 'งานย่อยสถานะ REVIEW — ผู้ตรวจอนุมัติ',
+    description: 'งานที่ลูกน้องส่งมาให้ตรวจ',
     icon: 'rate_review',
     route: '/app/tasks/review',
     group: 'main',
@@ -124,7 +125,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'ticket-workflow',
     label: 'คิวซัพพอร์ต',
-    description: 'รอส่งหัวหน้า · แอดมินส่งกลับมา',
+    description: 'ใบปัญหาที่ต้องส่งหัวหน้า หรือรอบอกลูกค้า',
     icon: 'support_agent',
     route: '/app/tickets/support-queue',
     group: 'main',
@@ -132,7 +133,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'ticket-admin-queue',
     label: 'คิวแอดมิน',
-    description: 'รับเรื่อง · มอบหมาย · ส่งตรวจ',
+    description: 'ใบปัญหาที่ต้องรับคิว จัดคนทำ หรือตรวจงานแก้',
     icon: 'assignment_ind',
     route: '/app/tickets/admin-queue',
     group: 'main',
@@ -140,7 +141,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'tickets-mine',
     label: 'ใบของฉัน',
-    description: 'ใบที่มอบหมายให้คุณแก้',
+    description: 'ใบปัญหาที่ฉันต้องเป็นคนแก้',
     icon: 'person',
     route: '/app/tickets/mine',
     group: 'main',
@@ -148,7 +149,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'tickets',
     label: 'ปัญหา',
-    description: 'ค้นหา · เปิดใบ · ดูย้อนหลัง',
+    description: 'ค้นหา/ดูใบปัญหาทั้งหมด',
     icon: 'inventory_2',
     route: '/app/tickets',
     group: 'main',
@@ -156,7 +157,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'follow-ups',
     label: 'งานติดตาม',
-    description: 'นัดติดตามและงานค้าง',
+    description: 'เตือนให้ตามลูกค้าตามนัด',
     icon: 'event_available',
     route: '/app/follow-ups',
     group: 'main',
@@ -166,7 +167,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'customers',
     label: 'ลูกค้า',
-    description: 'ทะเบียนลูกค้า — ชื่อ ภาษี ที่อยู่ ผู้ติดต่อ',
+    description: 'รายชื่อและข้อมูลลูกค้า',
     icon: 'business',
     route: '/app/customers',
     group: 'support',
@@ -174,7 +175,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'customer-360',
     label: 'มุมมอง 360°',
-    description: 'เลือกลูกค้า 1 ราย แล้วดูโปรเจกต์ ประกัน MA ปัญหา ติดตาม ในหน้าเดียว',
+    description: 'ดูภาพรวมลูกค้ารายเดียวจบ',
     icon: 'travel_explore',
     route: '/app/customer-360',
     group: 'support',
@@ -182,7 +183,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'warranties',
     label: 'การรับประกัน',
-    description: 'ประกันหลังส่งมอบ',
+    description: 'ดูประกันหลังส่งมอบ',
     icon: 'verified_user',
     route: '/app/warranties',
     group: 'support',
@@ -190,7 +191,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'ma-plans',
     label: 'แผน MA',
-    description: 'แม่แบบแพ็กเกจโควตา — สัญญาจริงสร้างที่โปรเจกต์',
+    description: 'แพ็กเกจดูแลรักษาระบบ',
     icon: 'playlist_add_check',
     route: '/app/ma/plans',
     group: 'support',
@@ -206,7 +207,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'reports',
     label: 'รายงาน',
-    description: 'สรุปตัวเลขระดับบริษัท',
+    description: 'ดูสรุปตัวเลขตามสัญญา',
     icon: 'analytics',
     route: '/app/reports',
     group: 'support',
@@ -216,7 +217,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'users',
     label: 'ผู้ใช้',
-    description: 'บัญชีเข้าใช้งานระบบ',
+    description: 'จัดการบัญชีพนักงาน',
     icon: 'group',
     route: '/app/users',
     group: 'settings',
@@ -224,7 +225,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'roles',
     label: 'บทบาท',
-    description: 'กำหนดสิทธิ์ตามหน้าที่',
+    description: 'กำหนดว่าแต่ละบทบาททำอะไรได้',
     icon: 'admin_panel_settings',
     route: '/app/roles',
     group: 'settings',
@@ -232,7 +233,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'audit-logs',
     label: 'ประวัติการใช้งาน',
-    description: 'ใครทำอะไรเมื่อไหร่',
+    description: 'ดูว่าใครทำอะไรในระบบ',
     icon: 'history',
     route: '/app/audit-logs',
     group: 'settings',

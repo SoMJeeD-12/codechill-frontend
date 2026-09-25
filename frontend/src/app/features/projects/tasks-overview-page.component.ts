@@ -23,11 +23,10 @@ import {
 } from '../../core/models/project.model';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
-import { TaskKanbanBoardComponent } from './task-kanban-board.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 
-type BoardView = 'summary' | 'overdue' | 'dueSoon' | 'list' | 'board';
+type BoardView = 'summary' | 'overdue' | 'dueSoon' | 'list';
 
 @Component({
   selector: 'app-tasks-overview-page',
@@ -41,7 +40,6 @@ type BoardView = 'summary' | 'overdue' | 'dueSoon' | 'list' | 'board';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    TaskKanbanBoardComponent,
     TablePaginatorComponent,
   ],
   templateUrl: './tasks-overview-page.component.html',
@@ -53,7 +51,7 @@ export class TasksOverviewPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
 
-  readonly view = signal<BoardView>('board');
+  readonly view = signal<BoardView>('list');
   readonly filterProjectId = signal<number | null>(null);
   readonly loading = signal(true);
   readonly summary = signal<TaskSummary | null>(null);
@@ -121,7 +119,7 @@ export class TasksOverviewPageComponent implements OnInit {
     const qProject = Number(params.get('projectId'));
     if (Number.isFinite(qProject) && qProject > 0) {
       this.filterProjectId.set(qProject);
-      this.view.set('board');
+      this.view.set('list');
     }
     // เข้ามาจากการ์ด "งานเลยกำหนด" บนหน้าแรก
     if (params.get('overdue') === 'true') {

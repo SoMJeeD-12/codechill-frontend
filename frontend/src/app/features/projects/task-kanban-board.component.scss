@@ -120,6 +120,11 @@
   &.is-closed {
     opacity: 0.62;
   }
+
+  &.is-saving {
+    opacity: 0.72;
+    pointer-events: none;
+  }
 }
 
 .kanban-card__drag {
@@ -204,6 +209,20 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   align-items: center;
+}
+
+.kanban-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+
+  button {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    min-height: 28px;
+    padding: 0 0.55rem;
+  }
 }
 
 .overdue-badge {
