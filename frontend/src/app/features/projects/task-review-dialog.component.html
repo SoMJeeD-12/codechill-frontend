@@ -127,14 +127,56 @@
         <section class="section review-actions">
           <h4>ผลการตรวจ</h4>
           <mat-form-field appearance="outline" class="full">
-            <mat-label>หมายเหตุเมื่อส่งกลับแก้ไข</mat-label>
+            <mat-label>ต้องแก้อะไร ตรงไหน (บังคับเมื่อส่งกลับแก้ไข)</mat-label>
             <textarea
               matInput
-              rows="3"
+              rows="4"
               [formControl]="reviewNoteControl"
-              placeholder="กรุณาแก้ไขรายละเอียดเพิ่มเติม"
+              placeholder="เช่น หน้ารายงานยอดขาย ตัวเลขรวมไม่ตรงกับตาราง — แก้สูตรรวมแล้วส่งใหม่"
             ></textarea>
           </mat-form-field>
+
+          <div class="review-files">
+            <input
+              #reviewFileInput
+              type="file"
+              multiple
+              hidden
+              [accept]="fileAccept"
+              (change)="onFilesPicked($event)"
+            />
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="saving()"
+              (click)="reviewFileInput.click()"
+            >
+              <mat-icon>attach_file</mat-icon>
+              แนบไฟล์ประกอบการส่งกลับ
+            </button>
+            <span class="review-files__hint">รูปหน้าจอ / เอกสารจุดที่ต้องแก้ · ไม่เกิน 20 MB ต่อไฟล์ · เก็บในเอกสารโปรเจกต์</span>
+            @if (files().length) {
+              <ul class="file-list">
+                @for (file of files(); track $index; let i = $index) {
+                  <li>
+                    <div class="file-meta">
+                      <strong>{{ file.name }}</strong>
+                      <span>{{ fileSize(file.size) }}</span>
+                    </div>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="saving()"
+                      (click)="removeFile(i)"
+                      [attr.aria-label]="'เอาไฟล์ ' + file.name + ' ออก'"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
           <div class="action-row">
             <button
               mat-flat-button

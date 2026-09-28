@@ -195,6 +195,8 @@ type ApiTaskSubmission = {
   name?: string | null;
   files?: ApiTaskSubmissionFile[] | null;
   attachments?: ApiTaskSubmissionFile[] | null;
+  reviewNote?: string | null;
+  reviewedAt?: string | null;
 };
 
 export interface TaskSubmissionInput {
@@ -981,6 +983,8 @@ export class ProjectService {
         downloadUrl,
         fileName,
         files,
+        reviewNote: (s.reviewNote ?? '').trim() || null,
+        reviewedAt: s.reviewedAt ?? null,
       };
     });
   }

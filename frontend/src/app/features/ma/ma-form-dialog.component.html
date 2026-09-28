@@ -36,16 +36,34 @@
           </mat-select>
         </mat-form-field>
 
+        @if (lockedStatus) {
+          <div class="locked-status">
+            <span class="locked-status__label">สถานะตอนนี้</span>
+            <span class="status" [attr.data-status]="lockedStatus">{{ statusLabels[lockedStatus] }}</span>
+            <p class="locked-status__hint">
+              @if (lockedStatus === 'EXPIRED') {
+                ระบบตั้งให้เองเพราะเลยวันสิ้นสุดแล้ว — ขยายวันสิ้นสุดให้เลยวันนี้ ระบบจะเปลี่ยนกลับเป็น「ใช้งานอยู่」ให้เอง
+              } @else {
+                สถานะนี้ระบบตั้งให้เอง — ไม่ต้องเปลี่ยน
+              }
+            </p>
+          </div>
+        }
+
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
-          <mat-label>สถานะ</mat-label>
+          <mat-label>{{ lockedStatus ? 'เปลี่ยนสถานะ (ไม่บังคับ)' : 'สถานะ' }}</mat-label>
           <mat-select formControlName="status">
+            @if (lockedStatus) {
+              <mat-option [value]="null">— ไม่เปลี่ยน —</mat-option>
+            }
             @for (s of statuses; track s) {
               <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
             }
           </mat-select>
+          <mat-hint>สัญญาหมดอายุเองเมื่อถึงวันสิ้นสุด · ต้องการจบก่อนกำหนดให้เลือก「ยกเลิก」</mat-hint>
         </mat-form-field>
 
-        @if (status() === 'ACTIVE') {
+        @if (status() === 'ACTIVE' || lockedStatus) {
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>วันที่เซ็น</mat-label>
             <input

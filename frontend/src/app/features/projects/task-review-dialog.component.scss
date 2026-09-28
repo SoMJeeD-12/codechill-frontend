@@ -124,6 +124,23 @@
   }
 }
 
+.review-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  margin: -0.25rem 0 0.85rem;
+
+  .file-list {
+    flex: 1 1 100%;
+  }
+}
+
+.review-files__hint {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
 .action-row {
   display: flex;
   flex-wrap: wrap;

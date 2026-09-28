@@ -12,6 +12,7 @@ import {
   MaBillingCycle,
   MaContract,
   MaContractStatus,
+  MaEditableStatus,
   MaPlan,
   MaQuotaStatus,
 } from '../models/ma.model';
@@ -40,7 +41,7 @@ export interface MaContractCreateInput {
   startDate: string;
   endDate: string;
   billingCycle?: MaBillingCycle;
-  status?: Exclude<MaContractStatus, 'RENEWED'>;
+  status?: MaEditableStatus;
   signedDate?: string | null;
   signedFileUrl?: string | null;
   note?: string | null;
@@ -53,7 +54,8 @@ export interface MaContractUpdateInput {
   billingCycle?: MaBillingCycle;
   startDate?: string;
   endDate?: string;
-  status?: Exclude<MaContractStatus, 'RENEWED'>;
+  /** ไม่ส่ง = ไม่เปลี่ยนสถานะ (สัญญาหมดอายุ/ต่อแล้ว ห้ามส่งค่าเดิมกลับ) */
+  status?: MaEditableStatus;
   signedDate?: string | null;
   signedFileUrl?: string | null;
   note?: string | null;

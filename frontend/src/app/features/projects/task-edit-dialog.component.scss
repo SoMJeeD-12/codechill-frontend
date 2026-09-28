@@ -266,6 +266,27 @@
   line-height: 1.45;
 }
 
+.review-note {
+  margin: 0.4rem 0;
+  padding: 0.45rem 0.6rem;
+  border-left: 3px solid #d97706;
+  border-radius: 6px;
+  background: #fffbeb;
+  font-size: 0.85rem;
+
+  strong {
+    display: block;
+    color: #b45309;
+    font-size: 0.8rem;
+  }
+
+  p {
+    margin: 0.2rem 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
 .doc-search {
   display: flex;
   align-items: center;

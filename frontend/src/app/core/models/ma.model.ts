@@ -145,8 +145,15 @@ export const MA_STATUS_LABELS: Record<MaContractStatus, string> = {
   ACTIVE: 'ใช้งานอยู่',
   EXPIRED: 'หมดอายุ',
   CANCELLED: 'ยกเลิก',
-  RENEWED: 'ต่ออายุแล้ว',
+  RENEWED: 'ต่อสัญญาแล้ว',
 };
+
+/**
+ * สถานะที่เลือกในฟอร์มได้ — EXPIRED ระบบตั้งเองเมื่อเลยวันสิ้นสุด (ส่งไป BE ได้ 400)
+ * RENEWED ตั้งผ่านการต่อสัญญาเท่านั้น · จบก่อนกำหนดใช้ CANCELLED
+ */
+export type MaEditableStatus = 'DRAFT' | 'ACTIVE' | 'CANCELLED';
+export const MA_EDITABLE_STATUSES: MaEditableStatus[] = ['DRAFT', 'ACTIVE', 'CANCELLED'];
 
 /** รอบวางบิลเท่านั้น — โควตายังนับรายเดือนเสมอ */
 export const MA_BILLING_CYCLE_LABELS: Record<MaBillingCycle, string> = {
@@ -210,11 +217,11 @@ function isStartDateInFuture(startDate: string | undefined): boolean {
 export function maCoverageLabel(contract: MaContract): string {
   switch (resolveMaCoverageState(contract)) {
     case 'IN_FORCE':
-      return 'คุ้มครองอยู่';
+      return 'ใช้งานอยู่';
     case 'NOT_STARTED':
       return 'ยังไม่เริ่ม';
     case 'ENDED':
-      return 'หมดอายุแล้ว';
+      return 'หมดอายุ';
     case 'INACTIVE':
       return maInactiveStatusLabel(contract.status);
   }
@@ -240,7 +247,7 @@ export function maCoverageDaysHint(contract: MaContract): string | null {
 function maInactiveStatusLabel(status: MaContractStatus): string {
   switch (status) {
     case 'DRAFT':
-      return 'ร่าง';
+      return 'แบบร่าง';
     case 'CANCELLED':
       return 'ยกเลิก';
     case 'RENEWED':

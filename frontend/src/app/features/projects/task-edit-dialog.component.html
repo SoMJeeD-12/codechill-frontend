@@ -139,6 +139,17 @@
                       <td class="col-status">{{ submissionStatusLabel(sub.status) }}</td>
                       <td class="col-file">
                         <p class="report">{{ sub.report?.trim() || 'ไม่มีข้อความรายงาน' }}</p>
+                        @if (sub.reviewNote) {
+                          <div class="review-note">
+                            <strong>
+                              ผู้ตรวจส่งกลับแก้ไข
+                              @if (sub.reviewedAt) {
+                                · {{ sub.reviewedAt | thaiDate }}
+                              }
+                            </strong>
+                            <p>{{ sub.reviewNote }}</p>
+                          </div>
+                        }
                         @if (sub.files.length) {
                           @for (file of sub.files; track file.downloadUrl + file.fileName; let fi = $index) {
                             <div class="file-line">

@@ -26,11 +26,13 @@ import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
 import {
   MA_BILLING_CYCLE_LABELS,
+  MA_EDITABLE_STATUSES,
   MA_STATUS_LABELS,
   MaBillingCycle,
   MaContract,
   MaContractStatus,
   MaCoverageState,
+  MaEditableStatus,
   MaQuotaStatus,
   maCoverageDaysHint,
   maCoverageLabel,
@@ -66,6 +68,10 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 type MaDurationPreset = 6 | 12 | 24 | 'CUSTOM';
+
+function isEditableStatus(status: MaContractStatus): status is MaEditableStatus {
+  return (MA_EDITABLE_STATUSES as MaContractStatus[]).includes(status);
+}
 
 @Component({
   selector: 'app-ma-page',
@@ -394,10 +400,7 @@ export class MaFormDialogComponent {
   readonly plans = this.api.plans;
   readonly statusLabels = MA_STATUS_LABELS;
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
-  /** PATCH ตั้ง RENEWED ไม่ได้ — ไม่โชว์ในฟอร์ม */
-  readonly statuses = (Object.keys(MA_STATUS_LABELS) as MaContractStatus[]).filter(
-    (s) => s !== 'RENEWED'
-  );
+  readonly statuses = MA_EDITABLE_STATUSES;
   readonly billingCycles = Object.keys(MA_BILLING_CYCLE_LABELS) as MaBillingCycle[];
   readonly durationOptions: Array<{ value: MaDurationPreset; label: string }> = [
     { value: 6, label: '6 เดือน' },
@@ -408,11 +411,18 @@ export class MaFormDialogComponent {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.editRow;
-  readonly status = signal<Exclude<MaContractStatus, 'RENEWED'>>(
-    (this.editRow?.status === 'RENEWED'
-      ? 'ACTIVE'
-      : (this.editRow?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>
-  );
+  /**
+   * สัญญาที่ระบบตั้งสถานะเอง (หมดอายุ / ต่อสัญญาแล้ว) — โชว์เป็นป้ายอ่านอย่างเดียว
+   * ไม่ใส่ใน dropdown และไม่ส่ง status ถ้าผู้ใช้ไม่เลือกใหม่
+   */
+  readonly lockedStatus: MaContractStatus | null =
+    this.editRow && !isEditableStatus(this.editRow.status) ? this.editRow.status : null;
+  private readonly initialStatus: MaEditableStatus | null = this.editRow
+    ? isEditableStatus(this.editRow.status)
+      ? this.editRow.status
+      : null
+    : 'DRAFT';
+  readonly status = signal<MaEditableStatus | null>(this.initialStatus);
   readonly billingCycle = signal<MaBillingCycle>(this.editRow?.billingCycle ?? 'YEARLY');
   readonly minEndDate = signal<Date | null>(null);
   readonly availableDurationOptions = computed(() =>
@@ -446,11 +456,7 @@ export class MaFormDialogComponent {
       durationMonths: [this.initialDuration as MaDurationPreset],
       startDate: [parseDateOnly(this.editRow?.startDate) as Date | null, Validators.required],
       endDate: [parseDateOnly(this.editRow?.endDate) as Date | null, Validators.required],
-      status: [
-        (this.editRow?.status === 'RENEWED'
-          ? 'ACTIVE'
-          : (this.editRow?.status ?? 'DRAFT')) as Exclude<MaContractStatus, 'RENEWED'>,
-      ],
+      status: [this.initialStatus],
       price: [parseMoneyValue(this.editRow?.price) ?? 0, [Validators.required, Validators.min(0)]],
       billingCycle: [(this.editRow?.billingCycle ?? 'YEARLY') as MaBillingCycle],
       signedDate: [parseDateOnly(this.editRow?.signedDate) as Date | null],
@@ -523,9 +529,7 @@ export class MaFormDialogComponent {
     this.refreshMinEndDate();
 
     this.form.controls.status.valueChanges.subscribe((value) => {
-      if (value) {
-        this.status.set(value);
-      }
+      this.status.set(value ?? null);
     });
     this.form.controls.durationMonths.valueChanges.subscribe(() => {
       this.syncEndDateEditability();
@@ -595,21 +599,27 @@ export class MaFormDialogComponent {
     this.error.set(null);
 
     if (this.isEdit && this.editRow) {
+      const pickedStatus = raw.status as MaEditableStatus | null;
       const payload: MaContractUpdateInput = {
         planId: Number(raw.planId),
         price: toMoneyString(raw.price),
         billingCycle: raw.billingCycle as MaBillingCycle,
         startDate: start,
         endDate: end,
-        status: raw.status as Exclude<MaContractStatus, 'RENEWED'>,
+        status:
+          pickedStatus && pickedStatus !== this.initialStatus ? pickedStatus : undefined,
         signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
         note: raw.note?.trim() || null,
       };
       this.api.update(this.editRow.id, payload).subscribe({
-        next: ({ message }) => {
+        next: ({ contract, message }) => {
           this.saving.set(false);
-          const text = message?.trim() || 'บันทึกสัญญาแล้ว';
-          this.snack.open(text, 'ปิด', { duration: message ? 6000 : 2500 });
+          // สถานะจริงมาจาก response — สัญญาที่เลยวันสิ้นสุดจะกลายเป็นหมดอายุทันที
+          const statusText = `สถานะ「${maCoverageLabel(contract)}」`;
+          const text = message?.trim()
+            ? `${message.trim()} · ${statusText}`
+            : `บันทึกสัญญาแล้ว · ${statusText}`;
+          this.snack.open(text, 'ปิด', { duration: message ? 6000 : 3500 });
           this.ref.close(true);
         },
         error: (err: Error) => {
@@ -634,7 +644,7 @@ export class MaFormDialogComponent {
       billingCycle: raw.billingCycle as MaBillingCycle,
       startDate: start,
       endDate: end,
-      status: (raw.status as Exclude<MaContractStatus, 'RENEWED'>) ?? 'DRAFT',
+      status: (raw.status as MaEditableStatus | null) ?? 'DRAFT',
       signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
       note: raw.note?.trim() || null,
     };

@@ -20,7 +20,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
 import { Delivery, Project } from '../../core/models/project.model';
-import { MaContract } from '../../core/models/ma.model';
+import { MaContract, maCoverageLabel } from '../../core/models/ma.model';
 import {
   WARRANTY_NEAR_EXPIRY_DAYS,
   WARRANTY_STATUS_LABELS,
@@ -474,14 +474,7 @@ export class WarrantyFormDialogComponent {
   maContractOptionLabel(c: MaContract): string {
     const no = c.contractNo?.trim() || `#${c.id}`;
     const plan = c.plan?.name?.trim() || '—';
-    const status = c.isCurrentlyActive
-      ? 'ใช้งานอยู่'
-      : c.status === 'DRAFT'
-        ? 'ร่าง'
-        : c.status === 'EXPIRED'
-          ? 'หมดอายุ'
-          : c.status;
-    return `${no} · ${plan} (${status})`;
+    return `${no} · ${plan} (${maCoverageLabel(c)})`;
   }
 
   /** สร้างสัญญา MA ของโปรเจกต์นี้แล้วกลับมาเลือกลงในประกัน */

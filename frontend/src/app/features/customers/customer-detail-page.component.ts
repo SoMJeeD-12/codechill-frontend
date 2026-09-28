@@ -32,7 +32,12 @@ import {
 } from '../../core/models/customer.model';
 import { CustomerOverview } from '../../core/models/customer-overview.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
-import { MA_STATUS_LABELS, MaContract, MaQuotaStatus } from '../../core/models/ma.model';
+import {
+  MA_STATUS_LABELS,
+  MaContract,
+  MaQuotaStatus,
+  maCoverageLabel,
+} from '../../core/models/ma.model';
 import {
   FollowUp,
   followUpDisplayStatus,
@@ -272,7 +277,7 @@ export class CustomerDetailPageComponent implements OnInit {
         String(m.id),
         m.plan?.name,
         String(m.planId),
-        this.maStatusLabels[m.status],
+        maCoverageLabel(m),
         String(this.remainingQuota(m)),
       ]
         .filter(Boolean)
@@ -560,8 +565,9 @@ export class CustomerDetailPageComponent implements OnInit {
     return this.warrantyStatusLabels[status];
   }
 
-  maStatusLabel(status: MaContract['status']): string {
-    return this.maStatusLabels[status];
+  /** ป้ายตาม coverageState — ไม่ใช้ status ดิบ (EXPIRED ระบบตั้งเองตามวันสิ้นสุด) */
+  maStatusLabel(contract: MaContract): string {
+    return maCoverageLabel(contract);
   }
 
   openContactForm(contact?: Contact): void {

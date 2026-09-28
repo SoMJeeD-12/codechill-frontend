@@ -52,6 +52,30 @@
   line-height: 1.35;
 }
 
+.locked-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid rgba(28, 43, 40, 0.1);
+}
+
+.locked-status__label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.locked-status__hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
 .error {
   margin: 0.25rem 0 0;
   color: #b91c1c;

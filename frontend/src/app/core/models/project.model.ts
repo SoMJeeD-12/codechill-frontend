@@ -85,6 +85,9 @@ export interface TaskSubmission {
   downloadUrl: string | null;
   fileName: string | null;
   files: TaskSubmissionFile[];
+  /** หมายเหตุผู้ตรวจตอนส่งกลับแก้ไข (REJECTED) */
+  reviewNote: string | null;
+  reviewedAt: string | null;
 }
 
 /** TaskResponseDto (subTasks ถูก flatten เก็บใน store) */
