@@ -125,6 +125,18 @@ export interface TaskReviewListParams {
   projectId?: number | null;
   search?: string | null;
   result?: TaskReviewResult | null;
+  sortBy?: TaskReviewSortBy | null;
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+export type TaskReviewSortBy = 'projectCode' | 'projectName' | 'taskTitle' | 'submittedAt' | 'reviewedAt';
+
+/** GET /projects/options — ทุกสถานะ เรียงตามชื่อ ไม่แบ่งหน้า */
+export interface ProjectOption {
+  id: number;
+  code: string | null;
+  name: string;
+  status: string;
 }
 
 /** TaskResponseDto (subTasks ถูก flatten เก็บใน store) */

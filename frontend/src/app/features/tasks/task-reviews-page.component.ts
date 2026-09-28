@@ -14,8 +14,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
 import { Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
+  ProjectOption,
   TaskReviewItem,
   TaskReviewResult,
+  TaskReviewSortBy,
   TaskReviewTab,
 } from '../../core/models/project.model';
 import { ProjectService } from '../../core/services/project.service';
@@ -77,12 +79,13 @@ export class TaskReviewsPageComponent implements OnInit {
   readonly loading = signal(true);
   readonly downloadingId = signal<number | null>(null);
 
-  readonly projects = this.projectsApi.projects;
-
+  readonly projects = signal<ProjectOption[]>([]);
+  readonly sortBy = signal<TaskReviewSortBy | null>(null);
+  readonly sortOrder = signal<'ASC' | 'DESC'>('ASC');
   readonly columns = computed(() =>
     this.tab() === 'PENDING'
-      ? ['project', 'title', 'submittedBy', 'submittedAt', 'actions']
-      : ['project', 'title', 'submittedBy', 'submittedAt', 'result', 'reviewedAt', 'reviewNote']
+      ? ['projectCode', 'project', 'title', 'submittedBy', 'submittedAt', 'actions']
+      : ['projectCode', 'project', 'title', 'submittedBy', 'submittedAt', 'result', 'reviewedAt', 'reviewNote']
   );
 
   private loadSub: Subscription | null = null;
@@ -95,7 +98,10 @@ export class TaskReviewsPageComponent implements OnInit {
     const pid = Number(q.get('projectId'));
     this.projectId.set(Number.isFinite(pid) && pid > 0 ? pid : null);
 
-    this.projectsApi.listProjects({ limit: 100 }).subscribe({ error: () => undefined });
+    this.projectsApi.listProjectOptions().subscribe({
+      next: (list) => this.projects.set(list),
+      error: () => undefined,
+    });
 
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
@@ -112,6 +118,9 @@ export class TaskReviewsPageComponent implements OnInit {
       return;
     }
     this.tab.set(tab);
+    if (tab === 'PENDING' && this.sortBy() === 'reviewedAt') {
+      this.sortBy.set(null);
+    }
     this.pageIndex.set(0);
     this.syncQuery();
     this.load();
@@ -129,6 +138,24 @@ export class TaskReviewsPageComponent implements OnInit {
     this.pageIndex.set(0);
     this.syncQuery();
     this.load();
+  }
+
+  toggleSort(key: TaskReviewSortBy): void {
+    if (this.sortBy() === key) {
+      this.sortOrder.update((dir) => (dir === 'ASC' ? 'DESC' : 'ASC'));
+    } else {
+      this.sortBy.set(key);
+      this.sortOrder.set(key === 'submittedAt' || key === 'reviewedAt' ? 'DESC' : 'ASC');
+    }
+    this.pageIndex.set(0);
+    this.load();
+  }
+
+  sortIcon(key: TaskReviewSortBy): string {
+    if (this.sortBy() !== key) {
+      return 'unfold_more';
+    }
+    return this.sortOrder() === 'ASC' ? 'arrow_upward' : 'arrow_downward';
   }
 
   onPage(event: PageEvent): void {
@@ -150,6 +177,8 @@ export class TaskReviewsPageComponent implements OnInit {
         projectId: this.projectId(),
         search: this.searchControl.value,
         result: tab === 'REVIEWED' && result !== 'ALL' ? result : null,
+        sortBy: this.sortBy(),
+        sortOrder: this.sortOrder(),
       })
       .subscribe({
         next: ({ items, total }) => {
@@ -195,13 +224,6 @@ export class TaskReviewsPageComponent implements OnInit {
         this.snack.open(err.message || 'ดาวน์โหลดไฟล์ไม่สำเร็จ', 'ปิด', { duration: 4000 });
       },
     });
-  }
-
-  projectLabel(row: TaskReviewItem): string {
-    if (!row.project) {
-      return '—';
-    }
-    return `${row.project.code ? row.project.code + ' · ' : ''}${row.project.name}`;
   }
 
   resultLabel(status: string | null): string {

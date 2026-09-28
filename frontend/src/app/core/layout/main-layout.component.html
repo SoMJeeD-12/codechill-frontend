@@ -12,8 +12,49 @@
       <div class="nav-group">
         <div class="nav-group-label">{{ group.label }}</div>
         <mat-nav-list>
-          @for (item of group.items; track item.code) {
-            @if (hasChildren(item)) {
+          @for (node of group.nodes; track node.type === 'group' ? node.key : node.item.code) {
+            @if (node.type === 'group') {
+              <div class="nav-branch nav-folder" [class.is-expanded]="isGroupOpen(node)">
+                <button
+                  mat-list-item
+                  type="button"
+                  class="nav-folder__toggle"
+                  [attr.aria-expanded]="isGroupOpen(node)"
+                  (click)="toggleGroup(node)"
+                >
+                  <mat-icon matListItemIcon>{{ node.icon }}</mat-icon>
+                  <span matListItemTitle class="nav-item__label nav-folder__title">
+                    {{ node.label }}
+                    @if (groupBadge(node); as n) {
+                      @if (n > 0) {
+                        <span class="nav-badge" [attr.aria-label]="'มี ' + n + ' รายการรอ'">{{ n > 99 ? '99+' : n }}</span>
+                      }
+                    }
+                    <mat-icon class="nav-folder__chevron" aria-hidden="true">
+                      {{ isGroupOpen(node) ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
+                  </span>
+                </button>
+                @if (isGroupOpen(node)) {
+                  <div class="nav-branch__children" role="group" [attr.aria-label]="node.label">
+                    @for (child of node.children; track child.code) {
+                      <a mat-list-item class="nav-child" [routerLink]="child.route" routerLinkActive="active">
+                        <mat-icon matListItemIcon>{{ child.icon }}</mat-icon>
+                        <span matListItemTitle class="nav-item__label">
+                          {{ child.label }}
+                          @if (badgeCount(child.code); as n) {
+                            @if (n > 0) {
+                              <span class="nav-badge" [attr.aria-label]="'มี ' + n + ' รายการรอ'">{{ n > 99 ? '99+' : n }}</span>
+                            }
+                          }
+                        </span>
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
+            } @else if (hasChildren(node.item)) {
+              @let item = node.item;
               <div class="nav-branch" [class.is-expanded]="isExpanded(item.code)">
                 <div class="nav-branch__parent">
                   <a
@@ -68,6 +109,7 @@
                 }
               </div>
             } @else {
+              @let item = node.item;
               <a mat-list-item [routerLink]="item.route" routerLinkActive="active" class="nav-item">
                 <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
                 <span matListItemTitle class="nav-item__label">

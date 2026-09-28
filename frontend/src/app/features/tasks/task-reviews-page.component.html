@@ -53,7 +53,7 @@
           <mat-select [value]="projectId()" (selectionChange)="setProject($event.value)">
             <mat-option [value]="null">ทั้งหมด</mat-option>
             @for (p of projects(); track p.id) {
-              <mat-option [value]="p.id">{{ p.code ? p.code + ' · ' : '' }}{{ p.name }}</mat-option>
+              <mat-option [value]="p.id">{{ p.name }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -74,8 +74,8 @@
           <input
             type="search"
             [formControl]="searchControl"
-            placeholder="ค้นหาชื่องาน"
-            aria-label="ค้นหาชื่องาน"
+            placeholder="ค้นหาชื่องาน / รหัส / ชื่อโปรเจกต์"
+            aria-label="ค้นหาชื่องาน รหัส หรือชื่อโปรเจกต์"
           />
         </label>
       </div>
@@ -86,18 +86,33 @@
         <p class="data-empty">กำลังโหลด…</p>
       } @else {
         <table mat-table [dataSource]="rows()" class="data-table review-table" [class.is-pending]="tab() === 'PENDING'">
+          <ng-container matColumnDef="projectCode">
+            <th mat-header-cell *matHeaderCellDef class="col-project-code">
+              <button type="button" class="sort-header" (click)="toggleSort('projectCode')">
+                รหัสโปรเจกต์
+                <mat-icon>{{ sortIcon('projectCode') }}</mat-icon>
+              </button>
+            </th>
+            <td mat-cell *matCellDef="let row" class="col-project-code">{{ row.project?.code || '—' }}</td>
+          </ng-container>
+
           <ng-container matColumnDef="project">
-            <th mat-header-cell *matHeaderCellDef>โปรเจกต์</th>
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('projectName')">
+                โปรเจกต์
+                <mat-icon>{{ sortIcon('projectName') }}</mat-icon>
+              </button>
+            </th>
             <td mat-cell *matCellDef="let row">
               @if (row.project) {
                 <a
                   class="app-link cell-clip cell-clip--lg"
                   [routerLink]="['/app/projects', row.project.id]"
-                  [matTooltip]="projectLabel(row)"
+                  [matTooltip]="row.project.name"
                   matTooltipShowDelay="400"
                   (click)="$event.stopPropagation()"
                 >
-                  {{ projectLabel(row) }}
+                  {{ row.project.name }}
                 </a>
               } @else {
                 —
@@ -106,7 +121,12 @@
           </ng-container>
 
           <ng-container matColumnDef="title">
-            <th mat-header-cell *matHeaderCellDef>ชื่องาน</th>
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('taskTitle')">
+                ชื่องาน
+                <mat-icon>{{ sortIcon('taskTitle') }}</mat-icon>
+              </button>
+            </th>
             <td mat-cell *matCellDef="let row">
               <span class="cell-clip" [matTooltip]="row.task.title" matTooltipShowDelay="400">
                 {{ row.task.title }}
@@ -120,7 +140,12 @@
           </ng-container>
 
           <ng-container matColumnDef="submittedAt">
-            <th mat-header-cell *matHeaderCellDef>วันที่ส่ง</th>
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('submittedAt')">
+                วันที่ส่ง
+                <mat-icon>{{ sortIcon('submittedAt') }}</mat-icon>
+              </button>
+            </th>
             <td mat-cell *matCellDef="let row">
               {{ row.submission.submittedAt ? (row.submission.submittedAt | thaiDate) : '—' }}
             </td>
@@ -136,7 +161,12 @@
           </ng-container>
 
           <ng-container matColumnDef="reviewedAt">
-            <th mat-header-cell *matHeaderCellDef>วันที่ตรวจ</th>
+            <th mat-header-cell *matHeaderCellDef>
+              <button type="button" class="sort-header" (click)="toggleSort('reviewedAt')">
+                วันที่ตรวจ
+                <mat-icon>{{ sortIcon('reviewedAt') }}</mat-icon>
+              </button>
+            </th>
             <td mat-cell *matCellDef="let row">
               {{ row.submission.reviewedAt ? (row.submission.reviewedAt | thaiDate) : '—' }}
             </td>

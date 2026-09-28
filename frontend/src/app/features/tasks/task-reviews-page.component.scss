@@ -13,6 +13,17 @@
   }
 }
 
+.app-panel-body {
+  container-type: inline-size;
+}
+
+/* แท็บประวัติมี 8 คอลัมน์ — พื้นที่ไม่พอให้ซ่อนรหัสก่อน ชื่อโปรเจกต์ยังอยู่ */
+@container (max-width: 1300px) {
+  .review-table:not(.is-pending) .col-project-code {
+    display: none;
+  }
+}
+
 .review-table {
   width: 100%;
 
@@ -22,6 +33,12 @@
     text-align: left;
     width: auto;
     min-width: 12rem;
+    box-shadow: none;
+  }
+
+  :is(.mat-mdc-header-cell, .mat-mdc-cell).col-project-code {
+    position: static;
+    width: 8.5rem;
     box-shadow: none;
   }
 

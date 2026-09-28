@@ -128,7 +128,7 @@ export class TasksPageComponent implements OnInit {
   });
 
   readonly tableSort = createTableSort<
-    'title' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
+    'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
   >('dueDate');
 
   readonly displayedTasks = computed(() => {
@@ -161,8 +161,10 @@ export class TasksPageComponent implements OnInit {
       switch (key) {
         case 'title':
           return row.title;
+        case 'projectCode':
+          return row.project?.code || null;
         case 'project':
-          return this.projectLabel(row);
+          return this.projectName(row);
         case 'assignee':
           return this.assigneeName(row);
         case 'assigner':
@@ -181,12 +183,12 @@ export class TasksPageComponent implements OnInit {
 
   readonly columns = computed(() => {
     if (this.mode() === 'review') {
-      return ['title', 'project', 'assignee', 'dueDate', 'actions'];
+      return ['title', 'projectCode', 'project', 'assignee', 'dueDate', 'actions'];
     }
     if (this.mode() === 'me') {
-      return ['title', 'project', 'assigner', 'dueDate', 'status', 'actions'];
+      return ['title', 'projectCode', 'project', 'assigner', 'dueDate', 'status', 'actions'];
     }
-    return ['title', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
+    return ['title', 'projectCode', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   });
 
   readonly pager = createClientPager(this.displayedTasks);
@@ -247,14 +249,14 @@ export class TasksPageComponent implements OnInit {
   }
 
   toggleSort(
-    key: 'title' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
+    key: 'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
   ): void {
     this.tableSort.toggleSort(key);
     this.pager.reset();
   }
 
   sortIcon(
-    key: 'title' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
+    key: 'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
   ): string {
     return this.tableSort.sortIcon(key);
   }
@@ -469,11 +471,12 @@ export class TasksPageComponent implements OnInit {
     return uid != null && task.assignedUserId === uid;
   }
 
-  projectLabel(task: TaskItem): string {
-    if (task.project) {
-      return `${task.project.code ? task.project.code + ' · ' : ''}${task.project.name}`;
-    }
-    return `#${task.projectId}`;
+  projectCode(task: TaskItem): string {
+    return task.project?.code || '—';
+  }
+
+  projectName(task: TaskItem): string {
+    return task.project?.name || `#${task.projectId}`;
   }
 
   projectStatusLabel(status: ProjectStatus | string): string {

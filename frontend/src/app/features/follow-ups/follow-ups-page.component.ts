@@ -104,6 +104,7 @@ export class FollowUpsPageComponent implements OnInit {
   readonly searchControl = this.fb.nonNullable.control('');
   readonly columns = [
     'title',
+    'projectCode',
     'project',
     'customer',
     'dueDate',
@@ -124,7 +125,7 @@ export class FollowUpsPageComponent implements OnInit {
   readonly canDelete = computed(() => this.auth.hasPermission('follow-ups', 'delete'));
 
   readonly tableSort = createTableSort<
-    'title' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
+    'title' | 'projectCode' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
   >('dueDate');
 
   private overdueRank(f: FollowUp): number {
@@ -171,8 +172,10 @@ export class FollowUpsPageComponent implements OnInit {
       switch (key) {
         case 'title':
           return row.title;
+        case 'projectCode':
+          return row.project?.code || null;
         case 'project':
-          return this.projectLabel(row);
+          return this.projectName(row);
         case 'customer':
           return this.customerName(row);
         case 'dueDate':
@@ -209,14 +212,14 @@ export class FollowUpsPageComponent implements OnInit {
   }
 
   toggleSort(
-    key: 'title' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
+    key: 'title' | 'projectCode' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
   ): void {
     this.tableSort.toggleSort(key);
     this.pager.reset();
   }
 
   sortIcon(
-    key: 'title' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
+    key: 'title' | 'projectCode' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
   ): string {
     return this.tableSort.sortIcon(key);
   }
@@ -258,6 +261,13 @@ export class FollowUpsPageComponent implements OnInit {
       return '—';
     }
     return `#${f.projectId}`;
+  }
+
+  projectName(f: FollowUp): string {
+    if (f.project?.name) {
+      return f.project.name;
+    }
+    return f.projectId == null ? '—' : `#${f.projectId}`;
   }
 
   userName(f: FollowUp): string {

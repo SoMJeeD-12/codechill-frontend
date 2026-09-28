@@ -1,23 +1,33 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
-import { Observable, Subscription, forkJoin, of } from 'rxjs';
-import { catchError, filter, map } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import { MenuCode } from '../models/permission.model';
 import { AuthService } from './auth.service';
 import { NotificationInboxService } from './notification-inbox.service';
-import { ProjectService } from './project.service';
-import { AdminQueueTab, SupportQueueTab, TicketService } from './ticket.service';
+import { AdminQueueTab, SupportQueueTab } from './ticket.service';
 
 const POLL_MS = 30_000;
 const DEBOUNCE_MS = 300;
 
-const ADMIN_TABS: AdminQueueTab[] = ['AWAITING_CLAIM', 'CLAIMED', 'AWAITING_REVIEW', 'WITH_SUPPORT'];
-const SUPPORT_TABS: SupportQueueTab[] = ['AWAITING_SEND', 'RETURNED'];
+/** GET /nav/counts — ช่องที่ไม่มีสิทธิ์ = null */
+interface NavCountsResponse {
+  ticketAdminQueue: Record<AdminQueueTab, number> | null;
+  ticketSupportQueue: Record<SupportQueueTab, number> | null;
+  ticketsMineOpen: number | null;
+  taskReviewsPending: number | null;
+  tasksMeRejected: number | null;
+}
 
-type Job =
-  | { kind: 'admin'; tab: AdminQueueTab; n: number }
-  | { kind: 'support'; tab: SupportQueueTab; n: number }
-  | { kind: 'menu'; code: MenuCode; n: number };
+const EMPTY_ADMIN: Record<AdminQueueTab, number> = {
+  AWAITING_CLAIM: 0,
+  CLAIMED: 0,
+  AWAITING_REVIEW: 0,
+  WITH_SUPPORT: 0,
+};
+const EMPTY_SUPPORT: Record<SupportQueueTab, number> = { AWAITING_SEND: 0, RETURNED: 0 };
 
 /**
  * ศูนย์รวมเลขบนเมนู sidebar + กระดิ่ง — refreshBadges() ที่เดียว
@@ -27,22 +37,13 @@ type Job =
 @Injectable({ providedIn: 'root' })
 export class NavAttentionService {
   private readonly auth = inject(AuthService);
-  private readonly tickets = inject(TicketService);
-  private readonly projects = inject(ProjectService);
+  private readonly http = inject(HttpClient);
   private readonly inbox = inject(NotificationInboxService);
   private readonly router = inject(Router);
 
-  private readonly adminTabsSignal = signal<Record<AdminQueueTab, number>>({
-    AWAITING_CLAIM: 0,
-    CLAIMED: 0,
-    AWAITING_REVIEW: 0,
-    WITH_SUPPORT: 0,
-  });
-  private readonly supportTabsSignal = signal<Record<SupportQueueTab, number>>({
-    AWAITING_SEND: 0,
-    RETURNED: 0,
-  });
-  private readonly taskCountsSignal = signal<Partial<Record<MenuCode, number>>>({});
+  private readonly adminTabsSignal = signal<Record<AdminQueueTab, number>>({ ...EMPTY_ADMIN });
+  private readonly supportTabsSignal = signal<Record<SupportQueueTab, number>>({ ...EMPTY_SUPPORT });
+  private readonly menuCountsSignal = signal<Partial<Record<MenuCode, number>>>({});
 
   private running = false;
   private inFlight = false;
@@ -66,7 +67,7 @@ export class NavAttentionService {
   readonly counts = computed<Partial<Record<MenuCode, number>>>(() => {
     const admin = this.adminTabsSignal();
     const support = this.supportTabsSignal();
-    const next: Partial<Record<MenuCode, number>> = { ...this.taskCountsSignal() };
+    const next: Partial<Record<MenuCode, number>> = { ...this.menuCountsSignal() };
     const adminSum = admin.AWAITING_CLAIM + admin.AWAITING_REVIEW;
     if (adminSum > 0 && this.auth.canAccessTicketAdminQueue()) {
       next['ticket-admin-queue'] = adminSum;
@@ -152,9 +153,9 @@ export class NavAttentionService {
   }
 
   private resetCounts(): void {
-    this.adminTabsSignal.set({ AWAITING_CLAIM: 0, CLAIMED: 0, AWAITING_REVIEW: 0, WITH_SUPPORT: 0 });
-    this.supportTabsSignal.set({ AWAITING_SEND: 0, RETURNED: 0 });
-    this.taskCountsSignal.set({});
+    this.adminTabsSignal.set({ ...EMPTY_ADMIN });
+    this.supportTabsSignal.set({ ...EMPTY_SUPPORT });
+    this.menuCountsSignal.set({});
   }
 
   private run(): void {
@@ -173,76 +174,24 @@ export class NavAttentionService {
 
     this.inbox.poll();
 
-    const jobs: Observable<Job>[] = [];
-    if (this.auth.canAccessTicketSupportQueue()) {
-      for (const tab of SUPPORT_TABS) {
-        jobs.push(
-          this.tickets.listSupportQueue({ tab, page: 1, limit: 1 }).pipe(
-            map((body): Job => ({ kind: 'support', tab, n: body.total })),
-            catchError(() => of<Job>({ kind: 'support', tab, n: this.supportTabsSignal()[tab] }))
-          )
-        );
-      }
-    }
-    if (this.auth.canAccessTicketAdminQueue()) {
-      for (const tab of ADMIN_TABS) {
-        jobs.push(
-          this.tickets.listAdminQueue({ tab, page: 1, limit: 1 }).pipe(
-            map((body): Job => ({ kind: 'admin', tab, n: body.total })),
-            catchError(() => of<Job>({ kind: 'admin', tab, n: this.adminTabsSignal()[tab] }))
-          )
-        );
-      }
-    }
-    if (this.auth.canAccessTaskReviewQueue()) {
-      jobs.push(
-        this.projects.listTaskReviews({ tab: 'PENDING', page: 1, limit: 1 }).pipe(
-          map((body): Job => ({ kind: 'menu', code: 'tasks-review', n: body.total })),
-          catchError(() => of<Job>({ kind: 'menu', code: 'tasks-review', n: 0 }))
-        )
-      );
-    }
-    if (this.auth.hasPermissionCode('task.view')) {
-      jobs.push(
-        this.projects.listMyTasks({ limit: 100 }).pipe(
-          map((rows): Job => {
-            const n = rows.filter(
-              (t) =>
-                (t.status === 'DOING' || t.status === 'WAITING') &&
-                (t.submissions ?? []).some((s) => String(s.status).toUpperCase() === 'REJECTED')
-            ).length;
-            return { kind: 'menu', code: 'tasks-me', n };
-          }),
-          catchError(() => of<Job>({ kind: 'menu', code: 'tasks-me', n: 0 }))
-        )
-      );
-    }
-
-    if (!jobs.length) {
-      this.resetCounts();
-      return;
-    }
-
     this.inFlight = true;
-    forkJoin(jobs).subscribe({
-      next: (rows) => {
-        const admin = { ...this.adminTabsSignal() };
-        const support = { ...this.supportTabsSignal() };
-        const tasks: Partial<Record<MenuCode, number>> = {};
-        for (const row of rows) {
-          if (row.kind === 'admin') {
-            admin[row.tab] = row.n;
-          } else if (row.kind === 'support') {
-            support[row.tab] = row.n;
-          } else if (row.n > 0) {
-            tasks[row.code] = row.n;
+    this.http.get<NavCountsResponse>(`${environment.apiBaseUrl}/nav/counts`).subscribe({
+      next: (body) => {
+        this.adminTabsSignal.set({ ...EMPTY_ADMIN, ...(body?.ticketAdminQueue ?? {}) });
+        this.supportTabsSignal.set({ ...EMPTY_SUPPORT, ...(body?.ticketSupportQueue ?? {}) });
+        const menu: Partial<Record<MenuCode, number>> = {};
+        const put = (code: MenuCode, n: number | null | undefined) => {
+          if (n != null && n > 0) {
+            menu[code] = n;
           }
-        }
-        this.adminTabsSignal.set(admin);
-        this.supportTabsSignal.set(support);
-        this.taskCountsSignal.set(tasks);
+        };
+        put('tickets-mine', body?.ticketsMineOpen);
+        put('tasks-review', body?.taskReviewsPending);
+        put('tasks-me', body?.tasksMeRejected);
+        this.menuCountsSignal.set(menu);
         this.finishRun();
       },
+      // เก็บตัวเลขรอบก่อนไว้ — poll รอบหน้าลองใหม่
       error: () => this.finishRun(),
     });
   }

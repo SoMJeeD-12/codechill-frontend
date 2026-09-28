@@ -738,6 +738,19 @@
   }
 }
 
+/* รหัสโปรเจกต์แยกคอลัมน์ — แคบ · ไม่ตัดบรรทัด · จอแคบซ่อนก่อนคอลัมน์ชื่อ */
+.data-table :is(.mat-mdc-header-cell, .mat-mdc-cell).col-project-code {
+  width: 8.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+
+  @media (max-width: 1280px) {
+    display: none !important;
+  }
+}
+
 .full-table {
   width: 100%;
 }

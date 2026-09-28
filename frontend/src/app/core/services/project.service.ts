@@ -19,6 +19,7 @@ import {
   TaskPriority,
   TaskProjectRef,
   TaskReviewItem,
+  ProjectOption,
   TaskReviewListParams,
   TaskStatus,
   TaskSubmission,
@@ -257,6 +258,14 @@ export class ProjectService {
         }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /** GET /projects/options — รายการเบาสำหรับดรอปดาวน์ (ต้องมี project.view) */
+  listProjectOptions(): Observable<ProjectOption[]> {
+    return this.http.get<ProjectOption[]>(`${this.base}/options`).pipe(
+      map((body) => (Array.isArray(body) ? body : [])),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   /**
@@ -573,6 +582,8 @@ export class ProjectService {
           projectId: params.projectId ?? undefined,
           search: params.search?.trim() || undefined,
           result: params.tab === 'REVIEWED' ? params.result ?? undefined : undefined,
+          sortBy: params.sortBy ?? undefined,
+          sortOrder: params.sortBy ? params.sortOrder : undefined,
         }),
       })
       .pipe(

@@ -1,4 +1,13 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,13 +18,28 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { filter } from 'rxjs/operators';
 import { MenuItem } from '../models/permission.model';
-import { MENU_ITEMS, mainMenuOrder } from '../nav/menu-items';
+import { MENU_ITEMS, MainMenuGroupKey, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
 import { NavAttentionService } from '../services/nav-attention.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { NotificationBellComponent } from './notification-bell.component';
 import { InboxToastHostComponent } from '../../shared/toasts/inbox-toast-host.component';
+
+interface NavGroupNode {
+  type: 'group';
+  key: MainMenuGroupKey;
+  label: string;
+  icon: string;
+  defaultExpanded: boolean;
+  children: MenuItem[];
+}
+
+type NavNode = { type: 'item'; item: MenuItem } | NavGroupNode;
+
+function navGroupStorageKey(userId: number): string {
+  return `cpams.navGroups.${userId}`;
+}
 
 @Component({
   selector: 'app-main-layout',
@@ -76,34 +100,135 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   readonly menuGroups = computed(() => {
     this.auth.session();
-    const groups: { key: string; label: string; items: MenuItem[] }[] = [
-      { key: 'main', label: 'งานหลัก', items: [] },
-      { key: 'support', label: 'ข้อมูล', items: [] },
-      { key: 'settings', label: 'ตั้งค่า', items: [] },
-    ];
+    const visible = this.visibleMenus();
+    const byGroup = (key: MenuItem['group']): NavNode[] =>
+      visible.filter((item) => item.group === key).map((item) => ({ type: 'item', item }));
 
-    const order = mainMenuOrder({
+    const groups: { key: string; label: string; nodes: NavNode[] }[] = [
+      { key: 'main', label: 'งานหลัก', nodes: this.buildMainNodes(visible) },
+      { key: 'support', label: 'ข้อมูล', nodes: byGroup('support') },
+      { key: 'settings', label: 'ตั้งค่า', nodes: byGroup('settings') },
+    ];
+    return groups.filter((g) => g.nodes.length > 0);
+  });
+
+  /** สถานะพับ/กางกลุ่มที่ผู้ใช้เลือก — ไม่มีค่า = ใช้ค่าเริ่มต้นของกลุ่ม */
+  private readonly groupOpenState = signal<Partial<Record<MainMenuGroupKey, boolean>>>({});
+
+  constructor() {
+    effect(() => {
+      const userId = this.user()?.id ?? null;
+      untracked(() => {
+        this.groupOpenState.set(this.readGroupState(userId));
+        this.syncGroupFromUrl(this.router.url);
+      });
+    });
+  }
+
+  private buildMainNodes(visible: MenuItem[]): NavNode[] {
+    const byCode = new Map(visible.filter((i) => i.group === 'main').map((i) => [i.code, i]));
+    const used = new Set<string>();
+    const nodes: NavNode[] = [];
+    const structure = mainMenuOrder({
       hasAdminQueue: this.auth.canAccessTicketAdminQueue(),
       hasSupportQueue: this.auth.canAccessTicketSupportQueue(),
     });
-    const orderIndex = new Map(order.map((code, i) => [code, i]));
 
-    for (const item of this.visibleMenus()) {
-      const group = groups.find((g) => g.key === item.group);
-      group?.items.push(item);
+    for (const entry of structure) {
+      if (entry.kind === 'item') {
+        const item = byCode.get(entry.code);
+        if (item) {
+          used.add(item.code);
+          nodes.push({ type: 'item', item });
+        }
+        continue;
+      }
+      const children = entry.codes
+        .map((code) => byCode.get(code))
+        .filter((item): item is MenuItem => !!item);
+      children.forEach((c) => used.add(c.code));
+      if (children.length === 1) {
+        nodes.push({ type: 'item', item: children[0] });
+      } else if (children.length > 1) {
+        nodes.push({
+          type: 'group',
+          key: entry.key,
+          label: entry.label,
+          icon: entry.icon,
+          defaultExpanded: entry.defaultExpanded,
+          children: children.map((c) => ({ ...c, label: entry.childLabels?.[c.code] ?? c.label })),
+        });
+      }
     }
 
-    const main = groups.find((g) => g.key === 'main');
-    if (main) {
-      main.items.sort((a, b) => {
-        const ai = orderIndex.get(a.code) ?? 999;
-        const bi = orderIndex.get(b.code) ?? 999;
-        return ai - bi;
-      });
+    for (const item of byCode.values()) {
+      if (!used.has(item.code)) {
+        nodes.push({ type: 'item', item });
+      }
     }
+    return nodes;
+  }
 
-    return groups.filter((g) => g.items.length > 0);
-  });
+  isGroupOpen(node: NavGroupNode): boolean {
+    return this.groupOpenState()[node.key] ?? node.defaultExpanded;
+  }
+
+  toggleGroup(node: NavGroupNode): void {
+    this.setGroupOpen(node.key, !this.isGroupOpen(node));
+  }
+
+  groupBadge(node: NavGroupNode): number {
+    return node.children.reduce((sum, c) => sum + this.badgeCount(c.code), 0);
+  }
+
+  private setGroupOpen(key: MainMenuGroupKey, open: boolean): void {
+    if (this.groupOpenState()[key] === open) {
+      return;
+    }
+    this.groupOpenState.update((prev) => ({ ...prev, [key]: open }));
+    const userId = this.user()?.id;
+    if (userId == null) {
+      return;
+    }
+    try {
+      localStorage.setItem(navGroupStorageKey(userId), JSON.stringify(this.groupOpenState()));
+    } catch {
+      // storage เต็ม / ถูกปิด — ใช้สถานะในหน่วยความจำต่อ
+    }
+  }
+
+  private readGroupState(userId: number | null): Partial<Record<MainMenuGroupKey, boolean>> {
+    if (userId == null) {
+      return {};
+    }
+    try {
+      const raw = localStorage.getItem(navGroupStorageKey(userId));
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  /** กางกลุ่มที่ route ปัจจุบันอยู่ — เลือกเมนูที่ route ตรงยาวที่สุด (กัน /app/tickets ทับ /app/tickets/mine) */
+  private syncGroupFromUrl(url: string): void {
+    const path = url.split('?')[0];
+    const main = this.menuGroups().find((g) => g.key === 'main');
+    let best: { len: number; group: NavGroupNode | null } | null = null;
+    for (const node of main?.nodes ?? []) {
+      const items = node.type === 'group' ? node.children : [node.item];
+      for (const item of items) {
+        if (path === item.route || path.startsWith(`${item.route}/`)) {
+          if (!best || item.route.length > best.len) {
+            best = { len: item.route.length, group: node.type === 'group' ? node : null };
+          }
+        }
+      }
+    }
+    if (best?.group) {
+      this.setGroupOpen(best.group.key, true);
+    }
+  }
 
   ngOnInit(): void {
     this.auth.refreshSession();
@@ -163,6 +288,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   /** ขยายกลุ่มเมื่ออยู่บนหน้างานของฉัน / เมนูย่อย */
   private syncExpandedFromUrl(url: string): void {
+    this.syncGroupFromUrl(url);
     const path = url.split('?')[0];
     for (const item of this.visibleMenus()) {
       if (!item.children?.length) {

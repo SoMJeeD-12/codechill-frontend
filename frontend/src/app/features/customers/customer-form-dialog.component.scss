@@ -1,8 +1,9 @@
 .form {
   display: grid;
-  gap: 1.25rem;
-  width: min(640px, 100%);
-  margin: 0.65rem auto 0;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 1.25rem 1.75rem;
+  margin: 0.65rem 0 0;
 }
 
 .form-section {
@@ -12,8 +13,8 @@
 }
 
 .form-section + .form-section {
-  padding-top: 1rem;
-  border-top: 1px solid rgba(28, 43, 40, 0.1);
+  padding-left: 1.75rem;
+  border-left: 1px solid rgba(28, 43, 40, 0.1);
 }
 
 .form-section__title {
@@ -84,6 +85,19 @@
 :host ::ng-deep .mat-mdc-select-value-text {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .form-section + .form-section {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(28, 43, 40, 0.1);
+  }
 }
 
 @media (max-width: 600px) {

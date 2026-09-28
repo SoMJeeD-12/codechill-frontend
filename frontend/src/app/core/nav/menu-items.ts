@@ -1,4 +1,4 @@
-import { MenuItem } from '../models/permission.model';
+import { MenuCode, MenuItem } from '../models/permission.model';
 
 /**
  * เมนู sidebar 3 ชั้น (ตามพี่เลี้ยง — โปรเจกต์เป็นพระเอก)
@@ -26,65 +26,65 @@ export function flattenMenuItems(items: MenuItem[]): MenuItem[] {
   return out;
 }
 
+export type MainMenuGroupKey = 'tasks' | 'tickets';
+
+/** โครงเมนูงานหลัก — เมนูเดี่ยว หรือกลุ่มพับได้ (ยังไม่กรองสิทธิ์) */
+export type MainMenuNode =
+  | { kind: 'item'; code: MenuCode }
+  | {
+      kind: 'group';
+      key: MainMenuGroupKey;
+      label: string;
+      icon: string;
+      codes: MenuCode[];
+      defaultExpanded: boolean;
+      /** ป้ายเมนูเมื่ออยู่ในกลุ่ม */
+      childLabels?: Partial<Record<MenuCode, string>>;
+    };
+
+const TICKET_MENU_CODES: MenuCode[] = [
+  'ticket-admin-queue',
+  'ticket-workflow',
+  'tickets-mine',
+  'tickets',
+];
+
 /**
- * ลำดับเมนูงานหลักตามสิทธิ์คิว
- * แอดมิน (ticket.assign) → คิวแอดมินใกล้หน้าแรก
- * ซัพพอร์ต (ticket.support_queue) → คิวซัพพอร์ตใกล้หน้าแรก
+ * โครงเมนูงานหลักตามสิทธิ์คิว (permissions จาก /auth/me)
+ * ปักคิวประจำไว้ชั้นบน: ticket.assign → คิวแอดมิน · ticket.support_queue → คิวซัพพอร์ต · ไม่มีทั้งคู่ → ใบของฉัน
+ * ใบปัญหาที่เหลืออยู่ในกลุ่ม「ใบปัญหา」
  */
 export function mainMenuOrder(opts: {
   hasAdminQueue: boolean;
   hasSupportQueue: boolean;
-}): string[] {
-  const { hasAdminQueue, hasSupportQueue } = opts;
-  if (hasAdminQueue && hasSupportQueue) {
-    return [
-      'dashboard',
-      'ticket-admin-queue',
-      'ticket-workflow',
-      'projects',
-      'tasks-me',
-      'tasks-review',
-      'tickets-mine',
-      'tickets',
-      'follow-ups',
-    ];
-  }
-  if (hasAdminQueue) {
-    return [
-      'dashboard',
-      'ticket-admin-queue',
-      'projects',
-      'tasks-me',
-      'tasks-review',
-      'tickets-mine',
-      'tickets',
-      'follow-ups',
-      'ticket-workflow',
-    ];
-  }
-  if (hasSupportQueue) {
-    return [
-      'dashboard',
-      'ticket-workflow',
-      'projects',
-      'tasks-me',
-      'tasks-review',
-      'tickets-mine',
-      'tickets',
-      'follow-ups',
-      'ticket-admin-queue',
-    ];
-  }
+}): MainMenuNode[] {
+  const pinned: MenuCode = opts.hasAdminQueue
+    ? 'ticket-admin-queue'
+    : opts.hasSupportQueue
+      ? 'ticket-workflow'
+      : 'tickets-mine';
   return [
-    'dashboard',
-    'projects',
-    'tasks-me',
-    'tasks-review',
-    'ticket-workflow',
-    'ticket-admin-queue',
-    'tickets-mine',
-    'tickets',
-    'follow-ups',
+    { kind: 'item', code: 'dashboard' },
+    { kind: 'item', code: pinned },
+    { kind: 'item', code: 'projects' },
+    {
+      kind: 'group',
+      key: 'tasks',
+      label: 'งาน',
+      icon: 'task_alt',
+      codes: ['tasks-me', 'tasks-review'],
+      defaultExpanded: true,
+    },
+    {
+      kind: 'group',
+      key: 'tickets',
+      label: 'ใบปัญหา',
+      icon: 'confirmation_number',
+      codes: TICKET_MENU_CODES.filter((c) => c !== pinned),
+      defaultExpanded: false,
+      childLabels: { tickets: 'ปัญหาทั้งหมด' },
+    },
+    { kind: 'item', code: 'follow-ups' },
   ];
 }
 

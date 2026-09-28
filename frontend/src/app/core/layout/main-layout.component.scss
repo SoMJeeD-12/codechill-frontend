@@ -81,7 +81,8 @@
   opacity: 0.55;
 }
 
-a.mat-mdc-list-item {
+a.mat-mdc-list-item,
+button.nav-folder__toggle.mat-mdc-list-item {
   border-radius: 10px;
   margin-bottom: 2px;
   height: auto !important;
@@ -160,6 +161,29 @@ a.mat-mdc-list-item {
   padding: 0.1rem 0 0.35rem 0.55rem;
   margin-left: 0.85rem;
   border-left: 2px solid rgba(15, 118, 110, 0.18);
+}
+
+button.nav-folder__toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-folder__title {
+  display: flex;
+  width: 100%;
+}
+
+.nav-folder__chevron {
+  margin-left: auto;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
 }
 
 a.nav-child.mat-mdc-list-item {
