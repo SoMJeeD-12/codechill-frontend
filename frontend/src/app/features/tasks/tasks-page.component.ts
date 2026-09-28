@@ -53,12 +53,12 @@ const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
 
 const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   all: { title: 'งานทั้งหมด', subtitle: '' },
-  me: { title: 'งานโปรเจกต์', subtitle: 'งานย่อยในโปรเจกต์ที่มอบหมายให้คุณ' },
+  me: { title: 'งานโปรเจกต์', subtitle: 'งานในโปรเจกต์ที่ได้รับมอบหมาย' },
   unassigned: { title: 'งานที่ยังไม่มอบหมาย', subtitle: '' },
   doing: { title: 'งานกำลังดำเนินการ', subtitle: '' },
   review: {
     title: 'ตรวจงานโปรเจกต์',
-    subtitle: 'งานย่อยที่ส่งตรวจแล้ว รออนุมัติ',
+    subtitle: 'งานที่ลูกน้องส่งมาให้ตรวจ',
   },
   overdue: { title: 'งานเกินกำหนด', subtitle: '' },
 };

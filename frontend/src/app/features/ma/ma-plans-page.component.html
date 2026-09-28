@@ -2,7 +2,7 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">แผน MA</h1>
-      <p class="app-subtitle">แม่แบบแพ็กเกจ — สร้างสัญญาจริงที่แท็บสัญญา MA ในโปรเจกต์</p>
+      <p class="app-subtitle">แพ็กเกจดูแลรักษาระบบ — สร้างสัญญาจริงที่แท็บสัญญา MA ในโปรเจกต์</p>
     </div>
   </header>
 
@@ -61,6 +61,10 @@
 
     <div class="app-panel-body">
       <table mat-table [dataSource]="pager.paged()" class="data-table">
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef class="w-16">ID</th>
+          <td mat-cell *matCellDef="let row" class="text-muted">{{ row.id }}</td>
+        </ng-container>
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>ชื่อแผน</th>
           <td mat-cell *matCellDef="let row" [attr.title]="row.description ? row.name + ' — ' + row.description : row.name">
@@ -82,10 +86,6 @@
               {{ row.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}
             </span>
           </td>
-        </ng-container>
-        <ng-container matColumnDef="sortOrder">
-          <th mat-header-cell *matHeaderCellDef>ลำดับ</th>
-          <td mat-cell *matCellDef="let row">{{ row.sortOrder }}</td>
         </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>

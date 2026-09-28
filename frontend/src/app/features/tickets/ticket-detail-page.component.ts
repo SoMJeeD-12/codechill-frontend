@@ -30,8 +30,12 @@ import {
   latestTicketResolution,
   splitTicketDescription,
 } from '../../core/models/ticket.model';
+import { DOCUMENT_ACCEPT, DOCUMENT_MAX_BYTES, formatDocumentFileSize } from '../../core/models/document.model';
+import { AttachmentService } from '../../core/services/attachment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { DocumentService } from '../../core/services/document.service';
+import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
   TicketDemoOverlayService,
@@ -39,8 +43,10 @@ import {
 import { TicketService } from '../../core/services/ticket.service';
 import type { TicketConfirmationPrintPayload } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
+import { apiErrorMessage } from '../../core/http/api-error';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { formatThaiDateTime } from '../../core/utils/date.util';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
@@ -48,8 +54,8 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
-import { EMPTY, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { EMPTY, Observable, concat, of, throwError } from 'rxjs';
+import { catchError, map, switchMap, toArray } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 const TIMELINE_PREVIEW_COUNT = 5;
@@ -71,7 +77,6 @@ const RESOLUTION_PAGE_SIZE = 5;
     MatDialogModule,
     StatusBarComponent,
     TablePaginatorComponent,
-    EntityAttachmentsComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -89,6 +94,7 @@ export class TicketDetailPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly notificationInbox = inject(NotificationInboxService);
 
   readonly ticket = signal<Ticket | null>(null);
   readonly resolutions = signal<TicketResolution[]>([]);
@@ -96,6 +102,7 @@ export class TicketDetailPageComponent implements OnInit {
   readonly resolutionSearchControl = this.fb.nonNullable.control('');
   readonly notFound = signal(false);
   readonly loading = signal(true);
+  readonly sendingToSupport = signal(false);
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
@@ -124,6 +131,21 @@ export class TicketDetailPageComponent implements OnInit {
       return false;
     }
     return this.demoOverlay.effectiveStatus(t) === 'ASSIGNED';
+  });
+
+  /**
+   * แอดมิน/ผู้ดูแลสูงสุดบันทึกงานเองได้ทุกขั้นก่อนแก้ไขเสร็จ
+   * ตอนบันทึก: รับคิว (ถ้ายังไม่มีแอดมินรับ) → มอบหมายให้ตัวเอง → เริ่มงาน → บันทึกรอบ
+   */
+  readonly adminCanSelfResolve = computed(() => {
+    this.demoOverlay.state();
+    const t = this.ticket();
+    if (!t || !this.canAssign() || !this.canResolve()) {
+      return false;
+    }
+    // BE มีสถานะคิวที่ FE ยังไม่รู้จัก — กันเฉพาะขั้นหลังแก้เสร็จแล้ว
+    const shown: string = this.displayStatus();
+    return shown !== 'CLOSED' && shown !== 'RESOLVED' && shown !== 'WAITING_SUPPORT';
   });
 
   /** แยก description ออกจากบรรทัด「เปิดกลับมาอีกครั้ง」ที่ BE ต่อมา */
@@ -364,9 +386,9 @@ export class TicketDetailPageComponent implements OnInit {
       }
       return {
         tone: 'ok' as const,
-        title: 'แก้ไขเรียบร้อยแล้ว — รอปิดงาน',
+        title: 'แก้ไขเรียบร้อยแล้ว — รอส่งให้ซัพพอร์ต',
         detail:
-          'พิมพ์ใบยืนยันให้ลูกค้าตรวจรับ แล้วกด「ปิดงาน」ที่หัวข้อ · ปุ่ม「ปัญหาเดิมกลับมา」จะโชว์หลังปิดงานแล้วเท่านั้น',
+          'ตรวจผลแก้แล้วกด「ส่งให้ซัพพอร์ต」ที่หัวข้อ เพื่อให้ซัพพอร์ตแจ้งลูกค้า · ปุ่ม「ปัญหาเดิมกลับมา」จะโชว์หลังปิดงานแล้วเท่านั้น',
         actions,
       };
     }
@@ -456,6 +478,7 @@ export class TicketDetailPageComponent implements OnInit {
     this.ticketsApi.get(this.ticketId).subscribe({
       next: (ticket) => {
         this.ticket.set(ticket);
+        this.notificationInbox.markReadByRef('TICKET', ticket.id);
         this.resolutions.set(
           [...(ticket.resolutions ?? [])].sort((a, b) => b.round - a.round)
         );
@@ -519,7 +542,7 @@ export class TicketDetailPageComponent implements OnInit {
       return `กำลังทำงานครั้งที่ ${this.nextRound()} · แก้ไปแล้ว ${n} ครั้งก่อนหน้า`;
     }
     if (shown === 'RESOLVED') {
-      return `งานล่าสุดเสร็จแล้ว · รวมแก้ ${n} ครั้ง — ขั้นถัดไปคือปิดงาน`;
+      return `งานล่าสุดเสร็จแล้ว · รวมแก้ ${n} ครั้ง — ขั้นถัดไปคือส่งให้ซัพพอร์ต`;
     }
     if (t.status === 'CLOSED') {
       return `ปิดแล้ว · มีงานแก้ไข ${n} ครั้งในใบนี้`;
@@ -528,7 +551,7 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   runTicketHintAction(
-    id: 'pickup' | 'close' | 'reopen' | 'print-last' | 'start' | 'add-resolution' | 'reassign'
+    id: 'pickup' | 'reopen' | 'print-last' | 'start' | 'add-resolution' | 'reassign'
   ): void {
     if (id === 'start') {
       this.startAssignedWork();
@@ -536,10 +559,6 @@ export class TicketDetailPageComponent implements OnInit {
     }
     if (id === 'pickup') {
       this.pickupReopened();
-      return;
-    }
-    if (id === 'close') {
-      this.closeTicket();
       return;
     }
     if (id === 'reopen') {
@@ -613,8 +632,18 @@ export class TicketDetailPageComponent implements OnInit {
       );
       return;
     }
-    if (shown === 'ASSIGNED') {
+    const selfTake = this.adminCanSelfResolve();
+    if (shown === 'ASSIGNED' && !selfTake) {
       this.snack.open('กด「เริ่มงาน」ก่อน แล้วค่อยบันทึกการแก้ไข', 'ปิด', {
+        duration: 4000,
+      });
+      return;
+    }
+    if (
+      !selfTake &&
+      (shown === 'RECEIVED' || shown === 'REOPENED' || !this.ticket()?.assignedUserId)
+    ) {
+      this.snack.open('ใบนี้ยังไม่ได้มอบหมาย — รอแอดมินมอบหมายงานก่อนจึงจะบันทึกการแก้ไขได้', 'ปิด', {
         duration: 4000,
       });
       return;
@@ -634,7 +663,12 @@ export class TicketDetailPageComponent implements OnInit {
         defaultResolverId:
           this.auth.currentUser()?.id ?? this.ticket()?.assignedUserId ?? 0,
         currentAssigneeId: this.ticket()?.assignedUserId ?? null,
-      },
+        projectId: this.ticket()?.projectId ?? null,
+        projectName: this.projectName(),
+        ticketNo: this.ticket()?.ticketNo || `ใบ #${this.ticketId}`,
+        selfTake,
+        claimedByAdminUserId: this.ticket()?.claimedByAdminUserId ?? null,
+      } satisfies TicketResolutionFormData,
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
@@ -724,48 +758,43 @@ export class TicketDetailPageComponent implements OnInit {
     });
   }
 
-  closeTicket(): void {
-    if (!this.canResolve()) {
-      this.snack.open('ไม่มีสิทธิ์ปิดงาน', 'ปิด', { duration: 3000 });
+  sendToSupport(): void {
+    if (!this.canAssign()) {
+      this.snack.open('ไม่มีสิทธิ์ส่งให้ซัพพอร์ต', 'ปิด', { duration: 3000 });
       return;
     }
     const ticket = this.ticket();
     if (!ticket || this.displayStatus() !== 'RESOLVED') {
       this.snack.open(
-        'ปิดงานได้เมื่อรอบล่าสุดเป็น「สำเร็จ」แล้ว — สำเร็จบางส่วน/ไม่สำเร็จยังต้องทำต่อ',
+        'ส่งให้ซัพพอร์ตได้เมื่อรอบล่าสุดเป็น「สำเร็จ」แล้ว — สำเร็จบางส่วน/ไม่สำเร็จยังต้องทำต่อ',
         'ปิด',
         { duration: 4500 }
       );
       return;
     }
-    const last = latestTicketResolution(ticket);
-    if (last && isIncompleteResolutionResult(last.result)) {
-      this.snack.open(
-        'รอบล่าสุดยังไม่สำเร็จครบ — บันทึกรอบ「สำเร็จ」ก่อนปิดงาน',
-        'ปิด',
-        { duration: 4500 }
-      );
-      return;
-    }
-    if ((ticket.resolutionCount ?? 0) < 1) {
-      this.snack.open('ยังไม่มีรอบแก้ไข — บันทึกการแก้ไขก่อนปิดงาน', 'ปิด', {
-        duration: 4000,
+    openConfirmDialog(this.dialog, {
+      title: 'ส่งให้ซัพพอร์ต',
+      message: `ตรวจผ่านแล้ว ส่งใบ「${ticket.title}」ให้ซัพพอร์ตแจ้งลูกค้า?`,
+      confirmLabel: 'ส่งให้ซัพพอร์ต',
+      cancelLabel: 'ยกเลิก',
+      danger: false,
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.sendingToSupport.set(true);
+      this.ticketsApi.returnToSupport(this.ticketId).subscribe({
+        next: () => {
+          this.sendingToSupport.set(false);
+          this.snack.open('ส่งให้ซัพพอร์ตแล้ว — รอซัพพอร์ตแจ้งลูกค้า', 'ปิด', { duration: 3000 });
+          this.loadTicket();
+        },
+        error: (err: Error) => {
+          this.sendingToSupport.set(false);
+          this.snack.open(err.message, 'ปิด', { duration: 4000 });
+        },
       });
-      return;
-    }
-    this.ticketsApi.close(this.ticketId).subscribe({
-      next: () => {
-        this.demoOverlay.clearIncompleteWork(this.ticketId);
-        this.snack.open('ปิดงานแล้ว — จะหายจากหน้ารอรับแก้ไข', 'ปิด', { duration: 3000 });
-        this.loadTicket();
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
-  }
-
-  /** RECEIVED / REOPENED → มอบหมาย → Backend คืน ASSIGNED */
-  assignWork(): void {
-    this.pickAssigneeAndAssign('มอบหมายแล้ว — สถานะ「ส่งงานแล้ว」รอผู้รับผิดชอบเริ่มดำเนินการ');
   }
 
   /** ASSIGNED → PATCH /tickets/:id/start (ผู้รับผิดชอบเท่านั้น) */
@@ -879,6 +908,13 @@ export interface TicketResolutionFormData {
   canHandoff: boolean;
   defaultResolverId: number;
   currentAssigneeId: number | null;
+  /** ไฟล์ที่แนบในรอบ → เก็บเป็นเอกสารของโปรเจกต์นี้ (ไม่มีโปรเจกต์ → แนบกับรอบแก้ไข) */
+  projectId: number | null;
+  projectName: string;
+  ticketNo: string;
+  /** แอดมินบันทึกเองโดยยังไม่มีผู้แก้ — รับคิว + มอบหมายให้ตัวเอง + เริ่มงาน ก่อนบันทึกรอบ */
+  selfTake: boolean;
+  claimedByAdminUserId: number | null;
 }
 
 @Component({
@@ -891,11 +927,17 @@ export interface TicketResolutionFormData {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatIconModule,
     MatSnackBarModule,
   ],
   template: `
     <h2 mat-dialog-title>เพิ่มรอบการแก้ไข</h2>
     <mat-dialog-content>
+      @if (data.selfTake) {
+        <p class="hint">
+          เมื่อบันทึก ระบบจะบันทึกชื่อคุณเป็นแอดมินผู้รับคิว (ถ้ายังไม่มี) และเป็นผู้แก้ของใบนี้
+        </p>
+      }
       <form [formGroup]="form" class="dlg-form" id="ticket-resolution-form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>สาเหตุ</mat-label>
@@ -938,12 +980,75 @@ export interface TicketResolutionFormData {
             </mat-select>
           </mat-form-field>
         }
+        <div class="files">
+          <div class="files__head">
+            <div>
+              <strong>ไฟล์แนบ</strong>
+              <span class="files__hint">
+                @if (data.projectId) {
+                  เก็บในเอกสารของโปรเจกต์ {{ data.projectName }}
+                } @else {
+                  ใบนี้ไม่มีโปรเจกต์ — แนบไว้กับรอบแก้ไขนี้
+                }
+              </span>
+            </div>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="saving()"
+              (click)="fileInput.click()"
+            >
+              <mat-icon>attach_file</mat-icon>
+              เลือกไฟล์
+            </button>
+            <input
+              #fileInput
+              type="file"
+              multiple
+              hidden
+              [accept]="fileAccept"
+              (change)="onFilesPicked($event)"
+            />
+          </div>
+          @if (files().length) {
+            <ul class="files__list">
+              @for (f of files(); track $index) {
+                <li>
+                  <mat-icon>description</mat-icon>
+                  <span class="files__name" [title]="f.name">{{ f.name }}</span>
+                  <span class="files__size">{{ fileSize(f.size) }}</span>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [disabled]="saving()"
+                    aria-label="เอาไฟล์ออก"
+                    (click)="removeFile($index)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="files__empty">ยังไม่ได้เลือกไฟล์ (ไม่บังคับ)</p>
+          }
+        </div>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-      <button mat-flat-button color="primary" type="submit" form="ticket-resolution-form">
-        บันทึกรอบนี้
+      <button mat-button type="button" mat-dialog-close [disabled]="saving()">ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="ticket-resolution-form"
+        [disabled]="saving()"
+      >
+        @if (saving()) {
+          กำลังบันทึก…
+        } @else {
+          บันทึกรอบนี้
+        }
       </button>
     </mat-dialog-actions>
   `,
@@ -966,6 +1071,54 @@ export interface TicketResolutionFormData {
     .full {
       width: 100%;
     }
+    .files {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 0.6rem 0.75rem;
+    }
+    .files__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .files__hint {
+      display: block;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .files__list {
+      list-style: none;
+      margin: 0.5rem 0 0;
+      padding: 0;
+      display: grid;
+      gap: 0.25rem;
+    }
+    .files__list li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .files__list mat-icon {
+      color: #64748b;
+    }
+    .files__name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .files__size {
+      color: #64748b;
+      font-size: 0.8rem;
+    }
+    .files__empty {
+      margin: 0.4rem 0 0;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
   `,
 })
 export class TicketResolutionFormDialogComponent {
@@ -975,8 +1128,15 @@ export class TicketResolutionFormDialogComponent {
   private readonly auth = inject(AuthService);
   private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly snack = inject(MatSnackBar);
+  private readonly documentsApi = inject(DocumentService);
+  private readonly attachmentsApi = inject(AttachmentService);
   private readonly ref = inject(MatDialogRef<TicketResolutionFormDialogComponent, boolean>);
   readonly data = inject<TicketResolutionFormData>(MAT_DIALOG_DATA);
+
+  readonly fileAccept = DOCUMENT_ACCEPT;
+  readonly files = signal<File[]>([]);
+  readonly saving = signal(false);
+  private claimWarning: string | null = null;
 
   readonly users = this.usersApi.assignableTicket;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
@@ -989,8 +1149,10 @@ export class TicketResolutionFormDialogComponent {
     result: ['SUCCESS' as ResolutionResult],
     resolvedByUserId: [
       {
-        value: this.data.defaultResolverId || this.auth.currentUser()?.id || 0,
-        disabled: !this.data.canChangeResolver,
+        value: this.data.selfTake
+          ? this.auth.currentUser()?.id || 0
+          : this.data.defaultResolverId || this.auth.currentUser()?.id || 0,
+        disabled: !this.data.canChangeResolver || this.data.selfTake,
       },
       Validators.min(1),
     ],
@@ -1022,26 +1184,42 @@ export class TicketResolutionFormDialogComponent {
     }
     const raw = this.form.getRawValue();
     const me = this.auth.currentUser();
-    const resolvedByUserId = this.data.canChangeResolver
-      ? Number(raw.resolvedByUserId)
-      : (me?.id ?? Number(raw.resolvedByUserId));
+    if (this.data.selfTake && !me?.id) {
+      this.snack.open('ไม่พบผู้ใช้ปัจจุบัน — ลองเข้าสู่ระบบใหม่', 'ปิด', { duration: 4000 });
+      return;
+    }
+    const resolvedByUserId = this.data.selfTake
+      ? me!.id
+      : this.data.canChangeResolver
+        ? Number(raw.resolvedByUserId)
+        : (me?.id ?? Number(raw.resolvedByUserId));
     const incomplete = isIncompleteResolutionResult(raw.result);
     const handoffUserId =
       incomplete && this.data.canHandoff && raw.handoffUserId != null
         ? Number(raw.handoffUserId)
         : null;
 
-    this.ticketsApi
-      .addResolution(this.data.ticketId, {
-        rootCause: raw.rootCause.trim() || null,
-        detail: raw.detail,
-        hoursSpent: Number(raw.hoursSpent) || 0,
-        result: raw.result,
-        resolvedByUserId,
-        resolvedAt: new Date().toISOString(),
-      })
+    this.saving.set(true);
+    this.claimWarning = null;
+    const prepare$ = this.data.selfTake ? this.takeTicketSelf(me!.id) : of(null);
+    prepare$
       .pipe(
-        switchMap(({ quota }) => {
+        switchMap(() =>
+          this.ticketsApi.addResolution(this.data.ticketId, {
+            rootCause: raw.rootCause.trim() || null,
+            detail: raw.detail,
+            hoursSpent: Number(raw.hoursSpent) || 0,
+            result: raw.result,
+            resolvedByUserId,
+            resolvedAt: new Date().toISOString(),
+          })
+        ),
+        switchMap(({ resolution, quota }) =>
+          this.uploadFiles(resolution).pipe(
+            map((uploadFailed) => ({ quota, uploadFailed }))
+          )
+        ),
+        switchMap(({ quota, uploadFailed }) => {
           if (incomplete) {
             this.demoOverlay.markIncompleteWork(
               this.data.ticketId,
@@ -1056,29 +1234,42 @@ export class TicketResolutionFormDialogComponent {
             handoffUserId !== this.data.currentAssigneeId
           ) {
             return this.ticketsApi.assign(this.data.ticketId, handoffUserId).pipe(
-              map(() => ({ quota, handedOff: true as const })),
+              map(() => ({ quota, uploadFailed, handedOff: true as const })),
               catchError((err: Error) => {
                 this.snack.open(
                   `บันทึกรอบแล้ว แต่ส่งต่อผู้รับผิดชอบไม่สำเร็จ: ${err.message}`,
                   'ปิด',
                   { duration: 6500 }
                 );
-                return of({ quota, handedOff: false as const });
+                return of({ quota, uploadFailed, handedOff: false as const });
               })
             );
           }
-          return of({ quota, handedOff: false as const });
+          return of({ quota, uploadFailed, handedOff: false as const });
         })
       )
       .subscribe({
-        next: ({ quota, handedOff }) => {
+        next: ({ quota, uploadFailed, handedOff }) => {
+          this.saving.set(false);
           let msg = incomplete
             ? raw.result === 'PARTIAL'
               ? 'บันทึกสำเร็จบางส่วนแล้ว — ใบยังเปิดอยู่ ทำต่อหรือส่งต่อได้'
               : 'บันทึกไม่สำเร็จแล้ว — ใบยังเปิดอยู่ ทำต่อหรือส่งต่อได้'
-            : 'บันทึกรอบสำเร็จแล้ว — รอปิดงาน';
+            : 'บันทึกรอบสำเร็จแล้ว';
           if (handedOff) {
             msg += ' · ส่งต่อผู้รับผิดชอบแล้ว';
+          }
+          const uploaded = this.files().length - uploadFailed.length;
+          if (uploaded > 0) {
+            msg += this.data.projectId
+              ? ` · เก็บไฟล์ ${uploaded} ไฟล์ในเอกสารโปรเจกต์แล้ว`
+              : ` · แนบไฟล์ ${uploaded} ไฟล์แล้ว`;
+          }
+          if (uploadFailed.length) {
+            msg += ` · อัปโหลดไม่สำเร็จ: ${uploadFailed.join(', ')}`;
+          }
+          if (this.claimWarning) {
+            msg += ` · ${this.claimWarning}`;
           }
           if (quota) {
             msg += ` · โควตา ${quota.periodStart}–${quota.periodEnd}: เหลือ ${quota.remaining}/${quota.quota}`;
@@ -1087,12 +1278,111 @@ export class TicketResolutionFormDialogComponent {
             }
           }
           this.snack.open(msg, 'ปิด', {
-            duration: quota?.isOverQuota || incomplete ? 5000 : 2800,
+            duration:
+              quota?.isOverQuota || incomplete || uploadFailed.length || this.claimWarning
+                ? 6000
+                : 2800,
           });
           this.ref.close(true);
         },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4500 }),
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.snack.open(err.message, 'ปิด', { duration: 4500 });
+        },
       });
+  }
+
+  onFilesPicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const picked = Array.from(input.files ?? []);
+    input.value = '';
+    const tooBig = picked.filter((f) => f.size > DOCUMENT_MAX_BYTES);
+    if (tooBig.length) {
+      this.snack.open(
+        `ไฟล์ใหญ่เกิน 20 MB: ${tooBig.map((f) => f.name).join(', ')}`,
+        'ปิด',
+        { duration: 4500 }
+      );
+    }
+    const ok = picked.filter((f) => f.size <= DOCUMENT_MAX_BYTES);
+    if (ok.length) {
+      this.files.update((list) => [...list, ...ok]);
+    }
+  }
+
+  removeFile(index: number): void {
+    this.files.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  fileSize(bytes: number): string {
+    return formatDocumentFileSize(bytes);
+  }
+
+  /** รับคิว (ถ้ายังไม่มีแอดมินรับ) → มอบหมายให้ตัวเอง → เริ่มงาน */
+  private takeTicketSelf(myId: number): Observable<unknown> {
+    const claim$: Observable<unknown> =
+      this.data.claimedByAdminUserId == null
+        ? this.ticketsApi.claim(this.data.ticketId).pipe(
+            catchError((err: unknown) => {
+              this.claimWarning = `รับคิวไม่สำเร็จ (${apiErrorMessage(err)})`;
+              return of(null);
+            })
+          )
+        : of(null);
+    return claim$.pipe(
+      switchMap((): Observable<unknown> =>
+        this.data.currentAssigneeId === myId
+          ? of(null)
+          : this.ticketsApi.assign(this.data.ticketId, myId).pipe(
+              catchError((err: Error) =>
+                throwError(() => new Error(`มอบหมายให้ตัวเองไม่สำเร็จ: ${err.message}`))
+              )
+            )
+      ),
+      switchMap(() => this.ticketsApi.get(this.data.ticketId)),
+      switchMap((t: Ticket): Observable<unknown> =>
+        t.status === 'ASSIGNED'
+          ? this.ticketsApi.start(this.data.ticketId).pipe(
+              catchError((err: Error) =>
+                throwError(() => new Error(`เริ่มงานไม่สำเร็จ: ${err.message}`))
+              )
+            )
+          : of(t)
+      )
+    );
+  }
+
+  /** อัปโหลดทีละไฟล์ — คืนชื่อไฟล์ที่ไม่สำเร็จ (ไม่ให้รอบที่บันทึกแล้วล้ม) */
+  private uploadFiles(resolution: TicketResolution): Observable<string[]> {
+    const files = this.files();
+    if (!files.length) {
+      return of([]);
+    }
+    const projectId = this.data.projectId;
+    const round = resolution.round;
+    const uploads = files.map((file) => {
+      const upload$: Observable<unknown> = projectId
+        ? this.documentsApi.uploadToProject(projectId, {
+            file,
+            title: `${this.data.ticketNo} · รอบ ${round} · ${file.name}`,
+            note: `แนบจากใบปัญหา ${this.data.ticketNo} รอบแก้ไขที่ ${round}`,
+          })
+        : this.attachmentsApi.upload({
+            file,
+            refType: 'TICKET_RESOLUTION',
+            refId: resolution.id,
+          });
+      return upload$.pipe(
+        map(() => null as string | null),
+        catchError((err: unknown) =>
+          of(`${file.name} (${apiErrorMessage(err)})`)
+        )
+      );
+    });
+    return concat(...uploads).pipe(
+      toArray(),
+      map((names) => names.filter((n): n is string => n != null))
+    );
   }
 }
 

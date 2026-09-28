@@ -2,7 +2,7 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">คิวซัพพอร์ต</h1>
-      <p class="app-subtitle">รอส่งหัวหน้า · แอดมินส่งกลับมา</p>
+      <p class="app-subtitle">ใบปัญหาที่ต้องส่งหัวหน้า หรือรอบอกลูกค้า</p>
     </div>
     <div class="app-header-actions">
       @if (canOpenAdminQueue()) {
@@ -139,18 +139,6 @@
             </th>
             <td mat-cell *matCellDef="let row">
               {{ row.reportedAt ? (row.reportedAt | thaiDate: 'date') : '—' }}
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>
-              <button type="button" class="sort-header" (click)="toggleSort('status')">
-                สถานะ
-                <mat-icon>{{ sortIcon('status') }}</mat-icon>
-              </button>
-            </th>
-            <td mat-cell *matCellDef="let row">
-              <span class="status" [attr.data-status]="row.status">{{ statusLabel(row) }}</span>
             </td>
           </ng-container>
 

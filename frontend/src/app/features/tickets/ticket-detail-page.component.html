@@ -45,11 +45,6 @@
         }
       </div>
       <div class="actions">
-        @if (canAssign() && (displayStatus() === 'RECEIVED' || ticket()?.status === 'REOPENED')) {
-          <button mat-flat-button color="primary" type="button" (click)="assignWork()">
-            มอบหมายงาน
-          </button>
-        }
         @if (canStartTicket()) {
           <button mat-flat-button color="primary" type="button" (click)="startAssignedWork()">
             เริ่มดำเนินการ
@@ -69,9 +64,15 @@
             เปลี่ยนผู้รับผิดชอบ
           </button>
         }
-        @if (canResolve() && displayStatus() === 'RESOLVED') {
-          <button mat-flat-button color="primary" type="button" (click)="closeTicket()">
-            ปิดงาน
+        @if (canAssign() && displayStatus() === 'RESOLVED') {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="sendingToSupport()"
+            (click)="sendToSupport()"
+          >
+            ส่งให้ซัพพอร์ต
           </button>
         }
         @if (canReopen() && ticket()?.status === 'CLOSED') {
@@ -124,8 +125,6 @@
         </div>
       }
     </section>
-
-    <app-entity-attachments refType="TICKET" [refId]="t.id" heading="ไฟล์แนบใบปัญหา" />
 
     <nav class="ticket-stepper" aria-label="ขั้นตอนใบปัญหา">
       @for (step of stepperSteps(); track step.status; let last = $last) {
@@ -304,11 +303,11 @@
             </p>
           </div>
           @if (
-            canResolve() &&
-            displayStatus() !== 'CLOSED' &&
-            displayStatus() !== 'RESOLVED' &&
-            displayStatus() !== 'ASSIGNED' &&
-            !isIncompleteWork()
+            (adminCanSelfResolve() && !isIncompleteWork()) ||
+            (canResolve() &&
+              displayStatus() === 'IN_PROGRESS' &&
+              !!ticket()?.assignedUserId &&
+              !isIncompleteWork())
           ) {
             <button
               mat-flat-button

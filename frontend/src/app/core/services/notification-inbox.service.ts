@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { Observable, tap } from 'rxjs';
 import {
   AppNotification,
   isNotificationUnread,
@@ -89,6 +90,57 @@ export class NotificationInboxService {
       this.ringClearId = null;
     }
     this.ringing.set(false);
+  }
+
+  /** เปิดหน้ารายละเอียดใบ → อ่านแจ้งเตือนของใบนั้นแบบเงียบ ไม่แสดง error */
+  markReadByRef(refType: string, refId: number): void {
+    if (!this.auth.hasPermissionCode('notification.view')) {
+      return;
+    }
+    this.api.markReadByRef(refType, refId).subscribe({
+      next: ({ updated }) => {
+        if (updated <= 0) {
+          return;
+        }
+        const now = new Date().toISOString();
+        const type = refType.toUpperCase();
+        let cleared = 0;
+        this.recentItems.update((list) =>
+          list.map((n) => {
+            if (
+              isNotificationUnread(n) &&
+              n.refId === refId &&
+              String(n.refType ?? '').toUpperCase() === type
+            ) {
+              cleared++;
+              return { ...n, status: 'READ' as const, readAt: now };
+            }
+            return n;
+          })
+        );
+        this.unreadCount.update((n) => Math.max(0, n - Math.max(cleared, updated)));
+        this.attention.refresh();
+        this.refreshQuiet();
+      },
+      error: () => undefined,
+    });
+  }
+
+  /** ปุ่ม「อ่านทั้งหมด」ในกระดิ่ง */
+  markAllRead(): Observable<{ updated: number }> {
+    return this.api.markAllRead().pipe(
+      tap(() => {
+        const now = new Date().toISOString();
+        this.recentItems.update((list) =>
+          list.map((n) =>
+            isNotificationUnread(n) ? { ...n, status: 'READ' as const, readAt: now } : n
+          )
+        );
+        this.unreadCount.set(0);
+        this.attention.refresh();
+        this.refreshQuiet();
+      })
+    );
   }
 
   openNotification(row: AppNotification): void {

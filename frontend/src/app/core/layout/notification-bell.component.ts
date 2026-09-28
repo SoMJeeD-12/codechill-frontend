@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AppNotification,
@@ -32,11 +33,13 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 export class NotificationBellComponent {
   private readonly auth = inject(AuthService);
   private readonly inbox = inject(NotificationInboxService);
+  private readonly snack = inject(MatSnackBar);
 
   @ViewChild(MatMenuTrigger) private menuTrigger?: MatMenuTrigger;
 
   readonly loading = signal(false);
   readonly markingId = signal<number | null>(null);
+  readonly markingAll = signal(false);
 
   readonly canView = computed(() => {
     this.auth.session();
@@ -83,6 +86,20 @@ export class NotificationBellComponent {
     this.menuTrigger?.closeMenu();
     this.inbox.openNotification(row);
     window.setTimeout(() => this.markingId.set(null), 800);
+  }
+
+  markAllRead(): void {
+    if (this.markingAll() || this.unreadCount() <= 0) {
+      return;
+    }
+    this.markingAll.set(true);
+    this.inbox.markAllRead().subscribe({
+      next: () => this.markingAll.set(false),
+      error: (err: Error) => {
+        this.markingAll.set(false);
+        this.snack.open(err.message || 'อ่านทั้งหมดไม่สำเร็จ', 'ปิด', { duration: 3500 });
+      },
+    });
   }
 
   closeMenu(): void {

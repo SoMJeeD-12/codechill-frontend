@@ -110,6 +110,28 @@ app-notification-bell .notif-bell,
   font-weight: 600;
 }
 
+.notif-panel__read-all {
+  margin-left: auto;
+  padding: 0.15rem 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0f766e;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: rgba(15, 118, 110, 0.08);
+  }
+
+  &:disabled {
+    color: #94a3b8;
+    cursor: default;
+  }
+}
+
 .notif-panel__state,
 .notif-panel__empty {
   display: flex;

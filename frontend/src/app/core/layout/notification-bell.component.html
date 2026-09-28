@@ -22,6 +22,14 @@
         <strong>การแจ้งเตือน</strong>
         @if (unreadCount() > 0) {
           <span class="notif-panel__count">{{ unreadCount() }} ใหม่</span>
+          <button
+            type="button"
+            class="notif-panel__read-all"
+            [disabled]="markingAll()"
+            (click)="markAllRead()"
+          >
+            {{ markingAll() ? 'กำลังอ่าน…' : 'อ่านทั้งหมด' }}
+          </button>
         }
       </header>
 

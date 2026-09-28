@@ -34,6 +34,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import {
+  MaAddonInput,
   MaContractPrintPayload,
   MaContractRenewInput,
   MaService,
@@ -65,17 +66,13 @@ const COMPANY_PRINT = {
     ThaiDatePipe,
     BahtPipe,
     RouterLink,
-    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatSnackBarModule,
     MatTooltipModule,
     MatDialogModule,
-    MoneyInputDirective,
     TablePaginatorComponent,
     EntityAttachmentsComponent,
   ],
@@ -90,7 +87,6 @@ export class MaDetailPageComponent implements OnInit {
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
   private readonly auth = inject(AuthService);
-  private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
@@ -99,7 +95,6 @@ export class MaDetailPageComponent implements OnInit {
   readonly addons = signal<MaAddon[]>([]);
   readonly addonsPager = createClientPager(this.addons);
   readonly notFound = signal(false);
-  readonly savingAddon = signal(false);
   readonly renewing = signal(false);
   readonly activating = signal(false);
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
@@ -131,16 +126,6 @@ export class MaDetailPageComponent implements OnInit {
   coverageDaysHint(contract: MaContract): string | null {
     return maCoverageDaysHint(contract);
   }
-
-  readonly addonForm = this.fb.nonNullable.group({
-    title: ['', Validators.required],
-    extraQuota: [1, [Validators.required, Validators.min(0)]],
-    price: [0, Validators.min(0)],
-    note: [''],
-    effectiveYear: [null as number | null],
-    effectiveMonth: [null as number | null],
-  });
-  readonly addonScoped = signal(false);
 
   goBack(): void {
     const projectId = this.contract()?.projectId;
@@ -203,69 +188,20 @@ export class MaDetailPageComponent implements OnInit {
     return this.quota()?.remaining ?? null;
   }
 
-  toggleAddonScope(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.addonScoped.set(checked);
-    if (!checked) {
-      this.addonForm.patchValue({ effectiveYear: null, effectiveMonth: null });
-    } else {
-      const now = new Date();
-      this.addonForm.patchValue({
-        effectiveYear: now.getFullYear(),
-        effectiveMonth: now.getMonth() + 1,
-      });
-    }
-  }
-
-  saveAddon(): void {
+  openAddAddon(): void {
     const c = this.contract();
-    if (!c || this.addonForm.invalid) {
-      this.addonForm.markAllAsTouched();
+    if (!c) {
       return;
     }
-    const raw = this.addonForm.getRawValue();
-    const year = raw.effectiveYear;
-    const month = raw.effectiveMonth;
-    if (this.addonScoped()) {
-      if (year == null || month == null || month < 1 || month > 12) {
-        this.snack.open('กรุณาระบุปีและเดือนที่มีผลพร้อมกัน', 'ปิด', { duration: 3500 });
-        return;
-      }
-    } else if ((year == null) !== (month == null)) {
-      this.snack.open('ปีและเดือนต้องส่งคู่กัน หรือไม่ส่งทั้งคู่', 'ปิด', { duration: 3500 });
-      return;
-    }
-    const payload = {
-      title: raw.title.trim(),
-      addonType: 'EXTRA_QUOTA' as const,
-      extraQuota: Number(raw.extraQuota) || 0,
-      price: toMoneyString(raw.price),
-      note: raw.note?.trim() || null,
-      ...(year != null && month != null
-        ? { effectiveYear: Number(year), effectiveMonth: Number(month) }
-        : {}),
-    };
-    this.savingAddon.set(true);
-
-    this.api.addAddon(c.id, payload).subscribe({
-      next: () => {
-        this.savingAddon.set(false);
+    const ref = this.dialog.open(MaAddonDialogComponent, {
+      ...FORM_DIALOG_COMPACT,
+      data: { contractId: c.id } satisfies MaAddonDialogData,
+    });
+    ref.afterClosed().subscribe((saved) => {
+      if (saved) {
         this.snack.open('เพิ่ม Add-on แล้ว', 'ปิด', { duration: 2500 });
-        this.addonForm.reset({
-          title: '',
-          extraQuota: 1,
-          price: 0,
-          note: '',
-          effectiveYear: null,
-          effectiveMonth: null,
-        });
-        this.addonScoped.set(false);
         this.reload();
-      },
-      error: (err: Error) => {
-        this.savingAddon.set(false);
-        this.snack.open(err.message, 'ปิด', { duration: 4000 });
-      },
+      }
     });
   }
 
@@ -633,6 +569,186 @@ export class MaRenewDialogComponent {
       price: toMoneyString(raw.price),
       billingCycle: raw.billingCycle as MaBillingCycle,
       note: raw.note?.trim() || null,
+    });
+  }
+}
+
+export interface MaAddonDialogData {
+  contractId: number;
+}
+
+@Component({
+  selector: 'app-ma-addon-dialog',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MoneyInputDirective,
+  ],
+  template: `
+    <h2 mat-dialog-title>เพิ่ม Add-on</h2>
+    <mat-dialog-content>
+      <form [formGroup]="form" id="ma-addon-form" class="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ชื่อแพ็ก *</mat-label>
+          <input matInput formControlName="title" placeholder="เช่น แพ็กโควตาเพิ่ม +3 เคส" />
+        </mat-form-field>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>โควตาเพิ่ม</mat-label>
+            <input matInput type="number" formControlName="extraQuota" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>ราคา</mat-label>
+            <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+        <label class="scope">
+          <input type="checkbox" [checked]="scoped()" (change)="toggleScope($event)" />
+          จำกัดเฉพาะเดือน/ปี (ไม่ติ๊ก = มีผลตลอดอายุสัญญา)
+        </label>
+        @if (scoped()) {
+          <div class="row">
+            <mat-form-field appearance="outline">
+              <mat-label>ปีที่มีผล *</mat-label>
+              <input matInput type="number" formControlName="effectiveYear" min="2000" max="2100" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>เดือนที่มีผล *</mat-label>
+              <input matInput type="number" formControlName="effectiveMonth" min="1" max="12" />
+            </mat-form-field>
+          </div>
+        }
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close [disabled]="saving()">ยกเลิก</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        form="ma-addon-form"
+        [disabled]="saving()"
+      >
+        บันทึก Add-on
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .form {
+      display: grid;
+      gap: 0.35rem;
+      min-width: min(100%, 28rem);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem;
+    }
+    .full {
+      width: 100%;
+    }
+    .scope {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin: 0.25rem 0 0.5rem;
+      font-size: 0.875rem;
+      color: #3d4a46;
+      cursor: pointer;
+    }
+    .scope input {
+      margin-top: 0.15rem;
+    }
+    .error {
+      color: #b91c1c;
+      margin: 0.25rem 0 0;
+    }
+  `,
+})
+export class MaAddonDialogComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(MaService);
+  private readonly ref = inject(MatDialogRef<MaAddonDialogComponent, boolean>);
+  readonly data = inject<MaAddonDialogData>(MAT_DIALOG_DATA);
+  readonly error = signal<string | null>(null);
+  readonly saving = signal(false);
+  readonly scoped = signal(false);
+
+  readonly form = this.fb.nonNullable.group({
+    title: ['', Validators.required],
+    extraQuota: [1, [Validators.required, Validators.min(0)]],
+    price: [0, Validators.min(0)],
+    note: [''],
+    effectiveYear: [null as number | null],
+    effectiveMonth: [null as number | null],
+  });
+
+  toggleScope(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.scoped.set(checked);
+    if (!checked) {
+      this.form.patchValue({ effectiveYear: null, effectiveMonth: null });
+    } else {
+      const now = new Date();
+      this.form.patchValue({
+        effectiveYear: now.getFullYear(),
+        effectiveMonth: now.getMonth() + 1,
+      });
+    }
+  }
+
+  submit(): void {
+    if (this.saving()) {
+      return;
+    }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const raw = this.form.getRawValue();
+    const year = raw.effectiveYear;
+    const month = raw.effectiveMonth;
+    if (this.scoped()) {
+      if (year == null || month == null || month < 1 || month > 12) {
+        this.error.set('กรุณาระบุปีและเดือนที่มีผลพร้อมกัน');
+        return;
+      }
+    } else if ((year == null) !== (month == null)) {
+      this.error.set('ปีและเดือนต้องส่งคู่กัน หรือไม่ส่งทั้งคู่');
+      return;
+    }
+    const payload: MaAddonInput = {
+      title: raw.title.trim(),
+      addonType: 'EXTRA_QUOTA',
+      extraQuota: Number(raw.extraQuota) || 0,
+      price: toMoneyString(raw.price),
+      note: raw.note?.trim() || null,
+      ...(year != null && month != null
+        ? { effectiveYear: Number(year), effectiveMonth: Number(month) }
+        : {}),
+    };
+    this.error.set(null);
+    this.saving.set(true);
+    this.api.addAddon(this.data.contractId, payload).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.ref.close(true);
+      },
+      error: (err: Error) => {
+        this.saving.set(false);
+        this.error.set(err.message);
+      },
     });
   }
 }

@@ -36,8 +36,7 @@ type SupportSortKey =
   | 'receiver'
   | 'queueAdmin'
   | 'assignee'
-  | 'reportedAt'
-  | 'status';
+  | 'reportedAt';
 
 @Component({
   selector: 'app-support-queue-page',
@@ -95,7 +94,6 @@ export class SupportQueuePageComponent implements OnInit {
     'queueAdmin',
     'assignee',
     'reportedAt',
-    'status',
     'actions',
   ];
 
@@ -297,8 +295,6 @@ export class SupportQueuePageComponent implements OnInit {
         return this.userName(row.assignedUserId);
       case 'reportedAt':
         return row.reportedAt;
-      case 'status':
-        return row.status;
       default:
         return null;
     }

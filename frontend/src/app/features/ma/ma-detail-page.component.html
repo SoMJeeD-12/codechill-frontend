@@ -153,9 +153,14 @@
       </mat-card>
     </div>
 
-    <div class="app-two-col">
-      <mat-card class="app-panel-card">
-        <h2 class="app-section-title">Add-on</h2>
+    <mat-card class="app-panel-card">
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <h2 class="app-section-title !mb-0">Add-on</h2>
+          <button mat-flat-button color="primary" type="button" (click)="openAddAddon()">
+            <mat-icon>add</mat-icon>
+            เพิ่ม Add-on
+          </button>
+        </div>
         <table mat-table [dataSource]="addonsPager.paged()" class="data-table w-full">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>รายการ</th>
@@ -196,58 +201,7 @@
         @if (addons().length === 0) {
           <p class="mt-2.5 mb-0 text-sm text-muted">ยังไม่มี Add-on</p>
         }
-      </mat-card>
-
-      <mat-card class="app-panel-card">
-        <h2 class="app-section-title">เพิ่ม Add-on</h2>
-        <form [formGroup]="addonForm" (ngSubmit)="saveAddon()" class="app-form-stack">
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>ชื่อแพ็ก</mat-label>
-            <input matInput formControlName="title" placeholder="เช่น แพ็กโควตาเพิ่ม +3 เคส" />
-          </mat-form-field>
-          <div class="app-form-row">
-            <mat-form-field appearance="outline">
-              <mat-label>โควตาเพิ่ม</mat-label>
-              <input matInput type="number" formControlName="extraQuota" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>ราคา</mat-label>
-              <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
-            </mat-form-field>
-          </div>
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>หมายเหตุ</mat-label>
-            <textarea matInput rows="2" formControlName="note"></textarea>
-          </mat-form-field>
-          <label class="mt-1 mb-2 flex cursor-pointer items-start gap-2 text-sm text-[#3d4a46]">
-            <input
-              type="checkbox"
-              class="mt-0.5"
-              [checked]="addonScoped()"
-              (change)="toggleAddonScope($event)"
-            />
-            จำกัดเฉพาะเดือน/ปี (ไม่ติ๊ก = มีผลตลอดอายุสัญญา)
-          </label>
-          @if (addonScoped()) {
-            <div class="app-form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>ปีที่มีผล *</mat-label>
-                <input matInput type="number" formControlName="effectiveYear" min="2000" max="2100" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>เดือนที่มีผล *</mat-label>
-                <input matInput type="number" formControlName="effectiveMonth" min="1" max="12" />
-              </mat-form-field>
-            </div>
-          }
-          <div class="mt-1 flex justify-end gap-2">
-            <button mat-flat-button color="primary" type="submit" [disabled]="savingAddon()">
-              บันทึก Add-on
-            </button>
-          </div>
-        </form>
-      </mat-card>
-    </div>
+    </mat-card>
   </section>
   }
 }

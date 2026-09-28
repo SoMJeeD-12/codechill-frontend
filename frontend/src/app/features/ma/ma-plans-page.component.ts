@@ -82,11 +82,11 @@ export class MaPlansPageComponent implements OnInit {
   });
 
   readonly columns = [
+    'id',
     'name',
     'bugQuotaPerMonth',
     'responseTimeHour',
     'isActive',
-    'sortOrder',
     'actions',
   ];
 

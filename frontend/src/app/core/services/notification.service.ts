@@ -66,6 +66,24 @@ export class NotificationService {
     );
   }
 
+  /** PATCH /notifications/read-by-ref — อ่านแจ้งเตือนที่ยังไม่อ่านของ ref นั้น (ของผู้ใช้ปัจจุบัน) */
+  markReadByRef(refType: string, refId: number): Observable<{ updated: number }> {
+    return this.http
+      .patch<{ updated?: number } | null>(`${this.base}/read-by-ref`, { refType, refId })
+      .pipe(
+        map((body) => ({ updated: Number(body?.updated) || 0 })),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** PATCH /notifications/read-all — ไม่มี body */
+  markAllRead(): Observable<{ updated: number }> {
+    return this.http.patch<{ updated?: number } | null>(`${this.base}/read-all`, {}).pipe(
+      map((body) => ({ updated: Number(body?.updated) || 0 })),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
   private normalize(row: AppNotification | null | undefined): AppNotification {
     return {
       id: Number(row?.id) || 0,
