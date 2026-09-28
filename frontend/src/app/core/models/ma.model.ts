@@ -1,3 +1,5 @@
+import { contractEndFromDuration } from '../utils/date.util';
+
 /** สถานะสัญญา MA — MaContractResponseDto */
 export type MaContractStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'RENEWED';
 
@@ -154,6 +156,14 @@ export const MA_STATUS_LABELS: Record<MaContractStatus, string> = {
  */
 export type MaEditableStatus = 'DRAFT' | 'ACTIVE' | 'CANCELLED';
 export const MA_EDITABLE_STATUSES: MaEditableStatus[] = ['DRAFT', 'ACTIVE', 'CANCELLED'];
+
+/** สัญญา MA เป็นปีต่อปีเสมอ — รายเดือน/รายปีเป็นแค่รอบวางบิล */
+export const MA_CONTRACT_TERM_MONTHS = 12;
+
+/** วันสิ้นสุด = วันเริ่ม + 12 เดือน − 1 วัน (เช่น 1 ต.ค. 2026 → 30 ก.ย. 2027) */
+export function maContractEndDate(start: Date): Date {
+  return contractEndFromDuration(start, MA_CONTRACT_TERM_MONTHS);
+}
 
 /** รอบวางบิลเท่านั้น — โควตายังนับรายเดือนเสมอ */
 export const MA_BILLING_CYCLE_LABELS: Record<MaBillingCycle, string> = {

@@ -42,7 +42,7 @@
             <span class="status" [attr.data-status]="lockedStatus">{{ statusLabels[lockedStatus] }}</span>
             <p class="locked-status__hint">
               @if (lockedStatus === 'EXPIRED') {
-                ระบบตั้งให้เองเพราะเลยวันสิ้นสุดแล้ว — ขยายวันสิ้นสุดให้เลยวันนี้ ระบบจะเปลี่ยนกลับเป็น「ใช้งานอยู่」ให้เอง
+                ระบบตั้งให้เองเพราะเลยวันสิ้นสุดแล้ว — ครบปีแล้วให้ใช้ปุ่ม「ต่อสัญญา」ในหน้ารายละเอียดสัญญา
               } @else {
                 สถานะนี้ระบบตั้งให้เอง — ไม่ต้องเปลี่ยน
               }
@@ -87,24 +87,15 @@
       <section class="form-grid__col">
         <h3 class="form-grid__title">ระยะเวลาและมูลค่า</h3>
 
-        <div class="row">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>รอบวางบิล</mat-label>
-            <mat-select formControlName="billingCycle">
-              @for (b of billingCycles; track b) {
-                <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>ระยะสัญญา</mat-label>
-            <mat-select formControlName="durationMonths">
-              @for (opt of availableDurationOptions(); track opt.value) {
-                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        </div>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>รอบวางบิล</mat-label>
+          <mat-select formControlName="billingCycle">
+            @for (b of billingCycles; track b) {
+              <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>สัญญาเป็นปีต่อปี — รายเดือน/รายปีคือรอบการวางบิลเท่านั้น</mat-hint>
+        </mat-form-field>
 
         <div class="row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -119,32 +110,23 @@
             <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
             <mat-datepicker #startPicker></mat-datepicker>
           </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>วันสิ้นสุด *</mat-label>
-            <input
-              matInput
-              [matDatepicker]="endPicker"
-              formControlName="endDate"
-              [min]="minEndDate()"
-              readonly
-              (click)="isCustomDuration() && endPicker.open()"
-            />
-            <mat-datepicker-toggle
-              matIconSuffix
-              [for]="endPicker"
-              [disabled]="!isCustomDuration()"
-            ></mat-datepicker-toggle>
-            <mat-datepicker #endPicker></mat-datepicker>
-          </mat-form-field>
+          <div class="end-date">
+            <span class="end-date__label">วันสิ้นสุด</span>
+            <strong class="end-date__value">{{ endDate() | thaiDate: 'date' }}</strong>
+            <span class="end-date__hint">
+              @if (legacyTerm()) {
+                วันสิ้นสุดเดิมของสัญญานี้ — เปลี่ยนวันเริ่มแล้วระบบจะคำนวณใหม่ (+12 เดือน)
+              } @else {
+                ระบบคำนวณให้ (วันเริ่ม + 12 เดือน − 1 วัน)
+              }
+            </span>
+          </div>
         </div>
 
-        @if (form.hasError('endBeforeStart') && (form.touched || form.dirty)) {
-          <p class="error">วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา</p>
-        }
-
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
-          <mat-label>มูลค่ารวมตลอดอายุสัญญา (บาท) *</mat-label>
+          <mat-label>มูลค่าสัญญา (บาท) *</mat-label>
           <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+          <mat-hint>มูลค่ารวมตลอดสัญญา 1 ปี</mat-hint>
         </mat-form-field>
       </section>
     </div>

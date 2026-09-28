@@ -1,11 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -35,6 +29,7 @@ import {
   MaEditableStatus,
   MaQuotaStatus,
   maCoverageDaysHint,
+  maContractEndDate,
   maCoverageLabel,
   maPlanDisplayName,
   resolveMaCoverageState,
@@ -48,13 +43,7 @@ import {
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { Project } from '../../core/models/project.model';
-import {
-  addDays,
-  contractEndFromDuration,
-  contractMonthCount,
-  parseDateOnly,
-  toDateOnlyString,
-} from '../../core/utils/date.util';
+import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
@@ -66,8 +55,6 @@ import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-
-type MaDurationPreset = 6 | 12 | 24 | 'CUSTOM';
 
 function isEditableStatus(status: MaContractStatus): status is MaEditableStatus {
   return (MA_EDITABLE_STATUSES as MaContractStatus[]).includes(status);
@@ -377,6 +364,7 @@ export type MaFormDialogData =
     MatSnackBarModule,
     MatDatepickerModule,
     MoneyInputDirective,
+    ThaiDatePipe,
   ],
   templateUrl: './ma-form-dialog.component.html',
   styleUrl: './ma-form-dialog.component.scss',
@@ -402,12 +390,6 @@ export class MaFormDialogComponent {
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
   readonly statuses = MA_EDITABLE_STATUSES;
   readonly billingCycles = Object.keys(MA_BILLING_CYCLE_LABELS) as MaBillingCycle[];
-  readonly durationOptions: Array<{ value: MaDurationPreset; label: string }> = [
-    { value: 6, label: '6 เดือน' },
-    { value: 12, label: '12 เดือน' },
-    { value: 24, label: '24 เดือน' },
-    { value: 'CUSTOM', label: 'กำหนดเอง' },
-  ];
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly isEdit = !!this.editRow;
@@ -423,18 +405,13 @@ export class MaFormDialogComponent {
       : null
     : 'DRAFT';
   readonly status = signal<MaEditableStatus | null>(this.initialStatus);
-  readonly billingCycle = signal<MaBillingCycle>(this.editRow?.billingCycle ?? 'YEARLY');
-  readonly minEndDate = signal<Date | null>(null);
-  readonly availableDurationOptions = computed(() =>
-    this.billingCycle() === 'YEARLY'
-      ? this.durationOptions.filter((opt) => opt.value !== 6)
-      : this.durationOptions
-  );
-
-  private readonly initialDuration = this.inferDurationPreset(
-    this.editRow?.startDate,
-    this.editRow?.endDate
-  );
+  /**
+   * วันสิ้นสุดที่ระบบคำนวณ (แสดงเป็นข้อความ แก้ไม่ได้)
+   * แก้สัญญาเก่า: คงวันสิ้นสุดเดิมไว้จนกว่าผู้ใช้จะเปลี่ยนวันเริ่ม
+   */
+  readonly endDate = signal<Date | null>(parseDateOnly(this.editRow?.endDate));
+  /** สัญญาเก่าที่วันสิ้นสุดไม่ใช่ วันเริ่ม + 12 เดือน − 1 วัน (เช่น ฉบับ 6 เดือน) */
+  readonly legacyTerm = signal(false);
 
   readonly form = this.fb.group(
     {
@@ -453,16 +430,13 @@ export class MaFormDialogComponent {
         Validators.required,
       ],
       planId: [this.editRow?.planId ?? (null as number | null), Validators.required],
-      durationMonths: [this.initialDuration as MaDurationPreset],
       startDate: [parseDateOnly(this.editRow?.startDate) as Date | null, Validators.required],
-      endDate: [parseDateOnly(this.editRow?.endDate) as Date | null, Validators.required],
       status: [this.initialStatus],
       price: [parseMoneyValue(this.editRow?.price) ?? 0, [Validators.required, Validators.min(0)]],
       billingCycle: [(this.editRow?.billingCycle ?? 'YEARLY') as MaBillingCycle],
       signedDate: [parseDateOnly(this.editRow?.signedDate) as Date | null],
       note: [this.editRow?.note ?? ''],
-    },
-    { validators: [MaFormDialogComponent.endAfterStart] }
+    }
   );
 
   constructor() {
@@ -523,27 +497,21 @@ export class MaFormDialogComponent {
       this.loadCustomerProjects(Number(customerId) || 0);
     });
 
-    this.syncEndDateEditability();
-    this.ensureDurationMatchesBilling();
-    this.recalcEndFromDuration();
-    this.refreshMinEndDate();
+    const start = this.form.controls.startDate.value;
+    if (!this.isEdit || !this.endDate()) {
+      this.endDate.set(start ? maContractEndDate(start) : null);
+    } else if (start) {
+      this.legacyTerm.set(
+        toDateOnlyString(maContractEndDate(start)) !== toDateOnlyString(this.endDate())
+      );
+    }
 
     this.form.controls.status.valueChanges.subscribe((value) => {
       this.status.set(value ?? null);
     });
-    this.form.controls.durationMonths.valueChanges.subscribe(() => {
-      this.syncEndDateEditability();
-      this.recalcEndFromDuration();
-    });
-    this.form.controls.startDate.valueChanges.subscribe(() => {
-      this.refreshMinEndDate();
-      this.recalcEndFromDuration();
-    });
-    this.form.controls.billingCycle.valueChanges.subscribe((value) => {
-      if (value) {
-        this.billingCycle.set(value);
-      }
-      this.ensureDurationMatchesBilling();
+    this.form.controls.startDate.valueChanges.subscribe((value) => {
+      this.endDate.set(value ? maContractEndDate(value) : null);
+      this.legacyTerm.set(false);
     });
   }
 
@@ -562,39 +530,18 @@ export class MaFormDialogComponent {
     });
   }
 
-  isCustomDuration(): boolean {
-    return this.form.controls.durationMonths.value === 'CUSTOM';
-  }
-
-  durationMonthCount(): number {
-    const duration = this.form.controls.durationMonths.value;
-    if (duration === 6 || duration === 12 || duration === 24) {
-      return duration;
-    }
-    const { startDate, endDate } = this.form.getRawValue();
-    return contractMonthCount(startDate, endDate);
-  }
-
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      if (this.form.hasError('endBeforeStart')) {
-        this.error.set('วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา');
-      }
       return;
     }
     const raw = this.form.getRawValue();
     const start = toDateOnlyString(raw.startDate);
-    const end = toDateOnlyString(raw.endDate);
+    const end = toDateOnlyString(this.endDate());
     if (!start || !end || end <= start) {
       this.error.set('วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา');
       return;
     }
-    if (raw.billingCycle === 'YEARLY' && this.durationMonthCount() < 12) {
-      this.error.set('รอบวางบิลรายปีต้องมีระยะสัญญาอย่างน้อย 12 เดือน');
-      return;
-    }
-
     this.saving.set(true);
     this.error.set(null);
 
@@ -663,70 +610,5 @@ export class MaFormDialogComponent {
         this.error.set(err.message);
       },
     });
-  }
-
-  private ensureDurationMatchesBilling(): void {
-    if (this.form.controls.billingCycle.value !== 'YEARLY') {
-      return;
-    }
-    if (this.form.controls.durationMonths.value === 6) {
-      this.form.controls.durationMonths.setValue(12);
-    }
-  }
-
-  private syncEndDateEditability(): void {
-    if (this.isCustomDuration()) {
-      this.form.controls.endDate.enable({ emitEvent: false });
-    } else {
-      this.form.controls.endDate.disable({ emitEvent: false });
-    }
-  }
-
-  private refreshMinEndDate(): void {
-    const start = this.form.controls.startDate.value;
-    this.minEndDate.set(start ? addDays(start, 1) : null);
-  }
-
-  private recalcEndFromDuration(): void {
-    if (this.isCustomDuration()) {
-      return;
-    }
-    const start = this.form.controls.startDate.value;
-    const duration = this.form.controls.durationMonths.value;
-    if (!start || (duration !== 6 && duration !== 12 && duration !== 24)) {
-      return;
-    }
-    const end = contractEndFromDuration(start, duration);
-    this.form.controls.endDate.setValue(end, { emitEvent: false });
-  }
-
-  private inferDurationPreset(
-    start: string | null | undefined,
-    end: string | null | undefined
-  ): MaDurationPreset {
-    if (!start || !end) {
-      return 12;
-    }
-    const months = contractMonthCount(start, end);
-    if (months === 6 || months === 12 || months === 24) {
-      return months;
-    }
-    return 'CUSTOM';
-  }
-
-  private static endAfterStart(group: AbstractControl): ValidationErrors | null {
-    const start = group.get('startDate')?.value as Date | null;
-    const end = group.get('endDate')?.value as Date | null;
-    if (!start || !end) {
-      return null;
-    }
-    const s = start instanceof Date ? start : parseDateOnly(start);
-    const e = end instanceof Date ? end : parseDateOnly(end);
-    if (!s || !e) {
-      return null;
-    }
-    const sDay = new Date(s.getFullYear(), s.getMonth(), s.getDate()).getTime();
-    const eDay = new Date(e.getFullYear(), e.getMonth(), e.getDate()).getTime();
-    return eDay > sDay ? null : { endBeforeStart: true };
   }
 }

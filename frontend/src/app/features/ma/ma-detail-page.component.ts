@@ -25,6 +25,7 @@ import {
   MaContract,
   MaCoverageState,
   MaQuotaStatus,
+  maContractEndDate,
   maCoverageDaysHint,
   maCoverageLabel,
   maPlanDisplayName,
@@ -40,7 +41,7 @@ import {
   MaService,
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
-import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { addDays, parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { formatMoneyDisplay, parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
@@ -268,8 +269,7 @@ export class MaDetailPageComponent implements OnInit {
       ...FORM_DIALOG_COMPACT,
       data: {
         contract: c,
-        defaultStartDate: this.addOneYear(c.startDate),
-        defaultEndDate: this.addOneYear(c.endDate),
+        defaultStartDate: this.dayAfter(c.endDate),
       },
     });
     ref.afterClosed().subscribe((input: MaContractRenewInput | undefined) => {
@@ -297,10 +297,8 @@ export class MaDetailPageComponent implements OnInit {
     });
   }
 
-  private addOneYear(dateStr: string): string {
-    const d = parseDateOnly(dateStr) ?? new Date(dateStr);
-    d.setFullYear(d.getFullYear() + 1);
-    return toDateOnlyString(d);
+  private dayAfter(dateStr: string): string {
+    return toDateOnlyString(addDays(parseDateOnly(dateStr) ?? new Date(dateStr), 1));
   }
 
   private openPrintWindow(html: string, label: string): void {
@@ -423,8 +421,8 @@ function escapeHtml(value: string | number | null | undefined): string {
 
 export interface MaRenewDialogData {
   contract: MaContract;
+  /** ค่าเริ่มต้น = วันถัดจากวันสิ้นสุดฉบับเดิม */
   defaultStartDate: string;
-  defaultEndDate: string;
 }
 
 @Component({
@@ -439,6 +437,7 @@ export interface MaRenewDialogData {
     MatDatepickerModule,
     MatSelectModule,
     MoneyInputDirective,
+    ThaiDatePipe,
   ],
   template: `
     <h2 mat-dialog-title>ต่ออายุสัญญา MA</h2>
@@ -462,22 +461,16 @@ export interface MaRenewDialogData {
             <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
             <mat-datepicker #startPicker></mat-datepicker>
           </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>วันสิ้นสุด *</mat-label>
-            <input
-              matInput
-              [matDatepicker]="endPicker"
-              formControlName="endDate"
-              readonly
-              (click)="endPicker.open()"
-            />
-            <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
-            <mat-datepicker #endPicker></mat-datepicker>
-          </mat-form-field>
+          <div class="end-date">
+            <span class="end-date__label">วันสิ้นสุด</span>
+            <strong>{{ endDate() | thaiDate: 'date' }}</strong>
+            <span class="end-date__hint">ระบบคำนวณให้ (วันเริ่ม + 12 เดือน − 1 วัน)</span>
+          </div>
         </div>
         <mat-form-field appearance="outline" class="full">
-          <mat-label>มูลค่ารวมตลอดอายุสัญญาใหม่ (บาท) *</mat-label>
+          <mat-label>มูลค่าสัญญาใหม่ (บาท) *</mat-label>
           <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+          <mat-hint>มูลค่ารวมตลอดสัญญา 1 ปี</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full">
           <mat-label>รอบวางบิล</mat-label>
@@ -486,6 +479,7 @@ export interface MaRenewDialogData {
               <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
             }
           </mat-select>
+          <mat-hint>สัญญาเป็นปีต่อปี — รายเดือน/รายปีคือรอบการวางบิลเท่านั้น</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full">
           <mat-label>หมายเหตุ</mat-label>
@@ -523,6 +517,21 @@ export interface MaRenewDialogData {
     .full {
       width: 100%;
     }
+    .end-date {
+      display: grid;
+      gap: 0.15rem;
+      align-content: start;
+      padding: 0.55rem 0.75rem;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid rgba(28, 43, 40, 0.1);
+    }
+    .end-date__label,
+    .end-date__hint {
+      font-size: 0.75rem;
+      color: #64748b;
+      line-height: 1.3;
+    }
     .error {
       color: #b91c1c;
       margin: 0.25rem 0 0;
@@ -542,7 +551,6 @@ export class MaRenewDialogComponent {
       parseDateOnly(this.data.defaultStartDate) as Date | null,
       Validators.required,
     ],
-    endDate: [parseDateOnly(this.data.defaultEndDate) as Date | null, Validators.required],
     price: [
       parseMoneyValue(this.data.contract.price) ?? 0,
       [Validators.required, Validators.min(0)],
@@ -551,6 +559,18 @@ export class MaRenewDialogComponent {
     note: [this.data.contract.note ?? ''],
   });
 
+  readonly endDate = signal<Date | null>(this.calcEnd(this.form.controls.startDate.value));
+
+  constructor() {
+    this.form.controls.startDate.valueChanges.subscribe((value) =>
+      this.endDate.set(this.calcEnd(value))
+    );
+  }
+
+  private calcEnd(start: Date | null): Date | null {
+    return start ? maContractEndDate(start) : null;
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -558,7 +578,7 @@ export class MaRenewDialogComponent {
     }
     const raw = this.form.getRawValue();
     const startDate = toDateOnlyString(raw.startDate);
-    const endDate = toDateOnlyString(raw.endDate);
+    const endDate = toDateOnlyString(this.endDate());
     if (!startDate || !endDate || endDate <= startDate) {
       this.error.set('วันสิ้นสุดต้องอยู่หลังวันเริ่ม');
       return;
