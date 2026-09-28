@@ -795,13 +795,15 @@
   /* กำลังทำ / รอ */
   &[data-status='IN_PROGRESS'],
   &[data-status='DOING'],
-  &[data-status='RECEIVED'] {
+  &[data-status='RECEIVED'],
+  &[data-status='WAITING_ADMIN'] {
     background: #e0f2fe;
     color: #075985;
   }
 
-  /* มอบหมายแล้ว รอเริ่มงาน (ตัวอย่าง FE) */
-  &[data-status='ASSIGNED'] {
+  /* มอบหมายแล้ว รอเริ่มงาน / รอซัพพอร์ตแจ้งลูกค้า */
+  &[data-status='ASSIGNED'],
+  &[data-status='WAITING_SUPPORT'] {
     background: #e0e7ff;
     color: #3730a3;
   }

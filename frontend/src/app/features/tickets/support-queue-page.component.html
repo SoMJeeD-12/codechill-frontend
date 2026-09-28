@@ -27,7 +27,7 @@
           (click)="setTab('AWAITING_SEND')"
         >
           รอส่งหัวหน้า
-          <span class="ui-chip__count">{{ sendTotal() }}</span>
+          <span class="ui-chip__count">{{ tabCount('AWAITING_SEND') }}</span>
         </button>
         <button
           type="button"
@@ -38,7 +38,7 @@
           (click)="setTab('RETURNED')"
         >
           แอดมินส่งกลับมา
-          <span class="ui-chip__count">{{ returnedTotal() }}</span>
+          <span class="ui-chip__count">{{ tabCount('RETURNED') }}</span>
         </button>
       </div>
       <div class="app-panel-toolbar-row">

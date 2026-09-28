@@ -1,10 +1,13 @@
 import type { Attachment } from './attachment.model';
 
+/** ตาม TicketResponseDto.status (BE C-1) */
 export type TicketStatus =
   | 'RECEIVED'
+  | 'WAITING_ADMIN'
   | 'ASSIGNED'
   | 'IN_PROGRESS'
   | 'RESOLVED'
+  | 'WAITING_SUPPORT'
   | 'REOPENED'
   | 'CLOSED';
 
@@ -91,21 +94,36 @@ export interface TicketResolution {
 
 export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   RECEIVED: 'รับเรื่อง',
+  /** ซัพพอร์ตส่งเข้าคิวกลางแล้ว — รอแอดมินรับเรื่อง/มอบหมาย */
+  WAITING_ADMIN: 'รอแอดมิน',
   /** BE: หลังมอบหมาย — ยังไม่เริ่มดำเนินการ */
   ASSIGNED: 'ส่งงานแล้ว',
   IN_PROGRESS: 'กำลังดำเนินการ',
+  /** แก้เสร็จแล้ว — รอแอดมินตรวจ */
   RESOLVED: 'แก้ไขแล้ว',
+  /** แอดมินตรวจผ่านแล้ว — รอซัพพอร์ตแจ้งลูกค้า */
+  WAITING_SUPPORT: 'รอแจ้งลูกค้า',
   /** ปัญหาเดิมกลับมาแล้ว แต่ยังไม่มีคนรับงานรอบใหม่ */
   REOPENED: 'รอรับงานรอบใหม่',
   CLOSED: 'ปิดงาน',
 };
 
+/** ป้ายสถานะ — กันค่าใหม่จาก BE ที่ FE ยังไม่รู้จัก ไม่ให้เป็นค่าว่าง */
+export function ticketStatusLabel(status: string | null | undefined): string {
+  if (!status) {
+    return '—';
+  }
+  return TICKET_STATUS_LABELS[status as TicketStatus] ?? status;
+}
+
 /** ลำดับ stepper หลักของใบปัญหา (ไม่รวม REOPENED) */
 export const TICKET_STEPPER_STATUSES: TicketStatus[] = [
   'RECEIVED',
+  'WAITING_ADMIN',
   'ASSIGNED',
   'IN_PROGRESS',
   'RESOLVED',
+  'WAITING_SUPPORT',
   'CLOSED',
 ];
 
@@ -140,7 +158,7 @@ export const RESOLUTION_RESULT_LABELS: Record<ResolutionResult, string> = {
 
 /** คำอธิบายผลลัพธ์รอบแก้ — ใช้ในฟอร์ม */
 export const RESOLUTION_RESULT_HINTS: Record<ResolutionResult, string> = {
-  SUCCESS: 'งานรอบนี้จบแล้ว — ใบจะไปขั้นรอปิดงาน',
+  SUCCESS: 'งานรอบนี้จบแล้ว — ใบจะไปขั้นรอแอดมินตรวจ',
   PARTIAL: 'ยังไม่จบ / ส่งต่อได้ — ใบยังคงกำลังดำเนินการ บันทึกรอบถัดไปเมื่อทำต่อจนสำเร็จ',
   FAILED: 'รอบนี้แก้ไม่สำเร็จ — ใบยังคงกำลังดำเนินการ ให้ทำต่อหรือส่งต่อ',
 };
@@ -212,6 +230,7 @@ export function splitTicketDescription(raw: string | null | undefined): {
 /** สถานะที่ถือว่ายังค้าง — แสดงในหน้ารอรับแก้ไข */
 export const OPEN_TICKET_STATUSES: TicketStatus[] = [
   'RECEIVED',
+  'WAITING_ADMIN',
   'ASSIGNED',
   'IN_PROGRESS',
   'REOPENED',
@@ -269,7 +288,7 @@ export function buildTicketTimeline(input: {
       events.push({
         id: 'resolved',
         at: ticket.resolvedAt,
-        label: 'แก้ไขเรียบร้อย (รอปิดงาน)',
+        label: 'แก้ไขเรียบร้อย (รอแอดมินตรวจ)',
       });
     }
   }

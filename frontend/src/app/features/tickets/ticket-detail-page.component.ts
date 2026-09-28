@@ -22,6 +22,8 @@ import {
   RESOLUTION_RESULT_LABELS,
   ResolutionResult,
   TICKET_STATUS_LABELS,
+  TICKET_STEPPER_STATUSES,
+  ticketStatusLabel,
   Ticket,
   TicketResolution,
   TicketStatus,
@@ -143,9 +145,14 @@ export class TicketDetailPageComponent implements OnInit {
     if (!t || !this.canAssign() || !this.canResolve()) {
       return false;
     }
-    // BE มีสถานะคิวที่ FE ยังไม่รู้จัก — กันเฉพาะขั้นหลังแก้เสร็จแล้ว
-    const shown: string = this.displayStatus();
-    return shown !== 'CLOSED' && shown !== 'RESOLVED' && shown !== 'WAITING_SUPPORT';
+    // BE ไม่ให้มอบหมายจาก RECEIVED ตรง ๆ — ซัพพอร์ตต้องส่งเข้าคิวแอดมินก่อน
+    const shown = this.displayStatus();
+    return (
+      shown === 'WAITING_ADMIN' ||
+      shown === 'ASSIGNED' ||
+      shown === 'IN_PROGRESS' ||
+      shown === 'REOPENED'
+    );
   });
 
   /** แยก description ออกจากบรรทัด「เปิดกลับมาอีกครั้ง」ที่ BE ต่อมา */
@@ -212,7 +219,7 @@ export class TicketDetailPageComponent implements OnInit {
     }
     return (
       this.demoOverlay.incompleteStatusLabel(t) ??
-      this.statusLabels[this.displayStatus()]
+      ticketStatusLabel(this.displayStatus())
     );
   });
 
@@ -236,11 +243,11 @@ export class TicketDetailPageComponent implements OnInit {
 
   readonly stepperSteps = computed(() => {
     const shown = this.displayStatus();
-    const order = ['RECEIVED', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
+    const order = TICKET_STEPPER_STATUSES;
     const idx =
       shown === 'REOPENED'
         ? order.indexOf('RECEIVED')
-        : Math.max(0, order.indexOf(shown as (typeof order)[number]));
+        : Math.max(0, order.indexOf(shown));
     return order.map((status, i) => ({
       status,
       label: this.statusLabels[status],
@@ -319,7 +326,7 @@ export class TicketDetailPageComponent implements OnInit {
         return {
           tone: 'warn' as const,
           title: 'ปัญหาเดิมกลับมาแล้ว — รอรับงานรอบใหม่',
-          detail: `เปิดงานครั้งที่ ${this.nextRound()} ในใบเดิมนี้ · มอบหมายผู้รับผิดชอบเพื่อเริ่มแก้`,
+          detail: `เปิดงานครั้งที่ ${this.nextRound()} ในใบเดิมนี้ · กด「รับงานรอบใหม่」เพื่อเลือกผู้รับผิดชอบ`,
           actions: [
             { id: 'pickup' as const, label: 'รับงานรอบใหม่', primary: true },
           ],
@@ -388,7 +395,7 @@ export class TicketDetailPageComponent implements OnInit {
         tone: 'ok' as const,
         title: 'แก้ไขเรียบร้อยแล้ว — รอส่งให้ซัพพอร์ต',
         detail:
-          'ตรวจผลแก้แล้วกด「ส่งให้ซัพพอร์ต」ที่หัวข้อ เพื่อให้ซัพพอร์ตแจ้งลูกค้า · ปุ่ม「ปัญหาเดิมกลับมา」จะโชว์หลังปิดงานแล้วเท่านั้น',
+          'ตรวจผลแก้แล้วกด「ส่งให้ซัพพอร์ต」ที่หัวข้อ · ซัพพอร์ตแจ้งลูกค้าแล้วระบบจะปิดใบให้เอง',
         actions,
       };
     }
@@ -519,7 +526,7 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   ticketStatusLabel(status: TicketStatus): string {
-    return this.statusLabels[status];
+    return ticketStatusLabel(status);
   }
 
   /** ข้อความรองของแถบสถานะ */
@@ -527,8 +534,19 @@ export class TicketDetailPageComponent implements OnInit {
     const n = t.resolutionCount || 0;
     const shown = this.displayStatus();
     const last = latestTicketResolution(t);
+    if (shown === 'RECEIVED') {
+      return 'รอซัพพอร์ตส่งเข้าคิวแอดมิน';
+    }
+    if (shown === 'WAITING_ADMIN') {
+      return t.claimedByAdminUserId
+        ? 'แอดมินรับเรื่องแล้ว — รอมอบหมายผู้รับผิดชอบ'
+        : 'อยู่ในคิวแอดมิน — รอแอดมินรับเรื่อง';
+    }
+    if (shown === 'WAITING_SUPPORT') {
+      return `แอดมินตรวจผ่านแล้ว · รวมแก้ ${n} ครั้ง — รอซัพพอร์ตแจ้งลูกค้า แล้วระบบจะปิดใบให้เอง`;
+    }
     if (shown === 'ASSIGNED') {
-      return 'ตัวอย่างขั้นมอบหมายแล้ว — กด「เริ่มงาน」เพื่อเข้ากำลังดำเนินการ';
+      return 'มอบหมายแล้ว — รอผู้รับผิดชอบกด「เริ่มงาน」';
     }
     if (t.status === 'REOPENED') {
       return `พร้อมเริ่มงานครั้งที่ ${this.nextRound()} — กด「รับงานรอบใหม่」ด้านล่าง`;
@@ -542,7 +560,7 @@ export class TicketDetailPageComponent implements OnInit {
       return `กำลังทำงานครั้งที่ ${this.nextRound()} · แก้ไปแล้ว ${n} ครั้งก่อนหน้า`;
     }
     if (shown === 'RESOLVED') {
-      return `งานล่าสุดเสร็จแล้ว · รวมแก้ ${n} ครั้ง — ขั้นถัดไปคือส่งให้ซัพพอร์ต`;
+      return `งานล่าสุดเสร็จแล้ว · รวมแก้ ${n} ครั้ง — รอแอดมินตรวจแล้วส่งให้ซัพพอร์ต`;
     }
     if (t.status === 'CLOSED') {
       return `ปิดแล้ว · มีงานแก้ไข ${n} ครั้งในใบนี้`;
@@ -643,15 +661,23 @@ export class TicketDetailPageComponent implements OnInit {
       !selfTake &&
       (shown === 'RECEIVED' || shown === 'REOPENED' || !this.ticket()?.assignedUserId)
     ) {
-      this.snack.open('ใบนี้ยังไม่ได้มอบหมาย — รอแอดมินมอบหมายงานก่อนจึงจะบันทึกการแก้ไขได้', 'ปิด', {
-        duration: 4000,
-      });
+      this.snack.open(
+        shown === 'RECEIVED'
+          ? 'ใบนี้ยังไม่ถูกส่งเข้าคิวแอดมิน — รอซัพพอร์ตส่งเข้าคิวก่อน'
+          : 'ใบนี้ยังไม่ได้มอบหมาย — รอแอดมินมอบหมายงานก่อนจึงจะบันทึกการแก้ไขได้',
+        'ปิด',
+        { duration: 4000 }
+      );
       return;
     }
-    if (shown === 'RESOLVED') {
-      this.snack.open('สถานะแก้ไขเรียบร้อยแล้ว — ปิดงาน หรือรอปัญหาเดิมกลับมาหลังปิด', 'ปิด', {
-        duration: 4000,
-      });
+    if (shown === 'RESOLVED' || shown === 'WAITING_SUPPORT') {
+      this.snack.open(
+        shown === 'RESOLVED'
+          ? 'แก้ไขเรียบร้อยแล้ว — รอแอดมินตรวจและส่งให้ซัพพอร์ต ถ้าปัญหากลับมาหลังปิดใบ ให้กด「ปัญหาเดิมกลับมา」'
+          : 'รอซัพพอร์ตแจ้งลูกค้า — ระบบจะปิดใบให้เอง ถ้าปัญหากลับมาหลังปิดใบ ให้กด「ปัญหาเดิมกลับมา」',
+        'ปิด',
+        { duration: 4500 }
+      );
       return;
     }
     const ref = this.dialog.open(TicketResolutionFormDialogComponent, {
@@ -727,7 +753,7 @@ export class TicketDetailPageComponent implements OnInit {
     const ticket = this.ticket();
     if (!ticket || ticket.status !== 'CLOSED') {
       this.snack.open(
-        'กด「ปัญหาเดิมกลับมา」ได้หลังปิดงานแล้วเท่านั้น — ตอนนี้ให้ปิดงานก่อน',
+        'กด「ปัญหาเดิมกลับมา」ได้หลังปิดใบแล้วเท่านั้น — ใบจะปิดเองเมื่อซัพพอร์ตกด「บอกลูกค้าแล้ว」',
         'ปิด',
         { duration: 4500 }
       );
@@ -1215,11 +1241,9 @@ export class TicketResolutionFormDialogComponent {
           })
         ),
         switchMap(({ resolution, quota }) =>
-          this.uploadFiles(resolution).pipe(
-            map((uploadFailed) => ({ quota, uploadFailed }))
-          )
+          this.uploadFiles(resolution).pipe(map((upload) => ({ quota, upload })))
         ),
-        switchMap(({ quota, uploadFailed }) => {
+        switchMap(({ quota, upload }) => {
           if (incomplete) {
             this.demoOverlay.markIncompleteWork(
               this.data.ticketId,
@@ -1234,22 +1258,22 @@ export class TicketResolutionFormDialogComponent {
             handoffUserId !== this.data.currentAssigneeId
           ) {
             return this.ticketsApi.assign(this.data.ticketId, handoffUserId).pipe(
-              map(() => ({ quota, uploadFailed, handedOff: true as const })),
+              map(() => ({ quota, upload, handedOff: true as const })),
               catchError((err: Error) => {
                 this.snack.open(
                   `บันทึกรอบแล้ว แต่ส่งต่อผู้รับผิดชอบไม่สำเร็จ: ${err.message}`,
                   'ปิด',
                   { duration: 6500 }
                 );
-                return of({ quota, uploadFailed, handedOff: false as const });
+                return of({ quota, upload, handedOff: false as const });
               })
             );
           }
-          return of({ quota, uploadFailed, handedOff: false as const });
+          return of({ quota, upload, handedOff: false as const });
         })
       )
       .subscribe({
-        next: ({ quota, uploadFailed, handedOff }) => {
+        next: ({ quota, upload, handedOff }) => {
           this.saving.set(false);
           let msg = incomplete
             ? raw.result === 'PARTIAL'
@@ -1259,14 +1283,16 @@ export class TicketResolutionFormDialogComponent {
           if (handedOff) {
             msg += ' · ส่งต่อผู้รับผิดชอบแล้ว';
           }
-          const uploaded = this.files().length - uploadFailed.length;
-          if (uploaded > 0) {
-            msg += this.data.projectId
-              ? ` · เก็บไฟล์ ${uploaded} ไฟล์ในเอกสารโปรเจกต์แล้ว`
-              : ` · แนบไฟล์ ${uploaded} ไฟล์แล้ว`;
+          if (upload.toProject > 0) {
+            msg += ` · เก็บไฟล์ ${upload.toProject} ไฟล์ในเอกสารโปรเจกต์แล้ว`;
           }
-          if (uploadFailed.length) {
-            msg += ` · อัปโหลดไม่สำเร็จ: ${uploadFailed.join(', ')}`;
+          if (upload.toRound > 0) {
+            msg += this.data.projectId
+              ? ` · แนบไฟล์ ${upload.toRound} ไฟล์ไว้กับรอบแก้ไขแทน (เก็บเข้าเอกสารโปรเจกต์ไม่ได้)`
+              : ` · แนบไฟล์ ${upload.toRound} ไฟล์กับรอบแก้ไขแล้ว`;
+          }
+          if (upload.failed.length) {
+            msg += ` · อัปโหลดไม่สำเร็จ: ${upload.failed.join(', ')}`;
           }
           if (this.claimWarning) {
             msg += ` · ${this.claimWarning}`;
@@ -1279,7 +1305,11 @@ export class TicketResolutionFormDialogComponent {
           }
           this.snack.open(msg, 'ปิด', {
             duration:
-              quota?.isOverQuota || incomplete || uploadFailed.length || this.claimWarning
+              quota?.isOverQuota ||
+              incomplete ||
+              upload.failed.length ||
+              (upload.toRound > 0 && !!this.data.projectId) ||
+              this.claimWarning
                 ? 6000
                 : 2800,
           });
@@ -1352,38 +1382,64 @@ export class TicketResolutionFormDialogComponent {
     );
   }
 
-  /** อัปโหลดทีละไฟล์ — คืนชื่อไฟล์ที่ไม่สำเร็จ (ไม่ให้รอบที่บันทึกแล้วล้ม) */
-  private uploadFiles(resolution: TicketResolution): Observable<string[]> {
+  /**
+   * อัปโหลดทีละไฟล์ — เข้าเอกสารโปรเจกต์ก่อน ถ้าไม่ผ่าน (เช่น ไม่มีสิทธิ์ document.create)
+   * แนบไว้กับรอบแก้ไขแทน · ไม่ให้รอบที่บันทึกแล้วล้ม
+   */
+  private uploadFiles(resolution: TicketResolution): Observable<UploadSummary> {
     const files = this.files();
+    const empty: UploadSummary = { toProject: 0, toRound: 0, failed: [] };
     if (!files.length) {
-      return of([]);
+      return of(empty);
     }
     const projectId = this.data.projectId;
     const round = resolution.round;
+    const toRound$ = (file: File): Observable<UploadOutcome> =>
+      this.attachmentsApi
+        .upload({ file, refType: 'TICKET_RESOLUTION', refId: resolution.id })
+        .pipe(map((): UploadOutcome => 'round'));
     const uploads = files.map((file) => {
-      const upload$: Observable<unknown> = projectId
-        ? this.documentsApi.uploadToProject(projectId, {
-            file,
-            title: `${this.data.ticketNo} · รอบ ${round} · ${file.name}`,
-            note: `แนบจากใบปัญหา ${this.data.ticketNo} รอบแก้ไขที่ ${round}`,
-          })
-        : this.attachmentsApi.upload({
-            file,
-            refType: 'TICKET_RESOLUTION',
-            refId: resolution.id,
-          });
+      const upload$: Observable<UploadOutcome> = projectId
+        ? this.documentsApi
+            .uploadToProject(projectId, {
+              file,
+              title: `${this.data.ticketNo} · รอบ ${round} · ${file.name}`,
+              note: `แนบจากใบปัญหา ${this.data.ticketNo} รอบแก้ไขที่ ${round}`,
+            })
+            .pipe(
+              map((): UploadOutcome => 'project'),
+              catchError(() => toRound$(file))
+            )
+        : toRound$(file);
       return upload$.pipe(
-        map(() => null as string | null),
-        catchError((err: unknown) =>
-          of(`${file.name} (${apiErrorMessage(err)})`)
-        )
+        catchError((err: unknown) => of(`${file.name} (${apiErrorMessage(err)})`))
       );
     });
     return concat(...uploads).pipe(
       toArray(),
-      map((names) => names.filter((n): n is string => n != null))
+      map((outcomes) =>
+        outcomes.reduce<UploadSummary>((acc, o) => {
+          if (o === 'project') {
+            acc.toProject++;
+          } else if (o === 'round') {
+            acc.toRound++;
+          } else {
+            acc.failed.push(o);
+          }
+          return acc;
+        }, empty)
+      )
     );
   }
+}
+
+type UploadOutcome = 'project' | 'round';
+
+interface UploadSummary {
+  toProject: number;
+  toRound: number;
+  /** ชื่อไฟล์ (เหตุผล) ที่อัปโหลดไม่ผ่านทั้งสองทาง */
+  failed: string[];
 }
 
 /* ——— Assign / pickup dialog ——— */

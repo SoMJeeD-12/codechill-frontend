@@ -1,6 +1,6 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, Injector, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, finalize, tap } from 'rxjs';
 import {
   AppNotification,
   isNotificationUnread,
@@ -11,32 +11,28 @@ import { NotificationService } from './notification.service';
 import { NavAttentionService } from './nav-attention.service';
 import { InboxToastService } from '../../shared/toasts/inbox-toast.service';
 
-const POLL_MS = 20_000;
 const RECENT_LIMIT = 8;
 
 /**
- * Poll inbox แจ้งเตือน (ไม่มี WS/SSE) — อัปเดต badge + การ์ดชนิด B เมื่อมีของใหม่
+ * Inbox แจ้งเตือน (ไม่มี WS/SSE) — badge กระดิ่ง + การ์ดชนิด B เมื่อมีของใหม่
+ * รอบเวลา/visibility อยู่ที่ NavAttentionService.refreshBadges() ที่เดียว
  * รอบแรกหลัง start = baseline อย่างเดียว ไม่ toast ของเก่า
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationInboxService {
   private readonly api = inject(NotificationService);
   private readonly auth = inject(AuthService);
-  private readonly attention = inject(NavAttentionService);
+  private readonly injector = inject(Injector);
   private readonly inboxToasts = inject(InboxToastService);
   private readonly router = inject(Router);
 
   private running = false;
   private polling = false;
+  private pendingPoll = false;
+  private pendingQuiet = true;
   private baselineDone = false;
   private lastSeenId = 0;
-  private timerId: number | null = null;
   private ringClearId: number | null = null;
-  private readonly onVisibility = () => {
-    if (document.visibilityState === 'visible') {
-      this.poll();
-    }
-  };
 
   readonly unreadCount = signal(0);
   readonly recentItems = signal<AppNotification[]>([]);
@@ -54,24 +50,18 @@ export class NotificationInboxService {
     this.running = true;
     this.baselineDone = false;
     this.lastSeenId = 0;
-    document.addEventListener('visibilitychange', this.onVisibility);
     this.poll();
-    this.timerId = window.setInterval(() => this.poll(), POLL_MS);
   }
 
   stop(): void {
     this.running = false;
     this.polling = false;
+    this.pendingPoll = false;
     this.baselineDone = false;
-    if (this.timerId != null) {
-      window.clearInterval(this.timerId);
-      this.timerId = null;
-    }
     if (this.ringClearId != null) {
       window.clearTimeout(this.ringClearId);
       this.ringClearId = null;
     }
-    document.removeEventListener('visibilitychange', this.onVisibility);
     this.inboxToasts.dismissAll();
     this.unreadCount.set(0);
     this.recentItems.set([]);
@@ -119,8 +109,6 @@ export class NotificationInboxService {
           })
         );
         this.unreadCount.update((n) => Math.max(0, n - Math.max(cleared, updated)));
-        this.attention.refresh();
-        this.refreshQuiet();
       },
       error: () => undefined,
     });
@@ -137,8 +125,6 @@ export class NotificationInboxService {
           )
         );
         this.unreadCount.set(0);
-        this.attention.refresh();
-        this.refreshQuiet();
       })
     );
   }
@@ -168,15 +154,20 @@ export class NotificationInboxService {
           list.map((n) => (n.id === updated.id ? updated : n))
         );
         this.unreadCount.update((n) => Math.max(0, n - 1));
-        this.attention.refresh();
         go();
       },
       error: () => go(),
     });
   }
 
-  private poll(opts: { quiet?: boolean } = {}): void {
-    if (!this.running || this.polling) {
+  /** เรียกจาก NavAttentionService.refreshBadges() — ซ้อนกันจะรวมเป็นรอบถัดไปรอบเดียว */
+  poll(opts: { quiet?: boolean } = {}): void {
+    if (!this.running) {
+      return;
+    }
+    if (this.polling) {
+      this.pendingPoll = true;
+      this.pendingQuiet = this.pendingQuiet && !!opts.quiet;
       return;
     }
     this.auth.session();
@@ -186,9 +177,8 @@ export class NotificationInboxService {
     }
 
     this.polling = true;
-    this.api.list({ page: 1, limit: 20 }).subscribe({
+    this.api.list({ page: 1, limit: 20 }).pipe(finalize(() => this.finishPoll())).subscribe({
       next: (body) => {
-        this.polling = false;
         const items = body.items ?? [];
         const unread = items.filter((row) => isNotificationUnread(row)).length;
         this.unreadCount.set(unread);
@@ -221,13 +211,22 @@ export class NotificationInboxService {
         if (fresh.length) {
           this.ringBell();
           this.inboxToasts.showMany(fresh);
-          this.attention.refresh();
+          // แจ้งเตือนใหม่มักมาพร้อมใบเข้าคิว — ให้เลขคิวตามทัน
+          this.injector.get(NavAttentionService).refreshBadges();
         }
       },
-      error: () => {
-        this.polling = false;
-      },
+      error: () => undefined,
     });
+  }
+
+  private finishPoll(): void {
+    this.polling = false;
+    if (this.pendingPoll) {
+      const quiet = this.pendingQuiet;
+      this.pendingPoll = false;
+      this.pendingQuiet = true;
+      this.poll({ quiet });
+    }
   }
 
   private ringBell(): void {

@@ -13,7 +13,6 @@ import { MENU_ITEMS, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
 import { NavAttentionService } from '../services/nav-attention.service';
-import { NotificationInboxService } from '../services/notification-inbox.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { NotificationBellComponent } from './notification-bell.component';
 import { InboxToastHostComponent } from '../../shared/toasts/inbox-toast-host.component';
@@ -45,8 +44,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   /** จุดแดงเมนู — อ่าน counts() ใน template ให้ reactive */
   readonly attention = inject(NavAttentionService);
-  private readonly inbox = inject(NotificationInboxService);
-
   readonly user = this.auth.currentUser;
   /** เมนูที่มี children ที่กำลังขยาย */
   readonly expandedMenus = signal<Set<string>>(new Set());
@@ -111,23 +108,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.auth.refreshSession();
     this.syncExpandedFromUrl(this.router.url);
-    this.attention.refresh();
-    this.inbox.start();
-    // รอ /auth/me เสร็จแล้วดึง badge / เริ่ม poll แจ้งเตือนอีกรอบ
-    window.setTimeout(() => {
-      this.attention.refresh();
-      this.inbox.start();
-    }, 1200);
+    this.attention.start();
+    // รอ /auth/me เสร็จแล้วดึง badge / เริ่ม inbox อีกรอบ
+    window.setTimeout(() => this.attention.start(), 1200);
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe((e) => {
-        this.syncExpandedFromUrl(e.urlAfterRedirects);
-        this.attention.refresh();
-      });
+      .subscribe((e) => this.syncExpandedFromUrl(e.urlAfterRedirects));
   }
 
   ngOnDestroy(): void {
-    this.inbox.stop();
+    this.attention.stop();
   }
 
   badgeCount(code: string): number {
@@ -199,7 +189,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   openTicketForm(): void {
     this.quickActions.openTicketForm().subscribe((saved) => {
       if (saved) {
-        this.attention.refresh();
+        this.attention.refreshBadges();
       }
     });
   }
@@ -208,7 +198,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   openCommunicationLog(): void {
     this.quickActions.openCommunicationLog().subscribe((saved) => {
       if (saved) {
-        this.attention.refresh();
+        this.attention.refreshBadges();
       }
     });
   }
@@ -225,7 +215,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    this.inbox.stop();
+    this.attention.stop();
     this.auth.logout();
   }
 }

@@ -29,6 +29,7 @@ import { ApiToastService } from '../../shared/services/api-toast.service';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
+import { NavAttentionService } from '../../core/services/nav-attention.service';
 import { TicketAssignDialogComponent } from './ticket-detail-page.component';
 
 const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
@@ -73,6 +74,7 @@ export class AdminQueuePageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ApiToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly attention = inject(NavAttentionService);
 
   private loadedOnce = false;
 
@@ -175,7 +177,11 @@ export class AdminQueuePageComponent implements OnInit {
     this.reload();
   }
 
+  /** ไม่มีคำค้น = เลขชุดเดียวกับเมนู sidebar · มีคำค้น = นับตามคำค้น */
   tabCount(tab: AdminQueueTab): number {
+    if (!this.search().trim()) {
+      return this.attention.adminTabCounts()[tab] ?? 0;
+    }
     return this.tabTotals()[tab] ?? 0;
   }
 
@@ -207,7 +213,11 @@ export class AdminQueuePageComponent implements OnInit {
           this.total.set(body.total);
           this.tabTotals.update((m) => ({ ...m, [tab]: body.total }));
           this.loading.set(false);
-          this.refreshSiblingCounts(tab);
+          if (this.search().trim()) {
+            this.refreshSiblingCounts(tab);
+          } else {
+            this.attention.setAdminTabCount(tab, body.total);
+          }
         },
         error: (err: Error) => {
           this.items.set([]);

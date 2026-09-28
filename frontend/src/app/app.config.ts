@@ -10,6 +10,7 @@ import {
   ThaiCeDateAdapter,
 } from './core/date/thai-ce-date-adapter';
 import { authInterceptor } from './core/http/auth.interceptor';
+import { badgeRefreshInterceptor } from './core/http/badge-refresh.interceptor';
 import { unwrapInterceptor } from './core/http/unwrap.interceptor';
 import { AuthService } from './core/services/auth.service';
 
@@ -17,7 +18,9 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor, unwrapInterceptor])),
+    provideHttpClient(
+      withInterceptors([authInterceptor, unwrapInterceptor, badgeRefreshInterceptor])
+    ),
     {
       provide: APP_INITIALIZER,
       useFactory: (auth: AuthService) => () =>

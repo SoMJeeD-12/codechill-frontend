@@ -27,6 +27,7 @@
 }
 
 .status-bar[data-status='RECEIVED'],
+.status-bar[data-status='WAITING_ADMIN'],
 .status-bar[data-status='DRAFT'],
 .status-bar[data-status='PLANNED'] {
   border-color: rgba(59, 130, 246, 0.35);
@@ -37,7 +38,8 @@
   }
 }
 
-.status-bar[data-status='ASSIGNED'] {
+.status-bar[data-status='ASSIGNED'],
+.status-bar[data-status='WAITING_SUPPORT'] {
   border-color: rgba(124, 58, 237, 0.35);
   background: #f5f3ff;
 

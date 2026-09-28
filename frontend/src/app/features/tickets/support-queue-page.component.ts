@@ -29,6 +29,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { ApiToastService } from '../../shared/services/api-toast.service';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
 import { createTableSort } from '../../shared/utils/table-sort';
+import { NavAttentionService } from '../../core/services/nav-attention.service';
 
 type SupportSortKey =
   | 'title'
@@ -65,6 +66,7 @@ export class SupportQueuePageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ApiToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly attention = inject(NavAttentionService);
 
   private loadedOnce = false;
 
@@ -190,7 +192,11 @@ export class SupportQueuePageComponent implements OnInit {
             this.returnedTotal.set(body.total);
           }
           this.loading.set(false);
-          this.refreshOtherTabCount(tab);
+          if (this.search().trim()) {
+            this.refreshOtherTabCount(tab);
+          } else {
+            this.attention.setSupportTabCount(tab, body.total);
+          }
         },
         error: (err: Error) => {
           this.items.set([]);
@@ -223,6 +229,14 @@ export class SupportQueuePageComponent implements OnInit {
           /* ignore */
         },
       });
+  }
+
+  /** ไม่มีคำค้น = เลขชุดเดียวกับเมนู sidebar · มีคำค้น = นับตามคำค้น */
+  tabCount(tab: SupportQueueTab): number {
+    if (!this.search().trim()) {
+      return this.attention.supportTabCounts()[tab] ?? 0;
+    }
+    return tab === 'AWAITING_SEND' ? this.sendTotal() : this.returnedTotal();
   }
 
   userName(id: number | null | undefined): string {

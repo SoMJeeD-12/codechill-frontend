@@ -89,10 +89,6 @@ export class TicketsPageComponent implements OnInit {
     // ไม่มี DELETE ใบ — ห้ามโชว์ปุ่มลบ
     return false;
   });
-  readonly canClose = computed(() => {
-    this.auth.session();
-    return this.auth.hasPermissionCode('ticket.close');
-  });
   readonly canCreate = computed(() => {
     this.auth.session();
     return (
@@ -228,7 +224,7 @@ export class TicketsPageComponent implements OnInit {
     return (
       ticket.isPending ||
       OPEN_TICKET_STATUSES.includes(shown) ||
-      ['RECEIVED', 'IN_PROGRESS', 'REOPENED', 'ASSIGNED'].includes(ticket.status) ||
+      OPEN_TICKET_STATUSES.includes(ticket.status) ||
       shown === 'IN_PROGRESS'
     );
   }
@@ -301,9 +297,6 @@ export class TicketsPageComponent implements OnInit {
     if (this.canEdit()) {
       actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openEdit(row) });
     }
-    if (this.canClose() && this.displayStatus(row) === 'RESOLVED') {
-      actions.push({ label: 'ปิดงาน', icon: 'task_alt', run: () => this.closeTicket(row) });
-    }
     if (this.canDelete()) {
       actions.push({ label: 'ลบ', icon: 'delete', danger: true, run: () => this.remove(row) });
     }
@@ -346,37 +339,6 @@ export class TicketsPageComponent implements OnInit {
           this.reload();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
-      });
-    });
-  }
-
-  closeTicket(row: Ticket): void {
-    if (!this.canClose() || row.status === 'CLOSED') {
-      return;
-    }
-    if (this.displayStatus(row) !== 'RESOLVED') {
-      this.snack.open(
-        'ปิดงานได้เมื่อรอบล่าสุดเป็น「สำเร็จ」แล้ว — สำเร็จบางส่วนยังต้องทำต่อ',
-        'ปิด',
-        { duration: 4500 }
-      );
-      return;
-    }
-    openConfirmDialog(this.dialog, {
-      title: 'ปิดงานใบแจ้งปัญหา',
-      message: `ต้องการปิดงาน「${row.title}」หรือไม่?\nใบจะออกจากคิวเปิด แต่เปิดรอบใหม่ได้ภายหลัง`,
-      confirmLabel: 'ปิดงาน',
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      this.ticketsApi.close(row.id).subscribe({
-        next: () => {
-          this.demoOverlay.clearIncompleteWork(row.id);
-          this.snack.open('ปิดงานแล้ว', 'ปิด', { duration: 2500 });
-          this.reload();
-        },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
       });
     });
   }
