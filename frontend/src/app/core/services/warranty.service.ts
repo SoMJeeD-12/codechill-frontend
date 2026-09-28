@@ -192,13 +192,6 @@ export class WarrantyService {
       );
   }
 
-  remove(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`).pipe(
-      tap(() => this.items.update((list) => list.filter((w) => w.id !== id))),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
-  }
-
   private normalize(
     row: Warranty & {
       warrantyNo?: string | null;

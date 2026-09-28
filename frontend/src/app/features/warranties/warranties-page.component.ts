@@ -46,7 +46,6 @@ import { TablePaginatorComponent } from '../../shared/components/table-paginator
 import { CodeLabelComponent } from '../../shared/components/code-label.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
-import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
@@ -277,25 +276,6 @@ export class WarrantiesPageComponent implements OnInit {
         this.view.set('all');
         this.reload();
       }
-    });
-  }
-
-  remove(row: Warranty): void {
-    openConfirmDialog(this.dialog, {
-      title: 'ลบประกัน',
-      message: `ต้องการลบประกันของ「${row.project?.name || 'โปรเจกต์'}」หรือไม่?`,
-      confirmLabel: 'ลบประกัน',
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      this.api.remove(row.id).subscribe({
-        next: () => {
-          this.snack.open('ลบประกันแล้ว', 'ปิด', { duration: 2500 });
-          this.reload();
-        },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
-      });
     });
   }
 }

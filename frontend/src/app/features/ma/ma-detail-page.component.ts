@@ -101,10 +101,14 @@ export class MaDetailPageComponent implements OnInit {
   readonly billingLabels = MA_BILLING_CYCLE_LABELS;
   readonly addonColumns = ['title', 'extraQuota', 'price', 'effective', 'createdAt'];
 
-  readonly canRenew = computed(
-    () =>
-      this.auth.hasPermissionCode('ma.renew') || this.auth.hasPermissionCode('ma.update')
-  );
+  /** ต่ออายุได้เฉพาะ ACTIVE / EXPIRED — RENEWED ได้ 409 · CANCELLED ได้ 400 */
+  readonly canRenew = computed(() => {
+    const status = this.contract()?.status;
+    return (
+      (this.auth.hasPermissionCode('ma.renew') || this.auth.hasPermissionCode('ma.update')) &&
+      (status === 'ACTIVE' || status === 'EXPIRED')
+    );
+  });
 
   readonly canActivate = computed(() => {
     const c = this.contract();

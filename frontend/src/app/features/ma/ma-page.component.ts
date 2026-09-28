@@ -405,6 +405,8 @@ export class MaFormDialogComponent {
       : null
     : 'DRAFT';
   readonly status = signal<MaEditableStatus | null>(this.initialStatus);
+  /** RENEWED ห้ามเปลี่ยนสถานะ — PATCH ที่มี status จะได้ 400 */
+  readonly canChangeStatus = this.lockedStatus !== 'RENEWED';
   /**
    * true = ผู้ใช้กำหนดวันสิ้นสุดเอง (สัญญา 1 ปีแบ่งจ่ายรายเดือน / สัญญาเก่าจากกระดาษ)
    * false = ระบบคำนวณจากวันเริ่ม + รอบวางบิล
@@ -586,7 +588,9 @@ export class MaFormDialogComponent {
         startDate: start,
         endDate: end,
         status:
-          pickedStatus && pickedStatus !== this.initialStatus ? pickedStatus : undefined,
+          this.canChangeStatus && pickedStatus && pickedStatus !== this.initialStatus
+            ? pickedStatus
+            : undefined,
         signedDate: raw.signedDate ? toDateOnlyString(raw.signedDate) : null,
         note: raw.note?.trim() || null,
       };
