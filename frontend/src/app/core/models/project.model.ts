@@ -88,6 +88,43 @@ export interface TaskSubmission {
   /** หมายเหตุผู้ตรวจตอนส่งกลับแก้ไข (REJECTED) */
   reviewNote: string | null;
   reviewedAt: string | null;
+  reviewedByUserId: number | null;
+  /** ไฟล์ที่ผู้ตรวจแนบ — ดาวน์โหลดด้วย Authorization ตั้งชื่อจาก reviewFileName */
+  reviewFileName: string | null;
+  reviewDownloadUrl: string | null;
+}
+
+export type TaskReviewTab = 'PENDING' | 'REVIEWED';
+export type TaskReviewResult = 'APPROVED' | 'REJECTED';
+
+export interface TaskReviewPersonRef {
+  id: number;
+  username?: string | null;
+  fullName: string;
+}
+
+/** แถวจาก GET /tasks/reviews */
+export interface TaskReviewItem {
+  submission: TaskSubmission;
+  task: {
+    id: number;
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    dueDate: string | null;
+  };
+  project: { id: number; code: string | null; name: string; status: ProjectStatus } | null;
+  submittedBy: TaskReviewPersonRef | null;
+  reviewedBy: TaskReviewPersonRef | null;
+}
+
+export interface TaskReviewListParams {
+  tab: TaskReviewTab;
+  page?: number;
+  limit?: number;
+  projectId?: number | null;
+  search?: string | null;
+  result?: TaskReviewResult | null;
 }
 
 /** TaskResponseDto (subTasks ถูก flatten เก็บใน store) */
@@ -158,6 +195,8 @@ export interface Delivery {
   acceptedAt: string | null;
   acceptedByContactId: number | null;
   deliveredByUserId: number | null;
+  /** ผู้ส่งมอบจาก API — ใช้ชื่อนี้ก่อน (รวมพนักงานที่ลาออกแล้ว) */
+  deliveredByUser?: { id: number; username?: string | null; fullName: string } | null;
   note: string | null;
   /** การส่งมอบครั้งสุดท้ายของโครงการ */
   isFinal: boolean;

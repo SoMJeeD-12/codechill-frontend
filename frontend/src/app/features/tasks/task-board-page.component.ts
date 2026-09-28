@@ -23,7 +23,7 @@ import { TaskKanbanBoardComponent } from '../projects/task-kanban-board.componen
           @if (canReview) {
             <a mat-stroked-button routerLink="/app/tasks/review">
               <mat-icon>rate_review</mat-icon>
-              ตรวจงานโปรเจกต์
+              งานตรวจ
             </a>
           }
         </div>

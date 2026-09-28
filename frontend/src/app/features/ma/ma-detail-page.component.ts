@@ -36,14 +36,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import {
   MaAddonInput,
-  MaContractPrintPayload,
   MaContractRenewInput,
   MaService,
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { addDays, parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { navigateBack } from '../../core/utils/navigation.util';
-import { formatMoneyDisplay, parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
+import { parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
@@ -52,13 +51,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
-
-/** ค่า placeholder สำหรับหน้าพิมพ์ร่างสัญญา (แก้ที่ FE) */
-const COMPANY_PRINT = {
-  name: 'ชื่อบริษัทเรา',
-  address: 'ที่อยู่',
-  taxId: 'เลขผู้เสียภาษี',
-} as const;
+import { printMaContract } from './ma-contract-print';
 
 @Component({
   selector: 'app-ma-detail-page',
@@ -215,10 +208,7 @@ export class MaDetailPageComponent implements OnInit {
     if (!c) {
       return;
     }
-    this.api.getPrintPayload(c.id).subscribe({
-      next: (payload) => this.openPrintWindow(this.buildDraftHtml(payload), 'ร่างสัญญา'),
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
-    });
+    printMaContract(this.api, this.snack, c.id);
   }
 
   activateContract(): void {
@@ -304,123 +294,6 @@ export class MaDetailPageComponent implements OnInit {
   private dayAfter(dateStr: string): string {
     return toDateOnlyString(addDays(parseDateOnly(dateStr) ?? new Date(dateStr), 1));
   }
-
-  private openPrintWindow(html: string, label: string): void {
-    const win = window.open('', '_blank', 'width=800,height=900');
-    if (!win) {
-      this.snack.open(`เบราว์เซอร์บล็อกหน้าต่าง${label}`, 'ปิด', { duration: 3000 });
-      return;
-    }
-    win.document.write(html);
-    win.document.close();
-  }
-
-  private buildDraftHtml(payload: MaContractPrintPayload): string {
-    const { contract, customer, primaryContact, project, plan, addons } = payload;
-    const watermark = contract.status === 'CANCELLED' ? 'CANCELLED' : 'DRAFT';
-    const customerAddr = [customer.address, customer.province, customer.postalCode]
-      .filter(Boolean)
-      .join(' ');
-    const planItems = (plan.items ?? [])
-      .map(
-        (item, i) =>
-          `<tr><td>${i + 1}</td><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.detail || '—')}</td></tr>`
-      )
-      .join('');
-    const addonRows = (addons ?? [])
-      .map(
-        (a) =>
-          `<tr><td>${escapeHtml(a.title)}</td><td>${a.extraQuota}</td><td>${formatMoneyDisplay(a.price)}</td></tr>`
-      )
-      .join('');
-
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ร่างสัญญา ${escapeHtml(plan.name)} #${contract.id}</title>
-<style>
-body{font-family:Sarabun,sans-serif;padding:36px;color:#1c2b28;position:relative}
-.watermark{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
-.watermark span{font-size:7rem;font-weight:800;color:rgba(180,83,9,0.12);transform:rotate(-28deg);letter-spacing:0.08em}
-.content{position:relative;z-index:1}
-h1{margin:0 0 4px;font-size:1.45rem}
-.muted{color:#5b6762;font-size:0.9rem}
-.party{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.25rem 0}
-.box{border:1px solid #d4d4d4;border-radius:8px;padding:0.85rem 1rem}
-.box h3{margin:0 0 0.5rem;font-size:0.95rem}
-table{width:100%;border-collapse:collapse;margin-top:0.75rem}
-th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
-.sign{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:3rem}
-.sign-line{margin-top:3rem;border-top:1px solid #333;padding-top:0.4rem}
-@media print{button{display:none}}
-</style></head><body>
-<div class="watermark"><span>${watermark}</span></div>
-<div class="content">
-<p class="muted">CPAMS · ร่างสัญญาบำรุงรักษา (MA)</p>
-<h1>${escapeHtml(plan.name)} · #${contract.id}</h1>
-<p class="muted">สถานะ: ${escapeHtml(contract.status)} · ระยะ ${escapeHtml(contract.startDate)} – ${escapeHtml(contract.endDate)} · สร้างเอกสาร ${escapeHtml(payload.generatedAt)}</p>
-
-<div class="party">
-  <div class="box">
-    <h3>ผู้ให้บริการ</h3>
-    <p><strong>${escapeHtml(COMPANY_PRINT.name)}</strong><br>
-    ${escapeHtml(COMPANY_PRINT.address)}<br>
-    เลขผู้เสียภาษี: ${escapeHtml(COMPANY_PRINT.taxId)}</p>
-  </div>
-  <div class="box">
-    <h3>ลูกค้า</h3>
-    <p><strong>${escapeHtml(customer.name)}</strong>
-    ${customer.code ? `<br>รหัส: ${escapeHtml(customer.code)}` : ''}<br>
-    ${customerAddr ? escapeHtml(customerAddr) + '<br>' : ''}
-    เลขผู้เสียภาษี: ${escapeHtml(customer.taxId || '—')}<br>
-    โทร: ${escapeHtml(customer.phone || '—')}
-    ${primaryContact ? `<br>ผู้ติดต่อ: ${escapeHtml(primaryContact.name)}${primaryContact.position ? ' (' + escapeHtml(primaryContact.position) + ')' : ''}` : ''}
-    </p>
-  </div>
-</div>
-
-<p>โปรเจกต์: ${escapeHtml(project.name)}<br>
-แผน: ${escapeHtml(plan.code ? `${plan.code} · ${plan.name}` : plan.name)} · โควตา ${plan.bugQuotaPerMonth} เคส/เดือน<br>
-มูลค่ารวมตลอดอายุสัญญา: ${formatMoneyDisplay(contract.price)} บาท<br>
-รอบวางบิล: ${escapeHtml(this.billingLabels[contract.billingCycle])}</p>
-
-<h3>รายการในแผน</h3>
-<table>
-<thead><tr><th>#</th><th>รายการ</th><th>รายละเอียด</th></tr></thead>
-<tbody>
-${planItems || '<tr><td colspan="3">—</td></tr>'}
-</tbody></table>
-
-<h3>Add-on (แยกจากแผน)</h3>
-<table>
-<thead><tr><th>รายการ</th><th>โควตาเพิ่ม</th><th>ราคา</th></tr></thead>
-<tbody>
-${addonRows || '<tr><td colspan="3">ไม่มี Add-on</td></tr>'}
-</tbody></table>
-
-${contract.note ? `<p class="muted">หมายเหตุ: ${escapeHtml(contract.note)}</p>` : ''}
-
-<div class="sign">
-  <div>
-    <div class="sign-line">ลงชื่อ ผู้ให้บริการ</div>
-    <p class="muted">วันที่ ............................</p>
-  </div>
-  <div>
-    <div class="sign-line">ลงชื่อ ลูกค้า</div>
-    <p class="muted">วันที่ ............................</p>
-  </div>
-</div>
-
-<p class="muted">เอกสารร่างสำหรับพรีวิว — ไม่ใช่สัญญาที่ลงนามแล้ว</p>
-<button onclick="window.print()">พิมพ์</button>
-</div>
-</body></html>`;
-  }
-}
-
-function escapeHtml(value: string | number | null | undefined): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 export interface MaRenewDialogData {

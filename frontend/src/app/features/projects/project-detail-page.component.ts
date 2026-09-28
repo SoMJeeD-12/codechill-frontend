@@ -115,6 +115,8 @@ import {
   printWarranty,
 } from '../warranties/warranty-documents-dialog.component';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
+import { printMaContract } from '../ma/ma-contract-print';
+import { MaService } from '../../core/services/ma.service';
 import {
   ProjectSurveyDialogComponent,
   ProjectSurveyDialogData,
@@ -160,6 +162,7 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly documentsApi = inject(DocumentService);
   private readonly followUpsApi = inject(FollowUpService);
   private readonly warrantiesApi = inject(WarrantyService);
+  private readonly maApi = inject(MaService);
   private readonly ticketsApi = inject(TicketService);
   private readonly ticketDemoOverlay = inject(TicketDemoOverlayService);
   private readonly quickActions = inject(QuickActionsService);
@@ -535,7 +538,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return list;
     }
     return list.filter((d) => {
-      const deliveredBy = this.userName(d.deliveredByUserId).toLowerCase();
+      const deliveredBy = this.deliveredByName(d).toLowerCase();
       const acceptedBy = this.contactName(d.acceptedByContactId).toLowerCase();
       return (
         String(d.id).includes(q) ||
@@ -744,6 +747,10 @@ export class ProjectDetailPageComponent implements OnInit {
       return '—';
     }
     return this.usersApi.getById(id)?.fullName ?? `#${id}`;
+  }
+
+  deliveredByName(d: Delivery): string {
+    return d.deliveredByUser?.fullName?.trim() || this.userName(d.deliveredByUserId);
   }
 
   priorityLabel(priority: TaskPriority): string {
@@ -1160,6 +1167,11 @@ export class ProjectDetailPageComponent implements OnInit {
         primary: true,
         icon: 'visibility',
         run: () => void this.router.navigate(['/app/ma', row.contract.id]),
+      },
+      {
+        label: 'พิมพ์สัญญา',
+        icon: 'print',
+        run: () => printMaContract(this.maApi, this.snack, row.contract.id),
       },
     ];
     if (this.canUpdateMa()) {
@@ -1833,7 +1845,7 @@ export class ProjectDetailPageComponent implements OnInit {
       ...FORM_DIALOG_COMPACT,
       data: {
         delivery: d,
-        deliveredByName: this.userName(d.deliveredByUserId),
+        deliveredByName: this.deliveredByName(d),
         acceptedByName: this.contactName(d.acceptedByContactId),
       },
     });

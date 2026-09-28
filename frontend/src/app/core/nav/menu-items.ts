@@ -116,8 +116,8 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'tasks-review',
-    label: 'ตรวจงานโปรเจกต์',
-    description: 'งานที่ลูกน้องส่งมาให้ตรวจ',
+    label: 'งานตรวจ',
+    description: 'งานที่รอตรวจ และประวัติที่ฉันตรวจ',
     icon: 'rate_review',
     route: '/app/tasks/review',
     group: 'main',

@@ -2,9 +2,8 @@
 
 <mat-dialog-content>
   <form [formGroup]="form" class="form">
-    <div class="form-grid">
-      <section class="form-grid__col">
-        <h3 class="form-grid__title">ข้อมูลบริษัท</h3>
+      <section class="form-section">
+        <h3 class="form-section__title">ข้อมูลบริษัทและภาษี</h3>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full" hideRequiredMarker>
           <mat-label>ชื่อบริษัท *</mat-label>
@@ -17,6 +16,11 @@
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>เลขผู้เสียภาษี</mat-label>
           <input matInput formControlName="taxId" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>ที่อยู่ (สำหรับออกเอกสาร)</mat-label>
+          <textarea matInput rows="2" formControlName="address"></textarea>
         </mat-form-field>
 
         <div class="row">
@@ -65,19 +69,7 @@
         </div>
       </section>
 
-      <section class="form-grid__col">
-        <h3 class="form-grid__title">ที่อยู่และผู้ติดต่อ</h3>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
-          <mat-label>ที่อยู่</mat-label>
-          <textarea matInput rows="2" formControlName="address"></textarea>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
-          <mat-label>หมายเหตุ</mat-label>
-          <textarea matInput rows="2" formControlName="note"></textarea>
-        </mat-form-field>
-
+      <section class="form-section">
         <fieldset class="section" formGroupName="primaryContact">
           <legend>ผู้ติดต่อหลัก</legend>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
@@ -103,8 +95,13 @@
           </div>
         </fieldset>
 
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>หมายเหตุ</mat-label>
+          <textarea matInput rows="2" formControlName="note"></textarea>
+        </mat-form-field>
+
         <fieldset class="section section--muted">
-          <legend>ช่องทางโซเชียล</legend>
+          <legend>ช่องทางโซเชียล (ไม่บังคับ)</legend>
           <div class="row">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>LINE Official</mat-label>
@@ -117,7 +114,6 @@
           </div>
         </fieldset>
       </section>
-    </div>
   </form>
 
   @if (error()) {

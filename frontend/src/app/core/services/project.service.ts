@@ -6,7 +6,7 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
 import { ApiEnvelopeService } from '../http/api-envelope.service';
 import { optionalResourceOptions } from '../http/http-context';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import { Paginated, asList, asPage, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   Delivery,
   DeliveryAcceptance,
@@ -18,6 +18,8 @@ import {
   TaskItem,
   TaskPriority,
   TaskProjectRef,
+  TaskReviewItem,
+  TaskReviewListParams,
   TaskStatus,
   TaskSubmission,
   TaskSubmissionFile,
@@ -197,6 +199,13 @@ type ApiTaskSubmission = {
   attachments?: ApiTaskSubmissionFile[] | null;
   reviewNote?: string | null;
   reviewedAt?: string | null;
+  reviewedByUserId?: number | null;
+  reviewFileName?: string | null;
+  reviewDownloadUrl?: string | null;
+};
+
+type ApiTaskReviewItem = Omit<TaskReviewItem, 'submission'> & {
+  submission: ApiTaskSubmission;
 };
 
 export interface TaskSubmissionInput {
@@ -522,21 +531,63 @@ export class ProjectService {
    * PATCH /tasks/{id}/review
    * - DONE: อนุมัติ
    * - DOING + reviewNote: ส่งกลับแก้ไข
+   * - มีไฟล์ผู้ตรวจ → multipart { status, reviewNote?, file } · ไม่มีไฟล์ → JSON
    */
   reviewTask(
     taskId: number,
     status: 'DONE' | 'DOING',
-    reviewNote?: string | null
+    reviewNote?: string | null,
+    file?: File | null
   ): Observable<TaskItem> {
-    const body =
-      status === 'DOING'
-        ? { status, reviewNote: (reviewNote ?? '').trim() }
-        : { status };
+    const note = (reviewNote ?? '').trim();
+    let body: FormData | { status: 'DONE' | 'DOING'; reviewNote?: string };
+    if (file) {
+      const form = new FormData();
+      form.append('status', status);
+      if (note) {
+        form.append('reviewNote', note);
+      }
+      form.append('file', file, file.name);
+      body = form;
+    } else {
+      body = status === 'DOING' || note ? { status, reviewNote: note } : { status };
+    }
     return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/review`, body).pipe(
       map((row) => this.normalizeTask(row, this.projectIdOf(taskId, row))),
       tap((task) => this.tasksSignal.update((list) => upsertById(list, task))),
       catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
     );
+  }
+
+  /**
+   * GET /tasks/reviews — งานตรวจ
+   * PENDING = รอตรวจ · REVIEWED = รายการที่ผู้ใช้คนนี้ตรวจเอง (แม้เป็น ADMIN)
+   */
+  listTaskReviews(params: TaskReviewListParams): Observable<{ items: TaskReviewItem[]; total: number }> {
+    return this.http
+      .get<ApiTaskReviewItem[] | Paginated<ApiTaskReviewItem>>(`${this.tasksBase}/reviews`, {
+        params: toHttpParams({
+          tab: params.tab,
+          page: params.page ?? 1,
+          limit: params.limit ?? 20,
+          projectId: params.projectId ?? undefined,
+          search: params.search?.trim() || undefined,
+          result: params.tab === 'REVIEWED' ? params.result ?? undefined : undefined,
+        }),
+      })
+      .pipe(
+        map((body) => {
+          const page = asPage(body);
+          return {
+            total: page.total,
+            items: page.items.map((row) => ({
+              ...row,
+              submission: this.normalizeSubmissions([row.submission])![0],
+            })),
+          };
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   /** GET /tasks/{id} — รายละเอียดงาน (รวม submissions) */
@@ -985,6 +1036,9 @@ export class ProjectService {
         files,
         reviewNote: (s.reviewNote ?? '').trim() || null,
         reviewedAt: s.reviewedAt ?? null,
+        reviewedByUserId: s.reviewedByUserId ?? null,
+        reviewFileName: (s.reviewFileName ?? '').trim() || null,
+        reviewDownloadUrl: (s.reviewDownloadUrl ?? '').trim() || null,
       };
     });
   }

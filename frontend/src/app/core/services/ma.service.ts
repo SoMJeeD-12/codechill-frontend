@@ -324,7 +324,12 @@ export interface MaContractPrintPayload {
     endDate: string;
     signedDate: string | null;
     note: string | null;
-    previousContract?: { id: number; contractNo: string | null } | null;
+    previousContract?: {
+      id: number;
+      contractNo: string | null;
+      startDate?: string;
+      endDate?: string;
+    } | null;
   };
   customer: {
     id: number;
@@ -337,8 +342,9 @@ export interface MaContractPrintPayload {
     phone: string | null;
     email: string | null;
   };
+  /** ไม่มีผู้ติดต่อหลัก = null — ห้ามหยิบผู้ติดต่อคนแรกมาแทน */
   primaryContact: {
-    id: number;
+    id?: number;
     name: string;
     position?: string | null;
     phone?: string | null;
@@ -346,7 +352,7 @@ export interface MaContractPrintPayload {
   } | null;
   project: { id: number; code?: string | null; name: string };
   plan: {
-    code: string;
+    code: string | null;
     name: string;
     description: string | null;
     bugQuotaPerMonth: number;

@@ -111,8 +111,9 @@ export const routes: Routes = [
         path: 'tasks/review',
         canActivate: [permissionGuard('tasks-review')],
         loadComponent: () =>
-          import('./features/tasks/tasks-page.component').then((m) => m.TasksPageComponent),
-        data: { taskMode: 'review' },
+          import('./features/tasks/task-reviews-page.component').then(
+            (m) => m.TaskReviewsPageComponent
+          ),
       },
       {
         path: 'tasks/overdue',

@@ -42,7 +42,7 @@ import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
-import { downloadAuthorizedBlob } from '../../shared/utils/download-blob';
+import { downloadAuthorizedBlob, downloadAuthorizedBlobAs } from '../../shared/utils/download-blob';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { TaskSubmitReportDialogComponent } from './task-submit-report-dialog.component';
 
@@ -314,6 +314,20 @@ export class TaskEditDialogComponent implements OnInit {
     });
   }
 
+  downloadReviewFile(sub: TaskSubmission, key: string): void {
+    if (!sub.reviewDownloadUrl) {
+      return;
+    }
+    this.downloadingKey.set(key);
+    downloadAuthorizedBlobAs(this.http, sub.reviewDownloadUrl, sub.reviewFileName || '').subscribe({
+      next: () => this.downloadingKey.set(null),
+      error: (err: Error) => {
+        this.downloadingKey.set(null);
+        this.snack.open(err.message || 'ดาวน์โหลดไฟล์ไม่สำเร็จ', 'ปิด', { duration: 4000 });
+      },
+    });
+  }
+
   trackSubmission(index: number, row: TaskSubmission): number | string {
     return row.id ?? `${row.submittedAt ?? 'sub'}-${index}`;
   }
@@ -483,7 +497,7 @@ export class TaskEditDialogComponent implements OnInit {
       return;
     }
     if (kind === 'review') {
-      this.error.set('กรุณาตรวจงานจากหน้า「ตรวจงานโปรเจกต์」');
+      this.error.set('กรุณาตรวจงานจากหน้า「งานตรวจ」');
       return;
     }
     if (this.workflow() === 'assignee' && next === 'DONE') {

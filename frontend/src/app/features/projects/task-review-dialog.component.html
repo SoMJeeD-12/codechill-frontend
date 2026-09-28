@@ -123,6 +123,13 @@
         }
       </section>
 
+      @if (hasPreviousRounds()) {
+        <section class="section">
+          <h4>ประวัติรอบส่งก่อนหน้า</h4>
+          <app-task-submission-history [submissions]="t.submissions" [excludePending]="true" />
+        </section>
+      }
+
       @if (canDecide()) {
         <section class="section review-actions">
           <h4>ผลการตรวจ</h4>
@@ -140,10 +147,9 @@
             <input
               #reviewFileInput
               type="file"
-              multiple
               hidden
               [accept]="fileAccept"
-              (change)="onFilesPicked($event)"
+              (change)="onFilePicked($event)"
             />
             <button
               mat-stroked-button
@@ -152,28 +158,26 @@
               (click)="reviewFileInput.click()"
             >
               <mat-icon>attach_file</mat-icon>
-              แนบไฟล์ประกอบการส่งกลับ
+              {{ file() ? 'เปลี่ยนไฟล์แนบ' : 'แนบไฟล์ (ไม่บังคับ)' }}
             </button>
-            <span class="review-files__hint">รูปหน้าจอ / เอกสารจุดที่ต้องแก้ · ไม่เกิน 20 MB ต่อไฟล์ · เก็บในเอกสารโปรเจกต์</span>
-            @if (files().length) {
+            <span class="review-files__hint">รูปหน้าจอ / เอกสารจุดที่ต้องแก้ · 1 ไฟล์ ไม่เกิน 20 MB · ผู้รับผิดชอบดาวน์โหลดได้จากประวัติรอบส่ง</span>
+            @if (file(); as f) {
               <ul class="file-list">
-                @for (file of files(); track $index; let i = $index) {
-                  <li>
-                    <div class="file-meta">
-                      <strong>{{ file.name }}</strong>
-                      <span>{{ fileSize(file.size) }}</span>
-                    </div>
-                    <button
-                      mat-icon-button
-                      type="button"
-                      [disabled]="saving()"
-                      (click)="removeFile(i)"
-                      [attr.aria-label]="'เอาไฟล์ ' + file.name + ' ออก'"
-                    >
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </li>
-                }
+                <li>
+                  <div class="file-meta">
+                    <strong>{{ f.name }}</strong>
+                    <span>{{ fileSize(f.size) }}</span>
+                  </div>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="removeFile()"
+                    [attr.aria-label]="'เอาไฟล์ ' + f.name + ' ออก'"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
               </ul>
             }
           </div>

@@ -98,10 +98,6 @@ export class MaPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('ma.update');
   });
-  readonly canRenew = computed(() => {
-    this.auth.session();
-    return this.auth.hasPermissionCode('ma.renew');
-  });
 
   readonly contracts = signal<MaContract[]>([]);
   /** โควตารอบปัจจุบัน — list API ไม่พ่วง ต้องโหลด GET /ma-contracts/:id/quota */

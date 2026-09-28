@@ -108,6 +108,18 @@ export function fetchAuthorizedBlob(
   );
 }
 
+/** เหมือน downloadAuthorizedBlob แต่ตั้งชื่อไฟล์ตามที่ API ส่งมาในรายการ (ไม่อ่าน Content-Disposition) */
+export function downloadAuthorizedBlobAs(
+  http: HttpClient,
+  downloadUrl: string,
+  fileName: string
+): Observable<void> {
+  return fetchAuthorizedBlob(http, downloadUrl, fileName).pipe(
+    tap(({ blob, fileName: fromHeader }) => triggerBlobDownload(blob, fileName || fromHeader)),
+    map(() => void 0)
+  );
+}
+
 /** ยิง GET blob แล้วเซฟไฟล์ — แนบ Authorization ผ่าน interceptor อัตโนมัติ */
 export function downloadAuthorizedBlob(
   http: HttpClient,

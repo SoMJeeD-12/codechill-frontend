@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import {
@@ -9,9 +9,10 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { TaskItem } from '../../core/models/project.model';
+import { TaskItem, TaskSubmission } from '../../core/models/project.model';
 import { ProjectService } from '../../core/services/project.service';
 import { FilePickerComponent } from '../../shared/components/file-picker.component';
+import { TaskSubmissionHistoryComponent } from './task-submission-history.component';
 
 export interface TaskSubmitReportDialogData {
   task: TaskItem;
@@ -35,6 +36,7 @@ export interface TaskSubmitReportDialogData {
     MatInputModule,
     MatSnackBarModule,
     FilePickerComponent,
+    TaskSubmissionHistoryComponent,
   ],
   template: `
     <h2 mat-dialog-title>ส่งตรวจ — รายงานผลการทำงาน</h2>
@@ -42,6 +44,12 @@ export interface TaskSubmitReportDialogData {
       <p class="task-ref">
         งาน #{{ data.task.id }} · {{ data.task.title }}
       </p>
+      @if (submissions().length) {
+        <section class="history">
+          <h4>ประวัติรอบส่ง</h4>
+          <app-task-submission-history [submissions]="submissions()" />
+        </section>
+      }
       <form [formGroup]="form" class="form" id="submit-report-form" (ngSubmit)="submit()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>รายงานผลการทำงาน *</mat-label>
@@ -89,6 +97,15 @@ export interface TaskSubmitReportDialogData {
       color: #5b6762;
       font-size: 0.9rem;
     }
+    .history {
+      margin: 0 0 0.85rem;
+      max-height: 240px;
+      overflow: auto;
+      h4 {
+        margin: 0 0 0.4rem;
+        font-size: 0.9rem;
+      }
+    }
     .hint {
       margin: 0 0 0.85rem;
       color: #64748b;
@@ -135,13 +152,14 @@ export interface TaskSubmitReportDialogData {
     }
   `,
 })
-export class TaskSubmitReportDialogComponent {
+export class TaskSubmitReportDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly projectsApi = inject(ProjectService);
   private readonly snack = inject(MatSnackBar);
   readonly ref = inject(MatDialogRef<TaskSubmitReportDialogComponent, boolean>);
   readonly data = inject<TaskSubmitReportDialogData>(MAT_DIALOG_DATA);
 
+  readonly submissions = signal<TaskSubmission[]>(this.data.task.submissions ?? []);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly fileName = signal<string | null>(null);
@@ -151,6 +169,13 @@ export class TaskSubmitReportDialogComponent {
     report: ['', Validators.required],
     actualHours: [null as number | null],
   });
+
+  ngOnInit(): void {
+    this.projectsApi.getTask(this.data.task.id).subscribe({
+      next: (task) => this.submissions.set(task.submissions ?? []),
+      error: () => undefined,
+    });
+  }
 
   onFileSelected(file: File | null): void {
     this.selectedFile = file;

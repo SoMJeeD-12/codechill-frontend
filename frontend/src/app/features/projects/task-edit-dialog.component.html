@@ -139,15 +139,31 @@
                       <td class="col-status">{{ submissionStatusLabel(sub.status) }}</td>
                       <td class="col-file">
                         <p class="report">{{ sub.report?.trim() || 'ไม่มีข้อความรายงาน' }}</p>
-                        @if (sub.reviewNote) {
+                        @if (sub.reviewNote || sub.reviewDownloadUrl) {
                           <div class="review-note">
                             <strong>
-                              ผู้ตรวจส่งกลับแก้ไข
+                              {{ sub.status === 'REJECTED' ? 'ผู้ตรวจส่งกลับแก้ไข' : 'หมายเหตุผู้ตรวจ' }}
                               @if (sub.reviewedAt) {
                                 · {{ sub.reviewedAt | thaiDate }}
                               }
                             </strong>
-                            <p>{{ sub.reviewNote }}</p>
+                            @if (sub.reviewNote) {
+                              <p>{{ sub.reviewNote }}</p>
+                            }
+                            @if (sub.reviewDownloadUrl) {
+                              <div class="file-line">
+                                <span class="file-name">ไฟล์จากผู้ตรวจ: {{ sub.reviewFileName || 'ไฟล์แนบ' }}</span>
+                                <button
+                                  mat-icon-button
+                                  type="button"
+                                  [disabled]="downloadingKey() === 'review-' + (sub.id ?? si)"
+                                  (click)="downloadReviewFile(sub, 'review-' + (sub.id ?? si))"
+                                  [attr.aria-label]="'ดาวน์โหลดไฟล์ผู้ตรวจ ' + (sub.reviewFileName || '')"
+                                >
+                                  <mat-icon>download</mat-icon>
+                                </button>
+                              </div>
+                            }
                           </div>
                         }
                         @if (sub.files.length) {

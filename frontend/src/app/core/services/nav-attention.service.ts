@@ -196,8 +196,8 @@ export class NavAttentionService {
     }
     if (this.auth.canAccessTaskReviewQueue()) {
       jobs.push(
-        this.projects.listAllTasks({ page: 1, limit: 100, status: 'REVIEW' }).pipe(
-          map((rows): Job => ({ kind: 'menu', code: 'tasks-review', n: rows.length })),
+        this.projects.listTaskReviews({ tab: 'PENDING', page: 1, limit: 1 }).pipe(
+          map((body): Job => ({ kind: 'menu', code: 'tasks-review', n: body.total })),
           catchError(() => of<Job>({ kind: 'menu', code: 'tasks-review', n: 0 }))
         )
       );

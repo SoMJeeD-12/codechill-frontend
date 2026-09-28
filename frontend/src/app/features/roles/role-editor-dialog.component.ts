@@ -114,7 +114,7 @@ const PERMISSION_HINTS: Record<string, string> = {
   'task.create': 'เพิ่มงานย่อยในโปรเจกต์',
   'task.update': 'แก้งานย่อย · ส่งตรวจ',
   'task.assign': 'มอบหมายงานย่อย',
-  'task.review': 'เมนูตรวจงานโปรเจกต์',
+  'task.review': 'เมนูงานตรวจ',
   'task.delete': 'ลบงานย่อย',
   'customer.view': 'เมนูลูกค้า · มุมมอง 360°',
   'customer.create': 'สร้างลูกค้า',

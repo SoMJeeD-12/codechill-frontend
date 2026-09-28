@@ -19,7 +19,7 @@ import {
 } from '../../core/models/customer.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
+import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { CustomerFormDialogComponent } from './customer-form-dialog.component';
 import { CustomerPreviewDialogComponent } from './customer-preview-dialog.component';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
@@ -212,7 +212,7 @@ export class CustomersPageComponent implements OnInit {
 
   private openForm(customer?: Customer): void {
     const ref = this.dialog.open(CustomerFormDialogComponent, {
-      ...FORM_DIALOG,
+      ...FORM_DIALOG_COMPACT,
       data: { customer: customer ?? null },
     });
     ref.afterClosed().subscribe((saved) => {
