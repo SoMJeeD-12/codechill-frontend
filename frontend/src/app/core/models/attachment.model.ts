@@ -6,7 +6,8 @@ export type AttachmentRefType =
   | 'DELIVERY'
   | 'TICKET'
   | 'TICKET_RESOLUTION'
-  | 'MA_CONTRACT';
+  | 'MA_CONTRACT'
+  | 'WARRANTY';
 
 /**
  * ไฟล์แนบจาก API กลาง
@@ -52,6 +53,7 @@ export const ATTACHMENT_REF_LABELS: Record<AttachmentRefType, string> = {
   TICKET: 'ไฟล์แนบใบปัญหา',
   TICKET_RESOLUTION: 'ไฟล์แนบรอบแก้ไข',
   MA_CONTRACT: 'สแกนสัญญาที่เซ็นแล้ว',
+  WARRANTY: 'เอกสารใบรับประกัน',
 };
 
 export function formatAttachmentSize(bytes: number | null | undefined): string {

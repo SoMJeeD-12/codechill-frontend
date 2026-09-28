@@ -461,17 +461,36 @@ export interface MaRenewDialogData {
             <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
             <mat-datepicker #startPicker></mat-datepicker>
           </mat-form-field>
-          <div class="end-date">
-            <span class="end-date__label">วันสิ้นสุด</span>
-            <strong>{{ endDate() | thaiDate: 'date' }}</strong>
-            <span class="end-date__hint">ระบบคำนวณให้ (วันเริ่ม + 12 เดือน − 1 วัน)</span>
-          </div>
+          @if (manualEnd()) {
+            <mat-form-field appearance="outline">
+              <mat-label>วันสิ้นสุด *</mat-label>
+              <input
+                matInput
+                [matDatepicker]="endPicker"
+                formControlName="endDate"
+                [min]="minEndDate()"
+                readonly
+                (click)="endPicker.open()"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+              <mat-datepicker #endPicker></mat-datepicker>
+              <mat-hint>
+                กำหนดเอง ·
+                <button type="button" class="link-btn" (click)="toggleManualEnd()">ใช้วันที่ระบบคำนวณ</button>
+              </mat-hint>
+            </mat-form-field>
+          } @else {
+            <div class="end-date">
+              <span class="end-date__label">วันสิ้นสุด</span>
+              <strong>{{ form.controls.endDate.value | thaiDate: 'date' }}</strong>
+              <span class="end-date__hint">
+                ระบบคำนวณให้ (วันเริ่ม +
+                {{ form.controls.billingCycle.value === 'MONTHLY' ? '1 เดือน' : '12 เดือน' }} − 1 วัน)
+              </span>
+              <button type="button" class="link-btn" (click)="toggleManualEnd()">แก้วันสิ้นสุด</button>
+            </div>
+          }
         </div>
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>มูลค่าสัญญาใหม่ (บาท) *</mat-label>
-          <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
-          <mat-hint>มูลค่ารวมตลอดสัญญา 1 ปี</mat-hint>
-        </mat-form-field>
         <mat-form-field appearance="outline" class="full">
           <mat-label>รอบวางบิล</mat-label>
           <mat-select formControlName="billingCycle">
@@ -479,7 +498,11 @@ export interface MaRenewDialogData {
               <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
             }
           </mat-select>
-          <mat-hint>สัญญาเป็นปีต่อปี — รายเดือน/รายปีคือรอบการวางบิลเท่านั้น</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>มูลค่าสัญญาใหม่ (บาท) *</mat-label>
+          <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
+          <mat-hint>มูลค่ารวมตลอดอายุสัญญา</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full">
           <mat-label>หมายเหตุ</mat-label>
@@ -532,6 +555,17 @@ export interface MaRenewDialogData {
       color: #64748b;
       line-height: 1.3;
     }
+    .link-btn {
+      justify-self: start;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: #0f766e;
+      font: inherit;
+      font-size: 0.75rem;
+      text-decoration: underline;
+      cursor: pointer;
+    }
     .error {
       color: #b91c1c;
       margin: 0.25rem 0 0;
@@ -556,19 +590,49 @@ export class MaRenewDialogComponent {
       [Validators.required, Validators.min(0)],
     ],
     billingCycle: [this.data.contract.billingCycle as MaBillingCycle],
+    endDate: [null as Date | null, Validators.required],
     note: [this.data.contract.note ?? ''],
   });
 
-  readonly endDate = signal<Date | null>(this.calcEnd(this.form.controls.startDate.value));
+  /** true = กำหนดวันสิ้นสุดเอง · false = คำนวณจากวันเริ่ม + รอบวางบิล */
+  readonly manualEnd = signal(false);
+  readonly minEndDate = signal<Date | null>(null);
 
   constructor() {
-    this.form.controls.startDate.valueChanges.subscribe((value) =>
-      this.endDate.set(this.calcEnd(value))
-    );
+    this.recalcEnd();
+    this.refreshMinEnd();
+    this.form.controls.startDate.valueChanges.subscribe(() => {
+      this.refreshMinEnd();
+      if (!this.manualEnd()) {
+        this.recalcEnd();
+      }
+    });
+    this.form.controls.billingCycle.valueChanges.subscribe(() => {
+      if (!this.manualEnd()) {
+        this.recalcEnd();
+      }
+    });
   }
 
-  private calcEnd(start: Date | null): Date | null {
-    return start ? maContractEndDate(start) : null;
+  toggleManualEnd(): void {
+    const next = !this.manualEnd();
+    this.manualEnd.set(next);
+    if (!next) {
+      this.recalcEnd();
+    }
+  }
+
+  private recalcEnd(): void {
+    const start = this.form.controls.startDate.value;
+    const cycle = this.form.controls.billingCycle.value ?? 'YEARLY';
+    this.form.controls.endDate.setValue(start ? maContractEndDate(start, cycle) : null, {
+      emitEvent: false,
+    });
+  }
+
+  private refreshMinEnd(): void {
+    const start = this.form.controls.startDate.value;
+    this.minEndDate.set(start ? addDays(start, 1) : null);
   }
 
   submit(): void {
@@ -578,7 +642,7 @@ export class MaRenewDialogComponent {
     }
     const raw = this.form.getRawValue();
     const startDate = toDateOnlyString(raw.startDate);
-    const endDate = toDateOnlyString(this.endDate());
+    const endDate = toDateOnlyString(raw.endDate);
     if (!startDate || !endDate || endDate <= startDate) {
       this.error.set('วันสิ้นสุดต้องอยู่หลังวันเริ่ม');
       return;

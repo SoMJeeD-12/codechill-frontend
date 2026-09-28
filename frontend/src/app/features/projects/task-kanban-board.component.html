@@ -44,6 +44,13 @@
           </mat-select>
         </mat-form-field>
 
+        <button mat-stroked-button type="button" (click)="toggleDone()">
+          <mat-icon>{{ showDone() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          {{ showDone() ? 'ซ่อนงานที่เสร็จแล้ว' : 'แสดงงานที่เสร็จแล้ว' }}
+          @if (!showDone() && columnCount('DONE') > 0) {
+            ({{ columnCount('DONE') }})
+          }
+        </button>
         <button mat-stroked-button type="button" (click)="reload()">รีเฟรช</button>
         @if (canCreateTask() && activeProjectId()) {
           <button mat-flat-button color="primary" type="button" (click)="openCreateTask()">
@@ -55,8 +62,12 @@
     </div>
   </div>
 
-  <div class="kanban-board" cdkDropListGroup>
-    @for (status of statuses; track status) {
+  <div
+    class="kanban-board"
+    cdkDropListGroup
+    [style.--kanban-cols]="visibleStatuses().length"
+  >
+    @for (status of visibleStatuses(); track status) {
       <section class="kanban-col" [attr.data-status]="status">
         <header class="kanban-col__head">
           <div class="kanban-col__title">

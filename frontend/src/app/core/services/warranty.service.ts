@@ -8,7 +8,8 @@ import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.ut
 import {
   WARRANTY_NEAR_EXPIRY_DAYS,
   Warranty,
-  WarrantyStatus,
+  WarrantyEditableStatus,
+  WarrantyPrintPayload,
 } from '../models/warranty.model';
 import { ProjectService } from './project.service';
 
@@ -23,7 +24,8 @@ export interface WarrantyCreateInput {
 /** UpdateWarrantyDto — ส่ง `maContractId: null` เพื่อถอดการผูก · ไม่ส่งฟิลด์ = คงค่าเดิม */
 export interface WarrantyUpdateInput {
   durationMonth?: number;
-  status?: WarrantyStatus;
+  /** ไม่ส่ง = ไม่เปลี่ยนสถานะ */
+  status?: WarrantyEditableStatus;
   scopeNote?: string | null;
   maContractId?: number | null;
 }
@@ -116,6 +118,22 @@ export class WarrantyService {
       );
   }
 
+  /** GET /warranties/:id — มี attachments[] */
+  fetchDetail(id: number): Observable<Warranty> {
+    return this.http.get<Warranty>(`${this.base}/${id}`).pipe(
+      map((row) => this.normalize(row)),
+      tap((row) => this.items.update((list) => upsertById(list, row))),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
+  }
+
+  /** GET /warranties/:id/print — ข้อมูลสำหรับจัดหน้าใบรับประกัน */
+  getPrint(id: number): Observable<WarrantyPrintPayload> {
+    return this.http
+      .get<WarrantyPrintPayload>(`${this.base}/${id}/print`)
+      .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
   getById(id: number): Warranty | undefined {
     return this.items().find((w) => w.id === id);
   }
@@ -195,6 +213,7 @@ export class WarrantyService {
       scopeNote: row.scopeNote ?? null,
       maContractId: row.maContractId ?? null,
       maContract: row.maContract ?? null,
+      attachments: Array.isArray(row.attachments) ? row.attachments : [],
       delivery: row.delivery ?? null,
       project: row.project ?? null,
     };

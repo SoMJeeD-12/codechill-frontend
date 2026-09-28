@@ -94,7 +94,7 @@
               <mat-option [value]="b">{{ billingLabels[b] }}</mat-option>
             }
           </mat-select>
-          <mat-hint>สัญญาเป็นปีต่อปี — รายเดือน/รายปีคือรอบการวางบิลเท่านั้น</mat-hint>
+          <mat-hint>รายปีต่อทีละ 1 ปี · รายเดือนต่อทีละ 1 เดือน (กด「ต่ออายุ」ทุกเดือน)</mat-hint>
         </mat-form-field>
 
         <div class="row">
@@ -110,23 +110,41 @@
             <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
             <mat-datepicker #startPicker></mat-datepicker>
           </mat-form-field>
-          <div class="end-date">
-            <span class="end-date__label">วันสิ้นสุด</span>
-            <strong class="end-date__value">{{ endDate() | thaiDate: 'date' }}</strong>
-            <span class="end-date__hint">
-              @if (legacyTerm()) {
-                วันสิ้นสุดเดิมของสัญญานี้ — เปลี่ยนวันเริ่มแล้วระบบจะคำนวณใหม่ (+12 เดือน)
-              } @else {
-                ระบบคำนวณให้ (วันเริ่ม + 12 เดือน − 1 วัน)
-              }
-            </span>
-          </div>
+          @if (manualEnd()) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>วันสิ้นสุด *</mat-label>
+              <input
+                matInput
+                [matDatepicker]="endPicker"
+                formControlName="endDate"
+                [min]="minEndDate()"
+                readonly
+                (click)="endPicker.open()"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+              <mat-datepicker #endPicker></mat-datepicker>
+              <mat-hint>
+                กำหนดเอง ·
+                <button type="button" class="link-btn" (click)="toggleManualEnd()">ใช้วันที่ระบบคำนวณ</button>
+              </mat-hint>
+            </mat-form-field>
+          } @else {
+            <div class="end-date">
+              <span class="end-date__label">วันสิ้นสุด</span>
+              <strong class="end-date__value">{{ form.controls.endDate.value | thaiDate: 'date' }}</strong>
+              <span class="end-date__hint">
+                ระบบคำนวณให้ (วันเริ่ม +
+                {{ form.controls.billingCycle.value === 'MONTHLY' ? '1 เดือน' : '12 เดือน' }} − 1 วัน)
+              </span>
+              <button type="button" class="link-btn" (click)="toggleManualEnd()">แก้วันสิ้นสุด</button>
+            </div>
+          }
         </div>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>มูลค่าสัญญา (บาท) *</mat-label>
           <input matInput appMoneyInput formControlName="price" inputmode="decimal" />
-          <mat-hint>มูลค่ารวมตลอดสัญญา 1 ปี</mat-hint>
+          <mat-hint>มูลค่ารวมตลอดอายุสัญญา</mat-hint>
         </mat-form-field>
       </section>
     </div>

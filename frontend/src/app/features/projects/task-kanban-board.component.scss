@@ -21,7 +21,7 @@
 
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(5, minmax(200px, 1fr));
+  grid-template-columns: repeat(var(--kanban-cols, 5), minmax(200px, 1fr));
   gap: 0.65rem;
   align-items: start;
   overflow-x: auto;
@@ -246,6 +246,6 @@
 
 @media (max-width: 1100px) {
   .kanban-board {
-    grid-template-columns: repeat(5, minmax(180px, 220px));
+    grid-template-columns: repeat(var(--kanban-cols, 5), minmax(180px, 220px));
   }
 }

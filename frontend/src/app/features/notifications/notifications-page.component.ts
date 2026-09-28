@@ -41,6 +41,11 @@ export class NotificationsPageComponent implements OnInit {
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly markingId = signal<number | null>(null);
+  readonly markingAll = signal(false);
+  /** นับจากกระดิ่ง + แถวบนหน้านี้ เผื่อกระดิ่งยังโหลดไม่เสร็จ */
+  readonly hasUnread = computed(
+    () => this.inbox.unreadCount() > 0 || this.items().some((row) => isNotificationUnread(row))
+  );
   readonly statusFilter = signal<InboxFilter>('ALL');
   readonly pageIndex = signal(0);
   readonly pageSize = signal(20);
@@ -128,6 +133,30 @@ export class NotificationsPageComponent implements OnInit {
       this.reload();
       this.inbox.refreshQuiet();
     }, 600);
+  }
+
+  /** PATCH /notifications/read-all — badge รีเฟรชผ่าน badgeRefreshInterceptor + กระดิ่ง */
+  markAllRead(): void {
+    if (this.markingAll()) {
+      return;
+    }
+    this.markingAll.set(true);
+    this.inbox.markAllRead().subscribe({
+      next: ({ updated }) => {
+        this.markingAll.set(false);
+        this.snack.open(
+          updated > 0 ? `อ่านแล้ว ${updated} รายการ` : 'ไม่มีรายการที่ยังไม่อ่าน',
+          'ปิด',
+          { duration: 2500 }
+        );
+        this.reload();
+        this.inbox.refreshQuiet();
+      },
+      error: (err: Error) => {
+        this.markingAll.set(false);
+        this.snack.open(err.message || 'อ่านทั้งหมดไม่สำเร็จ', 'ปิด', { duration: 4000 });
+      },
+    });
   }
 
   markRead(row: AppNotification, event?: Event): void {

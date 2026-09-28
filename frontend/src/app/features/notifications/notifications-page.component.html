@@ -5,6 +5,15 @@
       <p class="app-subtitle">รายการแจ้งเตือนในระบบ — กดแถวเพื่อเปิดงานที่เกี่ยวข้อง</p>
     </div>
     <div class="app-header-actions">
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="markAllRead()"
+        [disabled]="markingAll() || loading() || !hasUnread()"
+      >
+        <mat-icon>done_all</mat-icon>
+        อ่านทั้งหมด
+      </button>
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช

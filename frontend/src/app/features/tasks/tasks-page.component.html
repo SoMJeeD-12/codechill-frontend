@@ -10,6 +10,16 @@
       @if (filterProjectId(); as pid) {
         <a mat-stroked-button [routerLink]="['/app/projects', pid]">กลับโปรเจกต์</a>
       }
+      @if (mode() === 'review' || mode() === 'all') {
+        <a
+          mat-stroked-button
+          routerLink="/app/tasks/board"
+          [queryParams]="filterProjectId() ? { projectId: filterProjectId() } : {}"
+        >
+          <mat-icon>view_kanban</mat-icon>
+          กระดานงาน
+        </a>
+      }
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช

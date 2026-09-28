@@ -69,7 +69,15 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
 } from '../../core/models/ticket.model';
-import { WARRANTY_STATUS_LABELS, Warranty, warrantyMaLinkLabel, readWarrantyConfirmMock, writeWarrantyConfirmMock } from '../../core/models/warranty.model';
+import {
+  WARRANTY_STATUS_LABELS,
+  Warranty,
+  readWarrantyConfirmMock,
+  warrantyDisplayLabel,
+  warrantyDisplayState,
+  warrantyMaLinkLabel,
+  writeWarrantyConfirmMock,
+} from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
@@ -102,6 +110,10 @@ import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared
 import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
 import { WarrantyConfirmDialogComponent } from '../warranties/warranty-confirm-dialog.component';
+import {
+  WarrantyDocumentsDialogComponent,
+  printWarranty,
+} from '../warranties/warranty-documents-dialog.component';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
 import {
   ProjectSurveyDialogComponent,
@@ -229,7 +241,15 @@ export class ProjectDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
-  readonly warrantyColumns = ['warrantyNo', 'delivery', 'period', 'daysLeft', 'maLink', 'status'];
+  readonly warrantyColumns = [
+    'warrantyNo',
+    'delivery',
+    'period',
+    'daysLeft',
+    'maLink',
+    'status',
+    'actions',
+  ];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod', 'actions'];
@@ -580,7 +600,7 @@ export class ProjectDetailPageComponent implements OnInit {
       return (
         (w.warrantyNo ?? '').toLowerCase().includes(q) ||
         (w.delivery?.title ?? '').toLowerCase().includes(q) ||
-        this.warrantyStatusLabel(w.status).toLowerCase().includes(q) ||
+        warrantyDisplayLabel(w).toLowerCase().includes(q) ||
         this.warrantyMaLinkLabel(w).toLowerCase().includes(q) ||
         (w.startDate ?? '').toLowerCase().includes(q) ||
         (w.endDate ?? '').toLowerCase().includes(q)
@@ -1648,6 +1668,50 @@ export class ProjectDetailPageComponent implements OnInit {
       });
     }
     return actions;
+  }
+
+  warrantyRowActions(row: Warranty): RowAction[] {
+    const actions: RowAction[] = [
+      {
+        label: 'ดู / แนบเอกสาร',
+        primary: true,
+        icon: 'attach_file',
+        run: () =>
+          this.dialog.open(WarrantyDocumentsDialogComponent, {
+            ...FORM_DIALOG,
+            data: { warranty: row },
+          }),
+      },
+      {
+        label: 'พิมพ์ใบรับประกัน',
+        icon: 'print',
+        run: () => printWarranty(this.warrantiesApi, this.snack, row.id),
+      },
+    ];
+    if (this.auth.hasPermissionCode('warranty.update')) {
+      actions.push({
+        label: 'แก้ไข',
+        icon: 'edit',
+        run: () =>
+          this.dialog
+            .open(WarrantyFormDialogComponent, { ...FORM_DIALOG, data: row })
+            .afterClosed()
+            .subscribe((saved) => {
+              if (saved) {
+                this.loadWarranties();
+              }
+            }),
+      });
+    }
+    return actions;
+  }
+
+  warrantyDisplayLabel(row: Warranty): string {
+    return warrantyDisplayLabel(row);
+  }
+
+  warrantyDisplayState(row: Warranty): string {
+    return warrantyDisplayState(row);
   }
 
   /** มีประกันของโปรเจกต์/ใบส่งมอบนี้อยู่แล้วหรือไม่ */

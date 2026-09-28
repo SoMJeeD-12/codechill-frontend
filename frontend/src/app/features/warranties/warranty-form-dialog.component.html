@@ -47,22 +47,32 @@
       </mat-form-field>
       @if (isEdit) {
         <mat-form-field appearance="outline">
-          <mat-label>สถานะ</mat-label>
+          <mat-label>{{ lockedStatus ? 'เปลี่ยนสถานะ (ไม่บังคับ)' : 'สถานะ' }}</mat-label>
           <mat-select formControlName="status">
+            @if (lockedStatus) {
+              <mat-option [value]="null">— ไม่เปลี่ยน —</mat-option>
+            }
             @for (s of statuses; track s) {
               <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
             }
           </mat-select>
+          <mat-hint>หมดอายุเองเมื่อเลยวันสิ้นสุด · ต้องการจบก่อนกำหนดให้เลือก「ยกเลิก」</mat-hint>
         </mat-form-field>
       }
     </div>
+
+    @if (lockedStatus) {
+      <p class="locked-summary">
+        สถานะตอนนี้: <strong>{{ statusLabels[lockedStatus] }}</strong> — ระบบตั้งให้เองเพราะเลยวันสิ้นสุดแล้ว
+      </p>
+    }
 
     @if (periodPreview(); as period) {
       <aside class="period-preview" role="note">
         <strong>ช่วงประกันโดยประมาณ</strong>
         <p>
           วันเริ่ม <span>{{ period.startLabel }}</span>
-          <em>· วันถัดจากวันส่งมอบ</em>
+          <em>· เริ่มวันถัดจากวันส่งมอบ</em>
         </p>
         <p>
           วันสิ้นสุด <span>{{ period.endLabel }}</span>

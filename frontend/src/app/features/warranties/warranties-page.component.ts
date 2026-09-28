@@ -22,10 +22,14 @@ import { MatMenuModule } from '@angular/material/menu';
 import { Delivery, Project } from '../../core/models/project.model';
 import { MaContract, maCoverageLabel } from '../../core/models/ma.model';
 import {
+  WARRANTY_EDITABLE_STATUSES,
   WARRANTY_NEAR_EXPIRY_DAYS,
   WARRANTY_STATUS_LABELS,
   Warranty,
+  WarrantyEditableStatus,
   WarrantyStatus,
+  warrantyDisplayLabel,
+  warrantyDisplayState,
   warrantyMaLinkLabel,
   warrantyPeriodPreview,
 } from '../../core/models/warranty.model';
@@ -46,6 +50,11 @@ import { openConfirmDialog } from '../../shared/components/confirm-dialog.compon
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
+import { WarrantyDocumentsDialogComponent, printWarranty } from './warranty-documents-dialog.component';
+
+function isEditableWarrantyStatus(status: WarrantyStatus): status is WarrantyEditableStatus {
+  return (WARRANTY_EDITABLE_STATUSES as readonly WarrantyStatus[]).includes(status);
+}
 
 @Component({
   selector: 'app-warranties-page',
@@ -119,7 +128,7 @@ export class WarrantiesPageComponent implements OnInit {
           customerName.includes(q) ||
           deliveryTitle.includes(q) ||
           (w.warrantyNo ?? '').toLowerCase().includes(q) ||
-          this.statusLabel(w.status).toLowerCase().includes(q) ||
+          this.displayLabel(w).toLowerCase().includes(q) ||
           (w.scopeNote ?? '').toLowerCase().includes(q)
         );
       });
@@ -139,7 +148,7 @@ export class WarrantiesPageComponent implements OnInit {
         case 'maLink':
           return this.maLinkLabel(row);
         case 'status':
-          return this.statusLabel(row.status);
+          return this.displayLabel(row);
       }
     });
   });
@@ -217,8 +226,24 @@ export class WarrantiesPageComponent implements OnInit {
     );
   }
 
-  statusLabel(status: Warranty['status']): string {
-    return this.statusLabels[status];
+  /** ป้ายสถานะ — อ่าน isCurrentlyActive เป็นหลัก */
+  displayLabel(w: Warranty): string {
+    return warrantyDisplayLabel(w);
+  }
+
+  displayState(w: Warranty): string {
+    return warrantyDisplayState(w);
+  }
+
+  openDocuments(row: Warranty): void {
+    this.dialog.open(WarrantyDocumentsDialogComponent, {
+      ...FORM_DIALOG,
+      data: { warranty: row },
+    });
+  }
+
+  print(row: Warranty): void {
+    printWarranty(this.api, this.snack, row.id);
   }
 
   toggleSort(
@@ -323,7 +348,7 @@ export class WarrantyFormDialogComponent {
   readonly deliveries = signal<Delivery[]>([]);
   readonly maContracts = signal<MaContract[]>([]);
   readonly statusLabels = WARRANTY_STATUS_LABELS;
-  readonly statuses = Object.keys(WARRANTY_STATUS_LABELS) as WarrantyStatus[];
+  readonly statuses = WARRANTY_EDITABLE_STATUSES;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly canCreateMa = computed(() => {
@@ -347,6 +372,16 @@ export class WarrantyFormDialogComponent {
       : this.data && 'delivery' in this.data
         ? (this.data.delivery?.deliveredAt ?? null)
         : null;
+  private readonly editRow: Warranty | null =
+    this.data && 'id' in this.data && this.data.id ? this.data : null;
+  /** ประกันที่ระบบตั้งเป็นหมดอายุแล้ว — โชว์เป็นป้ายอ่านอย่างเดียว ไม่อยู่ใน dropdown */
+  readonly lockedStatus: WarrantyStatus | null =
+    this.editRow && !isEditableWarrantyStatus(this.editRow.status) ? this.editRow.status : null;
+  private readonly initialStatus: WarrantyEditableStatus | null = this.editRow
+    ? isEditableWarrantyStatus(this.editRow.status)
+      ? this.editRow.status
+      : null
+    : 'ACTIVE';
 
   readonly form = this.fb.group({
     customerId: [
@@ -369,9 +404,7 @@ export class WarrantyFormDialogComponent {
       this.data && 'durationMonth' in this.data ? this.data.durationMonth : 12,
       [Validators.required, Validators.min(1), Validators.max(120)],
     ],
-    status: [
-      (this.data && 'status' in this.data ? this.data.status : 'ACTIVE') as WarrantyStatus,
-    ],
+    status: [this.initialStatus],
     scopeNote: [this.data && 'scopeNote' in this.data ? (this.data.scopeNote ?? '') : ''],
     maContractId: [
       this.data && 'maContractId' in this.data
@@ -562,9 +595,10 @@ export class WarrantyFormDialogComponent {
         : null;
 
     if (this.isEdit && this.data && 'id' in this.data) {
+      const picked = raw.status as WarrantyEditableStatus | null;
       const payload: WarrantyUpdateInput = {
         durationMonth: Number(raw.durationMonth),
-        status: (raw.status as WarrantyStatus) ?? 'ACTIVE',
+        status: picked && picked !== this.initialStatus ? picked : undefined,
         scopeNote: (raw.scopeNote ?? '').trim() || null,
         maContractId,
       };

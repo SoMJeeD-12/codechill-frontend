@@ -47,6 +47,7 @@ import { TICKET_PRIORITY_LABELS, TICKET_STATUS_LABELS, Ticket } from '../../core
 import {
   WARRANTY_STATUS_LABELS,
   Warranty,
+  warrantyDisplayLabel,
   warrantyMaLinkLabel,
 } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -258,7 +259,7 @@ export class CustomerDetailPageComponent implements OnInit {
         w.delivery?.title,
         w.project?.name,
         String(w.durationMonth),
-        this.warrantyStatusLabels[w.status],
+        warrantyDisplayLabel(w),
         w.endDate,
       ]
         .filter(Boolean)
@@ -561,8 +562,9 @@ export class CustomerDetailPageComponent implements OnInit {
     return followUpDisplayStatus(f);
   }
 
-  warrantyStatusLabel(status: Warranty['status']): string {
-    return this.warrantyStatusLabels[status];
+  /** อ่าน isCurrentlyActive เป็นหลัก — status อาจค้าง ACTIVE ระหว่างรอบ cron */
+  warrantyStatusLabel(w: Warranty): string {
+    return warrantyDisplayLabel(w);
   }
 
   /** ป้ายตาม coverageState — ไม่ใช้ status ดิบ (EXPIRED ระบบตั้งเองตามวันสิ้นสุด) */

@@ -157,12 +157,18 @@ export const MA_STATUS_LABELS: Record<MaContractStatus, string> = {
 export type MaEditableStatus = 'DRAFT' | 'ACTIVE' | 'CANCELLED';
 export const MA_EDITABLE_STATUSES: MaEditableStatus[] = ['DRAFT', 'ACTIVE', 'CANCELLED'];
 
-/** สัญญา MA เป็นปีต่อปีเสมอ — รายเดือน/รายปีเป็นแค่รอบวางบิล */
-export const MA_CONTRACT_TERM_MONTHS = 12;
+/** อายุสัญญาตามรอบ — รายเดือนต่อทีละเดือน (รอพี่เลี้ยงยืนยัน) */
+export const MA_CONTRACT_TERM_MONTHS: Record<MaBillingCycle, number> = {
+  YEARLY: 12,
+  MONTHLY: 1,
+};
 
-/** วันสิ้นสุด = วันเริ่ม + 12 เดือน − 1 วัน (เช่น 1 ต.ค. 2026 → 30 ก.ย. 2027) */
-export function maContractEndDate(start: Date): Date {
-  return contractEndFromDuration(start, MA_CONTRACT_TERM_MONTHS);
+/**
+ * วันสิ้นสุด = วันเริ่ม + N เดือน − 1 วัน (หนีบวันสิ้นเดือนก่อนลบ)
+ * รายปี 28 ก.ย. 69 → 27 ก.ย. 70 · รายเดือน 28 ก.ย. 69 → 27 ต.ค. 69 · 31 ม.ค. → 27/28 ก.พ.
+ */
+export function maContractEndDate(start: Date, cycle: MaBillingCycle): Date {
+  return contractEndFromDuration(start, MA_CONTRACT_TERM_MONTHS[cycle] ?? 12);
 }
 
 /** รอบวางบิลเท่านั้น — โควตายังนับรายเดือนเสมอ */

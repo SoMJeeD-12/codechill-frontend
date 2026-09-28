@@ -84,8 +84,15 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   @Input() showProjectFilter = false;
   /** ตั้งค่าเริ่มต้นตัวกรองผู้รับผิดชอบ (เช่น จาก ?mine=1) */
   @Input() initialAssigneeId: number | null = null;
+  /** ตั้งค่าเริ่มต้นตัวกรองโปรเจกต์บนบอร์ดทั้งบริษัท (เช่น จาก ?projectId=) */
+  @Input() initialProjectId: number | null = null;
 
   readonly statuses = TASK_STATUSES;
+  /** ซ่อนคอลัมน์「เสร็จ」เป็นค่าเริ่มต้น — หัวหน้าดูเฉพาะงานที่ยังค้าง */
+  readonly showDone = signal(false);
+  readonly visibleStatuses = computed(() =>
+    this.showDone() ? this.statuses : this.statuses.filter((s) => s !== 'DONE')
+  );
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
   readonly priorities = TASK_PRIORITIES;
@@ -137,6 +144,9 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
     if (this.initialAssigneeId != null && this.initialAssigneeId > 0) {
       this.assigneeFilter.set(this.initialAssigneeId);
     }
+    if (this.showProjectFilter && this.initialProjectId != null && this.initialProjectId > 0) {
+      this.projectFilter.set(this.initialProjectId);
+    }
     if (this.showProjectFilter) {
       this.projectsApi.listProjects().subscribe({
         next: (list) => this.projects.set(list),
@@ -158,18 +168,26 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   }
 
   reload(): void {
-    this.donePage.set(1);
-    this.loadSummary();
-    for (const status of this.statuses) {
-      this.loadColumn(status, 1, false);
-    }
+    this.applyFilters();
   }
 
   applyFilters(): void {
     this.donePage.set(1);
     this.loadSummary();
-    for (const status of this.statuses) {
+    for (const status of this.visibleStatuses()) {
       this.loadColumn(status, 1, false);
+    }
+  }
+
+  toggleDone(): void {
+    const next = !this.showDone();
+    this.showDone.set(next);
+    if (next) {
+      this.loadColumn('DONE', 1, false);
+    } else {
+      this.patchColumn('DONE', []);
+      this.donePage.set(1);
+      this.doneHasMore.set(false);
     }
   }
 

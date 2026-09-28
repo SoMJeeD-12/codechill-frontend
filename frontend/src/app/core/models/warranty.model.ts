@@ -49,8 +49,66 @@ export interface Warranty {
   /** อ้างอิงสัญญา MA ของโปรเจกต์เดียวกัน — ไม่บังคับ · ไม่คิดรวมโควตา */
   maContractId: number | null;
   maContract: WarrantyMaContractSummary | null;
+  /** มีค่าเฉพาะ GET /warranties/:id — รายการอื่นคืนอาเรย์ว่าง */
+  attachments: WarrantyAttachmentSummary[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** AttachmentSummaryDto — ดาวน์โหลดต้องแนบ Authorization (ดึงเป็น blob) */
+export interface WarrantyAttachmentSummary {
+  id: number;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  downloadUrl: string;
+  createdAt: string;
+}
+
+/** GET /warranties/:id/print — FE จัดหน้ากระดาษเอง */
+export interface WarrantyPrintPayload {
+  generatedAt: string;
+  warranty: {
+    id: number;
+    warrantyNo: string | null;
+    status: WarrantyStatus;
+    durationMonth: number;
+    startDate: string;
+    endDate: string;
+    scopeNote: string | null;
+    isCurrentlyActive: boolean;
+  };
+  delivery: {
+    id: number;
+    deliveryNo: string | null;
+    title: string;
+    version: string | null;
+    deliveredAt: string;
+    acceptedAt: string | null;
+    acceptedByContactName: string | null;
+  };
+  project: { id: number; code: string | null; name: string };
+  customer: {
+    id: number;
+    code: string | null;
+    name: string;
+    taxId: string | null;
+    address: string | null;
+    province: string | null;
+    postalCode: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+  /** null = ลูกค้าไม่มีผู้ติดต่อหลัก — ห้ามหยิบคนแรกมาแทน */
+  primaryContact: {
+    name: string;
+    position: string | null;
+    phone: string | null;
+    email: string | null;
+  } | null;
+  maContract: WarrantyMaContractSummary | null;
+  /** หลังลูกค้าเซ็น สแกนแนบกลับด้วย POST /api/attachments ตามค่านี้ */
+  attachScanHint: { refType: string; refId: number; noteSuggestion: string };
 }
 
 /** ข้อความแสดงการผูก MA — อ้างอิงชื่อแผนเท่านั้น */
@@ -70,6 +128,47 @@ export const WARRANTY_STATUS_LABELS: Record<WarrantyStatus, string> = {
   EXPIRED: 'หมดอายุ',
   VOID: 'ยกเลิก',
 };
+
+/** PUT /warranties/:id รับแค่ 2 ค่า — EXPIRED ระบบตั้งเองเมื่อเลยวันสิ้นสุด (ส่งมาได้ 400) */
+export type WarrantyEditableStatus = 'ACTIVE' | 'VOID';
+export const WARRANTY_EDITABLE_STATUSES: readonly WarrantyEditableStatus[] = ['ACTIVE', 'VOID'];
+
+/** สถานะที่แสดงบนหน้าจอ — อ่าน isCurrentlyActive เป็นหลัก (status อาจค้าง ACTIVE ระหว่างรอบ cron) */
+export type WarrantyDisplayState = 'ACTIVE' | 'NOT_STARTED' | 'EXPIRED' | 'VOID';
+
+export function warrantyDisplayState(
+  w: Pick<Warranty, 'status' | 'isCurrentlyActive' | 'startDate'>
+): WarrantyDisplayState {
+  if (w.status === 'VOID') {
+    return 'VOID';
+  }
+  if (w.isCurrentlyActive) {
+    return 'ACTIVE';
+  }
+  const start = parseDateOnly(w.startDate);
+  if (start && start.getTime() > startOfToday().getTime()) {
+    return 'NOT_STARTED';
+  }
+  return 'EXPIRED';
+}
+
+const WARRANTY_DISPLAY_LABELS: Record<WarrantyDisplayState, string> = {
+  ACTIVE: 'ใช้งานอยู่',
+  NOT_STARTED: 'ยังไม่เริ่ม',
+  EXPIRED: 'หมดอายุ',
+  VOID: 'ยกเลิก',
+};
+
+export function warrantyDisplayLabel(
+  w: Pick<Warranty, 'status' | 'isCurrentlyActive' | 'startDate'>
+): string {
+  return WARRANTY_DISPLAY_LABELS[warrantyDisplayState(w)];
+}
+
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
 
 /** จำนวนวันก่อนหมดอายุที่ถือว่าใกล้หมด (ค่าเริ่มต้นของ API) */
 export const WARRANTY_NEAR_EXPIRY_DAYS = 30;

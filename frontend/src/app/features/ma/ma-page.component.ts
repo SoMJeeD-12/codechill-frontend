@@ -43,7 +43,7 @@ import {
 } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { Project } from '../../core/models/project.model';
-import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
+import { addDays, parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { parseMoneyValue, toMoneyString } from '../../core/utils/money.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
@@ -406,12 +406,11 @@ export class MaFormDialogComponent {
     : 'DRAFT';
   readonly status = signal<MaEditableStatus | null>(this.initialStatus);
   /**
-   * วันสิ้นสุดที่ระบบคำนวณ (แสดงเป็นข้อความ แก้ไม่ได้)
-   * แก้สัญญาเก่า: คงวันสิ้นสุดเดิมไว้จนกว่าผู้ใช้จะเปลี่ยนวันเริ่ม
+   * true = ผู้ใช้กำหนดวันสิ้นสุดเอง (สัญญา 1 ปีแบ่งจ่ายรายเดือน / สัญญาเก่าจากกระดาษ)
+   * false = ระบบคำนวณจากวันเริ่ม + รอบวางบิล
    */
-  readonly endDate = signal<Date | null>(parseDateOnly(this.editRow?.endDate));
-  /** สัญญาเก่าที่วันสิ้นสุดไม่ใช่ วันเริ่ม + 12 เดือน − 1 วัน (เช่น ฉบับ 6 เดือน) */
-  readonly legacyTerm = signal(false);
+  readonly manualEnd = signal(false);
+  readonly minEndDate = signal<Date | null>(null);
 
   readonly form = this.fb.group(
     {
@@ -431,6 +430,7 @@ export class MaFormDialogComponent {
       ],
       planId: [this.editRow?.planId ?? (null as number | null), Validators.required],
       startDate: [parseDateOnly(this.editRow?.startDate) as Date | null, Validators.required],
+      endDate: [parseDateOnly(this.editRow?.endDate) as Date | null, Validators.required],
       status: [this.initialStatus],
       price: [parseMoneyValue(this.editRow?.price) ?? 0, [Validators.required, Validators.min(0)]],
       billingCycle: [(this.editRow?.billingCycle ?? 'YEARLY') as MaBillingCycle],
@@ -497,22 +497,54 @@ export class MaFormDialogComponent {
       this.loadCustomerProjects(Number(customerId) || 0);
     });
 
+    // สัญญาเดิมที่วันสิ้นสุดไม่ตรงสูตร → เปิดโหมดแก้เองไว้ ห้ามคำนวณทับ
     const start = this.form.controls.startDate.value;
-    if (!this.isEdit || !this.endDate()) {
-      this.endDate.set(start ? maContractEndDate(start) : null);
-    } else if (start) {
-      this.legacyTerm.set(
-        toDateOnlyString(maContractEndDate(start)) !== toDateOnlyString(this.endDate())
-      );
+    const savedEnd = this.form.controls.endDate.value;
+    if (this.isEdit && start && savedEnd) {
+      const formula = maContractEndDate(start, this.form.controls.billingCycle.value ?? 'YEARLY');
+      this.manualEnd.set(toDateOnlyString(formula) !== toDateOnlyString(savedEnd));
     }
+    if (!this.manualEnd()) {
+      this.recalcEnd();
+    }
+    this.refreshMinEnd();
 
     this.form.controls.status.valueChanges.subscribe((value) => {
       this.status.set(value ?? null);
     });
-    this.form.controls.startDate.valueChanges.subscribe((value) => {
-      this.endDate.set(value ? maContractEndDate(value) : null);
-      this.legacyTerm.set(false);
+    this.form.controls.startDate.valueChanges.subscribe(() => {
+      this.refreshMinEnd();
+      if (!this.manualEnd()) {
+        this.recalcEnd();
+      }
     });
+    this.form.controls.billingCycle.valueChanges.subscribe(() => {
+      if (!this.manualEnd()) {
+        this.recalcEnd();
+      }
+    });
+  }
+
+  /** ลิงก์「แก้วันสิ้นสุด」/「ใช้วันที่ระบบคำนวณ」 */
+  toggleManualEnd(): void {
+    const next = !this.manualEnd();
+    this.manualEnd.set(next);
+    if (!next) {
+      this.recalcEnd();
+    }
+  }
+
+  private recalcEnd(): void {
+    const start = this.form.controls.startDate.value;
+    const cycle = this.form.controls.billingCycle.value ?? 'YEARLY';
+    this.form.controls.endDate.setValue(start ? maContractEndDate(start, cycle) : null, {
+      emitEvent: false,
+    });
+  }
+
+  private refreshMinEnd(): void {
+    const start = this.form.controls.startDate.value;
+    this.minEndDate.set(start ? addDays(start, 1) : null);
   }
 
   filteredProjects() {
@@ -537,7 +569,7 @@ export class MaFormDialogComponent {
     }
     const raw = this.form.getRawValue();
     const start = toDateOnlyString(raw.startDate);
-    const end = toDateOnlyString(this.endDate());
+    const end = toDateOnlyString(raw.endDate);
     if (!start || !end || end <= start) {
       this.error.set('วันสิ้นสุดสัญญาต้องอยู่หลังวันเริ่มสัญญา');
       return;
