@@ -133,7 +133,7 @@
           </header>
           <ul class="mywork-list">
             @for (followUp of myFollowUps(); track followUp.id) {
-              <li>
+              <li [class.has-action]="canCompleteFollowUp(followUp)">
                 <a routerLink="/app/follow-ups" [queryParams]="{ followUpId: followUp.id }">
                   <span class="item-title">{{ followUp.title }}</span>
                   <span class="item-meta">
@@ -147,6 +147,18 @@
                     }
                   </span>
                 </a>
+                @if (canCompleteFollowUp(followUp)) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="item-action"
+                    matTooltip="ปิดงานติดตาม"
+                    [attr.aria-label]="'ปิดงานติดตาม ' + followUp.title"
+                    (click)="completeFollowUp(followUp)"
+                  >
+                    <mat-icon>task_alt</mat-icon>
+                  </button>
+                }
               </li>
             } @empty {
               <li class="mywork-empty">ไม่มีงานติดตามที่ค้างอยู่กับคุณ</li>

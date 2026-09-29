@@ -19,6 +19,59 @@ export interface ProfileEditDialogData {
 const NICKNAME_MAX = 50;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+/** เลือกได้ใหญ่กว่า 2 MB — ย่อบนเครื่องก่อนส่ง เพราะ BE รับไม่เกิน 2 MB */
+const PICK_MAX_BYTES = 20 * 1024 * 1024;
+const AVATAR_MAX_SIDE = 1024;
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('decode'));
+    };
+    img.src = url;
+  });
+}
+
+function canvasBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+/** ย่อด้านยาวสุดเหลือ 1024px แล้วลดคุณภาพจนไม่เกิน maxBytes */
+async function shrinkImage(file: File, maxBytes: number): Promise<File> {
+  const img = await loadImage(file);
+  let side = AVATAR_MAX_SIDE;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const scale = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      break;
+    }
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (const quality of [0.9, 0.8, 0.7, 0.6]) {
+      let blob = await canvasBlob(canvas, 'image/webp', quality);
+      if (!blob || blob.type !== 'image/webp') {
+        blob = await canvasBlob(canvas, 'image/jpeg', quality);
+      }
+      if (blob && blob.size <= maxBytes && AVATAR_TYPES.includes(blob.type)) {
+        const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+        const base = file.name.replace(/\.[^.]+$/, '') || 'avatar';
+        return new File([blob], `${base}.${ext}`, { type: blob.type });
+      }
+    }
+    side = Math.round(side * 0.75);
+  }
+  throw new Error('too-large');
+}
 
 @Component({
   selector: 'app-profile-edit-dialog',
@@ -46,9 +99,9 @@ const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
           />
         }
         <div class="avatar-actions">
-          <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="saving()">
+          <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="saving() || processing()">
             <mat-icon>photo_camera</mat-icon>
-            เลือกรูป
+            {{ processing() ? 'กำลังย่อรูป…' : 'เลือกรูป' }}
           </button>
           @if (file() || removeAvatar()) {
             <button mat-button type="button" (click)="resetAvatar()" [disabled]="saving()">คงรูปเดิม</button>
@@ -61,7 +114,7 @@ const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
             @if (removeAvatar()) {
               จะลบรูปเมื่อกดบันทึก
             } @else {
-              JPG / PNG / WEBP ไม่เกิน 2 MB
+              JPG / PNG / WEBP · ไฟล์ใหญ่กว่า 2 MB ระบบจะย่อให้อัตโนมัติ
             }
           </p>
           <input #fileInput type="file" hidden [accept]="acceptTypes" (change)="onFile($event)" />
@@ -82,7 +135,7 @@ const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close [disabled]="saving()">ยกเลิก</button>
-      <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="saving() || !dirty()">
+      <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="saving() || processing() || !dirty()">
         {{ saving() ? 'กำลังบันทึก…' : 'บันทึก' }}
       </button>
     </mat-dialog-actions>
@@ -112,6 +165,7 @@ export class ProfileEditDialogComponent implements OnDestroy {
   readonly localPreview = signal<string | null>(null);
   readonly removeAvatar = signal(false);
   readonly saving = signal(false);
+  readonly processing = signal(false);
   readonly error = signal<string | null>(null);
 
   dirty(): boolean {
@@ -129,13 +183,25 @@ export class ProfileEditDialogComponent implements OnDestroy {
       this.error.set('รูปโปรไฟล์ต้องเป็นไฟล์ JPG, PNG หรือ WEBP เท่านั้น');
       return;
     }
-    if (picked.size > AVATAR_MAX_BYTES) {
-      this.error.set('ไฟล์มีขนาดใหญ่เกินกำหนด (ไม่เกิน 2 MB)');
+    if (picked.size > PICK_MAX_BYTES) {
+      this.error.set('ไฟล์ใหญ่เกินไป (เลือกได้ไม่เกิน 20 MB)');
       return;
     }
     this.error.set(null);
-    this.setPreview(URL.createObjectURL(picked));
-    this.file.set(picked);
+    if (picked.size <= AVATAR_MAX_BYTES) {
+      this.useFile(picked);
+      return;
+    }
+    this.processing.set(true);
+    shrinkImage(picked, AVATAR_MAX_BYTES)
+      .then((small) => this.useFile(small))
+      .catch(() => this.error.set('ย่อรูปไม่สำเร็จ — ลองเลือกรูปอื่นที่ไม่เกิน 2 MB'))
+      .finally(() => this.processing.set(false));
+  }
+
+  private useFile(file: File): void {
+    this.setPreview(URL.createObjectURL(file));
+    this.file.set(file);
     this.removeAvatar.set(false);
   }
 

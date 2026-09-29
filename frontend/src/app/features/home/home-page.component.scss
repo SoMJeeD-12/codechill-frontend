@@ -231,6 +231,22 @@
       background: #f8fbfa;
     }
   }
+
+  li.has-action {
+    display: flex;
+    align-items: center;
+
+    a {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+.item-action {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  color: #0f766e;
 }
 
 .item-title {

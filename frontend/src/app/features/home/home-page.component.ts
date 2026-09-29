@@ -20,6 +20,7 @@ import { MaContract } from '../../core/models/ma.model';
 import { Warranty } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
+import { FollowUpCompleteFlowService } from '../follow-ups/follow-up-complete-dialog.component';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
@@ -67,6 +68,7 @@ export class HomePageComponent implements OnInit {
   private readonly ticketsApi = inject(TicketService);
   private readonly projectsApi = inject(ProjectService);
   private readonly followUpsApi = inject(FollowUpService);
+  private readonly followUpComplete = inject(FollowUpCompleteFlowService);
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly maApi = inject(MaService);
   private readonly quickActions = inject(QuickActionsService);
@@ -271,6 +273,18 @@ export class HomePageComponent implements OnInit {
             .slice(0, 8)
         );
       });
+  }
+
+  canCompleteFollowUp(followUp: FollowUp): boolean {
+    return this.followUpComplete.canCompleteRow(followUp);
+  }
+
+  completeFollowUp(followUp: FollowUp): void {
+    this.followUpComplete.open(followUp).subscribe((result) => {
+      if (result) {
+        this.reload();
+      }
+    });
   }
 
   openCard(card: TodoCard): void {

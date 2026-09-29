@@ -26,10 +26,6 @@ import {
   FollowUpWritableStatus,
   followUpDisplayStatus,
 } from '../../core/models/follow-up.model';
-import {
-  CHANNEL_LABELS,
-  CommunicationChannel,
-} from '../../core/models/customer.model';
 import { Project, ProjectOption } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -39,7 +35,6 @@ import {
   FollowUpUpdateInput,
 } from '../../core/services/follow-up.service';
 import { ProjectService } from '../../core/services/project.service';
-import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
@@ -66,6 +61,7 @@ import { Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, skip, tap } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavAttentionService } from '../../core/services/nav-attention.service';
+import { FollowUpCompleteFlowService } from './follow-up-complete-dialog.component';
 
 type FollowUpView = 'all' | 'today' | 'overdue' | 'planned' | 'mine';
 
@@ -113,9 +109,8 @@ export class FollowUpsPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
-  private readonly quickActions = inject(QuickActionsService);
-
   private readonly attention = inject(NavAttentionService);
+  private readonly completeFlow = inject(FollowUpCompleteFlowService);
 
   /** GET /follow-ups?page&limit&search&(overdue|status|assignedUserId|dueByToday)&sortBy — แบ่งหน้าฝั่ง server */
   readonly list = createServerList<FollowUp, { view: FollowUpView }>({
@@ -174,12 +169,7 @@ export class FollowUpsPageComponent implements OnInit {
 
   readonly canCreate = computed(() => this.auth.hasPermission('follow-ups', 'create'));
   readonly canUpdate = computed(() => this.auth.hasPermission('follow-ups', 'update'));
-  readonly canComplete = computed(
-    () =>
-      this.auth.hasPermissionCode('followup.complete') ||
-      this.auth.hasPermission('follow-ups', 'complete') ||
-      this.auth.hasPermission('follow-ups', 'update')
-  );
+  readonly canComplete = this.completeFlow.canComplete;
   readonly canDelete = computed(() => this.auth.hasPermission('follow-ups', 'delete'));
 
   ngOnInit(): void {
@@ -332,43 +322,10 @@ export class FollowUpsPageComponent implements OnInit {
   }
 
   markDone(row: FollowUp): void {
-    if (!this.canComplete()) {
-      this.snack.open('คุณไม่มีสิทธิ์ปิดงานติดตาม', 'ปิด', { duration: 3000 });
-      return;
-    }
-    const ref = this.dialog.open(FollowUpCompleteDialogComponent, {
-      ...FORM_DIALOG,
-      data: row,
-    });
-    ref.afterClosed().subscribe((saved) => {
-      if (!saved) {
-        return;
+    this.completeFlow.open(row).subscribe((result) => {
+      if (result) {
+        this.reload();
       }
-      this.reload();
-      this.offerCommunicationLog(row);
-    });
-  }
-
-  /** ปิดงานติดตามแล้วถามต่อทันที — ไม่ต้องเด้งไปเมนูลูกค้า */
-  private offerCommunicationLog(row: FollowUp): void {
-    if (!this.quickActions.canLogCommunication()) {
-      return;
-    }
-    openConfirmDialog(this.dialog, {
-      title: 'บันทึกการติดต่อเลยไหม',
-      message: `ปิดงานติดตาม「${row.title}」แล้ว\nต้องการบันทึกประวัติการติดต่อของ ${this.customerName(row)} ตอนนี้เลยไหม?`,
-      confirmLabel: 'บันทึกเลย',
-      cancelLabel: 'ไว้ทีหลัง',
-      danger: false,
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      this.quickActions
-        .openCommunicationLog({
-          customer: { id: row.customerId, label: this.customerName(row) },
-        })
-        .subscribe();
     });
   }
 
@@ -765,148 +722,5 @@ export class FollowUpFormDialogComponent {
       return undefined;
     }
     return this.data.projectId;
-  }
-}
-
-@Component({
-  selector: 'app-follow-up-complete-dialog',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatCheckboxModule,
-    MatSnackBarModule,
-  ],
-  template: `
-    <h2 mat-dialog-title>ปิดงานติดตาม</h2>
-    <mat-dialog-content>
-      <p class="lead"><strong>{{ data.title }}</strong></p>
-      <p class="muted">ลูกค้า: {{ customerLabel }}</p>
-
-      <form [formGroup]="form" class="form" id="follow-up-complete-form" (ngSubmit)="save()">
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>ผลการติดตาม</mat-label>
-          <textarea matInput rows="3" formControlName="resultNote" placeholder="สรุปสิ่งที่คุย / ผลลัพธ์"></textarea>
-        </mat-form-field>
-
-        <mat-checkbox formControlName="alsoLog">บันทึกการติดต่อครั้งนี้ด้วย</mat-checkbox>
-
-        @if (form.controls.alsoLog.value) {
-          <mat-form-field appearance="outline" class="full">
-            <mat-label>ช่องทางที่ติดต่อ</mat-label>
-            <mat-select formControlName="channel">
-              @for (ch of channels; track ch) {
-                <mat-option [value]="ch">{{ channelLabels[ch] }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="full">
-            <mat-label>เนื้อหาการติดต่อ</mat-label>
-            <textarea matInput rows="2" formControlName="logContent"></textarea>
-          </mat-form-field>
-        }
-
-        @if (error()) {
-          <p class="error">{{ error() }}</p>
-        }
-      </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-      <button
-        mat-flat-button
-        color="primary"
-        type="submit"
-        form="follow-up-complete-form"
-        [disabled]="saving()"
-      >
-        ปิดงาน
-      </button>
-    </mat-dialog-actions>
-  `,
-  styles: `
-    .lead { margin: 0 0 0.25rem; }
-    .muted { margin: 0 0 1rem; color: #64748b; font-size: 0.9rem; }
-    .form { display: flex; flex-direction: column; gap: 0.35rem; min-width: min(720px, 92vw); }
-    .full { width: 100%; }
-    .hint { margin: 0 0 0.5rem; font-size: 0.8rem; color: #64748b; line-height: 1.4; }
-    .error { color: #b91c1c; margin: 0.25rem 0 0; }
-  `,
-})
-export class FollowUpCompleteDialogComponent {
-  private readonly fb = inject(FormBuilder);
-  private readonly api = inject(FollowUpService);
-  private readonly customersApi = inject(CustomerService);
-  private readonly auth = inject(AuthService);
-  private readonly snack = inject(MatSnackBar);
-  private readonly ref = inject(MatDialogRef<FollowUpCompleteDialogComponent, boolean>);
-  readonly data = inject<FollowUp>(MAT_DIALOG_DATA);
-
-  readonly channels = Object.keys(CHANNEL_LABELS) as CommunicationChannel[];
-  readonly channelLabels = CHANNEL_LABELS;
-  readonly saving = signal(false);
-  readonly error = signal<string | null>(null);
-
-  readonly customerLabel =
-    this.data.customer?.name ??
-    this.customersApi.getCustomer(this.data.customerId)?.name ??
-    `#${this.data.customerId}`;
-
-  readonly form = this.fb.nonNullable.group({
-    resultNote: [this.data.resultNote ?? ''],
-    alsoLog: [true],
-    channel: ['PHONE' as CommunicationChannel],
-    logContent: [this.data.resultNote || this.data.detail || this.data.title],
-  });
-
-  save(): void {
-    const raw = this.form.getRawValue();
-    this.saving.set(true);
-    this.error.set(null);
-
-    this.api.complete(this.data.id, { resultNote: raw.resultNote }).subscribe({
-      next: () => {
-        if (!raw.alsoLog) {
-          this.saving.set(false);
-          this.snack.open('ปิดงานติดตามแล้ว', 'ปิด', { duration: 2500 });
-          this.ref.close(true);
-          return;
-        }
-
-        const me = this.auth.currentUser();
-        this.customersApi
-          .addLog(this.data.customerId, {
-            channel: raw.channel,
-            occurredAt: new Date().toISOString(),
-            content: raw.logContent.trim() || raw.resultNote.trim() || this.data.title,
-            subject: `ติดตาม: ${this.data.title}`,
-            handledByUserId: me?.id,
-          })
-          .subscribe({
-            next: () => {
-              this.saving.set(false);
-              this.snack.open('ปิดงานและบันทึกการติดต่อแล้ว', 'ปิด', { duration: 2800 });
-              this.ref.close(true);
-            },
-            error: (err: Error) => {
-              this.saving.set(false);
-              this.snack.open(
-                `ปิดงานแล้ว แต่บันทึกการติดต่อไม่สำเร็จ: ${err.message}`,
-                'ปิด',
-                { duration: 4500 }
-              );
-              this.ref.close(true);
-            },
-          });
-      },
-      error: (err: Error) => {
-        this.saving.set(false);
-        this.error.set(err.message);
-      },
-    });
   }
 }

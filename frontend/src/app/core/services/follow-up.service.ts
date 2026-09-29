@@ -14,6 +14,7 @@ import {
 } from '../http/api.util';
 import {
   FollowUp,
+  FollowUpCompleteResult,
   FollowUpStatus,
   FollowUpWritableStatus,
 } from '../models/follow-up.model';
@@ -41,6 +42,10 @@ export interface FollowUpUpdateInput {
 
 export interface FollowUpCompleteInput {
   resultNote?: string | null;
+  /** YYYY-MM-DD ต้องไม่ก่อนวันนี้ — BE สร้างงานครั้งถัดไปในคำขอเดียวกัน */
+  nextDueDate?: string;
+  /** ส่งได้เฉพาะเมื่อมี nextDueDate · ไม่ส่ง = ใช้เรื่องเดิม */
+  nextTitle?: string;
 }
 
 export interface FollowUpListParams {
@@ -199,22 +204,32 @@ export class FollowUpService {
       );
   }
 
-  complete(id: number, input: FollowUpCompleteInput = {}): Observable<FollowUp> {
+  complete(id: number, input: FollowUpCompleteInput = {}): Observable<FollowUpCompleteResult> {
+    const nextDueDate = input.nextDueDate || undefined;
     return this.http
-      .patch<FollowUp>(
+      .patch<FollowUpCompleteResult>(
         `${this.base}/${id}/complete`,
         pruneUndefined({
           resultNote: input.resultNote?.trim() || undefined,
+          nextDueDate,
+          nextTitle: nextDueDate ? input.nextTitle?.trim() || undefined : undefined,
         })
       )
       .pipe(
-        tap((row) => this.items.update((list) => upsertById(list, row))),
+        map((row) => ({ ...row, nextFollowUp: row.nextFollowUp ?? null })),
+        tap((row) =>
+          this.items.update((list) => {
+            const { nextFollowUp, ...closed } = row;
+            const next = upsertById(list, closed);
+            return nextFollowUp ? upsertById(next, nextFollowUp) : next;
+          })
+        ),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }
 
   /** alias เดิม — ใช้ complete */
-  markDone(id: number, resultNote?: string | null): Observable<FollowUp> {
+  markDone(id: number, resultNote?: string | null): Observable<FollowUpCompleteResult> {
     return this.complete(id, { resultNote });
   }
 

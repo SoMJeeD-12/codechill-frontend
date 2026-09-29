@@ -53,6 +53,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
+import { FollowUpCompleteFlowService } from '../follow-ups/follow-up-complete-dialog.component';
 import { MaService } from '../../core/services/ma.service';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
@@ -112,6 +113,7 @@ export class CustomerDetailPageComponent implements OnInit {
   private readonly warrantiesApi = inject(WarrantyService);
   private readonly maApi = inject(MaService);
   private readonly followUpsApi = inject(FollowUpService);
+  private readonly followUpComplete = inject(FollowUpCompleteFlowService);
   private readonly auth = inject(AuthService);
   private readonly quickActions = inject(QuickActionsService);
   private readonly snack = inject(MatSnackBar);
@@ -802,7 +804,23 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   followUpRowActions(row: FollowUp): RowAction[] {
-    return [{ label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openFollowUpDetail(row) }];
+    const actions: RowAction[] = [
+      { label: 'รายละเอียด', icon: 'visibility', run: () => this.openFollowUpDetail(row) },
+    ];
+    if (this.followUpComplete.canCompleteRow(row)) {
+      actions.unshift({ label: 'เสร็จแล้ว', primary: true, icon: 'task_alt', run: () => this.completeFollowUp(row) });
+    } else {
+      actions[0].primary = true;
+    }
+    return actions;
+  }
+
+  completeFollowUp(row: FollowUp): void {
+    this.followUpComplete.open(row).subscribe((result) => {
+      if (result) {
+        this.loadTab('follow-ups');
+      }
+    });
   }
 
   openProjectDetail(project: Project): void {

@@ -39,6 +39,11 @@ export interface FollowUp {
   updatedAt: string;
 }
 
+/** ผลของ PATCH /follow-ups/:id/complete — งานที่ปิด + งานครั้งถัดไป (ถ้าส่ง nextDueDate) */
+export interface FollowUpCompleteResult extends FollowUp {
+  nextFollowUp: FollowUp | null;
+}
+
 /** สถานะที่ตั้งผ่าน PATCH ได้ (ห้ามส่ง OVERDUE) */
 export type FollowUpWritableStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
 
