@@ -194,6 +194,31 @@
     margin-left: auto;
     flex: 0 0 auto;
   }
+
+  .ticket-project-filter {
+    flex: 0 1 260px;
+    min-width: 200px;
+  }
+}
+
+.cell-muted {
+  color: #94a3a0;
+}
+
+.ticket-no {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #475552;
+}
+
+.ticket-project-link {
+  color: #0f766e;
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .data-table .actions {

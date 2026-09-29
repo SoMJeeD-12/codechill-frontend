@@ -76,10 +76,14 @@ function today(): Date {
                 <mat-label>วันติดตามครั้งถัดไป</mat-label>
                 <input
                   matInput
+                  readonly
+                  class="date-readonly"
                   [matDatepicker]="nextPicker"
                   [min]="minDate"
                   formControlName="nextDueDate"
                   required
+                  (click)="nextPicker.open()"
+                  (keydown.enter)="nextPicker.open()"
                 />
                 <mat-datepicker-toggle matIconSuffix [for]="nextPicker" />
                 <mat-datepicker #nextPicker />
@@ -156,6 +160,7 @@ function today(): Date {
     .next-date { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: flex-start; }
     .quick { display: flex; gap: 0.4rem; padding-top: 0.5rem; }
     .error { color: #b91c1c; margin: 0.25rem 0 0; }
+    .date-readonly { cursor: pointer; }
   `,
 })
 export class FollowUpCompleteDialogComponent {

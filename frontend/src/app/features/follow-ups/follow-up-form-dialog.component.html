@@ -66,7 +66,15 @@
     <div class="row">
       <mat-form-field appearance="outline">
         <mat-label>วันครบกำหนด</mat-label>
-        <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+        <input
+          matInput
+          readonly
+          class="date-readonly"
+          [matDatepicker]="duePicker"
+          formControlName="dueDate"
+          (click)="duePicker.open()"
+          (keydown.enter)="duePicker.open()"
+        />
         <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
         <mat-datepicker #duePicker></mat-datepicker>
       </mat-form-field>

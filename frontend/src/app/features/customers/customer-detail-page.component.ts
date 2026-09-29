@@ -80,6 +80,20 @@ import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { CustomerRecordPreviewDialogComponent } from './customer-record-preview-dialog.component';
 
+const TICKET_ALL_PROJECTS = 'all';
+const TICKET_NO_PROJECT = 'none';
+
+function ticketProjectKey(projectId: number): string {
+  return `p${projectId}`;
+}
+
+interface TicketProjectOption {
+  key: string;
+  label: string;
+  count: number;
+  muted?: boolean;
+}
+
 @Component({
   selector: 'app-customer-detail-page',
   standalone: true,
@@ -96,6 +110,7 @@ import { CustomerRecordPreviewDialogComponent } from './customer-record-preview-
     MatTableModule,
     MatDialogModule,
     MatMenuModule,
+    MatSelectModule,
     RowActionsComponent,
     TablePaginatorComponent,
     ListSkeletonComponent,
@@ -223,7 +238,7 @@ export class CustomerDetailPageComponent implements OnInit {
   readonly warrantyColumns = ['warrantyNo', 'title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly maColumns = ['id', 'plan', 'status', 'quota', 'actions'];
-  readonly ticketColumns = ['title', 'status', 'priority', 'actions'];
+  readonly ticketColumns = ['ticketNo', 'title', 'project', 'status', 'priority', 'actions'];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'actions'];
 
   readonly filteredContacts = computed(() => {
@@ -311,23 +326,64 @@ export class CustomerDetailPageComponent implements OnInit {
     );
   });
 
+  /** ตัวเลือกกรองโปรเจกต์ — สร้างจากใบของลูกค้ารายนี้ ไม่ยิง API เพิ่ม */
+  readonly ticketProjectOptions = computed<TicketProjectOption[]>(() => {
+    const groups = new Map<string, TicketProjectOption>();
+    let unassigned = 0;
+    for (const t of this.tickets()) {
+      const project = t.project ?? null;
+      if (!project) {
+        unassigned++;
+        continue;
+      }
+      const key = ticketProjectKey(project.id);
+      const hit = groups.get(key);
+      if (hit) {
+        hit.count++;
+      } else {
+        groups.set(key, { key, label: project.name, count: 1 });
+      }
+    }
+    const options = [...groups.values()].sort((a, b) => a.label.localeCompare(b.label, 'th'));
+    if (unassigned) {
+      options.push({ key: TICKET_NO_PROJECT, label: 'ไม่ระบุโปรเจค', count: unassigned, muted: true });
+    }
+    return options;
+  });
+  readonly ticketAllProjects = TICKET_ALL_PROJECTS;
+  readonly ticketProjectFilter = signal<string>(TICKET_ALL_PROJECTS);
+  /** ตัวกรองที่ใช้จริง — ค่าที่ไม่มีในรายการ (เช่น ?projectId= ของโปรเจกต์ที่ไม่มีใบ) ถือเป็นทุกโปรเจค */
+  readonly ticketProjectEffective = computed(() => {
+    const key = this.ticketProjectFilter();
+    return this.ticketProjectOptions().some((o) => o.key === key) ? key : TICKET_ALL_PROJECTS;
+  });
+  readonly showTicketProjectFilter = computed(() => this.ticketProjectOptions().length > 1);
+
   readonly filteredTickets = computed(() => {
     const q = this.ticketSearch().trim().toLowerCase();
-    const list = this.tickets();
-    if (!q) {
-      return list;
+    const projectKey = this.ticketProjectEffective();
+    let list = this.tickets();
+    if (projectKey !== TICKET_ALL_PROJECTS) {
+      list = list.filter((t) =>
+        projectKey === TICKET_NO_PROJECT ? !t.project : !!t.project && ticketProjectKey(t.project.id) === projectKey
+      );
     }
-    return list.filter((t) =>
-      [
-        String(t.id),
-        t.ticketNo,
-        t.title,
-        this.ticketStatusLabels[t.status],
-        this.ticketPriorityLabels[t.priority],
-      ]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q))
-    );
+    if (q) {
+      list = list.filter((t) =>
+        [
+          String(t.id),
+          t.ticketNo,
+          t.title,
+          t.project?.name,
+          this.ticketStatusLabels[t.status],
+          this.ticketPriorityLabels[t.priority],
+        ]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      );
+    }
+    // ใบที่ยังไม่ปิดขึ้นก่อน — คงลำดับเดิมจาก API ภายในกลุ่ม (sort ของ JS เป็น stable)
+    return [...list].sort((a, b) => Number(a.status === 'CLOSED') - Number(b.status === 'CLOSED'));
   });
 
   readonly filteredFollowUps = computed(() => {
@@ -381,6 +437,11 @@ export class CustomerDetailPageComponent implements OnInit {
     return this.projectStatusLabels[status];
   }
 
+  setTicketProjectFilter(key: string): void {
+    this.ticketProjectFilter.set(key);
+    this.ticketsPager.reset();
+  }
+
   ticketStatusLabel(status: Ticket['status']): string {
     return this.ticketStatusLabels[status];
   }
@@ -414,6 +475,10 @@ export class CustomerDetailPageComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.customerId = id;
+    const fromProjectId = Number(this.route.snapshot.queryParamMap.get('projectId'));
+    if (fromProjectId > 0) {
+      this.ticketProjectFilter.set(ticketProjectKey(fromProjectId));
+    }
     const tabKey = this.route.snapshot.queryParamMap.get('tab');
     const tabIndex = this.tabKeys.findIndex((key) => key === tabKey);
     if (tabIndex >= 0) {
