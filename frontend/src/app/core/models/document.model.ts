@@ -16,6 +16,8 @@ export interface ApiProjectDocument {
   downloadUrl: string;
   note: string | null;
   uploadedBy: { id?: number; fullName: string } | null;
+  /** GET /documents (รายการรวม) พ่วงโปรเจกต์มาให้ */
+  project?: { id: number; code: string | null; name: string; customerName: string | null } | null;
   createdAt: string;
   updatedAt?: string;
 }

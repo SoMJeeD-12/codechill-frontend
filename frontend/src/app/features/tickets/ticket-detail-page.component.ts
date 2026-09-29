@@ -27,7 +27,7 @@ import {
   Ticket,
   TicketResolution,
   TicketStatus,
-  buildTicketTimeline,
+  ticketTimelineFromHistory,
   isIncompleteResolutionResult,
   latestTicketResolution,
   splitTicketDescription,
@@ -265,29 +265,7 @@ export class TicketDetailPageComponent implements OnInit {
     }));
   });
 
-  readonly timelineEvents = computed(() => {
-    this.demoOverlay.state();
-    const t = this.ticket();
-    if (!t) {
-      return [];
-    }
-    const overlay = this.demoOverlay.snapshot(t.id);
-    return buildTicketTimeline({
-      ticket: t,
-      assignedAt: overlay.assignedAt ?? null,
-      assigneeName: this.userName(t.assignedUserId),
-      receiverName: this.userName(t.receivedByUserId),
-    }).map((e) =>
-      e.id.startsWith('res-')
-        ? {
-            ...e,
-            detail: e.detail
-              ? this.resultLabels[e.detail as ResolutionResult] ?? e.detail
-              : e.detail,
-          }
-        : e
-    );
-  });
+  readonly timelineEvents = computed(() => ticketTimelineFromHistory(this.ticket()?.history));
 
   /** ย่อไทม์ไลน์ — โชว์เหตุการณ์ล่าสุดก่อน ไม่ให้หน้ายาวเกิน */
   readonly timelinePreviewCount = TIMELINE_PREVIEW_COUNT;

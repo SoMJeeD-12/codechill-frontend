@@ -130,7 +130,7 @@ export class MaDetailPageComponent implements OnInit {
     navigateBack(
       this.location,
       this.router,
-      projectId ? `/app/projects/${projectId}` : '/app/ma/plans'
+      projectId ? `/app/projects/${projectId}` : '/app/ma'
     );
   }
 

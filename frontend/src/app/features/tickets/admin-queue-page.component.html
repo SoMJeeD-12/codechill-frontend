@@ -179,6 +179,22 @@
                 >
                   ตรวจผ่าน · ส่งซัพพอร์ต
                 </button>
+                @if (canRejectReview()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="btn-reject"
+                    [disabled]="actingId() === row.id || row.status !== 'RESOLVED' || !row.assignedUserId"
+                    [matTooltip]="
+                      !row.assignedUserId
+                        ? 'ใบไม่มีผู้แก้ — ส่งกลับไม่ได้'
+                        : 'ตรวจไม่ผ่าน — ส่งกลับให้ผู้แก้คนเดิม (ต้องกรอกเหตุผล)'
+                    "
+                    (click)="rejectReview(row)"
+                  >
+                    ตรวจไม่ผ่าน
+                  </button>
+                }
               } @else if (tab() === 'WITH_SUPPORT') {
                 <span class="muted">รอซัพพอร์ตบอกลูกค้า</span>
               }

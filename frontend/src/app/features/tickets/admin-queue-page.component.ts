@@ -332,7 +332,17 @@ export class AdminQueuePageComponent implements OnInit {
     });
   }
 
-  returnToSupport(row: Ticket): void {
+  readonly canRejectReview = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.assign');
+  });
+
+  /** ตรวจไม่ผ่าน — PATCH /tickets/:id/reject-review (ไม่ใช่ reopen) · ใบไม่มีผู้แก้จะได้ 409 */
+  rejectReview(row: Ticket): void {
+    this.returnToSupport(row, 'reject');
+  }
+
+  returnToSupport(row: Ticket, initialMode: 'approve' | 'reject' = 'approve'): void {
     if (row.status !== 'RESOLVED') {
       this.toast.info(
         'ใบต้องเป็น「แก้ไขแล้ว」ก่อน — ให้พนักงานบันทึก resolution ให้จบ'
@@ -350,6 +360,7 @@ export class AdminQueuePageComponent implements OnInit {
           title: row.title,
           receiverName: this.userName(row.receivedByUserId),
           assigneeName: this.userName(row.assignedUserId),
+          initialMode,
         } satisfies TicketReturnSupportDialogData,
       })
       .afterClosed()

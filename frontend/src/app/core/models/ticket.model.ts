@@ -65,8 +65,38 @@ export interface Ticket {
   customer?: { id: number; name: string } | null;
   project?: { id: number; name: string; code?: string | null; status?: string | null } | null;
   resolutions?: TicketResolution[];
+  /** GET /tickets/:id — ลำดับเหตุการณ์จาก BE เรียงเก่า → ใหม่ */
+  history?: TicketHistoryEntry[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type TicketHistoryCode =
+  | 'CREATED'
+  | 'SENT_TO_ADMIN'
+  | 'CLAIMED'
+  | 'ASSIGNED'
+  | 'REASSIGNED'
+  | 'UNASSIGNED'
+  | 'STARTED'
+  | 'RESOLVED'
+  | 'REVIEW_REJECTED'
+  | 'RETURNED_TO_SUPPORT'
+  | 'CUSTOMER_NOTIFIED'
+  | 'CLOSED'
+  | 'REOPENED'
+  | 'STATUS_CHANGED';
+
+export interface TicketHistoryEntry {
+  code: TicketHistoryCode | string;
+  label: string;
+  at: string;
+  /** null = ระบบทำเอง */
+  actor: { id: number; fullName: string } | null;
+  fromStatus: string | null;
+  toStatus: string | null;
+  assignee: { id: number; fullName: string } | null;
+  note: string | null;
 }
 
 export interface TicketResolution {
@@ -236,70 +266,55 @@ export const OPEN_TICKET_STATUSES: TicketStatus[] = [
   'REOPENED',
 ];
 
+export type TicketTimelineTone = 'neutral' | 'info' | 'progress' | 'success' | 'warn' | 'danger';
+
 export interface TicketTimelineEvent {
   id: string;
+  code: string;
   at: string | null;
   label: string;
-  detail?: string;
-  /** สร้างจากข้อมูลที่มี / overlay ตัวอย่าง */
-  demo?: boolean;
+  /** ชื่อผู้ทำ · null = ระบบทำเอง */
+  actorName: string | null;
+  assigneeName: string | null;
+  /** เหตุผล/หมายเหตุ — ตีกลับ / ส่งคืนซัพพอร์ต */
+  note: string | null;
+  icon: string;
+  tone: TicketTimelineTone;
 }
 
-/** สร้าง timeline จากใบ + รอบแก้ไข (+ overlay ถ้ามี) — สำหรับเดโม */
-export function buildTicketTimeline(input: {
-  ticket: Ticket;
-  assignedAt?: string | null;
-  assigneeName?: string;
-  receiverName?: string;
-}): TicketTimelineEvent[] {
-  const { ticket, assignedAt, assigneeName, receiverName } = input;
-  const events: TicketTimelineEvent[] = [
-    {
-      id: 'reported',
-      at: ticket.reportedAt,
-      label: 'รับเรื่อง',
-      detail: receiverName ? `ผู้รับเรื่อง: ${receiverName}` : undefined,
-    },
-  ];
+const TIMELINE_STYLE: Record<string, { icon: string; tone: TicketTimelineTone }> = {
+  CREATED: { icon: 'note_add', tone: 'neutral' },
+  SENT_TO_ADMIN: { icon: 'forward_to_inbox', tone: 'info' },
+  CLAIMED: { icon: 'pan_tool', tone: 'info' },
+  ASSIGNED: { icon: 'person_add', tone: 'info' },
+  REASSIGNED: { icon: 'swap_horiz', tone: 'info' },
+  UNASSIGNED: { icon: 'person_remove', tone: 'warn' },
+  STARTED: { icon: 'play_arrow', tone: 'progress' },
+  RESOLVED: { icon: 'task_alt', tone: 'success' },
+  REVIEW_REJECTED: { icon: 'undo', tone: 'danger' },
+  RETURNED_TO_SUPPORT: { icon: 'keyboard_return', tone: 'warn' },
+  CUSTOMER_NOTIFIED: { icon: 'campaign', tone: 'info' },
+  CLOSED: { icon: 'lock', tone: 'success' },
+  REOPENED: { icon: 'replay', tone: 'danger' },
+  STATUS_CHANGED: { icon: 'sync_alt', tone: 'neutral' },
+};
 
-  if (ticket.assignedUserId || assignedAt) {
-    events.push({
-      id: 'assigned',
-      at: assignedAt ?? ticket.firstResponseAt ?? ticket.reportedAt,
-      label: 'ส่งให้ผู้รับผิดชอบ',
-      detail: assigneeName ? `ผู้รับผิดชอบ: ${assigneeName}` : undefined,
-      demo: !assignedAt && !ticket.firstResponseAt,
-    });
-  }
-
-  const resolutions = [...(ticket.resolutions ?? [])].sort((a, b) => a.round - b.round);
-  for (const r of resolutions) {
-    events.push({
-      id: `res-${r.id}`,
-      at: r.resolvedAt,
-      label: `บันทึกงานแก้ไขครั้งที่ ${r.round}`,
-      detail: r.result,
-    });
-  }
-
-  if (ticket.resolvedAt && ticket.status !== 'CLOSED') {
-    const last = resolutions.length ? resolutions[resolutions.length - 1] : null;
-    if (!last || last.result === 'SUCCESS') {
-      events.push({
-        id: 'resolved',
-        at: ticket.resolvedAt,
-        label: 'แก้ไขเรียบร้อย (รอแอดมินตรวจ)',
-      });
-    }
-  }
-
-  if (ticket.closedAt) {
-    events.push({
-      id: 'closed',
-      at: ticket.closedAt,
-      label: 'ปิดงาน',
-    });
-  }
-
-  return events;
+/** แปลง `history` จาก GET /tickets/:id — BE เรียงเก่า → ใหม่ และส่ง label ภาษาไทยมาแล้ว */
+export function ticketTimelineFromHistory(
+  history: TicketHistoryEntry[] | null | undefined
+): TicketTimelineEvent[] {
+  return (history ?? []).map((h, index) => {
+    const style = TIMELINE_STYLE[h.code] ?? { icon: 'radio_button_checked', tone: 'neutral' };
+    return {
+      id: `${index}-${h.code}`,
+      code: h.code,
+      at: h.at,
+      label: h.label,
+      actorName: h.actor?.fullName ?? null,
+      assigneeName: h.assignee?.fullName ?? null,
+      note: h.note?.trim() || null,
+      icon: style.icon,
+      tone: style.tone,
+    };
+  });
 }

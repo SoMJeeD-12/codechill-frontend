@@ -124,6 +124,32 @@ export class DocumentService {
       );
   }
 
+  /** GET /documents — รายการรวมทุกโปรเจกต์ แบ่งหน้าฝั่ง server */
+  listAll(
+    params: Omit<ProjectDocumentListParams, 'sortBy'> & {
+      page: number;
+      limit: number;
+      sortBy?: string;
+      projectId?: number;
+      customerId?: number;
+    }
+  ): Observable<{ items: ApiProjectDocument[]; total: number }> {
+    return this.http
+      .get<ApiProjectDocument[] | { items: ApiProjectDocument[]; total?: number }>(
+        `${environment.apiBaseUrl}/documents`,
+        {
+          params: toHttpParams({
+            ...params,
+            sortOrder: params.sortBy ? params.sortOrder : undefined,
+          }),
+        }
+      )
+      .pipe(
+        map((body) => asPage<ApiProjectDocument>(body)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   uploadToProject(
     projectId: number,
     input: ProjectDocumentUploadInput

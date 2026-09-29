@@ -30,7 +30,7 @@ import {
   Customer,
   CustomerStatus,
 } from '../../core/models/customer.model';
-import { CustomerOverview } from '../../core/models/customer-overview.model';
+import { CustomerOverview, CustomerOverviewCountKey } from '../../core/models/customer-overview.model';
 import { PROJECT_STATUS_LABELS, Project } from '../../core/models/project.model';
 import {
   MA_STATUS_LABELS,
@@ -159,6 +159,27 @@ export class CustomerDetailPageComponent implements OnInit {
   /** โควตาจาก GET /ma-contracts/:id/quota — ไม่คำนวณรอบเอง */
   readonly maQuotasById = signal<Record<number, MaQuotaStatus>>({});
   readonly followUps = signal<FollowUp[]>([]);
+
+  /** เลขบนแท็บจาก GET /customers/:id/overview — รายการจริงโหลดเมื่อเปิดแท็บ */
+  readonly tabCounts = computed(() => {
+    const o = this.overview();
+    const pick = (key: CustomerOverviewCountKey, loaded: number): number => {
+      const fromCounts = o?.counts?.[key];
+      if (typeof fromCounts === 'number') {
+        return fromCounts;
+      }
+      const rows = o?.[key];
+      return Array.isArray(rows) ? rows.length : loaded;
+    };
+    return {
+      projects: pick('projects', this.projects().length),
+      warrantiesAndContracts:
+        pick('warranties', this.warranties().length) + pick('maContracts', this.contracts().length),
+      tickets: pick('tickets', this.tickets().length),
+      followUps: pick('followUps', this.followUps().length),
+    };
+  });
+
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly channelLabels = CHANNEL_LABELS;
   readonly projectStatusLabels = PROJECT_STATUS_LABELS;

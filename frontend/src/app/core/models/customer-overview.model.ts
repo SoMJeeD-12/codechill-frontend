@@ -19,7 +19,10 @@ export interface CustomerOverview {
   tickets: Ticket[] | OverviewLite[];
   followUps: FollowUp[] | OverviewLite[];
   lifetimeValue?: CustomerLifetimeValue | null;
+  counts?: Partial<Record<CustomerOverviewCountKey, number>> | null;
 }
+
+export type CustomerOverviewCountKey = 'projects' | 'warranties' | 'maContracts' | 'tickets' | 'followUps';
 
 export interface OverviewLite {
   id: number;

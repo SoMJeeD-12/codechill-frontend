@@ -33,6 +33,8 @@ export interface TicketReturnSupportDialogData {
   assigneeName: string;
   /** false = เปิดจากหน้าใบอยู่แล้ว */
   showOpenLink?: boolean;
+  /** เปิดมาที่โหมดตรวจไม่ผ่านทันที (ปุ่ม「ตรวจไม่ผ่าน」) */
+  initialMode?: 'approve' | 'reject';
 }
 
 /** ผลที่ dialog คืนเมื่อเรียก API สำเร็จ (ปิด/ยกเลิก = undefined) */
@@ -425,6 +427,9 @@ export class TicketReturnSupportDialogComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (this.data.initialMode === 'reject') {
+      this.switchMode('reject');
+    }
     this.ticketsApi.get(this.data.ticketId).subscribe({
       next: (t) => {
         this.ticket.set(t);

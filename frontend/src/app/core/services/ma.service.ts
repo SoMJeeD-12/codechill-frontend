@@ -295,14 +295,6 @@ export class MaService {
       );
   }
 
-  /** ลบสัญญา — ใช้เทส/ล้างข้อมูล (ถ้า backend ยังไม่มีจะได้ error จาก API) */
-  remove(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.contractsBase}/${id}`).pipe(
-      tap(() => this.contractsSignal.update((list) => list.filter((c) => c.id !== id))),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
-  }
-
   addAddon(contractId: number, input: MaAddonInput): Observable<MaAddon> {
     return this.http
       .post<MaAddon>(`${this.contractsBase}/${contractId}/addons`, pruneUndefined(input))

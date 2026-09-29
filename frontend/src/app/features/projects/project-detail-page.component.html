@@ -51,7 +51,7 @@
             มอบหมายงาน
           </button>
         }
-        @if (canUpdateProject() || canDeleteProject()) {
+        @if (canUpdateProject()) {
           @if (nextProjectStatus(); as nextStatus) {
             <button
               mat-flat-button
@@ -82,10 +82,10 @@
                 <span>แก้ไขโปรเจกต์</span>
               </button>
             }
-            @if (canDeleteProject()) {
-              <button mat-menu-item type="button" class="menu-danger" (click)="removeProject()">
-                <mat-icon>delete</mat-icon>
-                <span>ลบโปรเจกต์</span>
+            @if (p.status !== 'CANCELLED' && p.status !== 'CLOSED') {
+              <button mat-menu-item type="button" class="menu-danger" (click)="cancelProject()">
+                <mat-icon>block</mat-icon>
+                <span>ยกเลิกโปรเจกต์</span>
               </button>
             }
           </mat-menu>

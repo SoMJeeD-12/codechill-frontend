@@ -136,11 +136,10 @@
                 <mat-icon>edit</mat-icon>
                 <span>แก้ไข</span>
               </button>
-              @if (false) {
-                <!-- BE ยังไม่มี DELETE /api/ma-contracts/:id -->
-                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
-                  <mat-icon>delete</mat-icon>
-                  <span>ลบ</span>
+              @if (canCancel(row)) {
+                <button mat-menu-item type="button" class="menu-danger" (click)="cancelContract(row)">
+                  <mat-icon>block</mat-icon>
+                  <span>ยกเลิกสัญญา</span>
                 </button>
               }
             </mat-menu>

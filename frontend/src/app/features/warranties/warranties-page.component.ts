@@ -49,10 +49,13 @@ import {
   PickerOption,
 } from '../../shared/components/entity-picker.component';
 import { customerPickerOption, customerSearchFn } from '../../shared/components/entity-search';
-import { createClientPager } from '../../shared/utils/client-pager';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
-import { createTableSort } from '../../shared/utils/table-sort';
+import { createServerList, invalidateListCache } from '../../shared/utils/server-list';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
 import { WarrantyDocumentsDialogComponent, printWarranty } from './warranty-documents-dialog.component';
 
@@ -76,6 +79,8 @@ function isEditableWarrantyStatus(status: WarrantyStatus): status is WarrantyEdi
     MatMenuModule,
     TablePaginatorComponent,
     CodeLabelComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './warranties-page.component.html',
   styleUrl: './warranties-page.component.scss',
@@ -99,90 +104,48 @@ export class WarrantiesPageComponent implements OnInit {
     return this.auth.hasPermissionCode('warranty.update');
   });
 
-  readonly warranties = signal<Warranty[]>([]);
-  readonly view = signal<'near' | 'active' | 'all'>('all');
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  /**
+   * ทั้งหมด / ใช้งานอยู่ → GET /warranties · ใกล้หมดอายุ → GET /warranties/expiring
+   * เรียงฝั่ง server ได้เฉพาะ startDate | endDate | durationMonth | createdAt
+   */
+  readonly list = createServerList<Warranty, { view: 'near' | 'active' | 'all' }>({
+    namespace: 'warranties',
+    filters: { view: 'all' },
+    sortBy: 'endDate',
+    sortOrder: 'ASC',
+    sortOrderFor: () => 'ASC',
+    fetch: ({ filters, sortBy, sortOrder, ...req }) =>
+      filters.view === 'near'
+        ? this.api.listExpiringPage({ ...req, days: this.nearDays })
+        : this.api.listPage({
+            ...req,
+            sortBy,
+            sortOrder,
+            status: filters.view === 'active' ? 'ACTIVE' : undefined,
+          }),
+  });
+  readonly view = computed(() => this.list.filters().view);
+  readonly searchControl = this.list.searchControl;
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
   readonly columns = ['warrantyNo', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
   readonly maLinkLabel = warrantyMaLinkLabel;
 
-  readonly tableSort = createTableSort<
-    'warrantyNo' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
-  >('daysLeft');
-
-  readonly filtered = computed(() => {
-    const list = this.warranties();
-    const view = this.view();
-    let rows = list;
-    if (view === 'near') {
-      rows = list.filter((w) => this.isNear(w));
-    } else if (view === 'active') {
-      rows = list.filter((w) => w.isCurrentlyActive);
-    }
-    const q = this.search().trim().toLowerCase();
-    if (q) {
-      rows = rows.filter((w) => {
-        const projectName = (w.project?.name ?? '').toLowerCase();
-        const customerName = (w.project?.customerName ?? this.customerName(w)).toLowerCase();
-        const deliveryTitle = (w.delivery?.title ?? '').toLowerCase();
-        return (
-          projectName.includes(q) ||
-          customerName.includes(q) ||
-          deliveryTitle.includes(q) ||
-          (w.warrantyNo ?? '').toLowerCase().includes(q) ||
-          this.displayLabel(w).toLowerCase().includes(q) ||
-          (w.scopeNote ?? '').toLowerCase().includes(q)
-        );
-      });
-    }
-    return this.tableSort.apply(rows, (row, key) => {
-      switch (key) {
-        case 'warrantyNo':
-          return row.warrantyNo ?? '';
-        case 'project':
-          return this.projectName(row);
-        case 'title':
-          return `${row.delivery?.title || 'ประกัน'} · ${row.durationMonth}`;
-        case 'period':
-          return row.endDate ?? row.startDate ?? '';
-        case 'daysLeft':
-          return this.api.daysUntilExpiry(row);
-        case 'maLink':
-          return this.maLinkLabel(row);
-        case 'status':
-          return this.displayLabel(row);
-      }
-    });
-  });
-
-  readonly pager = createClientPager(this.filtered);
-
   ngOnInit(): void {
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
     // เข้ามาจากการ์ด "ประกัน / MA ใกล้หมด" บนหน้าแรก
     if (this.route.snapshot.queryParamMap.get('expiring')) {
-      this.view.set('near');
+      this.list.patchFilters({ view: 'near' });
+      return;
     }
-    this.reload();
+    this.list.start();
+  }
+
+  setView(view: 'near' | 'active' | 'all'): void {
+    this.list.setFilter('view', view);
   }
 
   reload(): void {
-    this.api.list().subscribe({
-      next: (list) => {
-        this.warranties.set(list);
-        // เติมรายการใกล้หมดอายุเข้า cache (ไม่ทับรายการทั้งหมด)
-        this.api.listExpiring({ days: this.nearDays }).subscribe({
-          next: () => this.warranties.set(this.api.warranties()),
-          error: () => undefined,
-        });
-      },
-      error: (err: Error) => {
-        this.warranties.set([]);
-        this.snack.open(err.message || 'โหลดประกันไม่สำเร็จ', 'ปิด', { duration: 3500 });
-      },
-    });
+    this.list.reload({ invalidate: true });
   }
 
   projectName(w: Warranty): string {
@@ -248,17 +211,12 @@ export class WarrantiesPageComponent implements OnInit {
     printWarranty(this.api, this.snack, row.id);
   }
 
-  toggleSort(
-    key: 'warrantyNo' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
-  ): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: 'startDate' | 'endDate' | 'durationMonth'): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(
-    key: 'warrantyNo' | 'project' | 'title' | 'period' | 'daysLeft' | 'maLink' | 'status'
-  ): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: 'startDate' | 'endDate' | 'durationMonth'): string {
+    return this.list.sortIcon(key);
   }
 
   openCreate(row?: Warranty): void {
@@ -276,8 +234,12 @@ export class WarrantiesPageComponent implements OnInit {
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
-        this.view.set('all');
-        this.reload();
+        invalidateListCache('warranties');
+        if (this.view() === 'all') {
+          this.reload();
+        } else {
+          this.setView('all');
+        }
       }
     });
   }

@@ -16,13 +16,13 @@
 
       <mat-card-content>
         <form [formGroup]="form" (ngSubmit)="submit()">
-          <mat-form-field appearance="outline" class="full">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>ชื่อผู้ใช้</mat-label>
             <input matInput formControlName="username" autocomplete="username" />
             <mat-icon matPrefix>person</mat-icon>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>รหัสผ่าน</mat-label>
             <input
               matInput

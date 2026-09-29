@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,10 +11,12 @@ import {
   PROJECT_STATUS_LABELS,
   ProjectStatus,
   TASK_PRIORITY_LABELS,
+  TASK_STATUSES,
   TASK_STATUS_LABELS,
   TaskItem,
   TaskPriority,
   TaskStatus,
+  TaskSummary,
 } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ProjectService } from '../../core/services/project.service';
@@ -22,7 +24,12 @@ import { UserService } from '../../core/services/user.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { createClientPager } from '../../shared/utils/client-pager';
+import { createServerList } from '../../shared/utils/server-list';
 import { TaskEditDialogComponent } from '../projects/task-edit-dialog.component';
 import { TaskReviewDialogComponent } from '../projects/task-review-dialog.component';
 import { TaskSubmitReportDialogComponent } from '../projects/task-submit-report-dialog.component';
@@ -51,6 +58,11 @@ const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
   all: 'all',
 };
 
+type TaskSortKey =
+  | 'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate';
+
+const SERVER_SORT_KEYS = new Set<TaskSortKey>(['title', 'status', 'priority', 'dueDate', 'startDate']);
+
 const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
   all: { title: 'งานทั้งหมด', subtitle: '' },
   me: { title: 'งานโปรเจกต์', subtitle: 'งานในโปรเจกต์ที่ได้รับมอบหมาย' },
@@ -77,6 +89,8 @@ const PAGE_META: Record<TasksPageMode, { title: string; subtitle: string }> = {
     ThaiDatePipe,
     RowActionsComponent,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './tasks-page.component.html',
   styleUrl: './tasks-page.component.scss',
@@ -97,8 +111,38 @@ export class TasksPageComponent implements OnInit {
   readonly savingId = signal<number | null>(null);
   readonly tasks = signal<TaskItem[]>([]);
   readonly filterProjectId = signal<number | null>(null);
-  readonly searchControl = this.fb.nonNullable.control('');
   readonly search = signal('');
+
+  /** /tasks/me ยังโหลดทั้งก้อน — หน้าอื่นใช้ GET /tasks แบ่งหน้าฝั่ง server */
+  readonly serverMode = this.route.snapshot.data['taskMode'] !== 'me';
+
+  /** status '' = ทุกสถานะ · projectId 0 = ทุกโปรเจกต์ */
+  readonly list = createServerList<TaskItem, { status: string; projectId: number }>({
+    namespace: 'tasks',
+    filters: { status: '', projectId: 0 },
+    sortBy: 'dueDate',
+    sortOrder: 'ASC',
+    fetch: ({ filters, ...req }) =>
+      this.projectsApi.listTasksPage({
+        ...req,
+        status: (filters.status || undefined) as TaskStatus | undefined,
+        projectId: filters.projectId || undefined,
+      }),
+  });
+
+  readonly searchControl = this.serverMode ? this.list.searchControl : this.fb.nonNullable.control('');
+
+  readonly summary = signal<TaskSummary | null>(null);
+  readonly statusChips = computed(() => {
+    const s = this.summary();
+    return TASK_STATUSES.map((status) => ({
+      status,
+      label: this.statusLabels[status],
+      count: s ? (s.byStatus[status] ?? 0) : null,
+    }));
+  });
+
+  private readonly assignerTried = new Set<number>();
 
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
@@ -193,7 +237,36 @@ export class TasksPageComponent implements OnInit {
 
   readonly pager = createClientPager(this.displayedTasks);
 
+  constructor() {
+    effect(() => {
+      const rows = this.list.items();
+      if (this.serverMode && rows.length) {
+        untracked(() => {
+          for (const row of rows) {
+            if (row.assignedBy) {
+              this.usersApi.upsertLocal(row.assignedBy);
+            }
+            if (row.assignedUser) {
+              this.usersApi.upsertLocal(row.assignedUser);
+            }
+          }
+          this.enrichMissingAssigners(rows);
+        });
+      }
+    });
+  }
+
   ngOnInit(): void {
+    if (this.serverMode) {
+      this.syncQueryFilters(this.route.snapshot.queryParamMap);
+      this.usersApi
+        .loadForPicker(this.auth.currentUser(), { capability: 'TASK' })
+        .subscribe({ error: () => undefined });
+      this.list.start();
+      this.loadSummary();
+      return;
+    }
+
     this.searchControl.valueChanges.subscribe((v) => {
       this.search.set(v);
       this.reload();
@@ -248,16 +321,36 @@ export class TasksPageComponent implements OnInit {
     });
   }
 
-  toggleSort(
-    key: 'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
-  ): void {
+  setStatusFilter(status: TaskStatus | ''): void {
+    this.list.setFilter('status', status);
+  }
+
+  private loadSummary(): void {
+    this.projectsApi
+      .getTaskSummary(this.list.filters().projectId || undefined)
+      .subscribe({ next: (s) => this.summary.set(s), error: () => this.summary.set(null) });
+  }
+
+  /** คอลัมน์ที่ GET /tasks เรียงให้ได้ */
+  canSort(key: TaskSortKey): boolean {
+    return !this.serverMode || SERVER_SORT_KEYS.has(key);
+  }
+
+  toggleSort(key: TaskSortKey): void {
+    if (this.serverMode) {
+      if (SERVER_SORT_KEYS.has(key)) {
+        this.list.toggleSort(key);
+      }
+      return;
+    }
     this.tableSort.toggleSort(key);
     this.pager.reset();
   }
 
-  sortIcon(
-    key: 'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
-  ): string {
+  sortIcon(key: TaskSortKey): string {
+    if (this.serverMode) {
+      return SERVER_SORT_KEYS.has(key) ? this.list.sortIcon(key) : '';
+    }
     return this.tableSort.sortIcon(key);
   }
 
@@ -280,6 +373,11 @@ export class TasksPageComponent implements OnInit {
   }
 
   reload(): void {
+    if (this.serverMode) {
+      this.list.reload({ invalidate: true });
+      this.loadSummary();
+      return;
+    }
     const mode = this.mode();
     this.loading.set(true);
     const q = this.search().trim() || undefined;
@@ -354,10 +452,13 @@ export class TasksPageComponent implements OnInit {
    */
   private enrichMissingAssigners(rows: TaskItem[]): void {
     const missing = rows
-      .filter((t) => !t.assignedBy?.fullName?.trim())
+      .filter((t) => !t.assignedBy?.fullName?.trim() && !this.assignerTried.has(t.id))
       .slice(0, 15);
     if (!missing.length) {
       return;
+    }
+    for (const t of missing) {
+      this.assignerTried.add(t.id);
     }
 
     forkJoin(
@@ -373,7 +474,7 @@ export class TasksPageComponent implements OnInit {
         }
       }
 
-      this.tasks.update((current) =>
+      this.patchTasks((current) =>
         current.map((t) => {
           const detail = byId.get(t.id);
           if (!detail) {
@@ -389,7 +490,7 @@ export class TasksPageComponent implements OnInit {
 
       const stillMissingIds = [
         ...new Set(
-          this.tasks()
+          (this.serverMode ? this.list.items() : this.tasks())
             .filter((t) => t.assignedByUserId && !t.assignedBy?.fullName?.trim())
             .map((t) => t.assignedByUserId as number)
             .filter((id) => !this.usersApi.getById(id)?.fullName)
@@ -409,7 +510,7 @@ export class TasksPageComponent implements OnInit {
           }
         }
         // trigger recompute ของ assignerName ผ่านอ้างอิงแคช — อัปเดต signal เบา ๆ
-        this.tasks.update((list) =>
+        this.patchTasks((list) =>
           list.map((t) => {
             const id = t.assignedByUserId;
             if (!id || t.assignedBy?.fullName?.trim()) {
@@ -431,6 +532,14 @@ export class TasksPageComponent implements OnInit {
         );
       });
     });
+  }
+
+  private patchTasks(fn: (rows: TaskItem[]) => TaskItem[]): void {
+    if (this.serverMode) {
+      this.list.patchItems(fn);
+    } else {
+      this.tasks.update(fn);
+    }
   }
 
   statusLabel(status: TaskStatus): string {

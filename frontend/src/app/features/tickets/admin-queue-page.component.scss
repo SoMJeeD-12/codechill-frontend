@@ -27,6 +27,10 @@
   color: #94a3b8;
 }
 
+.btn-reject:not(:disabled) {
+  color: #b91c1c;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: nowrap;

@@ -20,7 +20,7 @@
           กระดานงาน
         </a>
       }
-      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="serverMode ? list.loading() : loading()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช
       </button>
@@ -58,6 +58,34 @@
             </button>
           </div>
         }
+        @if (serverMode) {
+          <div class="ui-chips" role="tablist" aria-label="กรองตามสถานะงาน">
+            <button
+              type="button"
+              class="ui-chip"
+              [class.is-active]="!list.filters().status"
+              (click)="setStatusFilter('')"
+            >
+              ทั้งหมด
+              @if (summary(); as s) {
+                <span class="ui-chip__count">{{ s.totalTasks }}</span>
+              }
+            </button>
+            @for (chip of statusChips(); track chip.status) {
+              <button
+                type="button"
+                class="ui-chip"
+                [class.is-active]="list.filters().status === chip.status"
+                (click)="setStatusFilter(chip.status)"
+              >
+                {{ chip.label }}
+                @if (chip.count !== null) {
+                  <span class="ui-chip__count">{{ chip.count }}</span>
+                }
+              </button>
+            }
+          </div>
+        }
         <div class="app-panel-toolbar-row">
           <label class="app-search">
             <mat-icon>search</mat-icon>
@@ -70,13 +98,16 @@
           </label>
         </div>
       </div>
+      @if (serverMode) {
+        <app-list-loading-bar [active]="list.refreshing()" />
+      }
       <div class="app-panel-body">
-        @if (loading()) {
-          <p class="data-empty">กำลังโหลด…</p>
+        @if (serverMode ? list.initialLoading() : loading()) {
+          <app-list-skeleton [cols]="7" />
         } @else {
           <table
             mat-table
-            [dataSource]="pager.paged()"
+            [dataSource]="serverMode ? list.items() : pager.paged()"
             class="data-table data-table--tasks"
             [class.is-review]="mode() === 'review'"
           >
@@ -102,7 +133,7 @@
             </ng-container>
             <ng-container matColumnDef="projectCode">
               <th mat-header-cell *matHeaderCellDef class="col-project-code">
-                <button type="button" class="sort-header" (click)="toggleSort('projectCode')">
+                <button type="button" class="sort-header" [disabled]="!canSort('projectCode')" (click)="toggleSort('projectCode')">
                   รหัสโปรเจกต์
                   <mat-icon>{{ sortIcon('projectCode') }}</mat-icon>
                 </button>
@@ -111,7 +142,7 @@
             </ng-container>
             <ng-container matColumnDef="project">
               <th mat-header-cell *matHeaderCellDef>
-                <button type="button" class="sort-header" (click)="toggleSort('project')">
+                <button type="button" class="sort-header" [disabled]="!canSort('project')" (click)="toggleSort('project')">
                   โปรเจกต์
                   <mat-icon>{{ sortIcon('project') }}</mat-icon>
                 </button>
@@ -129,7 +160,7 @@
             </ng-container>
             <ng-container matColumnDef="assignee">
               <th mat-header-cell *matHeaderCellDef>
-                <button type="button" class="sort-header" (click)="toggleSort('assignee')">
+                <button type="button" class="sort-header" [disabled]="!canSort('assignee')" (click)="toggleSort('assignee')">
                   ผู้รับผิดชอบ
                   <mat-icon>{{ sortIcon('assignee') }}</mat-icon>
                 </button>
@@ -142,7 +173,7 @@
             </ng-container>
             <ng-container matColumnDef="assigner">
               <th mat-header-cell *matHeaderCellDef class="col-hide-md">
-                <button type="button" class="sort-header" (click)="toggleSort('assigner')">
+                <button type="button" class="sort-header" [disabled]="!canSort('assigner')" (click)="toggleSort('assigner')">
                   ผู้มอบหมาย
                   <mat-icon>{{ sortIcon('assigner') }}</mat-icon>
                 </button>
@@ -227,15 +258,30 @@
             <tr mat-header-row *matHeaderRowDef="columns()"></tr>
             <tr mat-row *matRowDef="let row; columns: columns()"></tr>
           </table>
-          <app-table-paginator
-            [length]="pager.length()"
-            [pageIndex]="pager.pageIndex()"
-            [pageSize]="pager.pageSize()"
-            [pageSizeOptions]="pager.pageSizeOptions"
-            (page)="pager.onPage($event)"
-          />
-          @if (displayedTasks().length === 0) {
-            <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
+          @if (serverMode) {
+            <app-table-paginator
+              [length]="list.total()"
+              [pageIndex]="list.pageIndex()"
+              [pageSize]="list.pageSize()"
+              [pageSizeOptions]="list.pageSizeOptions"
+              (page)="list.onPage($event)"
+            />
+            @if (list.error(); as err) {
+              <p class="data-empty">{{ err }}</p>
+            } @else if (list.items().length === 0) {
+              <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
+            }
+          } @else {
+            <app-table-paginator
+              [length]="pager.length()"
+              [pageIndex]="pager.pageIndex()"
+              [pageSize]="pager.pageSize()"
+              [pageSizeOptions]="pager.pageSizeOptions"
+              (page)="pager.onPage($event)"
+            />
+            @if (displayedTasks().length === 0) {
+              <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
+            }
           }
         }
       </div>

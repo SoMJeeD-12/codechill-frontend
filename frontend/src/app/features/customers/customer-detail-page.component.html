@@ -383,8 +383,8 @@
         <ng-template mat-tab-label>
           <span class="tab-label">
             โปรเจกต์
-            @if (projects().length) {
-              <span class="tab-count">{{ projects().length }}</span>
+            @if (tabCounts().projects) {
+              <span class="tab-count">{{ tabCounts().projects }}</span>
             }
           </span>
         </ng-template>
@@ -450,8 +450,8 @@
         <ng-template mat-tab-label>
           <span class="tab-label">
             ประกัน / สัญญา
-            @if (warranties().length + contracts().length) {
-              <span class="tab-count">{{ warranties().length + contracts().length }}</span>
+            @if (tabCounts().warrantiesAndContracts) {
+              <span class="tab-count">{{ tabCounts().warrantiesAndContracts }}</span>
             }
           </span>
         </ng-template>
@@ -594,8 +594,8 @@
         <ng-template mat-tab-label>
           <span class="tab-label">
             ปัญหา
-            @if (tickets().length) {
-              <span class="tab-count">{{ tickets().length }}</span>
+            @if (tabCounts().tickets) {
+              <span class="tab-count">{{ tabCounts().tickets }}</span>
             }
           </span>
         </ng-template>
@@ -665,8 +665,8 @@
         <ng-template mat-tab-label>
           <span class="tab-label">
             การติดตาม
-            @if (followUps().length) {
-              <span class="tab-count">{{ followUps().length }}</span>
+            @if (tabCounts().followUps) {
+              <span class="tab-count">{{ tabCounts().followUps }}</span>
             }
           </span>
         </ng-template>

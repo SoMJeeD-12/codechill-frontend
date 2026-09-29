@@ -48,10 +48,32 @@
   border: 1px solid rgba(19, 78, 74, 0.08);
 }
 
+.login-card .mat-mdc-card-header {
+  padding-bottom: 0.25rem;
+}
+
+.login-card .mat-mdc-card-title {
+  line-height: 1.4;
+}
+
+.login-card .mat-mdc-card-subtitle {
+  margin-top: 0.3rem;
+  line-height: 1.5;
+}
+
+/* ป้ายลอยของช่องแรกต้องไม่ทับคำอธิบายใต้หัวการ์ด */
+.login-card form {
+  margin-top: 1rem;
+}
+
 .full {
   width: 100%;
   display: block;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .login-card .mat-mdc-form-field-subscript-wrapper {
+  min-height: 0.75rem;
 }
 
 .submit {

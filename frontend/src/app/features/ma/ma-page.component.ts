@@ -279,22 +279,27 @@ export class MaPageComponent implements OnInit {
     });
   }
 
-  remove(row: MaContract): void {
+  canCancel(row: MaContract): boolean {
+    return this.canUpdate() && row.status !== 'CANCELLED' && row.status !== 'RENEWED';
+  }
+
+  /** ไม่มีการลบสัญญา — ยกเลิกด้วยสถานะ CANCELLED */
+  cancelContract(row: MaContract): void {
     const label =
       row.contractNo?.trim() ||
       this.projectName(row) ||
       `สัญญา #${row.id}`;
     openConfirmDialog(this.dialog, {
-      title: 'ลบสัญญา MA',
-      message: `ต้องการลบ「${label}」หรือไม่? (ใช้สำหรับเทส)`,
-      confirmLabel: 'ลบ',
+      title: 'ยกเลิกสัญญา MA',
+      message: `ต้องการยกเลิก「${label}」หรือไม่? สัญญาจะยังอยู่ในระบบด้วยสถานะ「ยกเลิก」`,
+      confirmLabel: 'ยกเลิกสัญญา',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
-      this.api.remove(row.id).subscribe({
+      this.api.update(row.id, { status: 'CANCELLED' }).subscribe({
         next: () => {
-          this.snack.open('ลบสัญญาแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('ยกเลิกสัญญาแล้ว', 'ปิด', { duration: 2500 });
           this.reload();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),

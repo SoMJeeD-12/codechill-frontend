@@ -401,17 +401,6 @@ export class ProjectService {
     );
   }
 
-  deleteProject(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`).pipe(
-      tap(() => {
-        this.projectsSignal.update((list) => list.filter((p) => p.id !== id));
-        this.tasksSignal.update((list) => list.filter((t) => t.projectId !== id));
-        this.deliveriesSignal.update((list) => list.filter((d) => d.projectId !== id));
-      }),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
-  }
-
   /* ——— งานย่อย ——— */
 
   getTasks(projectId: number): TaskItem[] {
@@ -723,6 +712,24 @@ export class ProjectService {
         params: toHttpParams({ projectId }),
       })
       .pipe(catchError((err) => throwError(() => new Error(apiErrorMessage(err)))));
+  }
+
+  /** GET /tasks แบ่งหน้าฝั่ง server — คืน { items, total } */
+  listTasksPage(
+    params: Omit<TaskListParams, 'assignedUserId'> & { page: number; limit: number }
+  ): Observable<{ items: TaskItem[]; total: number }> {
+    return this.http
+      .get<ApiTask[] | { items: ApiTask[]; total?: number }>(this.tasksBase, {
+        params: toHttpParams({ ...params, sortOrder: params.sortBy ? params.sortOrder : undefined }),
+      })
+      .pipe(
+        map((body) => {
+          const page = asPage<ApiTask>(body);
+          return { items: page.items.map((t) => this.normalizeTask(t, t.projectId)), total: page.total };
+        }),
+        tap((page) => this.mergeTasks(page.items)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   /** GET /tasks — รายการงานแบบแบนทั้งบริษัท (มี project ย่อ) */

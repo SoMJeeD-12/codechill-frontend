@@ -238,7 +238,6 @@
         <header class="ticket-timeline__head">
           <h3>ลำดับเหตุการณ์</h3>
           <span class="list-count">{{ timelineEvents().length }} รายการ</span>
-          <span class="demo-tag">ตัวอย่าง</span>
         </header>
         @if (!timelineExpanded() && hiddenTimelineCount() > 0) {
           <button
@@ -251,12 +250,22 @@
         }
         <ol class="ticket-timeline__list">
           @for (ev of visibleTimelineEvents(); track ev.id) {
-            <li [class.is-demo]="ev.demo">
-              <span class="ticket-timeline__dot" aria-hidden="true"></span>
+            <li [attr.data-tone]="ev.tone">
+              <span class="ticket-timeline__dot" aria-hidden="true">
+                <mat-icon>{{ ev.icon }}</mat-icon>
+              </span>
               <div class="ticket-timeline__body">
                 <strong>{{ ev.label }}</strong>
-                @if (ev.detail) {
-                  <span class="ticket-timeline__detail">{{ ev.detail }}</span>
+                <span class="ticket-timeline__detail">
+                  {{ ev.actorName ? 'โดย ' + ev.actorName : 'ระบบ' }}
+                  @if (ev.assigneeName) {
+                    · ผู้แก้: {{ ev.assigneeName }}
+                  }
+                </span>
+                @if (ev.note) {
+                  <span class="ticket-timeline__note-text">
+                    {{ ev.code === 'REVIEW_REJECTED' ? 'เหตุผล: ' : '' }}{{ ev.note }}
+                  </span>
                 }
                 <time>{{ ev.at | thaiDate }}</time>
               </div>

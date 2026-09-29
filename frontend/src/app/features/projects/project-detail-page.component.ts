@@ -442,10 +442,6 @@ export class ProjectDetailPageComponent implements OnInit {
       this.auth.hasPermission('projects', 'update')
     );
   });
-  readonly canDeleteProject = computed(() => {
-    // BE ยังไม่มี DELETE /api/projects/:id — ซ่อนปุ่ม
-    return false;
-  });
   readonly canDeleteTask = computed(() => {
     this.auth.session();
     return (
@@ -971,24 +967,25 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  removeProject(): void {
+  /** ไม่มีการลบโปรเจกต์ — ยกเลิกด้วยสถานะ CANCELLED (PUT /projects/:id) */
+  cancelProject(): void {
     const project = this.project();
-    if (!project || !this.canDeleteProject()) {
-      this.snack.open('ไม่มีสิทธิ์ลบโปรเจกต์', 'ปิด', { duration: 3000 });
+    if (!project || !this.canUpdateProject()) {
+      this.snack.open('ไม่มีสิทธิ์แก้ไขโปรเจกต์', 'ปิด', { duration: 3000 });
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ลบโปรเจกต์',
-      message: `ต้องการลบโปรเจกต์「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
-      confirmLabel: 'ลบโปรเจกต์',
+      title: 'ยกเลิกโปรเจกต์',
+      message: `ต้องการยกเลิกโปรเจกต์「${project.name}」หรือไม่?\nข้อมูลยังอยู่ครบ แค่เปลี่ยนสถานะเป็น「ยกเลิก」`,
+      confirmLabel: 'ยกเลิกโปรเจกต์',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
-      this.projectsApi.deleteProject(project.id).subscribe({
+      this.projectsApi.updateProject(project.id, { status: 'CANCELLED' }).subscribe({
         next: () => {
-          this.snack.open('ลบโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
-          void this.router.navigate(['/app/projects']);
+          this.snack.open('ยกเลิกโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
+          this.refresh();
         },
         error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
       });

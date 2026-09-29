@@ -111,7 +111,7 @@ export class ProjectsPageComponent implements OnInit {
     filters: { status: 'ALL' },
     sortBy: 'code',
     sortOrder: 'ASC',
-    sortOrderFor: (key) => (key === 'targetEndDate' ? 'DESC' : 'ASC'),
+    sortOrderFor: (key) => (key === 'targetEndDate' || key === 'progress' ? 'DESC' : 'ASC'),
     fetch: ({ filters, ...req }) =>
       this.projectsApi.listProjectsPage({
         ...req,
@@ -147,10 +147,6 @@ export class ProjectsPageComponent implements OnInit {
       this.auth.hasPermissionCode('project.create') ||
       this.auth.hasPermission('projects', 'create')
     );
-  });
-  readonly canDelete = computed(() => {
-    // BE ยังไม่มี DELETE /api/projects/:id — ใช้สถานะ CANCELLED ผ่าน update
-    return false;
   });
 
   /** id ที่เคยดึงรายตัวเพื่อหา progress แล้ว — กันยิงซ้ำ */
@@ -244,22 +240,26 @@ export class ProjectsPageComponent implements OnInit {
     void this.router.navigate(['/app/projects', project.id]);
   }
 
-  remove(project: Project): void {
-    if (!this.canDelete()) {
-      this.snack.open('ไม่มีสิทธิ์ลบโปรเจกต์', 'ปิด', { duration: 3000 });
+  canCancel(project: Project): boolean {
+    return this.canUpdate() && project.status !== 'CANCELLED' && project.status !== 'CLOSED';
+  }
+
+  /** ไม่มีการลบโปรเจกต์ — ยกเลิกด้วยสถานะ CANCELLED (PUT /projects/:id) */
+  cancelProject(project: Project): void {
+    if (!this.canCancel(project)) {
       return;
     }
     openConfirmDialog(this.dialog, {
-      title: 'ลบโปรเจกต์',
-      message: `ต้องการลบโปรเจกต์「${project.name}」หรือไม่?\nงานย่อยและการส่งมอบที่เกี่ยวข้องอาจถูกลบด้วย`,
-      confirmLabel: 'ลบโปรเจกต์',
+      title: 'ยกเลิกโปรเจกต์',
+      message: `ต้องการยกเลิกโปรเจกต์「${project.name}」หรือไม่?\nข้อมูลยังอยู่ครบ แค่เปลี่ยนสถานะเป็น「ยกเลิก」`,
+      confirmLabel: 'ยกเลิกโปรเจกต์',
     }).subscribe((ok) => {
       if (!ok) {
         return;
       }
-      this.projectsApi.deleteProject(project.id).subscribe({
+      this.projectsApi.updateProject(project.id, { status: 'CANCELLED' }).subscribe({
         next: () => {
-          this.snack.open('ลบโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open('ยกเลิกโปรเจกต์แล้ว', 'ปิด', { duration: 2500 });
           this.reload();
         },
         error: (err: Error) => this.toast.error(err),

@@ -6,7 +6,7 @@
       <section class="col">
         <h3 class="col-title">ข้อมูลโปรเจกต์</h3>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>ชื่อโปรเจกต์</mat-label>
           <input matInput formControlName="name" />
           @if (form.controls.name.touched && form.controls.name.invalid) {
@@ -14,13 +14,13 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>ประเภทโปรเจกต์</mat-label>
           <input matInput formControlName="projectType" />
         </mat-form-field>
 
         <div class="row">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>สถานะ</mat-label>
             <mat-select formControlName="status">
               @for (s of statuses; track s) {
@@ -31,7 +31,7 @@
               <mat-hint>เปลี่ยนสถานะจากปุ่ม「ขั้นถัดไป」หรือเมื่อยอมรับการส่งมอบรอบสุดท้าย</mat-hint>
             }
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>ความสำคัญ</mat-label>
             <mat-select formControlName="priority">
               @for (pr of priorities; track pr) {
@@ -46,7 +46,7 @@
         </div>
 
         <div class="row">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>วันเริ่มโปรเจกต์</mat-label>
             <input
               matInput
@@ -58,7 +58,7 @@
             <mat-datepicker-toggle matIconSuffix [for]="startPicker" />
             <mat-datepicker #startPicker />
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>กำหนดส่งมอบ</mat-label>
             <input
               matInput
@@ -76,7 +76,7 @@
           </mat-form-field>
         </div>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>ผู้จัดการโปรเจกต์</mat-label>
           <mat-select formControlName="managerUserId">
             <mat-option [value]="null">—</mat-option>
@@ -86,12 +86,12 @@
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>มูลค่าโปรเจกต์ (บาท)</mat-label>
           <input matInput appMoneyInput formControlName="contractValue" inputmode="decimal" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>รายละเอียด</mat-label>
           <textarea matInput rows="6" formControlName="description"></textarea>
         </mat-form-field>
@@ -101,7 +101,7 @@
         <h3 class="col-title">ลูกค้า</h3>
 
         @if (isEdit || customerLocked) {
-          <mat-form-field appearance="outline" class="full">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>ลูกค้า</mat-label>
             <input
               matInput
@@ -137,7 +137,7 @@
               </div>
             } @else {
               <div class="customer-pick__row">
-                <mat-form-field appearance="outline" class="customer-pick__search">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="customer-pick__search">
                   <mat-label>ค้นหาลูกค้าเดิม</mat-label>
                   <input
                     matInput
@@ -202,7 +202,7 @@
               {{ customerMode() === 'new' ? 'ข้อมูลลูกค้าใหม่' : 'ข้อมูลลูกค้าที่เลือก' }}
             </legend>
 
-            <mat-form-field appearance="outline" class="full">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
               <mat-label>ชื่อบริษัท</mat-label>
               <input matInput formControlName="name" />
               @if (form.controls.customer.controls.name.touched && form.controls.customer.controls.name.invalid) {
@@ -210,18 +210,18 @@
               }
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
               <mat-label>เลขผู้เสียภาษี</mat-label>
               <input matInput formControlName="taxId" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
               <mat-label>ที่อยู่</mat-label>
               <textarea matInput rows="2" formControlName="address"></textarea>
             </mat-form-field>
 
             <div class="row">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>เบอร์โทร</mat-label>
                 <input
                   matInput
@@ -235,7 +235,7 @@
                   <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
                 }
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>อีเมล</mat-label>
                 <input matInput formControlName="email" />
               </mat-form-field>
@@ -248,7 +248,7 @@
             <legend>ข้อมูลผู้ติดต่อ</legend>
 
             <div class="row">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>ชื่อผู้ติดต่อ</mat-label>
                 <input matInput formControlName="name" />
                 @if (
@@ -258,14 +258,14 @@
                   <mat-error>กรอกชื่อผู้ติดต่อหลัก</mat-error>
                 }
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>ตำแหน่ง</mat-label>
                 <input matInput formControlName="position" />
               </mat-form-field>
             </div>
 
             <div class="row">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>เบอร์ผู้ติดต่อ</mat-label>
                 <input
                   matInput
@@ -279,13 +279,13 @@
                   <mat-error>เบอร์ต้องขึ้นต้นด้วย 0 และมี 9–10 หลัก</mat-error>
                 }
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>อีเมลผู้ติดต่อ</mat-label>
                 <input matInput formControlName="email" />
               </mat-form-field>
             </div>
 
-            <mat-form-field appearance="outline" class="full">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
               <mat-label>LINE ID</mat-label>
               <input matInput formControlName="lineId" />
             </mat-form-field>
@@ -295,11 +295,11 @@
             <fieldset class="section section--muted" formGroupName="customer">
               <legend>ช่องทางโซเชียล</legend>
               <div class="row">
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>LINE Official</mat-label>
                   <input matInput formControlName="lineOfficialId" />
                 </mat-form-field>
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Facebook</mat-label>
                   <input matInput formControlName="facebookUrl" />
                 </mat-form-field>
