@@ -43,8 +43,7 @@
                         class="nav-child"
                         [routerLink]="child.route"
                         [queryParams]="badgeQuery(child.code)"
-                        routerLinkActive="active"
-                        [routerLinkActiveOptions]="navActiveOptions"
+                        [class.active]="activeNavRoute() === child.route"
                       >
                         <mat-icon matListItemIcon>{{ child.icon }}</mat-icon>
                         <span matListItemTitle class="nav-item__label">
@@ -121,8 +120,7 @@
                 mat-list-item
                 [routerLink]="item.route"
                 [queryParams]="badgeQuery(item.code)"
-                routerLinkActive="active"
-                [routerLinkActiveOptions]="navActiveOptions"
+                [class.active]="activeNavRoute() === item.route"
                 class="nav-item"
               >
                 <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>

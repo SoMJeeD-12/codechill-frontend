@@ -43,7 +43,6 @@ import {
   PickerOption,
 } from '../../shared/components/entity-picker.component';
 import {
-  PICKER_LIMIT,
   customerSearchFn,
   projectPickerOption,
 } from '../../shared/components/entity-search';
@@ -68,6 +67,7 @@ type FollowUpView = 'all' | 'today' | 'overdue' | 'planned' | 'mine';
 /** preset เมื่อสร้างจากหน้าโปรเจกต์/ลูกค้า */
 export type FollowUpFormPreset = {
   customerId?: number;
+  customerName?: string | null;
   projectId?: number;
   project?: FollowUpProjectSummary | null;
 };
@@ -391,8 +391,29 @@ export class FollowUpFormDialogComponent {
   private readonly editRow: FollowUp | null = isFollowUpRow(this.data) ? this.data : null;
   readonly isEdit = !!this.editRow;
   readonly projectLocked = !this.isEdit && !!this.presetProjectId();
+  /** แก้ไข = ลูกค้าเปลี่ยนไม่ได้ · สร้างจากหน้าโปรเจกต์ = ล็อกตามโปรเจกต์ */
+  readonly customerLocked = this.isEdit || this.projectLocked;
 
   readonly withoutProject = signal(this.initialWithoutProject());
+  /** เลือกลูกค้าก่อน แล้วช่องโปรเจกต์แสดงเฉพาะโปรเจกต์ของลูกค้านั้น */
+  readonly projectCustomer = signal<PickerOption | null>(this.initialCustomerOption());
+  readonly customerProjects = signal<Project[]>([]);
+  readonly customerProjectsLoading = signal(false);
+  private readonly openFollowUps = signal<FollowUp[]>([]);
+  /** โปรเจกต์ที่มีงานติดตามค้าง (PLANNED) และยังไม่เลยกำหนด — ห้ามสร้างซ้ำ */
+  readonly blockedProjects = computed(() => {
+    const map = new Map<number, FollowUp>();
+    for (const f of this.openFollowUps()) {
+      if (f.projectId == null || f.status !== 'PLANNED' || f.isOverdue || f.id === this.editRow?.id) {
+        continue;
+      }
+      const prev = map.get(f.projectId);
+      if (!prev || f.dueDate > prev.dueDate) {
+        map.set(f.projectId, f);
+      }
+    }
+    return map;
+  });
   readonly projectSuggestions = signal<ProjectOption[]>([]);
   readonly projectQueryReady = signal(false);
   readonly selectedProject = signal<Project | FollowUpProjectSummary | null>(
@@ -459,7 +480,114 @@ export class FollowUpFormDialogComponent {
         });
     }
 
+    const customerId = this.projectCustomer()?.id;
+    if (!this.withoutProject() && !this.projectLocked && customerId) {
+      this.loadCustomerProjects(customerId);
+    }
+    const lockedProjectId = this.presetProjectId();
+    if (this.projectLocked && lockedProjectId) {
+      this.loadOpenFollowUps({ projectId: lockedProjectId });
+    }
+    this.syncProjectInputEnabled();
     this.syncTargetValidators();
+  }
+
+  onProjectCustomerPicked(option: PickerOption | null): void {
+    if (this.customerLocked) {
+      return;
+    }
+    const changed = this.projectCustomer()?.id !== option?.id;
+    this.projectCustomer.set(option);
+    if (changed) {
+      this.selectedProject.set(null);
+      this.form.patchValue({ projectId: null });
+      this.projectSearchControl.setValue('', { emitEvent: false });
+    }
+    this.error.set(null);
+    this.loadCustomerProjects(option?.id ?? null);
+  }
+
+  private customerProjectsSub?: Subscription;
+
+  private loadCustomerProjects(customerId: number | null): void {
+    this.customerProjectsSub?.unsubscribe();
+    this.customerProjects.set([]);
+    this.projectSuggestions.set([]);
+    this.projectQueryReady.set(false);
+    this.customerProjectsLoading.set(!!customerId);
+    this.syncProjectInputEnabled();
+    this.loadOpenFollowUps(customerId ? { customerId } : null);
+    if (!customerId) {
+      return;
+    }
+    this.customerProjectsSub = this.projectsApi.listProjectsByCustomer(customerId).subscribe({
+      next: (list) => {
+        this.customerProjectsLoading.set(false);
+        this.customerProjects.set(list);
+        this.syncProjectInputEnabled();
+      },
+      error: (err: Error) => {
+        this.customerProjectsLoading.set(false);
+        this.error.set(err.message);
+        this.syncProjectInputEnabled();
+      },
+    });
+  }
+
+  private openFollowUpsSub?: Subscription;
+
+  private loadOpenFollowUps(scope: { customerId: number } | { projectId: number } | null): void {
+    this.openFollowUpsSub?.unsubscribe();
+    this.openFollowUps.set([]);
+    if (!scope) {
+      return;
+    }
+    this.openFollowUpsSub = this.api
+      .listPage({ ...scope, status: 'PLANNED', page: 1, limit: 100 })
+      .subscribe({
+        next: (res) => {
+          this.openFollowUps.set(res.items);
+          const selected = this.selectedProject();
+          if (selected && !this.projectLocked && this.blockedProjects().has(selected.id)) {
+            this.selectedProject.set(null);
+            this.form.patchValue({ projectId: null });
+            this.projectSearchControl.setValue('', { emitEvent: false });
+          }
+        },
+        error: () => this.openFollowUps.set([]),
+      });
+  }
+
+  blockedFor(projectId: number): FollowUp | undefined {
+    return this.blockedProjects().get(projectId);
+  }
+
+  formatDue(dueDate: string): string {
+    const d = parseDateOnly(dueDate);
+    return d
+      ? d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+      : dueDate;
+  }
+
+  private syncProjectInputEnabled(): void {
+    const ctrl = this.projectSearchControl;
+    const enable =
+      !this.projectLocked && !!this.projectCustomer() && !this.customerProjectsLoading();
+    if (enable && ctrl.disabled) {
+      ctrl.enable({ emitEvent: false });
+    } else if (!enable && ctrl.enabled) {
+      ctrl.disable({ emitEvent: false });
+    }
+  }
+
+  projectPlaceholder(): string {
+    if (!this.projectCustomer()) {
+      return 'เลือกลูกค้าก่อน';
+    }
+    if (this.customerProjectsLoading()) {
+      return 'กำลังโหลดโปรเจกต์…';
+    }
+    return 'พิมพ์รหัสหรือชื่อโปรเจกต์';
   }
 
   readonly displayProject = (
@@ -488,6 +616,7 @@ export class FollowUpFormDialogComponent {
     } else {
       this.form.patchValue({ customerId: 0 });
       this.customerOption.set(null);
+      this.loadCustomerProjects(this.projectCustomer()?.id ?? null);
     }
     this.syncTargetValidators();
     this.error.set(null);
@@ -499,10 +628,18 @@ export class FollowUpFormDialogComponent {
 
   save(): void {
     this.syncTargetValidators();
+    const pickedProjectId = this.withoutProject() ? null : this.form.getRawValue().projectId;
+    const blocking = pickedProjectId ? this.blockedFor(Number(pickedProjectId)) : undefined;
+    if (blocking) {
+      this.error.set(
+        `โปรเจกต์นี้มีงานติดตาม「${blocking.title}」ค้างอยู่ ครบกำหนด ${this.formatDue(blocking.dueDate)} — ปิดงานเดิมก่อนหรือแก้ไขงานเดิมแทน`
+      );
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       if (!this.withoutProject() && !this.form.getRawValue().projectId) {
-        this.error.set('กรุณาเลือกโปรเจกต์');
+        this.error.set(this.projectCustomer() ? 'กรุณาเลือกโปรเจกต์' : 'กรุณาเลือกลูกค้าและโปรเจกต์');
         this.projectSearchControl.markAsTouched();
       }
       return;
@@ -593,7 +730,6 @@ export class FollowUpFormDialogComponent {
     this.loadProjectSuggestions(search);
   }
 
-  /** คลิกช่องว่าง = ?limit=20 · พิมพ์ = ?search=&limit=20 */
   onProjectFieldFocus(): void {
     if (this.projectLocked || this.selectedProject() || this.projectSuggestions().length) {
       return;
@@ -602,17 +738,19 @@ export class FollowUpFormDialogComponent {
     this.loadProjectSuggestions(typeof raw === 'string' ? raw.trim() : '');
   }
 
-  private projectSearchSub?: Subscription;
-
+  /** กรองจากโปรเจกต์ของลูกค้าที่โหลดไว้แล้ว — ไม่ยิง API ซ้ำ */
   private loadProjectSuggestions(search: string): void {
-    this.projectSearchSub?.unsubscribe();
+    if (!this.projectCustomer() || this.customerProjectsLoading()) {
+      return;
+    }
+    const q = search.toLowerCase();
     this.projectQueryReady.set(true);
-    this.projectSearchSub = this.projectsApi
-      .listProjectOptions({ search: search || undefined, limit: PICKER_LIMIT })
-      .subscribe({
-        next: (list) => this.projectSuggestions.set(list),
-        error: () => this.projectSuggestions.set([]),
-      });
+    this.projectSuggestions.set(
+      this.customerProjects().filter(
+        (p) =>
+          !q || p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q)
+      )
+    );
   }
 
   projectStatusBadge(p: ProjectOption): string | null {
@@ -699,8 +837,9 @@ export class FollowUpFormDialogComponent {
     if (!id) {
       return null;
     }
+    const presetName = this.data && !isFollowUpRow(this.data) ? this.data.customerName : null;
     const cached = this.customersApi.getCustomer(id);
-    return { id, label: cached?.name ?? `ลูกค้า #${id}` };
+    return { id, label: presetName ?? cached?.name ?? `ลูกค้า #${id}` };
   }
 
   private initialCustomerId(): number {

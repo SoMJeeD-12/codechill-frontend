@@ -30,6 +30,12 @@ import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 
 const NEXT_TITLE_MAX = 255;
 
+interface FollowUpCompleteDialogResult {
+  result: FollowUpCompleteResult;
+  /** บันทึกการติดต่อจาก dialog สำเร็จแล้ว — ไม่ต้องถามซ้ำ */
+  logged: boolean;
+}
+
 function today(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -171,7 +177,7 @@ export class FollowUpCompleteDialogComponent {
   private readonly envelope = inject(ApiEnvelopeService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(
-    MatDialogRef<FollowUpCompleteDialogComponent, FollowUpCompleteResult | undefined>
+    MatDialogRef<FollowUpCompleteDialogComponent, FollowUpCompleteDialogResult | undefined>
   );
   readonly data = inject<FollowUp>(MAT_DIALOG_DATA);
 
@@ -247,7 +253,7 @@ export class FollowUpCompleteDialogComponent {
           (result.nextFollowUp ? 'ปิดงานติดตามและนัดครั้งถัดไปเรียบร้อย' : 'ปิดงานติดตามเรียบร้อย');
         if (!raw.alsoLog) {
           this.snack.open(message, 'ปิด', { duration: 3000 });
-          this.ref.close(result);
+          this.ref.close({ result, logged: false });
           return;
         }
 
@@ -263,13 +269,13 @@ export class FollowUpCompleteDialogComponent {
           .subscribe({
             next: () => {
               this.snack.open(`${message} · บันทึกการติดต่อแล้ว`, 'ปิด', { duration: 3200 });
-              this.ref.close(result);
+              this.ref.close({ result, logged: true });
             },
             error: (err: Error) => {
               this.snack.open(`${message} แต่บันทึกการติดต่อไม่สำเร็จ: ${err.message}`, 'ปิด', {
                 duration: 4500,
               });
-              this.ref.close(result);
+              this.ref.close({ result, logged: false });
             },
           });
       },
@@ -283,8 +289,8 @@ export class FollowUpCompleteDialogComponent {
 
 /**
  * จุดเดียวที่เปิด dialog ปิดงานติดตาม — หน้างานติดตาม / หน้าแรก / แท็บโปรเจกต์ / ลูกค้า 360°
- * สำเร็จแล้ว: ดึง /nav/counts ใหม่ แล้วถาม "บันทึกการติดต่อเลยไหม" ต่อ
- * (ปิดงานติดตามไม่อัปเดตวันติดต่อล่าสุดของลูกค้า — ต้องบันทึกการติดต่อแยก)
+ * สำเร็จแล้ว: ดึง /nav/counts ใหม่ แล้วถาม "บันทึกการติดต่อเลยไหม" เฉพาะเมื่อ dialog ยังไม่ได้บันทึกให้
+ * (ปิดงานติดตามไม่อัปเดตวันติดต่อล่าสุดของลูกค้า — ต้องบันทึกการติดต่อแยก · ถามซ้ำจะได้ประวัติซ้ำ)
  */
 @Injectable({ providedIn: 'root' })
 export class FollowUpCompleteFlowService {
@@ -315,20 +321,22 @@ export class FollowUpCompleteFlowService {
       return of(null);
     }
     return this.dialog
-      .open<FollowUpCompleteDialogComponent, FollowUp, FollowUpCompleteResult | undefined>(
+      .open<FollowUpCompleteDialogComponent, FollowUp, FollowUpCompleteDialogResult | undefined>(
         FollowUpCompleteDialogComponent,
         { ...FORM_DIALOG, data: row }
       )
       .afterClosed()
       .pipe(
-        map((result) => result ?? null),
-        tap((result) => {
-          if (!result) {
+        tap((closed) => {
+          if (!closed) {
             return;
           }
           this.attention.refreshBadges();
-          this.offerCommunicationLog(row);
-        })
+          if (!closed.logged) {
+            this.offerCommunicationLog(row);
+          }
+        }),
+        map((closed) => closed?.result ?? null)
       );
   }
 

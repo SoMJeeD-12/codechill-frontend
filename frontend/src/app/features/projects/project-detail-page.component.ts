@@ -863,6 +863,8 @@ export class ProjectDetailPageComponent implements OnInit {
       return;
     }
     const preset: FollowUpFormPreset = {
+      customerId: project.customerId,
+      customerName: project.customer?.name ?? null,
       projectId: project.id,
       project: { id: project.id, code: project.code, name: project.name },
     };

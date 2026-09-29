@@ -2,7 +2,7 @@
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
     <!--
-      ตอนสร้างต้องเลือกโปรเจกต์เสมอ — ระบบใช้ลูกค้าของโปรเจกต์ให้เอง
+      ตอนสร้างเลือกลูกค้าก่อน แล้วเลือกโปรเจกต์ของลูกค้านั้น — ส่งแค่ projectId ระบบใช้ลูกค้าของโปรเจกต์ให้เอง
       ตัวเลือก "ไม่ระบุโปรเจกต์" เหลือไว้เฉพาะตอนแก้ไขงานเก่าที่ยังไม่ได้ผูกโปรเจกต์
     -->
     @if (isEdit) {
@@ -16,6 +16,16 @@
     }
 
     @if (!withoutProject()) {
+      <app-entity-picker
+        class="full"
+        label="ลูกค้า"
+        placeholder="พิมพ์ชื่อลูกค้า"
+        [openOnFocus]="true"
+        [searchFn]="searchCustomers"
+        [selected]="projectCustomer()"
+        [disabled]="customerLocked"
+        (selectionChange)="onProjectCustomerPicked($event)"
+      />
       <mat-form-field appearance="outline" class="full">
         <mat-label>โปรเจกต์</mat-label>
         <input
@@ -23,7 +33,7 @@
           [formControl]="projectSearchControl"
           [matAutocomplete]="projectAuto"
           [readonly]="projectLocked"
-          placeholder="พิมพ์รหัสหรือชื่อโปรเจกต์"
+          [placeholder]="projectPlaceholder()"
           (focus)="onProjectFieldFocus()"
         />
         <mat-autocomplete
@@ -33,14 +43,20 @@
         >
           @if (projectQueryReady()) {
             @for (p of projectSuggestions(); track p.id) {
-              <mat-option [value]="p">
+              <mat-option [value]="p" [disabled]="!!blockedFor(p.id)">
                 {{ p.code ? p.code + ' · ' : '' }}{{ p.name }}
-                @if (projectStatusBadge(p); as badge) {
-                  <span class="option-muted"> · {{ badge }}</span>
+                @if (blockedFor(p.id); as blocking) {
+                  <span class="option-muted"> · มีงานติดตามค้าง (ครบ {{ formatDue(blocking.dueDate) }})</span>
+                } @else {
+                  @if (projectStatusBadge(p); as badge) {
+                    <span class="option-muted"> · {{ badge }}</span>
+                  }
                 }
               </mat-option>
             } @empty {
-              <mat-option disabled>ไม่พบโปรเจกต์</mat-option>
+              <mat-option disabled>
+                {{ customerProjects().length ? 'ไม่พบโปรเจกต์' : 'ลูกค้ารายนี้ยังไม่มีโปรเจกต์' }}
+              </mat-option>
             }
           }
         </mat-autocomplete>
