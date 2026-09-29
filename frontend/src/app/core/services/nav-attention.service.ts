@@ -19,6 +19,8 @@ interface NavCountsResponse {
   ticketsMineOpen: number | null;
   taskReviewsPending: number | null;
   tasksMeRejected: number | null;
+  /** งานของฉันที่ยังไม่เสร็จ (TODO/DOING/WAITING) = total ของ /tasks/me — รอ backend เพิ่ม */
+  tasksMeOpen?: number | null;
 }
 
 const EMPTY_ADMIN: Record<AdminQueueTab, number> = {
@@ -187,7 +189,7 @@ export class NavAttentionService {
         };
         put('tickets-mine', body?.ticketsMineOpen);
         put('tasks-review', body?.taskReviewsPending);
-        put('tasks-me', body?.tasksMeRejected);
+        put('tasks-me', body?.tasksMeOpen !== undefined ? body.tasksMeOpen : body?.tasksMeRejected);
         this.menuCountsSignal.set(menu);
         this.finishRun();
       },
