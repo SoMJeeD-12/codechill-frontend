@@ -4,7 +4,14 @@ import { Observable, catchError, map, throwError } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import {
+  Paginated,
+  asList,
+  asPage,
+  pruneUndefined,
+  toHttpParams,
+  upsertById,
+} from '../http/api.util';
 import {
   FollowUp,
   FollowUpStatus,
@@ -90,6 +97,24 @@ export class FollowUpService {
             this.items.set(rows);
           }
         }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /follow-ups แบบแบ่งหน้าฝั่ง server */
+  listPage(
+    params: Omit<FollowUpListParams, 'sortOrder'> & {
+      page: number;
+      limit: number;
+      sortOrder?: 'ASC' | 'DESC';
+    }
+  ): Observable<{ items: FollowUp[]; total: number }> {
+    return this.http
+      .get<FollowUp[] | Paginated<FollowUp>>(this.base, {
+        params: toHttpParams({ ...params, overdue: params.overdue === true ? true : undefined }),
+      })
+      .pipe(
+        map((body) => asPage(body)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }

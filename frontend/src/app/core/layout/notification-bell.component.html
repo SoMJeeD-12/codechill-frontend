@@ -68,6 +68,24 @@
               </button>
             </li>
           }
+          @if (feed.hasMore() || feed.loadingMore() || feed.done()) {
+            <li
+              class="notif-panel__more"
+              appInfiniteScroll
+              appInfiniteScrollMargin="80px"
+              [appInfiniteScrollDisabled]="!feed.hasMore() || feed.loadingMore() || !!feed.error()"
+              [appInfiniteScrollKey]="items().length"
+              (reached)="loadMore()"
+            >
+              @if (feed.loadingMore()) {
+                <mat-spinner diameter="18" />
+              } @else if (feed.hasMore() && feed.error()) {
+                <button type="button" class="notif-panel__retry" (click)="loadMore()">ลองโหลดอีกครั้ง</button>
+              } @else if (feed.done()) {
+                <span>แสดงครบแล้ว</span>
+              }
+            </li>
+          }
         </ul>
       }
 

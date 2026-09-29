@@ -4,7 +4,14 @@ import { Observable, catchError, of, throwError } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import {
+  Paginated,
+  asList,
+  asPage,
+  pruneUndefined,
+  toHttpParams,
+  upsertById,
+} from '../http/api.util';
 import { AccountType, User, UserStatus, UserSummary } from '../models/user.model';
 
 /** query `capability` ของ GET /users/assignable — Backend กรอง permission + ACTIVE ให้แล้ว */
@@ -80,6 +87,22 @@ export class UserService {
       );
   }
 
+  /** GET /users แบบแบ่งหน้าฝั่ง server */
+  listPage(
+    params: Omit<UserListParams, 'sortOrder'> & {
+      page: number;
+      limit: number;
+      sortOrder?: 'ASC' | 'DESC';
+    }
+  ): Observable<{ items: User[]; total: number }> {
+    return this.http
+      .get<User[] | Paginated<User>>(this.base, { params: toHttpParams({ ...params }) })
+      .pipe(
+        map((body) => asPage(body)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   /** GET /users/{id} — ใช้เติมชื่อเมื่อรายการงานส่งมาแค่ userId */
   get(id: number): Observable<User> {
     return this.http.get<User>(`${this.base}/${id}`).pipe(
@@ -109,6 +132,14 @@ export class UserService {
         }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
+  }
+
+  /** GET /users/assignable ไม่ระบุ capability — รายชื่อสำหรับตัวกรองผู้ใช้ */
+  listAssignableAll(): Observable<UserSummary[]> {
+    return this.http.get<UserSummary[]>(`${this.base}/assignable`).pipe(
+      map((rows) => (Array.isArray(rows) ? rows : [])),
+      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+    );
   }
 
   /**

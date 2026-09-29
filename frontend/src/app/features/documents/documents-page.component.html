@@ -17,32 +17,17 @@
             aria-label="ค้นหาเอกสาร"
           />
         </label>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter">
-          <mat-label>กรองโปรเจกต์</mat-label>
-          <input
-            matInput
-            [formControl]="projectFilterControl"
-            [matAutocomplete]="projectFilterAuto"
-            (focus)="onProjectFilterFocus()"
-            (blur)="onProjectFilterBlur()"
-            placeholder="ค้นหาโค้ด / ชื่อโปรเจกต์"
-            aria-label="กรองโปรเจกต์"
-          />
-          <mat-autocomplete
-            #projectFilterAuto="matAutocomplete"
-            [displayWith]="displayProjectFilter"
-            (opened)="onProjectFilterPanelOpened()"
-            (optionSelected)="onProjectFilterSelected($event)"
-          >
-            <mat-option [value]="'ALL'">ทั้งหมด</mat-option>
-            @for (p of filteredProjects(); track p.id) {
-              <mat-option [value]="p.id">{{ p.name }}</mat-option>
-            }
-            @if (filteredProjects().length === 0) {
-              <mat-option disabled>ไม่พบโปรเจกต์</mat-option>
-            }
-          </mat-autocomplete>
-        </mat-form-field>
+        <app-entity-picker
+          class="project-filter"
+          label=""
+          placeholder="ทุกโปรเจกต์"
+          prefixIcon="folder_open"
+          fieldClass="ui-filter ui-filter--icon"
+          [openOnFocus]="true"
+          [searchFn]="searchProjects"
+          [selected]="projectFilterOption()"
+          (selectionChange)="onProjectFilterPicked($event)"
+        />
         @if (canCreateDocument()) {
           <button mat-flat-button color="primary" type="button" class="ui-add-btn" (click)="openCreate()">
             <mat-icon>upload_file</mat-icon>

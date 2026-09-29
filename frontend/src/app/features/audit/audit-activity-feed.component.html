@@ -1,0 +1,204 @@
+<div class="feed-toolbar">
+  <div class="filters-row">
+    @if (fixedUserId() == null) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter ui-filter--icon user-filter">
+        <mat-icon matPrefix>person</mat-icon>
+        <mat-select
+          [value]="userFilter()"
+          placeholder="ทุกคน"
+          aria-label="กรองตามผู้ใช้"
+          panelWidth="auto"
+          (selectionChange)="setUser($event.value)"
+        >
+          <mat-option [value]="null">ทุกคน</mat-option>
+          @for (u of users(); track u.id) {
+            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter ui-filter--icon">
+      <mat-icon matPrefix>category</mat-icon>
+      <mat-select
+        [value]="tableFilter()"
+        placeholder="ทุกหมวด"
+        aria-label="กรองตามหมวด"
+        panelWidth="auto"
+        (selectionChange)="setTable($event.value)"
+      >
+        <mat-option [value]="null">ทุกหมวด</mat-option>
+        @for (t of tableOptions(); track t.name) {
+          <mat-option [value]="t.name">{{ t.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <div class="date-range" role="group" aria-label="ช่วงวันที่">
+      <mat-icon>event</mat-icon>
+      <input
+        type="date"
+        [value]="dateFrom()"
+        [max]="dateTo() || null"
+        aria-label="ตั้งแต่วันที่"
+        (change)="setDateFrom($any($event.target).value)"
+      />
+      <span class="date-sep">ถึง</span>
+      <input
+        type="date"
+        [value]="dateTo()"
+        [min]="dateFrom() || null"
+        aria-label="ถึงวันที่"
+        (change)="setDateTo($any($event.target).value)"
+      />
+      @if (dateFrom() || dateTo()) {
+        <button mat-icon-button type="button" class="date-clear" aria-label="ล้างช่วงวันที่" (click)="clearDates()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
+    <button
+      mat-icon-button
+      type="button"
+      class="refresh-btn"
+      matTooltip="รีเฟรช"
+      aria-label="รีเฟรช"
+      [disabled]="loading()"
+      (click)="reload()"
+    >
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+  <div class="hide-toggles">
+    <mat-checkbox [checked]="hideSessionEvents()" (change)="setHideSessionEvents($event.checked)">
+      ซ่อนการเข้าสู่ระบบ
+    </mat-checkbox>
+    <mat-checkbox
+      [checked]="hideNotifications()"
+      [disabled]="tableFilter() === 'notifications'"
+      (change)="setHideNotifications($event.checked)"
+    >
+      ซ่อนการแจ้งเตือน
+    </mat-checkbox>
+    <mat-checkbox [checked]="hideSystemEvents()" (change)="setHideSystemEvents($event.checked)">
+      ซ่อนการทำงานอัตโนมัติของระบบ
+    </mat-checkbox>
+    @if (total() != null) {
+      <span class="feed-total">ทั้งหมด {{ total() }} รายการ</span>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="feed-error">{{ error() }}</p>
+}
+
+@if (loading() && items().length === 0) {
+  <p class="feed-empty">กำลังโหลด…</p>
+} @else if (items().length === 0 && !error()) {
+  <p class="feed-empty">ไม่มีกิจกรรมตามตัวกรองนี้</p>
+} @else {
+  @for (group of groups(); track group.key) {
+    <section class="feed-day">
+      <h3 class="feed-day__title">{{ group.label }}</h3>
+      <ul class="feed-list">
+        @for (log of group.items; track log.id) {
+          @let expandable = !!log.changes?.length;
+          @let open = expandedId() === log.id;
+          <li class="feed-item" [class.is-open]="open">
+            <div
+              class="feed-row"
+              [class.is-clickable]="expandable"
+              [attr.role]="expandable ? 'button' : null"
+              [attr.tabindex]="expandable ? 0 : null"
+              [attr.aria-expanded]="expandable ? open : null"
+              (click)="toggle(log)"
+              (keydown.enter)="toggle(log)"
+            >
+              @if (log.user) {
+                <span class="avatar" [style.background]="avatarTone(log)" aria-hidden="true">
+                  {{ initials(log) }}
+                </span>
+              } @else {
+                <span class="avatar avatar--system" aria-hidden="true">
+                  <mat-icon>settings</mat-icon>
+                </span>
+              }
+              <div class="feed-main">
+                <p class="feed-sentence">
+                  <strong class="actor" [class.actor--system]="!log.user">{{ actorLabel(log) }}</strong>
+                  {{ log.summary || '—' }}
+                </p>
+                <div class="feed-meta">
+                  @if (recordLink(log); as link) {
+                    <a class="tag tag--link" [routerLink]="link" (click)="$event.stopPropagation()">
+                      {{ tableLabel(log) }} #{{ log.recordId }}
+                      <mat-icon>arrow_outward</mat-icon>
+                    </a>
+                  } @else {
+                    <span class="tag">
+                      {{ tableLabel(log) }}
+                      @if (log.recordId != null) {
+                        #{{ log.recordId }}
+                      }
+                    </span>
+                  }
+                </div>
+              </div>
+              <time class="feed-time" [matTooltip]="fullTime(log)" matTooltipShowDelay="300">
+                {{ time(log) }}
+              </time>
+              @if (expandable) {
+                <mat-icon class="feed-chevron" aria-hidden="true">
+                  {{ open ? 'expand_less' : 'expand_more' }}
+                </mat-icon>
+              } @else {
+                <span class="feed-chevron" aria-hidden="true"></span>
+              }
+            </div>
+            @if (open) {
+              <div class="feed-detail">
+                <table class="changes-table">
+                  <thead>
+                    <tr>
+                      <th>ช่อง</th>
+                      <th>ค่าเดิม</th>
+                      <th>ค่าใหม่</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (c of log.changes; track c.field) {
+                      <tr>
+                        <td>{{ c.label }}</td>
+                        <td class="val-from">{{ c.from ?? '—' }}</td>
+                        <td class="val-to">{{ c.to ?? '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <p class="feed-ip">IP {{ log.ipAddress || '—' }}</p>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <div
+    class="feed-footer"
+    appInfiniteScroll
+    [appInfiniteScrollDisabled]="!hasMore() || loadingMore() || !!error()"
+    [appInfiniteScrollKey]="items().length"
+    (reached)="loadMore()"
+  >
+    @if (loadingMore()) {
+      <span class="feed-loading-more">กำลังโหลดเพิ่ม…</span>
+    } @else if (hasMore() && error()) {
+      <button mat-stroked-button type="button" (click)="loadMore()">ลองโหลดอีกครั้ง</button>
+    } @else if (feed.done()) {
+      <span class="feed-done">แสดงครบแล้ว</span>
+    }
+    <span class="feed-count">
+      แสดง {{ items().length }}@if (total() != null) { จาก {{ total() }}} รายการ
+    </span>
+  </div>
+}

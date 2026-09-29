@@ -22,7 +22,6 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { UserService } from '../../core/services/user.service';
-import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { ApiToastService } from '../../shared/services/api-toast.service';
@@ -31,6 +30,11 @@ import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { NavAttentionService } from '../../core/services/nav-attention.service';
 import { TicketAssignDialogComponent } from './ticket-detail-page.component';
+import {
+  TicketReturnSupportDialogComponent,
+  TicketReturnSupportDialogData,
+  TicketReviewDialogResult,
+} from './ticket-return-support-dialog.component';
 
 const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
   { id: 'AWAITING_CLAIM', label: 'รอรับ' },
@@ -335,29 +339,29 @@ export class AdminQueuePageComponent implements OnInit {
       );
       return;
     }
-    openConfirmDialog(this.dialog, {
-      title: 'ตรวจผ่าน · ส่งซัพพอร์ต',
-      message: `ส่งใบ「${row.title}」กลับซัพพอร์ตให้บอกลูกค้า?\n\nสถานะปัจจุบัน: ${this.statusLabel(row)}`,
-      confirmLabel: 'ตรวจผ่าน · ส่งซัพพอร์ต',
-      cancelLabel: 'ยกเลิก',
-      danger: false,
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      this.actingId.set(row.id);
-      this.ticketsApi.returnToSupport(row.id).subscribe({
-        next: () => {
-          this.actingId.set(null);
-          this.toast.success('ส่งซัพพอร์ตแล้ว');
-          this.reload();
-        },
-        error: (err: Error) => {
-          this.actingId.set(null);
-          this.toast.error(err, 'ส่งซัพพอร์ตไม่สำเร็จ');
-        },
+    this.dialog
+      .open(TicketReturnSupportDialogComponent, {
+        width: '680px',
+        maxWidth: '96vw',
+        autoFocus: false,
+        data: {
+          ticketId: row.id,
+          ticketNo: row.ticketNo || `ใบ #${row.id}`,
+          title: row.title,
+          receiverName: this.userName(row.receivedByUserId),
+          assigneeName: this.userName(row.assignedUserId),
+        } satisfies TicketReturnSupportDialogData,
+      })
+      .afterClosed()
+      .subscribe((result: TicketReviewDialogResult | undefined) => {
+        if (!result) {
+          return;
+        }
+        this.toast.success(
+          result === 'approved' ? 'ส่งซัพพอร์ตแล้ว' : 'ส่งกลับให้ผู้แก้แล้ว — ใบกลับเป็นกำลังดำเนินการ'
+        );
+        this.reload();
       });
-    });
   }
 
   private sortValue(row: Ticket, key: AdminSortKey): string | number | null {

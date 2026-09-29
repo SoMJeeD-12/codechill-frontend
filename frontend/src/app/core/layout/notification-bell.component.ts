@@ -1,4 +1,12 @@
-import { Component, ViewChild, ViewEncapsulation, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ViewChild,
+  ViewEncapsulation,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +20,12 @@ import {
 } from '../models/notification.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationInboxService } from '../services/notification-inbox.service';
+import { NotificationService } from '../services/notification.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { InfiniteScrollDirective } from '../../shared/directives/infinite-scroll.directive';
+import { CursorFeed } from '../../shared/utils/cursor-feed';
+
+const MENU_PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-notification-bell',
@@ -25,6 +38,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
     MatTooltipModule,
     MatProgressSpinnerModule,
     ThaiDatePipe,
+    InfiniteScrollDirective,
   ],
   templateUrl: './notification-bell.component.html',
   styleUrl: './notification-bell.component.scss',
@@ -33,11 +47,11 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 export class NotificationBellComponent {
   private readonly auth = inject(AuthService);
   private readonly inbox = inject(NotificationInboxService);
+  private readonly api = inject(NotificationService);
   private readonly snack = inject(MatSnackBar);
 
   @ViewChild(MatMenuTrigger) private menuTrigger?: MatMenuTrigger;
 
-  readonly loading = signal(false);
   readonly markingId = signal<number | null>(null);
   readonly markingAll = signal(false);
 
@@ -47,8 +61,17 @@ export class NotificationBellComponent {
   });
 
   readonly unreadCount = this.inbox.unreadCount;
-  readonly items = this.inbox.recentItems;
   readonly ringing = this.inbox.ringing;
+
+  /** รายการในเมนู — เลื่อนลงโหลดต่อด้วย cursor · ก่อนเปิดครั้งแรกใช้รายการล่าสุดจากรอบ poll */
+  readonly feed = new CursorFeed<AppNotification>((cursor) =>
+    this.api.listCursor({ limit: MENU_PAGE_SIZE }, cursor)
+  );
+  private readonly feedStarted = signal(false);
+  readonly items = computed(() =>
+    this.feedStarted() ? this.feed.items() : this.inbox.recentItems()
+  );
+  readonly loading = computed(() => this.feed.loading() && this.items().length === 0);
 
   readonly badgeText = computed(() => {
     const n = this.unreadCount();
@@ -58,10 +81,18 @@ export class NotificationBellComponent {
     return n > 99 ? '99+' : String(n);
   });
 
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.feed.destroy());
+  }
+
   onMenuOpened(): void {
-    this.loading.set(true);
     this.inbox.refreshQuiet();
-    window.setTimeout(() => this.loading.set(false), 400);
+    this.feed.reset({ keepRows: true });
+    this.feedStarted.set(true);
+  }
+
+  loadMore(): void {
+    this.feed.loadMore();
   }
 
   isUnread(row: AppNotification): boolean {
@@ -84,6 +115,12 @@ export class NotificationBellComponent {
   openItem(row: AppNotification): void {
     this.markingId.set(row.id);
     this.menuTrigger?.closeMenu();
+    if (this.isUnread(row)) {
+      const now = new Date().toISOString();
+      this.feed.update((list) =>
+        list.map((n) => (n.id === row.id ? { ...n, status: 'READ', readAt: now } : n))
+      );
+    }
     this.inbox.openNotification(row);
     window.setTimeout(() => this.markingId.set(null), 800);
   }
@@ -92,10 +129,16 @@ export class NotificationBellComponent {
     if (this.markingAll() || this.unreadCount() <= 0) {
       return;
     }
+    const prev = this.feed.items();
+    const now = new Date().toISOString();
+    this.feed.update((list) =>
+      list.map((n) => (isNotificationUnread(n) ? { ...n, status: 'READ', readAt: now } : n))
+    );
     this.markingAll.set(true);
     this.inbox.markAllRead().subscribe({
       next: () => this.markingAll.set(false),
       error: (err: Error) => {
+        this.feed.update(() => prev);
         this.markingAll.set(false);
         this.snack.open(err.message || 'อ่านทั้งหมดไม่สำเร็จ', 'ปิด', { duration: 3500 });
       },

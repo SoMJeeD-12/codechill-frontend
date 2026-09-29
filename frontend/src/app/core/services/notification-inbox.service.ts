@@ -1,6 +1,6 @@
 import { Injectable, Injector, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, finalize, tap } from 'rxjs';
+import { Observable, catchError, defer, finalize, of, tap, throwError } from 'rxjs';
 import {
   AppNotification,
   isNotificationUnread,
@@ -12,6 +12,10 @@ import { NavAttentionService } from './nav-attention.service';
 import { InboxToastService } from '../../shared/toasts/inbox-toast.service';
 
 const RECENT_LIMIT = 8;
+
+function asRead(n: AppNotification, now: string): AppNotification {
+  return isNotificationUnread(n) ? { ...n, status: 'READ', readAt: now } : n;
+}
 
 /**
  * Inbox แจ้งเตือน (ไม่มี WS/SSE) — badge กระดิ่ง + การ์ดชนิด B เมื่อมีของใหม่
@@ -114,19 +118,46 @@ export class NotificationInboxService {
     });
   }
 
-  /** ปุ่ม「อ่านทั้งหมด」ในกระดิ่ง */
+  /** 「อ่านทั้งหมด」 — optimistic: badge/รายการเป็นอ่านแล้วทันที · error คืนค่าเดิม */
   markAllRead(): Observable<{ updated: number }> {
-    return this.api.markAllRead().pipe(
-      tap(() => {
-        const now = new Date().toISOString();
-        this.recentItems.update((list) =>
-          list.map((n) =>
-            isNotificationUnread(n) ? { ...n, status: 'READ' as const, readAt: now } : n
-          )
-        );
-        this.unreadCount.set(0);
-      })
-    );
+    return defer(() => {
+      const prevItems = this.recentItems();
+      const prevCount = this.unreadCount();
+      const now = new Date().toISOString();
+      this.recentItems.update((list) => list.map((n) => asRead(n, now)));
+      this.unreadCount.set(0);
+      return this.api.markAllRead().pipe(
+        catchError((err: unknown) => {
+          this.recentItems.set(prevItems);
+          this.unreadCount.set(prevCount);
+          return throwError(() => err);
+        })
+      );
+    });
+  }
+
+  /** อ่านทีละรายการ — optimistic: badge ลดทันที · error คืนค่าเดิม */
+  markRead(row: AppNotification): Observable<AppNotification> {
+    return defer(() => {
+      if (!isNotificationUnread(row)) {
+        return of(row);
+      }
+      const prevItems = this.recentItems();
+      const prevCount = this.unreadCount();
+      const now = new Date().toISOString();
+      this.recentItems.update((list) => list.map((n) => (n.id === row.id ? asRead(n, now) : n)));
+      this.unreadCount.update((n) => Math.max(0, n - 1));
+      return this.api.markRead(row.id).pipe(
+        tap((updated) =>
+          this.recentItems.update((list) => list.map((n) => (n.id === updated.id ? updated : n)))
+        ),
+        catchError((err: unknown) => {
+          this.recentItems.set(prevItems);
+          this.unreadCount.set(prevCount);
+          return throwError(() => err);
+        })
+      );
+    });
   }
 
   openNotification(row: AppNotification): void {
@@ -144,20 +175,8 @@ export class NotificationInboxService {
       }
     };
 
-    if (!isNotificationUnread(row)) {
-      go();
-      return;
-    }
-    this.api.markRead(row.id).subscribe({
-      next: (updated) => {
-        this.recentItems.update((list) =>
-          list.map((n) => (n.id === updated.id ? updated : n))
-        );
-        this.unreadCount.update((n) => Math.max(0, n - 1));
-        go();
-      },
-      error: () => go(),
-    });
+    this.markRead(row).subscribe({ error: () => undefined });
+    go();
   }
 
   /** เรียกจาก NavAttentionService.refreshBadges() — ซ้อนกันจะรวมเป็นรอบถัดไปรอบเดียว */

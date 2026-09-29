@@ -31,17 +31,21 @@
         }
       </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองสัญญา MA">
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="view.set('all')">
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="list.setFilter('view', 'all')">
           ทั้งหมด
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'active'" (click)="view.set('active')">
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'active'" (click)="list.setFilter('view', 'active')">
           ใช้งานอยู่
         </button>
       </div>
     </div>
 
+    <app-list-loading-bar [active]="list.refreshing()" />
     <div class="app-panel-body">
-      <table mat-table [dataSource]="pager.paged()" class="data-table">
+      @if (list.initialLoading()) {
+        <app-list-skeleton [cols]="7" />
+      } @else {
+      <table mat-table [dataSource]="list.items()" class="data-table">
         <ng-container matColumnDef="id">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('id')">
@@ -54,31 +58,21 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="project">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('project')">
-              โปรเจกต์ / ลูกค้า
-              <mat-icon>{{ sortIcon('project') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>โปรเจกต์ / ลูกค้า</th>
           <td mat-cell *matCellDef="let row">
             <a class="app-link block leading-snug" [routerLink]="['/app/ma', row.id]">{{ projectName(row) }}</a>
             <div class="mt-0.5 text-[0.82rem] leading-snug text-slate-500">{{ customerName(row) }}</div>
           </td>
         </ng-container>
         <ng-container matColumnDef="plan">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('plan')">
-              แผน
-              <mat-icon>{{ sortIcon('plan') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>แผน</th>
           <td mat-cell *matCellDef="let row">{{ planName(row) }}</td>
         </ng-container>
         <ng-container matColumnDef="period">
           <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('period')">
+            <button type="button" class="sort-header" (click)="toggleSort('endDate')">
               ระยะสัญญา
-              <mat-icon>{{ sortIcon('period') }}</mat-icon>
+              <mat-icon>{{ sortIcon('endDate') }}</mat-icon>
             </button>
           </th>
           <td mat-cell *matCellDef="let row">
@@ -86,12 +80,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="quota">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('quota')">
-              โควตา (รอบปัจจุบัน)
-              <mat-icon>{{ sortIcon('quota') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>โควตา (รอบปัจจุบัน)</th>
           <td mat-cell *matCellDef="let row">
             <span [class.app-quota-low]="(remaining(row) ?? 999) <= 2 && row.isCurrentlyActive">
               {{ quotaLabel(row) }}
@@ -100,9 +89,9 @@
         </ng-container>
         <ng-container matColumnDef="fee">
           <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('fee')">
+            <button type="button" class="sort-header" (click)="toggleSort('price')">
               มูลค่า
-              <mat-icon>{{ sortIcon('fee') }}</mat-icon>
+              <mat-icon>{{ sortIcon('price') }}</mat-icon>
             </button>
           </th>
           <td mat-cell *matCellDef="let row">{{ row.price | baht }}</td>
@@ -161,23 +150,25 @@
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
       <app-table-paginator
-        [length]="pager.length()"
-        [pageIndex]="pager.pageIndex()"
-        [pageSize]="pager.pageSize()"
-        [pageSizeOptions]="pager.pageSizeOptions"
-        (page)="pager.onPage($event)"
+        [length]="list.total()"
+        [pageIndex]="list.pageIndex()"
+        [pageSize]="list.pageSize()"
+        [pageSizeOptions]="list.pageSizeOptions"
+        (page)="list.onPage($event)"
       />
-      @if (filtered().length === 0) {
+      @if (list.items().length === 0 && !list.loading()) {
         <p class="data-empty">
-          @if (search().trim()) {
+          @if (list.error(); as err) {
+            {{ err }}
+          } @else if (list.search()) {
             ไม่พบรายการตามคำค้นหา
-          } @else if (view() === 'active' && contracts().length > 0) {
-            ไม่มีสัญญาที่ใช้งานอยู่ตอนนี้ · มีทั้งหมด {{ contracts().length }} รายการ
-            (เช่น แบบร่าง) — สลับไปแท็บ «ทั้งหมด»
+          } @else if (view() === 'active') {
+            ไม่มีสัญญาที่ใช้งานอยู่ตอนนี้ — สลับไปแท็บ «ทั้งหมด» เพื่อดูแบบร่าง/สัญญาอื่น
           } @else {
             ยังไม่มีสัญญา MA
           }
         </p>
+      }
       }
     </div>
   </div>

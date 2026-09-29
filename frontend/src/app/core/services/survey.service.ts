@@ -4,7 +4,14 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import {
+  Paginated,
+  asList,
+  asPage,
+  pruneUndefined,
+  toHttpParams,
+  upsertById,
+} from '../http/api.util';
 import {
   QuestionType,
   Survey,
@@ -81,6 +88,23 @@ export class SurveyService {
       .pipe(
         map(asList),
         tap((rows) => this.items.set(rows)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /surveys แบบแบ่งหน้าฝั่ง server */
+  listPage(params: {
+    page: number;
+    limit: number;
+    search?: string;
+    status?: SurveyStatus;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }): Observable<{ items: Survey[]; total: number }> {
+    return this.http
+      .get<Survey[] | Paginated<Survey>>(this.base, { params: toHttpParams({ ...params }) })
+      .pipe(
+        map((body) => asPage(body)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }

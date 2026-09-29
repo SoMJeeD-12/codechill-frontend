@@ -335,7 +335,9 @@
                   [pageSizeOptions]="deliveriesPager.pageSizeOptions"
                   (page)="deliveriesPager.onPage($event)"
                 />
-                @if (filteredDeliveries().length === 0) {
+                @if (filteredDeliveries().length === 0 && deliveriesLoading()) {
+                  <app-list-skeleton [rows]="3" [cols]="5" />
+                } @else if (filteredDeliveries().length === 0) {
                   <p class="data-empty">
                     {{
                       deliverySearch().trim()
@@ -532,11 +534,11 @@
                   [pageSizeOptions]="documentPageSizeOptions"
                   (page)="onDocumentsPage($event)"
                 />
-                @if (documents().length === 0) {
+                @if (documents().length === 0 && documentsLoading()) {
+                  <app-list-skeleton [rows]="3" [cols]="5" />
+                } @else if (documents().length === 0) {
                   <p class="data-empty">
-                    @if (documentsLoading()) {
-                      กำลังโหลด…
-                    } @else if (documentSearch().trim()) {
+                    @if (documentSearch().trim()) {
                       ไม่พบเอกสารตามคำค้นหา
                     } @else {
                       ยังไม่มีเอกสารของโปรเจกต์นี้
@@ -653,8 +655,8 @@
                       ลองใหม่
                     </button>
                   </div>
-                } @else if (ticketsLoading()) {
-                  <p class="data-empty">กำลังโหลด…</p>
+                } @else if (ticketsLoading() && projectTickets().length === 0) {
+                  <app-list-skeleton [rows]="3" [cols]="5" />
                 } @else if (filteredProjectTickets().length === 0) {
                   <p class="data-empty">
                     {{
@@ -740,11 +742,11 @@
                 [pageSizeOptions]="followUpsPager.pageSizeOptions"
                 (page)="followUpsPager.onPage($event)"
               />
-              @if (filteredFollowUps().length === 0) {
+              @if (filteredFollowUps().length === 0 && followUpsLoading()) {
+                <app-list-skeleton [rows]="3" [cols]="5" />
+              } @else if (filteredFollowUps().length === 0) {
                 <p class="data-empty">
-                  @if (followUpsLoading()) {
-                    กำลังโหลด…
-                  } @else if (followUpSearch().trim()) {
+                  @if (followUpSearch().trim()) {
                     ไม่พบงานติดตามตามคำค้นหา
                   } @else {
                     ยังไม่มีงานติดตามของโปรเจกต์นี้
@@ -852,7 +854,9 @@
                   [pageSizeOptions]="maQuotaPager.pageSizeOptions"
                   (page)="maQuotaPager.onPage($event)"
                 />
-                @if (maQuotaItems().length === 0 && !maQuotaLoading()) {
+                @if (maQuotaItems().length === 0 && maQuotaLoading()) {
+                  <app-list-skeleton [rows]="3" [cols]="5" />
+                } @else if (maQuotaItems().length === 0) {
                   <p class="data-empty">ยังไม่มีสัญญา MA ของโปรเจกต์นี้</p>
                 }
               </div>
@@ -934,7 +938,9 @@
                   [pageSizeOptions]="projectSurveysPager.pageSizeOptions"
                   (page)="projectSurveysPager.onPage($event)"
                 />
-                @if (projectSurveyRows().length === 0 && !projectSurveysLoading()) {
+                @if (projectSurveyRows().length === 0 && projectSurveysLoading()) {
+                  <app-list-skeleton [rows]="3" [cols]="5" />
+                } @else if (projectSurveyRows().length === 0) {
                   <p class="data-empty">ยังไม่มีการส่งแบบประเมินของโปรเจกต์นี้</p>
                 }
               </div>

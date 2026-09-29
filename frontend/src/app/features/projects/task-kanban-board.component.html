@@ -3,18 +3,16 @@
     <div class="app-panel-toolbar">
       <div class="app-panel-toolbar-row filters-row">
         @if (showProjectFilter) {
-          <mat-form-field appearance="outline" class="ui-filter wide">
-            <mat-label>โปรเจกต์</mat-label>
-            <mat-select
-              [value]="projectFilter()"
-              (selectionChange)="projectFilter.set($event.value); applyFilters()"
-            >
-              <mat-option value="ALL">ทั้งหมด</mat-option>
-              @for (p of projects(); track p.id) {
-                <mat-option [value]="p.id">{{ p.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+          <app-entity-picker
+            class="project-picker"
+            label="โปรเจกต์"
+            placeholder="ทุกโปรเจกต์"
+            fieldClass="ui-filter wide"
+            [openOnFocus]="true"
+            [searchFn]="searchProjects"
+            [selected]="projectFilterOption()"
+            (selectionChange)="onProjectFilterPicked($event)"
+          />
         }
 
         <mat-form-field appearance="outline" class="ui-filter wide">

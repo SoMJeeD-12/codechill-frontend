@@ -7,7 +7,7 @@ const BADGE_PATHS = /\/api\/(tickets|notifications)(\/|\?|$)/;
 
 /**
  * ทำรายการใบปัญหา / แจ้งเตือนสำเร็จ → refreshBadges() ให้เลขเมนู + กระดิ่งตามทันที
- * (สร้างใบ, send-to-admin, claim, assign, start, resolutions, return-to-support,
+ * (สร้างใบ, send-to-admin, claim, assign, start, resolutions, return-to-support, reject-review,
  *  customer-notified, reopen, close, read-by-ref, read-all, :id/read)
  * ดึง service ตอนได้ response — กัน DI วนกับ HttpClient
  */

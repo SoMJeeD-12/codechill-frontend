@@ -11,7 +11,8 @@
             <div class="who-grid__main">
               <app-entity-picker
                 label="โปรเจกต์"
-                placeholder="พิมพ์ชื่อโปรเจกต์"
+                placeholder="พิมพ์รหัสหรือชื่อโปรเจกต์"
+                [openOnFocus]="true"
                 [searchFn]="searchProjects"
                 [selected]="project()"
                 (selectionChange)="onProjectPicked($event)"
@@ -41,6 +42,7 @@
                 <app-entity-picker
                   label="หรือเลือกลูกค้าอย่างเดียว"
                   placeholder="พิมพ์ชื่อลูกค้า"
+                  [openOnFocus]="true"
                   [searchFn]="searchCustomers"
                   (selectionChange)="onCustomerPicked($event)"
                 />

@@ -23,7 +23,8 @@
           [formControl]="projectSearchControl"
           [matAutocomplete]="projectAuto"
           [readonly]="projectLocked"
-          placeholder="พิมพ์ชื่อโปรเจกต์"
+          placeholder="พิมพ์รหัสหรือชื่อโปรเจกต์"
+          (focus)="onProjectFieldFocus()"
         />
         <mat-autocomplete
           #projectAuto="matAutocomplete"
@@ -34,23 +35,27 @@
             @for (p of projectSuggestions(); track p.id) {
               <mat-option [value]="p">
                 {{ p.code ? p.code + ' · ' : '' }}{{ p.name }}
-                @if (p.customer?.name; as customerName) {
-                  <span class="option-muted"> — {{ customerName }}</span>
+                @if (projectStatusBadge(p); as badge) {
+                  <span class="option-muted"> · {{ badge }}</span>
                 }
               </mat-option>
+            } @empty {
+              <mat-option disabled>ไม่พบโปรเจกต์</mat-option>
             }
           }
         </mat-autocomplete>
       </mat-form-field>
     } @else {
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>ลูกค้า</mat-label>
-        <mat-select formControlName="customerId">
-          @for (c of customers(); track c.id) {
-            <mat-option [value]="c.id">{{ c.name }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+      <app-entity-picker
+        class="full"
+        label="ลูกค้า"
+        placeholder="พิมพ์ชื่อลูกค้า"
+        [openOnFocus]="true"
+        [searchFn]="searchCustomers"
+        [selected]="customerOption()"
+        [disabled]="form.controls.customerId.disabled"
+        (selectionChange)="onCustomerPicked($event)"
+      />
     }
 
     <mat-form-field appearance="outline" class="full">

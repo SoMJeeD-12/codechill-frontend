@@ -10,14 +10,16 @@
         — กรอกระยะประกัน และเลือกสัญญา MA ของโปรเจกต์นี้ได้ (ไม่บังคับ · ไม่รวมโควตา/เงินกับประกัน)
       </p>
     } @else {
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>ลูกค้า</mat-label>
-        <mat-select formControlName="customerId">
-          @for (c of customers(); track c.id) {
-            <mat-option [value]="c.id">{{ c.name }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+      <app-entity-picker
+        class="full"
+        label="ลูกค้า"
+        placeholder="พิมพ์ชื่อหรือรหัสลูกค้า"
+        [openOnFocus]="true"
+        [searchFn]="searchCustomers"
+        [selected]="customerOption()"
+        [disabled]="form.controls.customerId.disabled"
+        (selectionChange)="onCustomerPicked($event)"
+      />
 
       <mat-form-field appearance="outline" class="full">
         <mat-label>โปรเจกต์</mat-label>

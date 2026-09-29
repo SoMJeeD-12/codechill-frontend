@@ -26,23 +26,27 @@
         }
       </div>
       <div class="ui-chips" role="tablist" aria-label="กรองสถานะผู้ใช้">
-        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">
           ทั้งหมด
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ACTIVE'" (click)="statusFilter.set('ACTIVE')">
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'ACTIVE'" (click)="setStatusFilter('ACTIVE')">
           ปฏิบัติงาน
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'SUSPENDED'" (click)="statusFilter.set('SUSPENDED')">
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'SUSPENDED'" (click)="setStatusFilter('SUSPENDED')">
           พักงาน
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'RESIGNED'" (click)="statusFilter.set('RESIGNED')">
+        <button type="button" class="ui-chip" [class.is-active]="statusFilter() === 'RESIGNED'" (click)="setStatusFilter('RESIGNED')">
           สิ้นสุดการปฏิบัติงาน
         </button>
       </div>
     </div>
 
+    <app-list-loading-bar [active]="list.refreshing()" />
     <div class="app-panel-body">
-      <table mat-table [dataSource]="pager.paged()" class="data-table">
+      @if (list.initialLoading()) {
+        <app-list-skeleton [cols]="6" />
+      } @else {
+      <table mat-table [dataSource]="list.items()" class="data-table">
         <ng-container matColumnDef="fullName">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('fullName')">
@@ -180,6 +184,12 @@
                   <span>ตั้งรหัสผ่านใหม่</span>
                 </button>
               }
+              @if (canViewActivity()) {
+                <a mat-menu-item [routerLink]="['/app/audit-logs']" [queryParams]="{ userId: row.id }">
+                  <mat-icon>history</mat-icon>
+                  <span>ดูกิจกรรมล่าสุด</span>
+                </a>
+              }
             </mat-menu>
           </td>
         </ng-container>
@@ -187,16 +197,19 @@
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
       <app-table-paginator
-        [length]="pager.length()"
-        [pageIndex]="pager.pageIndex()"
-        [pageSize]="pager.pageSize()"
-        [pageSizeOptions]="pager.pageSizeOptions"
-        (page)="pager.onPage($event)"
+        [length]="list.total()"
+        [pageIndex]="list.pageIndex()"
+        [pageSize]="list.pageSize()"
+        [pageSizeOptions]="list.pageSizeOptions"
+        (page)="list.onPage($event)"
       />
-      @if (filteredUsers().length === 0) {
+      @if (list.error(); as err) {
+        <p class="data-empty">{{ err }}</p>
+      } @else if (list.items().length === 0 && !list.loading()) {
         <p class="data-empty">
-          {{ search().trim() || statusFilter() !== 'ALL' ? 'ไม่พบผู้ใช้ตามคำค้นหา/ตัวกรอง' : 'ยังไม่มีผู้ใช้' }}
+          {{ list.search() || statusFilter() !== 'ALL' ? 'ไม่พบผู้ใช้ตามคำค้นหา/ตัวกรอง' : 'ยังไม่มีผู้ใช้' }}
         </p>
+      }
       }
     </div>
   </div>

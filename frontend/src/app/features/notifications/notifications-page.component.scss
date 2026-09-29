@@ -168,3 +168,23 @@
   color: #0f766e !important;
   white-space: nowrap !important;
 }
+
+.notif-feed-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1px;
+  padding: 1rem 1.25rem 1.2rem;
+  color: #475b55;
+  font-size: 0.85rem;
+}
+
+.notif-feed-count {
+  color: #6b7f79;
+  font-size: 0.8rem;
+}
+
+.notif-feed-error {
+  color: #b42318;
+}

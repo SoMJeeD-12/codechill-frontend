@@ -1,14 +1,15 @@
 <h2 mat-dialog-title>อัปโหลดเอกสาร</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="doc-upload-form" (ngSubmit)="save()">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>โปรเจกต์</mat-label>
-      <mat-select formControlName="projectId">
-        @for (p of projects(); track p.id) {
-          <mat-option [value]="p.id">{{ p.name }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+    <app-entity-picker
+      class="full"
+      label="โปรเจกต์"
+      placeholder="พิมพ์รหัสหรือชื่อโปรเจกต์"
+      [openOnFocus]="true"
+      [searchFn]="searchProjects"
+      [selected]="project()"
+      (selectionChange)="onProjectPicked($event)"
+    />
 
     <mat-form-field appearance="outline" class="full">
       <mat-label>ชื่อเอกสาร</mat-label>

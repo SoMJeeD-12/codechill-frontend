@@ -48,21 +48,27 @@
       </div>
 
       <div class="app-panel-toolbar-row filters-row">
-        <mat-form-field appearance="outline" class="ui-filter wide">
-          <mat-label>โปรเจกต์</mat-label>
-          <mat-select [value]="projectId()" (selectionChange)="setProject($event.value)">
-            <mat-option [value]="null">ทั้งหมด</mat-option>
-            @for (p of projects(); track p.id) {
-              <mat-option [value]="p.id">{{ p.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+        <app-entity-picker
+          class="project-filter"
+          label=""
+          placeholder="ทุกโปรเจกต์"
+          prefixIcon="folder_open"
+          fieldClass="ui-filter ui-filter--icon wide"
+          [openOnFocus]="true"
+          [searchFn]="searchProjects"
+          [selected]="projectOption()"
+          (selectionChange)="onProjectPicked($event)"
+        />
 
         @if (tab() === 'REVIEWED') {
-          <mat-form-field appearance="outline" class="ui-filter">
-            <mat-label>ผลตรวจ</mat-label>
-            <mat-select [value]="resultFilter()" (selectionChange)="setResult($event.value)">
-              <mat-option value="ALL">ทั้งหมด</mat-option>
+          <mat-form-field appearance="outline" class="ui-filter ui-filter--icon">
+            <mat-icon matPrefix>rule</mat-icon>
+            <mat-select
+              [value]="resultFilter()"
+              aria-label="กรองตามผลตรวจ"
+              (selectionChange)="setResult($event.value)"
+            >
+              <mat-option value="ALL">ทุกผลตรวจ</mat-option>
               <mat-option value="APPROVED">ผ่าน</mat-option>
               <mat-option value="REJECTED">ตีกลับ</mat-option>
             </mat-select>

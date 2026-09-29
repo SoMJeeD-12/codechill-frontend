@@ -350,6 +350,28 @@ export class TicketService {
       );
   }
 
+  /** GET /tickets/pending แบบแบ่งหน้าฝั่ง server — ใช้ total จาก API */
+  listPendingPage(
+    params: Omit<TicketListParams, 'status' | 'projectId' | 'billingType'> & {
+      page: number;
+      limit: number;
+      sortBy?: string;
+      sortOrder?: 'ASC' | 'DESC';
+    }
+  ): Observable<{ items: Ticket[]; total: number }> {
+    return this.http
+      .get<ApiTicket[] | { items: ApiTicket[]; total?: number }>(`${this.base}/pending`, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => {
+          const page = asPage(body);
+          return { items: page.items.map((row) => this.normalizeTicket(row)), total: page.total };
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   /** GET /tickets/support-queue?tab=AWAITING_SEND|RETURNED */
   listSupportQueue(
     params: { tab: SupportQueueTab; page?: number; limit?: number; search?: string }
@@ -567,9 +589,31 @@ export class TicketService {
   /**
    * PATCH /tickets/:id/return-to-support
    * ใบต้องเป็น RESOLVED ก่อน (พนักงานบันทึก resolution แล้ว)
+   * body รับแค่ note (≤2000) — field อื่นได้ 400
    */
-  returnToSupport(id: number): Observable<Ticket> {
-    return this.patchTicketAction(id, 'return-to-support');
+  returnToSupport(id: number, note?: string | null): Observable<Ticket> {
+    const trimmed = note?.trim();
+    return this.http
+      .patch<ApiTicket>(`${this.base}/${id}/return-to-support`, trimmed ? { note: trimmed } : {})
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /**
+   * PATCH /tickets/:id/reject-review — ตรวจไม่ผ่าน · RESOLVED → IN_PROGRESS
+   * reason บังคับ (≤2000) · 409 = ไม่อยู่ในสถานะรอตรวจ / ไม่มีผู้รับผิดชอบ
+   */
+  rejectReview(id: number, reason: string): Observable<Ticket> {
+    return this.http
+      .patch<ApiTicket>(`${this.base}/${id}/reject-review`, { reason: reason.trim() })
+      .pipe(
+        map((row) => this.normalizeTicket(row)),
+        tap((row) => this.items.update((list) => upsertById(list, row))),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   /** PATCH /tickets/:id/customer-notified — ซัพพอร์ตบอกลูกค้าแล้ว */

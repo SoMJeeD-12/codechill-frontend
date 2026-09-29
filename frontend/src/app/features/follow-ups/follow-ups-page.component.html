@@ -48,8 +48,12 @@
       </div>
     </div>
 
+    <app-list-loading-bar [active]="list.refreshing()" />
     <div class="app-panel-body">
-      <table mat-table [dataSource]="pager.paged()" class="data-table">
+      @if (list.initialLoading()) {
+        <app-list-skeleton [cols]="6" />
+      } @else {
+      <table mat-table [dataSource]="list.items()" class="data-table">
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>
             <button type="button" class="sort-header" (click)="toggleSort('title')">
@@ -68,21 +72,11 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="projectCode">
-          <th mat-header-cell *matHeaderCellDef class="col-project-code">
-            <button type="button" class="sort-header" (click)="toggleSort('projectCode')">
-              รหัสโปรเจกต์
-              <mat-icon>{{ sortIcon('projectCode') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef class="col-project-code">รหัสโปรเจกต์</th>
           <td mat-cell *matCellDef="let row" class="col-project-code">{{ row.project?.code || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="project">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('project')">
-              โปรเจกต์
-              <mat-icon>{{ sortIcon('project') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>โปรเจกต์</th>
           <td mat-cell *matCellDef="let row">
             @if (row.projectId) {
               <a class="app-link" [routerLink]="['/app/projects', row.projectId]">{{ projectName(row) }}</a>
@@ -92,12 +86,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="customer">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('customer')">
-              ลูกค้า
-              <mat-icon>{{ sortIcon('customer') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
           <td mat-cell *matCellDef="let row">
             <a class="app-link" [routerLink]="['/app/customers', row.customerId]">{{ customerName(row) }}</a>
           </td>
@@ -116,12 +105,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="daysLeft">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('daysLeft')">
-              เหลือ
-              <mat-icon>{{ sortIcon('daysLeft') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>เหลือ</th>
           <td mat-cell *matCellDef="let row">
             <span
               class="days"
@@ -133,12 +117,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="assignee">
-          <th mat-header-cell *matHeaderCellDef>
-            <button type="button" class="sort-header" (click)="toggleSort('assignee')">
-              ผู้รับผิดชอบ
-              <mat-icon>{{ sortIcon('assignee') }}</mat-icon>
-            </button>
-          </th>
+          <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
           <td mat-cell *matCellDef="let row">{{ userName(row) }}</td>
         </ng-container>
         <ng-container matColumnDef="status">
@@ -168,17 +147,17 @@
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
       <app-table-paginator
-        [length]="pager.length()"
-        [pageIndex]="pager.pageIndex()"
-        [pageSize]="pager.pageSize()"
-        [pageSizeOptions]="pager.pageSizeOptions"
-        (page)="pager.onPage($event)"
+        [length]="list.total()"
+        [pageIndex]="list.pageIndex()"
+        [pageSize]="list.pageSize()"
+        [pageSizeOptions]="list.pageSizeOptions"
+        (page)="list.onPage($event)"
       />
-      @if (filtered().length === 0) {
+      @if (items().length === 0 && !loading()) {
         <p class="data-empty">
-          @if (loading()) {
-            กำลังโหลด…
-          } @else if (search().trim()) {
+          @if (list.error(); as err) {
+            {{ err }}
+          } @else if (list.search()) {
             ไม่พบรายการตามคำค้นหา/ตัวกรอง
           } @else if (view() === 'overdue') {
             ไม่มีงานติดตามที่เลยกำหนด
@@ -186,6 +165,7 @@
             ไม่มีรายการในมุมมองนี้
           }
         </p>
+      }
       }
     </div>
   </div>

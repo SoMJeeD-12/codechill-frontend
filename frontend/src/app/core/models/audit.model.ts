@@ -26,6 +26,19 @@ export interface AuditLog {
   ipAddress: string | null;
   userAgent: string | null;
   createdAt: string;
+  /** ประโยคสรุปภาษาไทยจาก backend */
+  summary?: string | null;
+  /** ชื่อตารางภาษาไทยจาก backend */
+  tableLabel?: string | null;
+  /** รายการช่องที่เปลี่ยน — backend แปลค่าเป็นไทยแล้ว ห้ามแปลซ้ำจาก oldValue/newValue */
+  changes?: AuditChange[] | null;
+}
+
+export interface AuditChange {
+  field: string;
+  label: string;
+  from: string | null;
+  to: string | null;
 }
 
 export const AUDIT_ACTIONS: AuditAction[] = [
@@ -46,22 +59,5 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   BULK_DELETE: 'ลบหลายรายการ',
 };
 
-/** ชื่อตารางที่พบบ่อย — ใช้แสดงผลเป็นภาษาไทยและเป็นตัวเลือกตัวกรอง */
-export const AUDIT_TABLE_LABELS: Record<string, string> = {
-  users: 'ผู้ใช้',
-  roles: 'บทบาท',
-  role_permissions: 'สิทธิ์ของบทบาท',
-  user_roles: 'บทบาทของผู้ใช้',
-  permissions: 'สิทธิ์',
-  customers: 'ลูกค้า',
-  contacts: 'ผู้ติดต่อ',
-  communication_logs: 'ประวัติการติดต่อ',
-  projects: 'โปรเจกต์',
-  tasks: 'งานย่อย',
-};
-
-export const AUDIT_TABLES: string[] = Object.keys(AUDIT_TABLE_LABELS);
-
-export function auditTableLabel(tableName: string): string {
-  return AUDIT_TABLE_LABELS[tableName] ?? tableName;
-}
+/** ตารางที่ซ่อนได้ด้วยช่อง「ซ่อนการแจ้งเตือน」 */
+export const AUDIT_NOTIFICATION_TABLE = 'notifications';

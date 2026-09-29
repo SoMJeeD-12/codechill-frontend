@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asPage, toHttpParams } from '../http/api.util';
+import { CursorPage, asCursorPage, asPage, toHttpParams } from '../http/api.util';
 import {
   AppNotification,
   NotificationListParams,
@@ -46,6 +46,32 @@ export class NotificationService {
             page: Number(raw?.page) || page,
             limit: Number(raw?.limit) || limit,
           };
+        }),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /**
+   * GET /notifications แบบ cursor — หน้าแรก cursor = null (ได้ total)
+   * หน้าถัดไปส่ง status/limit เดิม + cursor (ไม่ส่ง page)
+   */
+  listCursor(
+    params: Omit<NotificationListParams, 'page'>,
+    cursor: string | null
+  ): Observable<CursorPage<AppNotification>> {
+    return this.http
+      .get<AppNotification[] | NotificationListResult>(this.base, {
+        params: toHttpParams({
+          limit: params.limit ?? 20,
+          status: params.status,
+          all: params.all === true ? true : undefined,
+          cursor,
+        }),
+      })
+      .pipe(
+        map((body) => {
+          const page = asCursorPage<AppNotification>(body);
+          return { ...page, items: page.items.map((row) => this.normalize(row)) };
         }),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );

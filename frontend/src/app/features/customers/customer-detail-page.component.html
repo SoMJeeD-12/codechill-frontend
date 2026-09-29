@@ -434,7 +434,9 @@
                 [pageSizeOptions]="projectsPager.pageSizeOptions"
                 (page)="projectsPager.onPage($event)"
               />
-              @if (filteredProjects().length === 0) {
+              @if (filteredProjects().length === 0 && tabLoading()['projects']) {
+                <app-list-skeleton [rows]="3" [cols]="4" />
+              } @else if (filteredProjects().length === 0) {
                 <p class="data-empty">
                   {{ projectSearch().trim() ? 'ไม่พบโปรเจกต์ตามคำค้นหา' : 'ยังไม่มีโปรเจกต์ของลูกค้ารายนี้' }}
                 </p>
@@ -513,7 +515,9 @@
                 [pageSizeOptions]="warrantiesPager.pageSizeOptions"
                 (page)="warrantiesPager.onPage($event)"
               />
-              @if (filteredWarranties().length === 0) {
+              @if (filteredWarranties().length === 0 && tabLoading()['contracts']) {
+                <app-list-skeleton [rows]="2" [cols]="4" />
+              } @else if (filteredWarranties().length === 0) {
                 <p class="data-empty">
                   {{ warrantySearch().trim() ? 'ไม่พบประกันตามคำค้นหา' : 'ยังไม่มีประกันของลูกค้ารายนี้' }}
                 </p>
@@ -574,7 +578,9 @@
                 [pageSizeOptions]="contractsPager.pageSizeOptions"
                 (page)="contractsPager.onPage($event)"
               />
-              @if (filteredContracts().length === 0) {
+              @if (filteredContracts().length === 0 && tabLoading()['contracts']) {
+                <app-list-skeleton [rows]="2" [cols]="4" />
+              } @else if (filteredContracts().length === 0) {
                 <p class="data-empty">
                   {{ maSearch().trim() ? 'ไม่พบสัญญาตามคำค้นหา' : 'ยังไม่มีสัญญา MA' }}
                 </p>
@@ -643,7 +649,9 @@
                 [pageSizeOptions]="ticketsPager.pageSizeOptions"
                 (page)="ticketsPager.onPage($event)"
               />
-              @if (filteredTickets().length === 0) {
+              @if (filteredTickets().length === 0 && tabLoading()['tickets']) {
+                <app-list-skeleton [rows]="3" [cols]="4" />
+              } @else if (filteredTickets().length === 0) {
                 <p class="data-empty">
                   {{ ticketSearch().trim() ? 'ไม่พบปัญหาตามคำค้นหา' : 'ยังไม่มีปัญหาของลูกค้ารายนี้' }}
                 </p>
@@ -713,7 +721,9 @@
                 [pageSizeOptions]="followUpsPager.pageSizeOptions"
                 (page)="followUpsPager.onPage($event)"
               />
-              @if (filteredFollowUps().length === 0) {
+              @if (filteredFollowUps().length === 0 && tabLoading()['follow-ups']) {
+                <app-list-skeleton [rows]="3" [cols]="4" />
+              } @else if (filteredFollowUps().length === 0) {
                 <p class="data-empty">
                   {{ followUpSearch().trim() ? 'ไม่พบงานติดตามตามคำค้นหา' : 'ยังไม่มีแผนติดตามของลูกค้ารายนี้' }}
                 </p>

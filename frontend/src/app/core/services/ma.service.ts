@@ -5,7 +5,7 @@ import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelopeService } from '../http/api-envelope.service';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import { asList, asPage, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
 import {
   MaAddon,
   MaAddonType,
@@ -200,6 +200,25 @@ export class MaService {
       .pipe(
         map(asList),
         tap((list) => this.contractsSignal.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /ma-contracts แบ่งหน้าฝั่ง server — ไม่เขียนทับ cache รายการทั้งก้อน */
+  listPage(
+    params: Omit<MaContractListParams, 'sortOrder'> & { sortOrder?: 'ASC' | 'DESC' }
+  ): Observable<{ items: MaContract[]; total: number }> {
+    return this.http
+      .get<MaContract[] | { items: MaContract[] }>(this.contractsBase, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => asPage<MaContract>(body)),
+        tap((page) =>
+          this.contractsSignal.update((list) =>
+            page.items.reduce((acc, row) => upsertById(acc, row), list)
+          )
+        ),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }

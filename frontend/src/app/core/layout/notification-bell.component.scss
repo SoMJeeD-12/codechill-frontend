@@ -153,6 +153,25 @@ app-notification-bell .notif-bell,
   min-height: 0;
 }
 
+.notif-panel__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  padding: 0.35rem 1rem;
+  color: #6b7f79;
+  font-size: 0.78rem;
+}
+
+.notif-panel__retry {
+  border: 0;
+  background: none;
+  color: #0f766e;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .notif-row {
   display: flex;
   align-items: flex-start;

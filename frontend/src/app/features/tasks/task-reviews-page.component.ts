@@ -14,13 +14,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
 import { Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
-  ProjectOption,
   TaskReviewItem,
   TaskReviewResult,
   TaskReviewSortBy,
   TaskReviewTab,
 } from '../../core/models/project.model';
 import { ProjectService } from '../../core/services/project.service';
+import {
+  EntityPickerComponent,
+  PickerOption,
+} from '../../shared/components/entity-picker.component';
+import { projectPickerOption, projectSearchFn } from '../../shared/components/entity-search';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { downloadAuthorizedBlobAs } from '../../shared/utils/download-blob';
@@ -52,6 +56,7 @@ const RESULT_LABELS: Record<string, string> = {
     MatTooltipModule,
     TablePaginatorComponent,
     ThaiDatePipe,
+    EntityPickerComponent,
   ],
   templateUrl: './task-reviews-page.component.html',
   styleUrl: './task-reviews-page.component.scss',
@@ -79,7 +84,8 @@ export class TaskReviewsPageComponent implements OnInit {
   readonly loading = signal(true);
   readonly downloadingId = signal<number | null>(null);
 
-  readonly projects = signal<ProjectOption[]>([]);
+  readonly searchProjects = projectSearchFn(this.projectsApi);
+  readonly projectOption = signal<PickerOption | null>(null);
   readonly sortBy = signal<TaskReviewSortBy | null>(null);
   readonly sortOrder = signal<'ASC' | 'DESC'>('ASC');
   readonly columns = computed(() =>
@@ -97,11 +103,14 @@ export class TaskReviewsPageComponent implements OnInit {
     this.resultFilter.set(result === 'APPROVED' || result === 'REJECTED' ? result : 'ALL');
     const pid = Number(q.get('projectId'));
     this.projectId.set(Number.isFinite(pid) && pid > 0 ? pid : null);
-
-    this.projectsApi.listProjectOptions().subscribe({
-      next: (list) => this.projects.set(list),
-      error: () => undefined,
-    });
+    if (this.projectId() != null) {
+      const id = pid;
+      this.projectOption.set({ id, label: `โปรเจกต์ #${id}` });
+      this.projectsApi.fetchProject(id).subscribe({
+        next: (p) => this.projectOption.set(projectPickerOption(p)),
+        error: () => undefined,
+      });
+    }
 
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
@@ -131,6 +140,11 @@ export class TaskReviewsPageComponent implements OnInit {
     this.pageIndex.set(0);
     this.syncQuery();
     this.load();
+  }
+
+  onProjectPicked(option: PickerOption | null): void {
+    this.projectOption.set(option);
+    this.setProject(option?.id ?? null);
   }
 
   setProject(value: number | null): void {

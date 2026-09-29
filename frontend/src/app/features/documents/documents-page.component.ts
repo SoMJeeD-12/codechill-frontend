@@ -18,7 +18,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import {
   DOCUMENT_CATEGORY_LABELS,
   DocumentCategory,
@@ -34,6 +36,11 @@ import {
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { FilePickerComponent } from '../../shared/components/file-picker.component';
+import {
+  EntityPickerComponent,
+  PickerOption,
+} from '../../shared/components/entity-picker.component';
+import { projectSearchFn } from '../../shared/components/entity-search';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
@@ -126,6 +133,7 @@ function readFileAsDataUrl(file: File): Promise<{ dataUrl: string; mimeType: str
     MatTooltipModule,
     MatMenuModule,
     TablePaginatorComponent,
+    EntityPickerComponent,
   ],
   templateUrl: './documents-page.component.html',
   styleUrl: './documents-page.component.scss',
@@ -153,29 +161,13 @@ export class DocumentsPageComponent implements OnInit {
   });
 
   readonly documents = signal<ProjectDocument[]>([]);
-  readonly projectFilter = signal<number | 'ALL'>('ALL');
+  readonly projectFilterOption = signal<PickerOption | null>(null);
+  readonly projectFilter = computed<number | 'ALL'>(() => this.projectFilterOption()?.id ?? 'ALL');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
-  /** ข้อความในช่องกรองโครงการ (พิมพ์ค้นหาได้) */
-  readonly projectFilterControl = this.fb.control<string | number | 'ALL'>('ALL');
-  readonly projectSearch = signal('');
   readonly categoryLabels = DOCUMENT_CATEGORY_LABELS;
-  readonly projects = this.projectsApi.projects;
   readonly columns = ['title', 'project', 'category', 'file', 'version', 'updatedAt', 'actions'];
-
-  readonly filteredProjects = computed(() => {
-    const q = this.projectSearch().trim().toLowerCase();
-    const list = this.projects();
-    if (!q) {
-      return list;
-    }
-    return list.filter(
-      (p) =>
-        (p.code ?? '').toLowerCase().includes(q) ||
-        (p.name ?? '').toLowerCase().includes(q) ||
-        String(p.id).includes(q)
-    );
-  });
+  readonly searchProjects = projectSearchFn(this.projectsApi);
 
   readonly tableSort = createTableSort<
     'title' | 'project' | 'category' | 'file' | 'version' | 'updatedAt'
@@ -231,18 +223,6 @@ export class DocumentsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.projectFilterControl.valueChanges.subscribe((v) => {
-      if (typeof v === 'number' || v === 'ALL') {
-        this.projectSearch.set('');
-        return;
-      }
-      const text = String(v ?? '').trim();
-      if (!text || text === 'ทั้งหมด') {
-        this.projectSearch.set('');
-        return;
-      }
-      this.projectSearch.set(text);
-    });
     this.customersApi.listCustomers().subscribe({ error: () => undefined });
     this.projectsApi.listProjects().subscribe({
       next: (projects) => {
@@ -260,51 +240,9 @@ export class DocumentsPageComponent implements OnInit {
     });
   }
 
-  readonly displayProjectFilter = (value: unknown): string => {
-    if (value === 'ALL' || value == null || value === '') {
-      return value === 'ALL' ? 'ทั้งหมด' : '';
-    }
-    if (typeof value === 'number') {
-      const p = this.projectsApi.getProject(value);
-      return p ? p.name : `#${value}`;
-    }
-    return String(value);
-  };
-
-  onProjectFilterFocus(): void {
-    this.projectFilterControl.setValue('');
-    this.projectSearch.set('');
-  }
-
-  /** Material ใส่ class ผ่าน [class] — บังคับซ้ำตอนเปิดแผงเพื่อซ่อนสกอลล์บาร์ */
-  onProjectFilterPanelOpened(): void {
-    requestAnimationFrame(() => {
-      document
-        .querySelectorAll('.cdk-overlay-container .mat-mdc-autocomplete-panel')
-        .forEach((node) => {
-          const el = node as HTMLElement;
-          el.classList.add('project-filter-auto-panel');
-          el.style.setProperty('scrollbar-width', 'none');
-          el.style.setProperty('-ms-overflow-style', 'none');
-        });
-    });
-  }
-
-  onProjectFilterBlur(): void {
-    queueMicrotask(() => {
-      this.projectFilterControl.setValue(this.projectFilter() as never, { emitEvent: false });
-      this.projectSearch.set('');
-    });
-  }
-
-  onProjectFilterSelected(event: MatAutocompleteSelectedEvent): void {
-    const value = event.option.value as number | 'ALL';
-    this.projectFilter.set(value);
-    this.projectSearch.set('');
-  }
-
-  projectFilterLabel(): string {
-    return this.displayProjectFilter(this.projectFilter()) || 'ทั้งหมด';
+  onProjectFilterPicked(option: PickerOption | null): void {
+    this.projectFilterOption.set(option);
+    this.pager.reset();
   }
 
   reload(): void {
@@ -413,6 +351,7 @@ export class DocumentsPageComponent implements OnInit {
     MatButtonModule,
     MatSnackBarModule,
     FilePickerComponent,
+    EntityPickerComponent,
   ],
   templateUrl: './document-upload-dialog.component.html',
   styleUrl: './document-upload-dialog.component.scss',
@@ -425,7 +364,8 @@ export class DocumentUploadDialogComponent {
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<DocumentUploadDialogComponent, boolean>);
 
-  readonly projects = this.projectsApi.projects;
+  readonly searchProjects = projectSearchFn(this.projectsApi);
+  readonly project = signal<PickerOption | null>(null);
   readonly categoryLabels = DOCUMENT_CATEGORY_LABELS;
   readonly categories = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[];
   readonly saving = signal(false);
@@ -433,7 +373,6 @@ export class DocumentUploadDialogComponent {
   private pendingFile: { dataUrl: string; mimeType: string; sizeKb: number } | null = null;
 
   readonly form = this.fb.group({
-    projectId: [0, Validators.min(1)],
     title: ['', Validators.required],
     category: ['SPEC' as DocumentCategory],
     version: ['v1.0', Validators.required],
@@ -441,11 +380,9 @@ export class DocumentUploadDialogComponent {
     note: [''],
   });
 
-  constructor() {
-    const first = this.projects()[0];
-    if (first) {
-      this.form.patchValue({ projectId: first.id });
-    }
+  onProjectPicked(option: PickerOption | null): void {
+    this.project.set(option);
+    this.error.set(null);
   }
 
   onFilePicked(file: File | null): void {
@@ -471,20 +408,22 @@ export class DocumentUploadDialogComponent {
   }
 
   save(): void {
-    if (this.form.invalid) {
+    const picked = this.project();
+    if (this.form.invalid || !picked) {
       this.form.markAllAsTouched();
+      if (!picked) {
+        this.error.set('เลือกโปรเจกต์ก่อน');
+      }
       return;
     }
     const raw = this.form.getRawValue();
-    const project = this.projectsApi.getProject(Number(raw.projectId));
-    if (!project) {
-      this.error.set('ไม่พบโปรเจกต์');
-      return;
-    }
     this.saving.set(true);
     this.error.set(null);
-    this.api
-      .create({
+    const cached = this.projectsApi.getProject(picked.id);
+    (cached ? of(cached) : this.projectsApi.fetchProject(picked.id))
+      .pipe(
+        switchMap((project) =>
+          this.api.create({
         projectId: project.id,
         customerId: project.customerId,
         title: raw.title ?? '',
@@ -496,7 +435,9 @@ export class DocumentUploadDialogComponent {
         sizeKb: this.pendingFile?.sizeKb ?? Math.floor(100 + Math.random() * 500),
         fileDataUrl: this.pendingFile?.dataUrl ?? null,
         mimeType: this.pendingFile?.mimeType ?? null,
-      })
+          })
+        )
+      )
       .subscribe({
         next: () => {
           this.saving.set(false);

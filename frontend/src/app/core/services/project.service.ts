@@ -260,12 +260,49 @@ export class ProjectService {
       );
   }
 
-  /** GET /projects/options — รายการเบาสำหรับดรอปดาวน์ (ต้องมี project.view) */
-  listProjectOptions(): Observable<ProjectOption[]> {
-    return this.http.get<ProjectOption[]>(`${this.base}/options`).pipe(
-      map((body) => (Array.isArray(body) ? body : [])),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
+  /** GET /projects แบบแบ่งหน้าฝั่ง server — ไม่แทนที่ cache กลาง (แค่ merge แถวที่ได้) */
+  listProjectsPage(
+    params: Omit<ProjectListParams, 'sortOrder'> & {
+      page: number;
+      limit: number;
+      sortOrder?: 'ASC' | 'DESC';
+    }
+  ): Observable<{ items: Project[]; total: number }> {
+    return this.http
+      .get<ApiProject[] | Paginated<ApiProject>>(this.base, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => {
+          const page = asPage(body);
+          return { items: page.items.map((row) => this.normalizeProject(row)), total: page.total };
+        }),
+        tap(({ items }) =>
+          this.projectsSignal.update((prev) => {
+            const byId = new Map(prev.map((p) => [p.id, p]));
+            for (const p of items) {
+              byId.set(p.id, this.mergeProjectRow(p, byId.get(p.id)));
+            }
+            return [...byId.values()];
+          })
+        ),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /**
+   * GET /projects/options — รายการเบาสำหรับดรอปดาวน์ (ต้องมี project.view)
+   * ไม่ส่ง search/limit = ทั้งหมด · ดรอปดาวน์ที่ข้อมูลโตได้ให้ส่ง limit เสมอ
+   */
+  listProjectOptions(params?: { search?: string; limit?: number }): Observable<ProjectOption[]> {
+    return this.http
+      .get<ProjectOption[]>(`${this.base}/options`, {
+        params: toHttpParams({ search: params?.search?.trim(), limit: params?.limit }),
+      })
+      .pipe(
+        map((body) => (Array.isArray(body) ? body : [])),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
   }
 
   /**

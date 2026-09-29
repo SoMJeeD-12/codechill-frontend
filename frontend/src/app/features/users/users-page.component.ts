@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -22,9 +23,12 @@ import { UserService } from '../../core/services/user.service';
 import { UserFormDialogComponent } from './user-form-dialog.component';
 import { ResetPasswordDialogComponent } from './reset-password-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { createClientPager } from '../../shared/utils/client-pager';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
-import { createTableSort } from '../../shared/utils/table-sort';
+import { createServerList } from '../../shared/utils/server-list';
 
 @Component({
   selector: 'app-users-page',
@@ -39,7 +43,10 @@ import { createTableSort } from '../../shared/utils/table-sort';
     MatDialogModule,
     MatTooltipModule,
     MatMenuModule,
+    RouterLink,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './users-page.component.html',
   styleUrl: './users-page.component.scss',
@@ -52,12 +59,26 @@ export class UsersPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
-  readonly users = signal<User[]>([]);
+  readonly canViewActivity = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermission('audit-logs');
+  });
   /** ดรอปดาวน์มอบบทบาท — จาก /roles/assignable ไม่ใช่ GET /roles */
   readonly roles = signal<RoleSummary[]>([]);
-  readonly statusFilter = signal<UserStatus | 'ALL'>('ALL');
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  /** GET /users?page&limit&search&status&sortBy — แบ่งหน้าฝั่ง server */
+  readonly list = createServerList<User, { status: UserStatus | 'ALL' }>({
+    namespace: 'users',
+    filters: { status: 'ALL' },
+    sortBy: 'fullName',
+    sortOrder: 'ASC',
+    fetch: ({ filters, ...req }) =>
+      this.usersApi.listPage({
+        ...req,
+        status: filters.status === 'ALL' ? undefined : filters.status,
+      }),
+  });
+  readonly statusFilter = computed(() => this.list.filters().status);
+  readonly searchControl = this.list.searchControl;
 
   readonly columns = [
     'fullName',
@@ -70,53 +91,6 @@ export class UsersPageComponent implements OnInit {
     'status',
     'actions',
   ];
-
-  readonly tableSort = createTableSort<
-    'fullName' | 'nickname' | 'username' | 'email' | 'phone' | 'accountType' | 'status'
-  >('fullName');
-
-  readonly filteredUsers = computed(() => {
-    const filter = this.statusFilter();
-    let list = this.users();
-    if (filter !== 'ALL') {
-      list = list.filter((u) => u.status === filter);
-    }
-    const q = this.search().trim().toLowerCase();
-    if (q) {
-      list = list.filter((u) => {
-        return (
-          u.fullName.toLowerCase().includes(q) ||
-          (u.nickname ?? '').toLowerCase().includes(q) ||
-          u.username.toLowerCase().includes(q) ||
-          (u.email ?? '').toLowerCase().includes(q) ||
-          (u.phone ?? '').includes(q) ||
-          this.accountLabel(u.accountType).toLowerCase().includes(q) ||
-          this.roleNames(u).toLowerCase().includes(q) ||
-          this.statusLabel(u.status).toLowerCase().includes(q)
-        );
-      });
-    }
-    return this.tableSort.apply(list, (row, key) => {
-      switch (key) {
-        case 'fullName':
-          return row.fullName;
-        case 'nickname':
-          return row.nickname ?? '';
-        case 'username':
-          return row.username;
-        case 'email':
-          return row.email ?? '';
-        case 'phone':
-          return row.phone ?? '';
-        case 'accountType':
-          return this.accountLabel(row.accountType);
-        case 'status':
-          return this.statusLabel(row.status);
-      }
-    });
-  });
-
-  readonly pager = createClientPager(this.filteredUsers);
 
   readonly canResetPasswordAny = computed(() => {
     this.auth.session();
@@ -132,8 +106,7 @@ export class UsersPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.reload();
+    this.list.start();
     this.rolesApi.listAssignable().subscribe({
       next: (roles) => this.roles.set(roles),
       error: (err) => {
@@ -144,7 +117,11 @@ export class UsersPageComponent implements OnInit {
   }
 
   reload(): void {
-    this.usersApi.list().subscribe((users) => this.users.set(users));
+    this.list.reload({ invalidate: true });
+  }
+
+  setStatusFilter(status: UserStatus | 'ALL'): void {
+    this.list.setFilter('status', status);
   }
 
   roleNames(user: User): string {
@@ -165,17 +142,12 @@ export class UsersPageComponent implements OnInit {
     return USER_STATUS_LABELS[status];
   }
 
-  toggleSort(
-    key: 'fullName' | 'nickname' | 'username' | 'email' | 'phone' | 'accountType' | 'status'
-  ): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: string): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(
-    key: 'fullName' | 'nickname' | 'username' | 'email' | 'phone' | 'accountType' | 'status'
-  ): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: string): string {
+    return this.list.sortIcon(key);
   }
 
   openCreate(): void {

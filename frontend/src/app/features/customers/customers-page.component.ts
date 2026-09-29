@@ -24,11 +24,12 @@ import { CustomerFormDialogComponent } from './customer-form-dialog.component';
 import { CustomerPreviewDialogComponent } from './customer-preview-dialog.component';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { createClientPager } from '../../shared/utils/client-pager';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
-import { createTableSort } from '../../shared/utils/table-sort';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
+import { createServerList } from '../../shared/utils/server-list';
 
 @Component({
   selector: 'app-customers-page',
@@ -49,6 +50,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
     MatMenuModule,
     RowActionsComponent,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './customers-page.component.html',
   styleUrl: './customers-page.component.scss',
@@ -65,13 +68,23 @@ export class CustomersPageComponent implements OnInit {
   /** จากเมนูมุมมอง 360° — รายการเดียวกันแต่เข้าหน้ารายละเอียดโหมดสรุป */
   readonly is360Mode = this.route.snapshot.data['mode'] === '360';
 
-  readonly customers = signal<Customer[]>([]);
-  readonly statusFilter = signal<CustomerStatus | 'ALL'>('ACTIVE');
-  readonly search = signal('');
+  /** GET /customers?page&limit&search&status&sortBy — แบ่งหน้าฝั่ง server */
+  readonly list = createServerList<Customer, { status: CustomerStatus | 'ALL' }>({
+    namespace: 'customers',
+    filters: { status: 'ACTIVE' },
+    sortBy: 'name',
+    sortOrder: 'ASC',
+    fetch: ({ filters, ...req }) =>
+      this.api.listCustomersPage({
+        ...req,
+        status: filters.status === 'ALL' ? undefined : filters.status,
+      }),
+  });
+  readonly statusFilter = computed(() => this.list.filters().status);
   readonly statusLabels = CUSTOMER_STATUS_LABELS;
   readonly statuses = Object.keys(CUSTOMER_STATUS_LABELS) as CustomerStatus[];
   readonly columns = ['name', 'phone', 'owner', 'status', 'actions'];
-  readonly searchControl = this.fb.nonNullable.control('');
+  readonly searchControl = this.list.searchControl;
 
   readonly canUpdate = computed(() => {
     this.auth.session();
@@ -95,42 +108,16 @@ export class CustomersPageComponent implements OnInit {
     );
   });
 
-  readonly tableSort = createTableSort<'name' | 'phone' | 'owner' | 'status'>('name');
-
-  readonly filtered = computed(() => {
-    const status = this.statusFilter();
-    const list = this.customers().filter((c) => status === 'ALL' || c.status === status);
-    return this.tableSort.apply(list, (row, key) => {
-      switch (key) {
-        case 'name':
-          return row.name;
-        case 'phone':
-          return row.phone ?? '';
-        case 'owner':
-          return row.owner?.fullName ?? '';
-        case 'status':
-          return this.statusLabel(row.status);
-      }
-    });
-  });
-
-  readonly pager = createClientPager(this.filtered);
-
   ngOnInit(): void {
-    this.reload();
-    this.searchControl.valueChanges
-      .pipe(debounceTime(PICKER_DEBOUNCE_MS), distinctUntilChanged())
-      .subscribe((v) => {
-        this.search.set(v);
-        this.pager.reset();
-        this.reload();
-      });
+    this.list.start();
+  }
+
+  setStatusFilter(status: CustomerStatus | 'ALL'): void {
+    this.list.setFilter('status', status);
   }
 
   reload(): void {
-    const q = this.search().trim();
-    const params = q.length >= PICKER_MIN_CHARS ? { search: q, limit: 100 } : { limit: 100 };
-    this.api.listCustomers(params).subscribe((list) => this.customers.set(list));
+    this.list.reload({ invalidate: true });
   }
 
   openCreate(): void {
@@ -201,13 +188,12 @@ export class CustomersPageComponent implements OnInit {
     return this.statusLabels[status];
   }
 
-  toggleSort(key: 'name' | 'phone' | 'owner' | 'status'): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: string): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(key: 'name' | 'phone' | 'owner' | 'status'): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: string): string {
+    return this.list.sortIcon(key);
   }
 
   private openForm(customer?: Customer): void {

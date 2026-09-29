@@ -4,7 +4,14 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, pruneUndefined, toHttpParams, upsertById } from '../http/api.util';
+import {
+  Paginated,
+  asList,
+  asPage,
+  pruneUndefined,
+  toHttpParams,
+  upsertById,
+} from '../http/api.util';
 import {
   CommunicationChannel,
   CommunicationLog,
@@ -103,6 +110,39 @@ export class CustomerService {
       .pipe(
         map(asList),
         tap((list) => this.customersSignal.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** ค้นสำหรับดรอปดาวน์ — ไม่ทับ cache รายการลูกค้าของหน้าอื่น */
+  searchCustomers(params: { search?: string; limit: number }): Observable<Customer[]> {
+    return this.http
+      .get<Customer[] | { items: Customer[] }>(this.customersBase, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map(asList),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /customers แบบแบ่งหน้าฝั่ง server — merge แถวเข้า cache (ไม่แทนที่ทั้งก้อน) */
+  listCustomersPage(
+    params: Omit<CustomerListParams, 'sortOrder'> & {
+      page: number;
+      limit: number;
+      sortOrder?: 'ASC' | 'DESC';
+    }
+  ): Observable<{ items: Customer[]; total: number }> {
+    return this.http
+      .get<Customer[] | Paginated<Customer>>(this.customersBase, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => asPage(body)),
+        tap(({ items }) =>
+          this.customersSignal.update((list) => items.reduce((acc, row) => upsertById(acc, row), list))
+        ),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }

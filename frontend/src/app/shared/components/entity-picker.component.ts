@@ -2,6 +2,7 @@ import {
   Component,
   DestroyRef,
   OnInit,
+  effect,
   inject,
   input,
   model,
@@ -16,11 +17,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Observable, of } from 'rxjs';
+import { Observable, Subject, merge, of } from 'rxjs';
 import {
   catchError,
   debounceTime,
   distinctUntilChanged,
+  filter,
   map,
   switchMap,
   tap,
@@ -32,6 +34,8 @@ export interface PickerOption {
   label: string;
   meta?: string | null;
   code?: string | null;
+  /** ป้ายเล็กท้ายชื่อ เช่น สถานะโปรเจกต์ที่ไม่ใช่กำลังดำเนินการ */
+  badge?: string | null;
 }
 
 /** ต้องพิมพ์อย่างน้อยกี่ตัวอักษรถึงจะเริ่มค้น — ช่องว่างไม่ยิง API */
@@ -65,10 +69,9 @@ export const searchWithClientFallback = searchViaBackend;
 /**
  * ช่องค้นหาแบบเลือกข้อมูล (ลูกค้า / โปรเจกต์ / ผู้ใช้)
  *
- * กติกาตามที่ตกลงไว้:
- * - ยังไม่พิมพ์ = ไม่แสดงรายการอะไรเลย (ไม่ preload ทั้งตาราง)
- * - เริ่มค้นเมื่อพิมพ์อย่างน้อย 1 ตัวอักษร · หน่วง 300ms
- * - เลือกแล้วโชว์ข้อมูลที่เลือกให้เห็นชัด ๆ พร้อมปุ่มล้าง
+ * - พิมพ์ = ค้นผ่าน searchFn หน่วง 300ms · คำขอเก่าถูกยกเลิก (switchMap)
+ * - openOnFocus = คลิกช่องแล้วเรียก searchFn('') ให้เห็นรายการแรก (searchFn ต้องจำกัด limit เอง)
+ * - เลือกแล้วโชว์ข้อมูลที่เลือกพร้อมปุ่มล้าง · parent ตั้ง selected ทีหลังได้
  */
 @Component({
   selector: 'app-entity-picker',
@@ -83,15 +86,26 @@ export const searchWithClientFallback = searchViaBackend;
     MatProgressSpinnerModule,
   ],
   template: `
-    <mat-form-field appearance="outline" class="picker-field">
-      <mat-label>{{ label() }}</mat-label>
+    <mat-form-field
+      appearance="outline"
+      class="picker-field"
+      [class]="fieldClass()"
+      [subscriptSizing]="fieldClass() ? 'dynamic' : 'fixed'"
+    >
+      @if (label()) {
+        <mat-label>{{ label() }}</mat-label>
+      }
+      @if (prefixIcon(); as icon) {
+        <mat-icon matPrefix>{{ icon }}</mat-icon>
+      }
       <input
         matInput
         [formControl]="queryControl"
         [matAutocomplete]="auto"
         [placeholder]="placeholder()"
-        [attr.aria-label]="label()"
+        [attr.aria-label]="label() || placeholder()"
         autocomplete="off"
+        (focus)="onFocus()"
       />
       @if (loading()) {
         <mat-spinner matSuffix diameter="18" />
@@ -112,12 +126,20 @@ export const searchWithClientFallback = searchViaBackend;
         @for (opt of options(); track opt.id) {
           <mat-option [value]="opt">
             <span class="picker-opt">
-              <span class="picker-opt__name">{{ opt.label }}</span>
+              <span class="picker-opt__name">
+                {{ opt.label }}
+                @if (opt.badge) {
+                  <span class="picker-opt__badge">{{ opt.badge }}</span>
+                }
+              </span>
               @if (opt.meta) {
                 <small class="picker-opt__meta">{{ opt.meta }}</small>
               }
             </span>
           </mat-option>
+        }
+        @if (!loading() && searched() && !options().length) {
+          <mat-option disabled class="picker-empty">ไม่พบรายการ</mat-option>
         }
       </mat-autocomplete>
       @if (error(); as e) {
@@ -142,6 +164,17 @@ export const searchWithClientFallback = searchViaBackend;
         color: rgb(0 0 0 / 0.55);
         font-size: 12px;
       }
+      .picker-opt__badge {
+        display: inline-block;
+        margin-left: 0.35rem;
+        padding: 0 0.45rem;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 11px;
+        line-height: 1.6;
+        vertical-align: middle;
+      }
     `,
   ],
 })
@@ -156,44 +189,68 @@ export class EntityPickerComponent implements OnInit {
   /** ตัวที่เลือกอยู่ (two-way) */
   readonly selected = model<PickerOption | null>(null);
   readonly disabled = input(false);
+  /** คลิกช่องว่างแล้วโหลดรายการแรกทันที (เช่น ?limit=20) */
+  readonly openOnFocus = input(false);
+  /** class ของ mat-form-field เช่น 'ui-filter ui-filter--icon' สำหรับแถบตัวกรอง */
+  readonly fieldClass = input('');
+  readonly prefixIcon = input<string | null>(null);
   readonly selectionChange = output<PickerOption | null>();
 
   readonly queryControl = new FormControl('', { nonNullable: true });
   readonly options = signal<PickerOption[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  /** ค้นเสร็จอย่างน้อยหนึ่งครั้งกับคำปัจจุบัน — ใช้โชว์「ไม่พบรายการ」 */
+  readonly searched = signal(false);
+
+  private readonly opened$ = new Subject<void>();
+
+  constructor() {
+    effect(() => {
+      const current = this.selected();
+      if (current && this.queryControl.value !== current.label) {
+        this.queryControl.setValue(current.label, { emitEvent: false });
+      }
+    });
+    effect(() => {
+      if (this.disabled()) {
+        this.queryControl.disable({ emitEvent: false });
+      } else {
+        this.queryControl.enable({ emitEvent: false });
+      }
+    });
+  }
 
   ngOnInit(): void {
-    const current = this.selected();
-    if (current) {
-      this.queryControl.setValue(current.label, { emitEvent: false });
-    }
-    if (this.disabled()) {
-      this.queryControl.disable({ emitEvent: false });
-    }
+    const typed$ = this.queryControl.valueChanges.pipe(
+      tap((value) => {
+        // พิมพ์แก้ข้อความหลังเลือกแล้ว = ยกเลิกตัวที่เลือก
+        const chosen = this.selected();
+        if (chosen && value !== chosen.label) {
+          this.selected.set(null);
+          this.selectionChange.emit(null);
+        }
+        this.searched.set(false);
+      }),
+      debounceTime(PICKER_DEBOUNCE_MS),
+      map((raw) => (typeof raw === 'string' ? raw : '').trim()),
+      distinctUntilChanged()
+    );
+    // เปิดดรอปดาวน์ตอนเลือกค่าไว้แล้ว = ดูรายการแรก ไม่ใช่ค้นด้วยชื่อที่เลือก
+    const browse$ = this.opened$.pipe(
+      filter(() => this.openOnFocus() && !this.options().length && !this.loading()),
+      map(() => (this.selected() ? '' : this.queryControl.value.trim()))
+    );
 
-    this.queryControl.valueChanges
+    merge(typed$, browse$)
       .pipe(
-        tap((value) => {
-          // พิมพ์แก้ข้อความหลังเลือกแล้ว = ยกเลิกตัวที่เลือก
-          const chosen = this.selected();
-          if (chosen && value !== chosen.label) {
-            this.selected.set(null);
-            this.selectionChange.emit(null);
-          }
-        }),
-        debounceTime(PICKER_DEBOUNCE_MS),
-        distinctUntilChanged(),
-        switchMap((raw) => {
-          const query = (typeof raw === 'string' ? raw : '').trim();
+        switchMap((query) => {
           this.error.set(null);
-
-          if (query.length < PICKER_MIN_CHARS) {
+          if (query.length < PICKER_MIN_CHARS && !this.openOnFocus()) {
             this.options.set([]);
             this.loading.set(false);
             return of([] as PickerOption[]);
           }
-
           this.loading.set(true);
           return this.searchFn()(query).pipe(
             catchError((err: Error) => {
@@ -206,8 +263,13 @@ export class EntityPickerComponent implements OnInit {
       )
       .subscribe((list) => {
         this.loading.set(false);
+        this.searched.set(true);
         this.options.set(list);
       });
+  }
+
+  onFocus(): void {
+    this.opened$.next();
   }
 
   onSelected(event: MatAutocompleteSelectedEvent): void {
@@ -215,6 +277,7 @@ export class EntityPickerComponent implements OnInit {
     this.selected.set(option);
     this.queryControl.setValue(option.label, { emitEvent: false });
     this.options.set([]);
+    this.searched.set(false);
     this.selectionChange.emit(option);
   }
 
@@ -222,6 +285,7 @@ export class EntityPickerComponent implements OnInit {
     this.selected.set(null);
     this.queryControl.setValue('', { emitEvent: false });
     this.options.set([]);
+    this.searched.set(false);
     this.selectionChange.emit(null);
   }
 }

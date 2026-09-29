@@ -101,19 +101,12 @@
         ></tr>
       </table>
 
-      <app-table-paginator
-        [length]="total()"
-        [pageIndex]="pageIndex()"
-        [pageSize]="pageSize()"
-        [pageSizeOptions]="pageSizeOptions"
-        [disabled]="loading() || statusFilter() === 'UNREAD'"
-        (page)="onPage($event)"
-      />
-
-      @if (items().length === 0) {
+      @if (items().length === 0 && !feed.hasMore()) {
         <p class="data-empty">
           @if (loading()) {
             กำลังโหลด…
+          } @else if (feed.error()) {
+            {{ feed.error() }}
           } @else if (statusFilter() !== 'ALL') {
             ไม่พบการแจ้งเตือนตามตัวกรองนี้
           } @else {
@@ -121,6 +114,28 @@
           }
         </p>
       }
+
+      <div
+        class="notif-feed-footer"
+        appInfiniteScroll
+        [appInfiniteScrollDisabled]="!feed.hasMore() || feed.loadingMore() || !!feed.error()"
+        [appInfiniteScrollKey]="items().length"
+        (reached)="loadMore()"
+      >
+        @if (feed.loadingMore() || (feed.hasMore() && items().length === 0 && !feed.error())) {
+          <span>กำลังโหลดเพิ่ม…</span>
+        } @else if (feed.hasMore() && feed.error()) {
+          <span class="notif-feed-error">{{ feed.error() }}</span>
+          <button mat-stroked-button type="button" (click)="loadMore()">ลองโหลดอีกครั้ง</button>
+        } @else if (feed.done()) {
+          <span>แสดงครบแล้ว</span>
+        }
+        @if (items().length > 0) {
+          <span class="notif-feed-count">
+            แสดง {{ items().length }}@if (total() != null) { จาก {{ total() }}} รายการ
+          </span>
+        }
+      </div>
     </div>
   </div>
 </section>

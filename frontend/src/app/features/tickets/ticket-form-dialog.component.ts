@@ -48,8 +48,12 @@ import {
 import {
   EntityPickerComponent,
   PickerOption,
-  searchViaBackend,
 } from '../../shared/components/entity-picker.component';
+import {
+  customerSearchFn,
+  projectPickerOptionOrNull,
+  projectSearchFn,
+} from '../../shared/components/entity-search';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -260,29 +264,8 @@ export class TicketFormDialogComponent {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
-  readonly searchProjects = (query: string) =>
-    searchViaBackend(
-      (params) => this.projectsApi.listProjects(params),
-      (p): PickerOption => ({
-        id: p.id,
-        label: p.name,
-        code: p.code,
-        meta: [p.code ?? '—', p.customer?.name].filter(Boolean).join(' · '),
-      }),
-      query
-    );
-
-  readonly searchCustomers = (query: string) =>
-    searchViaBackend(
-      (params) => this.customersApi.listCustomers(params),
-      (c): PickerOption => ({
-        id: c.id,
-        label: c.name,
-        code: c.code,
-        meta: [c.code ?? '—', c.phone].filter(Boolean).join(' · '),
-      }),
-      query
-    );
+  readonly searchProjects = projectSearchFn(this.projectsApi);
+  readonly searchCustomers = customerSearchFn(this.customersApi);
 
   onProjectPicked(option: PickerOption | null): void {
     this.project.set(option);
@@ -507,10 +490,7 @@ export class TicketFormDialogComponent {
   }
 
   private projectOptionFrom(ticket: Ticket | null): PickerOption | null {
-    if (!ticket?.project) {
-      return null;
-    }
-    return { id: ticket.project.id, label: ticket.project.name };
+    return projectPickerOptionOrNull(ticket?.project);
   }
 
   private customerOptionFrom(ticket: Ticket | null): PickerOption | null {

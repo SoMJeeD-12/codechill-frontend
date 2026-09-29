@@ -37,6 +37,37 @@ export function asPage<T>(
   return { items, total: typeof body.total === 'number' ? body.total : items.length };
 }
 
+/** response แบบ cursor — total เป็น null ในหน้าที่ส่ง cursor ไป */
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  total: number | null;
+}
+
+export function asCursorPage<T>(
+  body:
+    | T[]
+    | { items?: T[]; total?: number | null; nextCursor?: string | null; hasMore?: boolean }
+    | null
+    | undefined
+): CursorPage<T> {
+  if (!body) {
+    return { items: [], nextCursor: null, hasMore: false, total: 0 };
+  }
+  if (Array.isArray(body)) {
+    return { items: body, nextCursor: null, hasMore: false, total: body.length };
+  }
+  const items = Array.isArray(body.items) ? body.items : [];
+  const nextCursor = typeof body.nextCursor === 'string' && body.nextCursor ? body.nextCursor : null;
+  return {
+    items,
+    nextCursor,
+    hasMore: !!nextCursor && body.hasMore !== false,
+    total: typeof body.total === 'number' ? body.total : null,
+  };
+}
+
 /**
  * ดึงรายการครบทุกหน้า — ยิงทีละไม่เกิน API_LIST_MAX_LIMIT
  * หยุดเมื่อ items รวม ≥ total หรือหน้าล่าสุดว่าง/สั้นกว่า limit

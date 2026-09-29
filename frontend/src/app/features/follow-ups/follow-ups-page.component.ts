@@ -30,7 +30,7 @@ import {
   CHANNEL_LABELS,
   CommunicationChannel,
 } from '../../core/models/customer.model';
-import { Project } from '../../core/models/project.model';
+import { Project, ProjectOption } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import {
@@ -43,15 +43,29 @@ import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
+import {
+  EntityPickerComponent,
+  PickerOption,
+} from '../../shared/components/entity-picker.component';
+import {
+  PICKER_LIMIT,
+  customerSearchFn,
+  projectPickerOption,
+} from '../../shared/components/entity-search';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { createClientPager } from '../../shared/utils/client-pager';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
+import { createServerList } from '../../shared/utils/server-list';
 import { CustomerRecordPreviewDialogComponent } from '../customers/customer-record-preview-dialog.component';
-import { createTableSort } from '../../shared/utils/table-sort';
+import { Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+
+type FollowUpView = 'all' | 'overdue' | 'planned' | 'mine';
 
 /** preset เมื่อสร้างจากหน้าโปรเจกต์/ลูกค้า */
 export type FollowUpFormPreset = {
@@ -82,6 +96,8 @@ function isFollowUpRow(data: FollowUpFormDialogData): data is FollowUp {
     MatMenuModule,
     RowActionsComponent,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './follow-ups-page.component.html',
   styleUrl: './follow-ups-page.component.scss',
@@ -97,11 +113,27 @@ export class FollowUpsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly quickActions = inject(QuickActionsService);
 
-  readonly items = signal<FollowUp[]>([]);
-  readonly loading = signal(false);
-  readonly view = signal<'all' | 'overdue' | 'planned' | 'mine'>('all');
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  /** GET /follow-ups?page&limit&search&(overdue|status|assignedUserId)&sortBy — แบ่งหน้าฝั่ง server */
+  readonly list = createServerList<FollowUp, { view: FollowUpView }>({
+    namespace: 'follow-ups',
+    filters: { view: 'all' },
+    sortBy: 'dueDate',
+    sortOrder: 'ASC',
+    fetch: ({ filters, ...req }) => {
+      const me = this.auth.currentUser();
+      const view = filters.view;
+      return this.api.listPage({
+        ...req,
+        overdue: view === 'overdue' ? true : undefined,
+        status: view === 'planned' ? 'PLANNED' : undefined,
+        assignedUserId: view === 'mine' && me ? me.id : undefined,
+      });
+    },
+  });
+  readonly items = this.list.items;
+  readonly loading = this.list.loading;
+  readonly view = computed(() => this.list.filters().view);
+  readonly searchControl = this.list.searchControl;
   readonly columns = [
     'title',
     'projectCode',
@@ -124,129 +156,32 @@ export class FollowUpsPageComponent implements OnInit {
   );
   readonly canDelete = computed(() => this.auth.hasPermission('follow-ups', 'delete'));
 
-  readonly tableSort = createTableSort<
-    'title' | 'projectCode' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
-  >('dueDate');
-
-  private overdueRank(f: FollowUp): number {
-    if (f.status === 'DONE' || f.status === 'CANCELLED') {
-      return 2;
-    }
-    return f.isOverdue ? 0 : 1;
-  }
-
-  readonly filtered = computed(() => {
-    const q = this.search().trim().toLowerCase();
-    let list = this.items();
-    if (q) {
-      list = list.filter((f) => {
-        const customer = this.customerName(f).toLowerCase();
-        const project = this.projectLabel(f).toLowerCase();
-        const assignee = this.userName(f).toLowerCase();
-        return (
-          f.title.toLowerCase().includes(q) ||
-          (f.detail ?? '').toLowerCase().includes(q) ||
-          (f.resultNote ?? '').toLowerCase().includes(q) ||
-          customer.includes(q) ||
-          project.includes(q) ||
-          assignee.includes(q) ||
-          this.statusLabel(f).toLowerCase().includes(q) ||
-          f.dueDate.toLowerCase().includes(q)
-        );
-      });
-    }
-
-    // เรียง dueDate: วันที่หลัก · ค้างนาน/overdue เป็นรอง
-    if (this.tableSort.sortKey() === 'dueDate') {
-      const dir = this.tableSort.sortDir() === 'asc' ? 1 : -1;
-      return [...list].sort((a, b) => {
-        const byDate = this.tableSort.cmp(a.dueDate, b.dueDate) * dir;
-        if (byDate !== 0) {
-          return byDate;
-        }
-        return this.overdueRank(a) - this.overdueRank(b);
-      });
-    }
-
-    return this.tableSort.apply(list, (row, key) => {
-      switch (key) {
-        case 'title':
-          return row.title;
-        case 'projectCode':
-          return row.project?.code || null;
-        case 'project':
-          return this.projectName(row);
-        case 'customer':
-          return this.customerName(row);
-        case 'dueDate':
-          return row.dueDate;
-        case 'daysLeft':
-          return this.api.daysUntilDue(row);
-        case 'assignee':
-          return this.userName(row);
-        case 'status':
-          return this.statusLabel(row);
-      }
-    });
-  });
-
-  readonly pager = createClientPager(this.filtered);
-
   ngOnInit(): void {
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.customersApi.listCustomers({ limit: 100 }).subscribe();
     // follow-up ไม่ใช่ TASK/TICKET — ใช้ TASK เป็นรายชื่อพนักงาน ACTIVE ที่มอบหมายงานได้
     this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TASK' }).subscribe();
 
     // เข้ามาจากการ์ด "ติดตามที่เลยกำหนด" บนหน้าแรก
-    const params = this.route.snapshot.queryParamMap;
-    if (params.get('overdue') === 'true') {
-      this.view.set('overdue');
+    if (this.route.snapshot.queryParamMap.get('overdue') === 'true') {
+      this.list.patchFilters({ view: 'overdue' });
+      return;
     }
-    this.reload();
+    this.list.start();
   }
 
-  setView(view: 'all' | 'overdue' | 'planned' | 'mine'): void {
-    this.view.set(view);
-    this.reload();
+  setView(view: FollowUpView): void {
+    this.list.setFilter('view', view);
   }
 
-  toggleSort(
-    key: 'title' | 'projectCode' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
-  ): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: string): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(
-    key: 'title' | 'projectCode' | 'project' | 'customer' | 'dueDate' | 'daysLeft' | 'assignee' | 'status'
-  ): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: string): string {
+    return this.list.sortIcon(key);
   }
 
   reload(): void {
-    this.loading.set(true);
-    const view = this.view();
-    const me = this.auth.currentUser();
-    const params =
-      view === 'overdue'
-        ? { overdue: true as const, limit: 100 }
-        : view === 'planned'
-          ? { status: 'PLANNED' as const, limit: 100 }
-          : view === 'mine' && me
-            ? { assignedUserId: me.id, limit: 100 }
-            : { limit: 100 };
-
-    this.api.list(params).subscribe({
-      next: (list) => {
-        this.items.set(list);
-        this.loading.set(false);
-      },
-      error: (err: Error) => {
-        this.loading.set(false);
-        this.snack.open(err.message, 'ปิด', { duration: 3500 });
-      },
-    });
+    this.list.reload({ invalidate: true });
   }
 
   customerName(f: FollowUp): string {
@@ -448,6 +383,7 @@ export class FollowUpsPageComponent implements OnInit {
     MatDatepickerModule,
     MatCheckboxModule,
     MatAutocompleteModule,
+    EntityPickerComponent,
   ],
   templateUrl: './follow-up-form-dialog.component.html',
   styleUrl: './follow-up-form-dialog.component.scss',
@@ -463,7 +399,7 @@ export class FollowUpFormDialogComponent {
   private readonly ref = inject(MatDialogRef<FollowUpFormDialogComponent, boolean>);
   readonly data = inject<FollowUpFormDialogData>(MAT_DIALOG_DATA);
 
-  readonly customers = this.customersApi.customers;
+  readonly searchCustomers = customerSearchFn(this.customersApi);
   readonly users = this.usersApi.assignableTask;
   readonly statuses = Object.keys(FOLLOW_UP_STATUS_LABELS) as FollowUpWritableStatus[];
   readonly statusLabels = FOLLOW_UP_STATUS_LABELS;
@@ -474,13 +410,14 @@ export class FollowUpFormDialogComponent {
   readonly projectLocked = !this.isEdit && !!this.presetProjectId();
 
   readonly withoutProject = signal(this.initialWithoutProject());
-  readonly projectSuggestions = signal<Project[]>([]);
+  readonly projectSuggestions = signal<ProjectOption[]>([]);
   readonly projectQueryReady = signal(false);
   readonly selectedProject = signal<Project | FollowUpProjectSummary | null>(
     this.initialSelectedProject()
   );
 
   readonly projectSearchControl = this.fb.control<string | Project | FollowUpProjectSummary>('');
+  readonly customerOption = signal<PickerOption | null>(this.initialCustomerOption());
 
   readonly form = this.fb.group({
     customerId: [
@@ -512,8 +449,7 @@ export class FollowUpFormDialogComponent {
       });
       if (this.withoutProject()) {
         const presetCustomer = this.presetCustomerId();
-        const first = this.customers()[0];
-        this.form.patchValue({ customerId: presetCustomer ?? first?.id ?? 0 });
+        this.form.patchValue({ customerId: presetCustomer ?? 0 });
         if (presetCustomer) {
           this.form.controls.customerId.disable({ emitEvent: false });
         }
@@ -566,20 +502,16 @@ export class FollowUpFormDialogComponent {
       this.projectSearchControl.setValue('', { emitEvent: false });
       this.projectSuggestions.set([]);
       this.projectQueryReady.set(false);
-      if (!this.isEdit && !this.form.controls.customerId.value) {
-        const first = this.customers()[0];
-        this.form.patchValue({ customerId: first?.id ?? 0 });
-      }
     } else {
       this.form.patchValue({ customerId: 0 });
+      this.customerOption.set(null);
     }
     this.syncTargetValidators();
     this.error.set(null);
   }
 
   onProjectSelected(event: MatAutocompleteSelectedEvent): void {
-    const project = event.option.value as Project;
-    this.selectProject(project);
+    this.selectProject(event.option.value as FollowUpProjectSummary);
   }
 
   save(): void {
@@ -675,16 +607,33 @@ export class FollowUpFormDialogComponent {
       this.selectedProject.set(null);
       this.form.patchValue({ projectId: null });
     }
-    if (search.length < PICKER_MIN_CHARS) {
-      this.projectQueryReady.set(false);
-      this.projectSuggestions.set([]);
+    this.loadProjectSuggestions(search);
+  }
+
+  /** คลิกช่องว่าง = ?limit=20 · พิมพ์ = ?search=&limit=20 */
+  onProjectFieldFocus(): void {
+    if (this.projectLocked || this.selectedProject() || this.projectSuggestions().length) {
       return;
     }
+    const raw = this.projectSearchControl.value;
+    this.loadProjectSuggestions(typeof raw === 'string' ? raw.trim() : '');
+  }
+
+  private projectSearchSub?: Subscription;
+
+  private loadProjectSuggestions(search: string): void {
+    this.projectSearchSub?.unsubscribe();
     this.projectQueryReady.set(true);
-    this.projectsApi.listProjects({ search, limit: 10 }).subscribe({
-      next: (list) => this.projectSuggestions.set(list),
-      error: () => this.projectSuggestions.set([]),
-    });
+    this.projectSearchSub = this.projectsApi
+      .listProjectOptions({ search: search || undefined, limit: PICKER_LIMIT })
+      .subscribe({
+        next: (list) => this.projectSuggestions.set(list),
+        error: () => this.projectSuggestions.set([]),
+      });
+  }
+
+  projectStatusBadge(p: ProjectOption): string | null {
+    return projectPickerOption(p).badge ?? null;
   }
 
   private projectSearchKey(
@@ -751,6 +700,24 @@ export class FollowUpFormDialogComponent {
 
   private initialProjectId(): number | null {
     return this.initialSelectedProject()?.id ?? null;
+  }
+
+  onCustomerPicked(option: PickerOption | null): void {
+    this.customerOption.set(option);
+    this.form.patchValue({ customerId: option?.id ?? 0 });
+    this.error.set(null);
+  }
+
+  private initialCustomerOption(): PickerOption | null {
+    if (this.editRow?.customer) {
+      return { id: this.editRow.customer.id, label: this.editRow.customer.name };
+    }
+    const id = this.editRow?.customerId ?? this.presetCustomerId();
+    if (!id) {
+      return null;
+    }
+    const cached = this.customersApi.getCustomer(id);
+    return { id, label: cached?.name ?? `ลูกค้า #${id}` };
   }
 
   private initialCustomerId(): number {

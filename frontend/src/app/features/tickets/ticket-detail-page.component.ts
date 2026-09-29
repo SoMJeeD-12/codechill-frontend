@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -50,7 +50,16 @@ import { navigateBack } from '../../core/utils/navigation.util';
 import { formatThaiDateTime } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
+import {
+  TicketReturnSupportDialogComponent,
+  TicketReturnSupportDialogData,
+  TicketReviewDialogResult,
+} from './ticket-return-support-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -61,7 +70,7 @@ import { catchError, map, switchMap, toArray } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 const TIMELINE_PREVIEW_COUNT = 5;
-const RESOLUTION_PAGE_SIZE = 5;
+const RESOLUTION_PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-ticket-detail-page',
@@ -79,6 +88,8 @@ const RESOLUTION_PAGE_SIZE = 5;
     MatDialogModule,
     StatusBarComponent,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './ticket-detail-page.component.html',
   styleUrl: './ticket-detail-page.component.scss',
@@ -104,7 +115,6 @@ export class TicketDetailPageComponent implements OnInit {
   readonly resolutionSearchControl = this.fb.nonNullable.control('');
   readonly notFound = signal(false);
   readonly loading = signal(true);
-  readonly sendingToSupport = signal(false);
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly billingLabels = BILLING_TYPE_LABELS;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
@@ -440,7 +450,25 @@ export class TicketDetailPageComponent implements OnInit {
     [5, 10, 20]
   );
 
+  readonly canAddResolution = computed(
+    () =>
+      (this.adminCanSelfResolve() && !this.isIncompleteWork()) ||
+      (this.canResolve() &&
+        this.displayStatus() === 'IN_PROGRESS' &&
+        !!this.ticket()?.assignedUserId &&
+        !this.isIncompleteWork())
+  );
+
+  private readonly resolutionHistoryTpl = viewChild<TemplateRef<unknown>>('resolutionHistory');
+
   private ticketId = 0;
+
+  openResolutionHistory(): void {
+    const tpl = this.resolutionHistoryTpl();
+    if (tpl) {
+      this.dialog.open(tpl, { ...FORM_DIALOG, autoFocus: false });
+    }
+  }
 
   goBack(): void {
     navigateBack(this.location, this.router, '/app/tickets');
@@ -462,8 +490,6 @@ export class TicketDetailPageComponent implements OnInit {
     this.usersApi
       .loadForPicker(this.auth.currentUser(), { capability: 'TICKET' })
       .subscribe();
-    this.customersApi.listCustomers().subscribe({ error: () => undefined });
-    this.projectsApi.listProjects().subscribe({ error: () => undefined });
 
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('id'));
@@ -505,17 +531,25 @@ export class TicketDetailPageComponent implements OnInit {
   }
 
   customerName(): string {
-    const id = this.ticket()?.customerId;
-    return id ? this.customersApi.getCustomer(id)?.name ?? `#${id}` : '—';
-  }
-
-  projectName(): string {
-    const id = this.ticket()?.projectId;
+    const ticket = this.ticket();
+    const id = ticket?.customerId;
     if (!id) {
       return '—';
     }
-    const p = this.projectsApi.getProject(id);
-    return p ? `${p.code} · ${p.name}` : `#${id}`;
+    return ticket?.customer?.name ?? this.customersApi.getCustomer(id)?.name ?? `#${id}`;
+  }
+
+  projectName(): string {
+    const ticket = this.ticket();
+    const id = ticket?.projectId;
+    if (!id) {
+      return '—';
+    }
+    const p = ticket?.project ?? this.projectsApi.getProject(id);
+    if (!p) {
+      return `#${id}`;
+    }
+    return p.code ? `${p.code} · ${p.name}` : p.name;
   }
 
   userName(id: number | null): string {
@@ -798,29 +832,34 @@ export class TicketDetailPageComponent implements OnInit {
       );
       return;
     }
-    openConfirmDialog(this.dialog, {
-      title: 'ส่งให้ซัพพอร์ต',
-      message: `ตรวจผ่านแล้ว ส่งใบ「${ticket.title}」ให้ซัพพอร์ตแจ้งลูกค้า?`,
-      confirmLabel: 'ส่งให้ซัพพอร์ต',
-      cancelLabel: 'ยกเลิก',
-      danger: false,
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      this.sendingToSupport.set(true);
-      this.ticketsApi.returnToSupport(this.ticketId).subscribe({
-        next: () => {
-          this.sendingToSupport.set(false);
-          this.snack.open('ส่งให้ซัพพอร์ตแล้ว — รอซัพพอร์ตแจ้งลูกค้า', 'ปิด', { duration: 3000 });
-          this.loadTicket();
-        },
-        error: (err: Error) => {
-          this.sendingToSupport.set(false);
-          this.snack.open(err.message, 'ปิด', { duration: 4000 });
-        },
+    this.dialog
+      .open(TicketReturnSupportDialogComponent, {
+        width: '680px',
+        maxWidth: '96vw',
+        autoFocus: false,
+        data: {
+          ticketId: ticket.id,
+          ticketNo: ticket.ticketNo || `ใบ #${ticket.id}`,
+          title: ticket.title,
+          receiverName: this.userName(ticket.receivedByUserId),
+          assigneeName: this.userName(ticket.assignedUserId),
+          showOpenLink: false,
+        } satisfies TicketReturnSupportDialogData,
+      })
+      .afterClosed()
+      .subscribe((result: TicketReviewDialogResult | undefined) => {
+        if (!result) {
+          return;
+        }
+        this.snack.open(
+          result === 'approved'
+            ? 'ส่งให้ซัพพอร์ตแล้ว — รอซัพพอร์ตแจ้งลูกค้า'
+            : 'ส่งกลับให้ผู้แก้แล้ว — ใบกลับเป็นกำลังดำเนินการ',
+          'ปิด',
+          { duration: 3000 }
+        );
+        this.loadTicket();
       });
-    });
   }
 
   /** ASSIGNED → PATCH /tickets/:id/start (ผู้รับผิดชอบเท่านั้น) */

@@ -13,7 +13,8 @@ export type NotificationEventType =
   /** C-3 สายงานใบปัญหา (inbox ในแอป) */
   | 'TICKET_SENT_TO_ADMIN'
   | 'TICKET_AWAITING_REVIEW'
-  | 'TICKET_RETURNED_TO_SUPPORT';
+  | 'TICKET_RETURNED_TO_SUPPORT'
+  | 'TICKET_REVIEW_REJECTED';
 
 /** รายการแจ้งเตือน — ของพนักงานในระบบเท่านั้น (BR-11) */
 export interface AppNotification {
@@ -77,6 +78,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   TICKET_SENT_TO_ADMIN: 'ส่งใบไปคิวแอดมิน',
   TICKET_AWAITING_REVIEW: 'รอตรวจผลแก้',
   TICKET_RETURNED_TO_SUPPORT: 'แอดมินส่งกลับซัพพอร์ต',
+  TICKET_REVIEW_REJECTED: 'ใบถูกตีกลับให้แก้ต่อ',
 };
 
 export function notificationEventLabel(eventType: string): string {

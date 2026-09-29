@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -49,10 +49,18 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import {
+  EntityPickerComponent,
+  PickerOption,
+} from '../../shared/components/entity-picker.component';
+import { customerPickerOption, customerSearchFn } from '../../shared/components/entity-search';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { createClientPager } from '../../shared/utils/client-pager';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
-import { createTableSort } from '../../shared/utils/table-sort';
+import { createServerList } from '../../shared/utils/server-list';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
@@ -77,6 +85,8 @@ function isEditableStatus(status: MaContractStatus): status is MaEditableStatus 
     MatSnackBarModule,
     MatMenuModule,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './ma-page.component.html',
   styleUrl: './ma-page.component.scss',
@@ -99,14 +109,25 @@ export class MaPageComponent implements OnInit {
     return this.auth.hasPermissionCode('ma.update');
   });
 
-  readonly contracts = signal<MaContract[]>([]);
-  /** โควตารอบปัจจุบัน — list API ไม่พ่วง ต้องโหลด GET /ma-contracts/:id/quota */
+  /**
+   * แบ่งหน้าฝั่ง server (GET /ma-contracts) · ค่าเริ่มต้น = ทั้งหมด —
+   * สัญญาใหม่มักเป็น DRAFT จึงไม่ผ่านแท็บใช้งานอยู่
+   */
+  readonly list = createServerList<MaContract, { view: 'active' | 'all' }>({
+    namespace: 'ma-contracts',
+    filters: { view: 'all' },
+    sortBy: 'id',
+    sortOrder: 'DESC',
+    sortOrderFor: (key) => (key === 'price' ? 'DESC' : 'ASC'),
+    fetch: ({ filters, ...req }) =>
+      this.api.listPage({ ...req, status: filters.view === 'active' ? 'ACTIVE' : undefined }),
+  });
+  readonly view = computed(() => this.list.filters().view);
+  readonly searchControl = this.list.searchControl;
+  /** โควตารอบปัจจุบัน — list API ไม่พ่วง ต้องโหลด GET /ma-contracts/:id/quota (เฉพาะแถวในหน้า) */
   readonly quotasById = signal<Record<number, MaQuotaStatus>>({});
   readonly quotasLoading = signal(false);
-  /** ค่าเริ่มต้น = ทั้งหมด — สัญญาใหม่มักเป็น DRAFT จึงไม่ผ่านแท็บใช้งานอยู่ */
-  readonly view = signal<'active' | 'all'>('all');
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  private readonly quotaTried = new Set<number>();
   readonly statusLabels = MA_STATUS_LABELS;
   readonly columns = [
     'id',
@@ -119,89 +140,32 @@ export class MaPageComponent implements OnInit {
     'actions',
   ];
 
-  readonly tableSort = createTableSort<
-    'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'
-  >('id');
-
-  readonly filtered = computed(() => {
-    const list = this.contracts();
-    let rows =
-      this.view() === 'active'
-        ? list.filter((c) => this.isActiveViewRow(c))
-        : list;
-    const q = this.search().trim().toLowerCase();
-    if (q) {
-      rows = rows.filter((c) => {
-        return (
-          String(c.id).includes(q) ||
-          (c.contractNo ?? '').toLowerCase().includes(q) ||
-          maPlanDisplayName(c).toLowerCase().includes(q) ||
-          this.customerName(c).toLowerCase().includes(q) ||
-          this.projectName(c).toLowerCase().includes(q) ||
-          this.statusLabel(c.status).toLowerCase().includes(q) ||
-          this.coverageLabel(c).toLowerCase().includes(q) ||
-          (c.note ?? '').toLowerCase().includes(q)
-        );
-      });
-    }
-    return this.tableSort.apply(rows, (row, key) => {
-      switch (key) {
-        case 'id':
-          return row.contractNo?.trim() || String(row.id);
-        case 'project':
-          return this.projectName(row);
-        case 'plan':
-          return this.planName(row);
-        case 'period':
-          return row.endDate ?? row.startDate ?? '';
-        case 'quota':
-          return this.remaining(row);
-        case 'fee':
-          return Number(row.price) || 0;
-        case 'status':
-          return this.coverageLabel(row);
-      }
+  constructor() {
+    effect(() => {
+      const rows = this.list.items();
+      untracked(() => this.loadQuotasForList(rows));
     });
-  });
-
-  readonly pager = createClientPager(this.filtered);
-
-  /** แท็บใช้งานอยู่: ใช้ isCurrentlyActive ถ้ามี ไม่งั้น fallback status ACTIVE */
-  private isActiveViewRow(c: MaContract): boolean {
-    if (typeof c.isCurrentlyActive === 'boolean') {
-      return c.isCurrentlyActive;
-    }
-    return c.status === 'ACTIVE';
   }
+
   ngOnInit(): void {
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.customersApi.listCustomers().subscribe({ error: () => undefined });
-    this.projectsApi.listProjects().subscribe({ error: () => undefined });
     this.api.listPlans({ isActive: true }).subscribe({ error: () => undefined });
-    this.reload();
+    this.list.start();
   }
 
   reload(): void {
-    this.api.list().subscribe({
-      next: (list) => {
-        this.contracts.set(list);
-        this.loadQuotasForList(list);
-      },
-      error: () => {
-        this.contracts.set([]);
-        this.quotasById.set({});
-      },
-    });
+    this.quotaTried.clear();
+    this.list.reload({ invalidate: true });
   }
 
   private loadQuotasForList(list: MaContract[]): void {
     const targets = list.filter(
-      (c) => c.status !== 'DRAFT' && c.status !== 'CANCELLED'
+      (c) => c.status !== 'DRAFT' && c.status !== 'CANCELLED' && !this.quotaTried.has(c.id)
     );
     if (!targets.length) {
-      this.quotasById.set({});
-      this.quotasLoading.set(false);
       return;
+    }
+    for (const c of targets) {
+      this.quotaTried.add(c.id);
     }
     this.quotasLoading.set(true);
     forkJoin(
@@ -213,7 +177,7 @@ export class MaPageComponent implements OnInit {
       )
     ).subscribe({
       next: (pairs) => {
-        const next: Record<number, MaQuotaStatus> = {};
+        const next: Record<number, MaQuotaStatus> = { ...this.quotasById() };
         for (const [id, q] of pairs) {
           if (q) {
             next[id] = q;
@@ -222,10 +186,7 @@ export class MaPageComponent implements OnInit {
         this.quotasById.set(next);
         this.quotasLoading.set(false);
       },
-      error: () => {
-        this.quotasById.set({});
-        this.quotasLoading.set(false);
-      },
+      error: () => this.quotasLoading.set(false),
     });
   }
 
@@ -289,13 +250,13 @@ export class MaPageComponent implements OnInit {
     return maCoverageDaysHint(contract);
   }
 
-  toggleSort(key: 'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  /** เรียงฝั่ง server ได้เฉพาะคอลัมน์ตรงของสัญญา (id · endDate · price · status) */
+  toggleSort(key: 'id' | 'endDate' | 'price' | 'status'): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(key: 'id' | 'project' | 'plan' | 'period' | 'quota' | 'fee' | 'status'): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: 'id' | 'endDate' | 'price' | 'status'): string {
+    return this.list.sortIcon(key);
   }
 
   openCreate(row?: MaContract): void {
@@ -361,6 +322,7 @@ export type MaFormDialogData =
     MatDatepickerModule,
     MoneyInputDirective,
     ThaiDatePipe,
+    EntityPickerComponent,
   ],
   templateUrl: './ma-form-dialog.component.html',
   styleUrl: './ma-form-dialog.component.scss',
@@ -378,7 +340,8 @@ export class MaFormDialogComponent {
   private readonly editRow: MaContract | null =
     this.data && 'id' in this.data && this.data.id ? this.data : null;
 
-  readonly customers = this.customersApi.customers;
+  readonly searchCustomers = customerSearchFn(this.customersApi);
+  readonly customerOption = signal<PickerOption | null>(null);
   /** โปรเจกต์ของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
   readonly customerProjects = signal<Project[]>([]);
   readonly plans = this.api.plans;
@@ -439,15 +402,12 @@ export class MaFormDialogComponent {
 
   constructor() {
     this.api.listPlans({ isActive: true }).subscribe();
-    if (!this.customers().length) {
-      this.customersApi.listCustomers().subscribe();
-    }
     if (!this.isEdit) {
       const preset = this.data?.customerId;
-      const first = this.customers()[0];
-      this.form.patchValue({ customerId: preset ?? first?.id ?? 0 });
+      this.form.patchValue({ customerId: preset ?? 0 });
       if (preset) {
         this.form.controls.customerId.disable({ emitEvent: false });
+        this.resolveCustomerOption(preset);
       }
       const firstPlan = this.plans()[0];
       if (firstPlan) {
@@ -466,6 +426,7 @@ export class MaFormDialogComponent {
           });
           this.form.controls.projectId.disable({ emitEvent: false });
           this.form.controls.customerId.disable({ emitEvent: false });
+          this.resolveCustomerOption(p.customerId);
           this.loadCustomerProjects(p.customerId);
         };
         const cached = this.projectsApi.getProject(presetProjectId);
@@ -547,6 +508,27 @@ export class MaFormDialogComponent {
 
   filteredProjects() {
     return this.customerProjects();
+  }
+
+  onCustomerPicked(option: PickerOption | null): void {
+    this.customerOption.set(option);
+    this.form.controls.customerId.setValue(option?.id ?? 0);
+  }
+
+  private resolveCustomerOption(customerId: number): void {
+    if (!customerId || this.customerOption()?.id === customerId) {
+      return;
+    }
+    const cached = this.customersApi.getCustomer(customerId);
+    this.customerOption.set(
+      cached ? customerPickerOption(cached) : { id: customerId, label: `ลูกค้า #${customerId}` }
+    );
+    if (!cached) {
+      this.customersApi.fetchCustomer(customerId).subscribe({
+        next: (c) => this.customerOption.set(customerPickerOption(c)),
+        error: () => undefined,
+      });
+    }
   }
 
   private loadCustomerProjects(customerId: number): void {

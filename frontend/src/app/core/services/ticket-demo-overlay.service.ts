@@ -165,6 +165,9 @@ export class TicketDemoOverlayService {
     if (!this.isStillInProgress(ticket)) {
       return null;
     }
+    if (this.isReviewRejected(ticket)) {
+      return 'ตรวจไม่ผ่าน · แก้ต่อ';
+    }
     const fromTicket = latestTicketResolution(ticket)?.result;
     const result =
       fromTicket === 'PARTIAL' || fromTicket === 'FAILED'
@@ -205,6 +208,14 @@ export class TicketDemoOverlayService {
       return 'ASSIGNED';
     }
     return ticketWorkflowStatus(ticket);
+  }
+
+  /** IN_PROGRESS ทั้งที่รอบล่าสุดสำเร็จ = แอดมินกด reject-review ตีกลับ */
+  private isReviewRejected(ticket: Ticket): boolean {
+    return (
+      ticketWorkflowStatus(ticket) === 'IN_PROGRESS' &&
+      latestTicketResolution(ticket)?.result === 'SUCCESS'
+    );
   }
 
   private isStillInProgress(ticket: Ticket): boolean {

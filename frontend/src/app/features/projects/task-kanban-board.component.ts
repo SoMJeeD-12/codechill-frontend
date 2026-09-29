@@ -40,6 +40,11 @@ import { AuthService } from '../../core/services/auth.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import {
+  EntityPickerComponent,
+  PickerOption,
+} from '../../shared/components/entity-picker.component';
+import { projectPickerOption, projectSearchFn } from '../../shared/components/entity-search';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { TaskReviewDialogComponent } from './task-review-dialog.component';
@@ -67,6 +72,7 @@ const OTHER_LIMIT = 100;
     MatSelectModule,
     MatSnackBarModule,
     ThaiDatePipe,
+    EntityPickerComponent,
   ],
   templateUrl: './task-kanban-board.component.html',
   styleUrl: './task-kanban-board.component.scss',
@@ -100,7 +106,8 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   readonly users = this.usersApi.assignableTask;
 
   readonly summary = signal<TaskSummary | null>(null);
-  readonly projects = signal<Project[]>([]);
+  readonly searchProjects = projectSearchFn(this.projectsApi);
+  readonly projectFilterOption = signal<PickerOption | null>(null);
   readonly columnTasks = signal<Record<TaskStatus, TaskItem[]>>({
     TODO: [],
     DOING: [],
@@ -145,12 +152,12 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
       this.assigneeFilter.set(this.initialAssigneeId);
     }
     if (this.showProjectFilter && this.initialProjectId != null && this.initialProjectId > 0) {
-      this.projectFilter.set(this.initialProjectId);
-    }
-    if (this.showProjectFilter) {
-      this.projectsApi.listProjects().subscribe({
-        next: (list) => this.projects.set(list),
-        error: () => this.projects.set([]),
+      const id = this.initialProjectId;
+      this.projectFilter.set(id);
+      this.projectFilterOption.set({ id, label: `โปรเจกต์ #${id}` });
+      this.projectsApi.fetchProject(id).subscribe({
+        next: (p) => this.projectFilterOption.set(projectPickerOption(p)),
+        error: () => undefined,
       });
     }
     this.reload();
@@ -168,6 +175,12 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   }
 
   reload(): void {
+    this.applyFilters();
+  }
+
+  onProjectFilterPicked(option: PickerOption | null): void {
+    this.projectFilterOption.set(option);
+    this.projectFilter.set(option?.id ?? 'ALL');
     this.applyFilters();
   }
 

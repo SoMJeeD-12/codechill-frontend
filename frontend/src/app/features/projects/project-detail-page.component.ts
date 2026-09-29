@@ -1,5 +1,14 @@
 ﻿import { Location } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -126,6 +135,16 @@ import {
   FollowUpFormDialogComponent,
   FollowUpFormPreset,
 } from '../follow-ups/follow-ups-page.component';
+import { ListSkeletonComponent } from '../../shared/components/list-loading.component';
+
+type DetailTab =
+  | 'deliveries'
+  | 'warranties'
+  | 'documents'
+  | 'tickets'
+  | 'followUps'
+  | 'ma'
+  | 'surveys';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -146,6 +165,7 @@ import {
     MatTableModule,
     MatTooltipModule,
     MatDialogModule,
+    ListSkeletonComponent,
     MatMenuModule,
     RowActionsComponent,
     TablePaginatorComponent,
@@ -183,6 +203,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskSearch = signal('');
   readonly taskSearchControl = this.fb.nonNullable.control('');
   readonly deliveries = signal<Delivery[]>([]);
+  readonly deliveriesLoading = signal(false);
   readonly deliverySearch = signal('');
   readonly deliverySearchControl = this.fb.nonNullable.control('');
   readonly warrantySearchControl = this.fb.nonNullable.control('');
@@ -672,6 +693,60 @@ export class ProjectDetailPageComponent implements OnInit {
     return index;
   }
 
+  /** ลำดับต้องตรงกับ mat-tab ใน template (แท็บที่ไม่มีสิทธิ์ไม่ถูกสร้าง) */
+  private readonly tabKeys = computed<DetailTab[]>(() => {
+    const keys: DetailTab[] = [];
+    if (this.canViewDeliveries()) keys.push('deliveries');
+    if (this.canViewWarranties()) keys.push('warranties');
+    if (this.canViewDocuments()) keys.push('documents');
+    if (this.canViewTickets()) keys.push('tickets');
+    keys.push('followUps');
+    if (this.canViewMa()) keys.push('ma');
+    if (this.canViewSurvey()) keys.push('surveys');
+    return keys;
+  });
+  /** แท็บที่โหลดข้อมูลแล้ว — refresh() โหลดซ้ำเฉพาะแท็บเหล่านี้ */
+  private readonly loadedTabs = new Set<DetailTab>();
+  private readonly lazyTabs = effect(() => {
+    if (!this.project()) {
+      return;
+    }
+    const key = this.tabKeys()[this.selectedTab()];
+    untracked(() => {
+      if (key && !this.loadedTabs.has(key)) {
+        this.loadTab(key);
+      }
+    });
+  });
+
+  /** ส่งมอบ + ประกันใช้ข้อมูลร่วมกัน (checklist / ปุ่มออกประกัน) — โหลดคู่กันเสมอ */
+  private loadTab(key: DetailTab): void {
+    this.loadedTabs.add(key);
+    switch (key) {
+      case 'deliveries':
+      case 'warranties':
+        this.loadedTabs.add('deliveries').add('warranties');
+        this.loadDeliveries();
+        this.loadWarranties();
+        break;
+      case 'documents':
+        this.loadDocuments();
+        break;
+      case 'tickets':
+        this.loadProjectTickets();
+        break;
+      case 'followUps':
+        this.loadFollowUps();
+        break;
+      case 'ma':
+        this.loadProjectMaQuota();
+        break;
+      case 'surveys':
+        this.loadProjectSurveys();
+        break;
+    }
+  }
+
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -684,7 +759,7 @@ export class ProjectDetailPageComponent implements OnInit {
         this.notFound.set(false);
         this.customersApi.fetchCustomer(project.customerId).subscribe();
         this.customersApi.listContacts(project.customerId).subscribe();
-        this.refresh();
+        this.refresh({ skipProject: true });
         if (this.route.snapshot.queryParamMap.get('tab') === 'documents') {
           this.queueDocumentsTab();
         }
@@ -966,11 +1041,14 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  refresh(): void {
-    this.projectsApi.fetchProject(this.projectId).subscribe({
-      next: (project) => this.project.set(project),
-      error: () => undefined,
-    });
+  /** หัวหน้า + รายงาน + งาน โหลดทันที · ข้อมูลแท็บโหลดเมื่อเปิดแท็บครั้งแรก */
+  refresh(opts: { skipProject?: boolean } = {}): void {
+    if (!opts.skipProject) {
+      this.projectsApi.fetchProject(this.projectId).subscribe({
+        next: (project) => this.project.set(project),
+        error: () => undefined,
+      });
+    }
     this.loadProjectReport();
 
     if (this.canViewTasks()) {
@@ -987,22 +1065,35 @@ export class ProjectDetailPageComponent implements OnInit {
       this.tasksDenied.set(false);
     }
 
-    if (this.canViewDeliveries()) {
-      this.deliveriesDenied.set(false);
-      this.projectsApi.listDeliveries(this.projectId, { optional: true }).subscribe({
-        next: (rows) => this.deliveries.set(rows),
-        error: () => {
-          this.deliveries.set([]);
-          this.deliveriesDenied.set(true);
-        },
-      });
-    } else {
+    for (const key of [...this.loadedTabs]) {
+      if (key !== 'warranties') {
+        this.loadTab(key);
+      }
+    }
+  }
+
+  private loadDeliveries(): void {
+    if (!this.canViewDeliveries()) {
       this.deliveries.set([]);
       this.deliveriesDenied.set(false);
+      return;
     }
+    this.deliveriesDenied.set(false);
+    this.deliveriesLoading.set(true);
+    this.projectsApi.listDeliveries(this.projectId, { optional: true }).subscribe({
+      next: (rows) => {
+        this.deliveries.set(rows);
+        this.deliveriesLoading.set(false);
+      },
+      error: () => {
+        this.deliveries.set([]);
+        this.deliveriesDenied.set(true);
+        this.deliveriesLoading.set(false);
+      },
+    });
+  }
 
-    this.loadDocuments();
-
+  private loadFollowUps(): void {
     this.followUpsLoading.set(true);
     this.followUpsApi.list({ projectId: this.projectId, limit: 100 }).subscribe({
       next: (rows) => {
@@ -1014,11 +1105,6 @@ export class ProjectDetailPageComponent implements OnInit {
         this.followUpsLoading.set(false);
       },
     });
-
-    this.loadWarranties();
-    this.loadProjectTickets();
-    this.loadProjectMaQuota();
-    this.loadProjectSurveys();
   }
 
   /** ประกันที่ออกจากการส่งมอบของโปรเจกต์นี้ */

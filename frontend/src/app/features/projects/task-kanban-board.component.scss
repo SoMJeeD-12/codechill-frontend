@@ -249,3 +249,7 @@
     grid-template-columns: repeat(var(--kanban-cols, 5), minmax(180px, 220px));
   }
 }
+
+.project-picker {
+  min-width: 260px;
+}

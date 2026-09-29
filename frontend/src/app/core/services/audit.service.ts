@@ -4,7 +4,14 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
-import { asList, toHttpParams } from '../http/api.util';
+import {
+  CursorPage,
+  Paginated,
+  asCursorPage,
+  asList,
+  asPage,
+  toHttpParams,
+} from '../http/api.util';
 import { AuditAction, AuditLog } from '../models/audit.model';
 
 export interface AuditListParams {
@@ -19,6 +26,12 @@ export interface AuditListParams {
   action?: AuditAction;
   dateFrom?: string;
   dateTo?: string;
+  /** ซ่อนเข้าสู่ระบบ / ต่ออายุ / ออกจากระบบ */
+  hideSessionEvents?: boolean;
+  /** ซ่อนงานอัตโนมัติของระบบ (user = null) — ไม่มีผลเมื่อส่ง userId */
+  hideSystemEvents?: boolean;
+  /** คั่นหลายตารางด้วย , */
+  excludeTableNames?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,6 +50,36 @@ export class AuditService {
       .pipe(
         map(asList),
         tap((list) => this.items.set(list)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /** GET /audit-logs แบบแบ่งหน้า — ใช้ total จาก API */
+  listPage(params: AuditListParams): Observable<{ items: AuditLog[]; total: number }> {
+    return this.http
+      .get<AuditLog[] | Paginated<AuditLog>>(this.base, {
+        params: toHttpParams({ ...params }),
+      })
+      .pipe(
+        map((body) => asPage(body)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /**
+   * GET /audit-logs แบบ cursor — ใช้ได้เฉพาะเรียงใหม่สุดก่อน (ไม่ส่ง sortBy/page)
+   * หน้าแรก cursor = null · หน้าถัดไปส่งตัวกรองเดิมทั้งหมด + cursor
+   */
+  listCursor(
+    params: Omit<AuditListParams, 'page' | 'sortBy' | 'sortOrder'>,
+    cursor: string | null
+  ): Observable<CursorPage<AuditLog>> {
+    return this.http
+      .get<AuditLog[] | Paginated<AuditLog>>(this.base, {
+        params: toHttpParams({ ...params, cursor }),
+      })
+      .pipe(
+        map((body) => asCursorPage<AuditLog>(body)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
       );
   }

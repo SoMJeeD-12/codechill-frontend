@@ -74,6 +74,7 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import { ListSkeletonComponent } from '../../shared/components/list-loading.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { CustomerRecordPreviewDialogComponent } from './customer-record-preview-dialog.component';
@@ -96,6 +97,7 @@ import { CustomerRecordPreviewDialogComponent } from './customer-record-preview-
     MatMenuModule,
     RowActionsComponent,
     TablePaginatorComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './customer-detail-page.component.html',
   styleUrl: './customer-detail-page.component.scss',
@@ -375,6 +377,9 @@ export class CustomerDetailPageComponent implements OnInit {
   onTabChange(index: number): void {
     this.selectedTab.set(index);
     const tab = this.tabKeys[index];
+    if (this.ready) {
+      this.ensureTab(tab);
+    }
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tab || null },
@@ -406,6 +411,7 @@ export class CustomerDetailPageComponent implements OnInit {
         this.notFound.set(false);
         this.refreshChildren();
         this.ready = true;
+        this.ensureTab(this.tabKeys[this.selectedTab()]);
       },
       error: () => this.notFound.set(true),
     });
@@ -470,6 +476,7 @@ export class CustomerDetailPageComponent implements OnInit {
     return c.daysSinceLastContact ?? null;
   }
 
+  /** ผู้ติดต่อ + บันทึก โหลดทันที · แท็บอื่นโหลดเมื่อเปิดครั้งแรก แล้วโหลดซ้ำเฉพาะแท็บที่เคยเปิด */
   refreshChildren(): void {
     this.api.listContacts(this.customerId).subscribe({
       next: (rows) => this.contacts.set(rows),
@@ -479,37 +486,91 @@ export class CustomerDetailPageComponent implements OnInit {
       next: (rows) => this.logs.set(rows),
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
-    this.projectsApi.listProjectsByCustomer(this.customerId).subscribe({
-      next: (rows) => {
-        this.projects.set(rows);
-        this.warrantiesApi
-          .listExpiring({ customerId: this.customerId, days: 365, limit: 100 })
-          .subscribe({
-            next: (warrantyRows) => this.warranties.set(warrantyRows),
-            error: () => this.warranties.set([]),
-          });
-      },
-      error: () => this.projects.set([]),
-    });
-    this.ticketsApi.list({ customerId: this.customerId }).subscribe({
-      next: (rows) => this.tickets.set(rows),
-      error: () => this.tickets.set([]),
-    });
-    this.maApi.list({ customerId: this.customerId }).subscribe({
-      next: (rows) => {
-        this.contracts.set(rows);
-        this.loadMaQuotas(rows);
-      },
-      error: () => {
-        const fallback = this.maApi.getByCustomer(this.customerId);
-        this.contracts.set(fallback);
-        this.loadMaQuotas(fallback);
-      },
-    });
-    this.followUpsApi.list({ customerId: this.customerId }).subscribe({
-      next: (rows) => this.followUps.set(rows),
-      error: () => this.followUps.set(this.followUpsApi.getByCustomer(this.customerId)),
-    });
+    for (const key of [...this.loadedTabs]) {
+      this.loadTab(key);
+    }
+  }
+
+  private readonly loadedTabs = new Set<string>();
+  readonly tabLoading = signal<Record<string, boolean>>({});
+
+  private ensureTab(key: string | undefined): void {
+    if (key && !this.loadedTabs.has(key)) {
+      this.loadTab(key);
+    }
+  }
+
+  private setTabLoading(key: string, value: boolean): void {
+    this.tabLoading.update((s) => ({ ...s, [key]: value }));
+  }
+
+  private loadTab(key: string): void {
+    const id = this.customerId;
+    switch (key) {
+      case 'projects':
+        this.loadedTabs.add(key);
+        this.setTabLoading(key, true);
+        this.projectsApi.listProjectsByCustomer(id).subscribe({
+          next: (rows) => {
+            this.projects.set(rows);
+            this.setTabLoading(key, false);
+          },
+          error: () => {
+            this.projects.set([]);
+            this.setTabLoading(key, false);
+          },
+        });
+        break;
+      case 'contracts':
+        this.loadedTabs.add(key);
+        this.setTabLoading(key, true);
+        this.warrantiesApi.listExpiring({ customerId: id, days: 365, limit: 100 }).subscribe({
+          next: (rows) => this.warranties.set(rows),
+          error: () => this.warranties.set([]),
+        });
+        this.maApi.list({ customerId: id }).subscribe({
+          next: (rows) => {
+            this.contracts.set(rows);
+            this.loadMaQuotas(rows);
+            this.setTabLoading(key, false);
+          },
+          error: () => {
+            const fallback = this.maApi.getByCustomer(id);
+            this.contracts.set(fallback);
+            this.loadMaQuotas(fallback);
+            this.setTabLoading(key, false);
+          },
+        });
+        break;
+      case 'tickets':
+        this.loadedTabs.add(key);
+        this.setTabLoading(key, true);
+        this.ticketsApi.list({ customerId: id }).subscribe({
+          next: (rows) => {
+            this.tickets.set(rows);
+            this.setTabLoading(key, false);
+          },
+          error: () => {
+            this.tickets.set([]);
+            this.setTabLoading(key, false);
+          },
+        });
+        break;
+      case 'follow-ups':
+        this.loadedTabs.add(key);
+        this.setTabLoading(key, true);
+        this.followUpsApi.list({ customerId: id }).subscribe({
+          next: (rows) => {
+            this.followUps.set(rows);
+            this.setTabLoading(key, false);
+          },
+          error: () => {
+            this.followUps.set(this.followUpsApi.getByCustomer(id));
+            this.setTabLoading(key, false);
+          },
+        });
+        break;
+    }
   }
 
   remainingQuota(c: MaContract): number | null {

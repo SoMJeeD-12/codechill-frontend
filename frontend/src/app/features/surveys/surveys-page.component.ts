@@ -26,10 +26,13 @@ import {
 import { SurveyService } from '../../core/services/survey.service';
 import { AuthService } from '../../core/services/auth.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { createTableSort } from '../../shared/utils/table-sort';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
+import { createServerList } from '../../shared/utils/server-list';
 
 @Component({
   selector: 'app-surveys-page',
@@ -46,6 +49,8 @@ import { createTableSort } from '../../shared/utils/table-sort';
     MatSnackBarModule,
     MatMenuModule,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './surveys-page.component.html',
   styleUrl: './surveys-page.component.scss',
@@ -70,68 +75,37 @@ export class SurveysPageComponent implements OnInit {
     return this.auth.hasPermissionCode('survey.delete');
   });
 
-  readonly surveys = signal<Survey[]>([]);
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  /** GET /surveys?page&limit&search&sortBy — แบ่งหน้าฝั่ง server */
+  readonly list = createServerList<Survey, Record<string, never>>({
+    namespace: 'surveys',
+    filters: {},
+    sortBy: 'updatedAt',
+    sortOrder: 'DESC',
+    sortOrderFor: (key) => (key === 'updatedAt' ? 'DESC' : 'ASC'),
+    fetch: ({ filters: _f, ...req }) => this.api.listPage(req),
+  });
+  readonly searchControl = this.list.searchControl;
   readonly columns = ['title', 'status', 'questions', 'responses', 'avg', 'updatedAt', 'actions'];
   readonly statusLabels = SURVEY_STATUS_LABELS;
 
-  readonly tableSort = createTableSort<
-    'title' | 'status' | 'questions' | 'responses' | 'updatedAt'
-  >('updatedAt', 'desc');
-
-  readonly filtered = computed(() => {
-    const q = this.search().trim().toLowerCase();
-    let list = this.surveys();
-    if (q) {
-      list = list.filter(
-        (s) =>
-          s.title.toLowerCase().includes(q) ||
-          (s.description ?? '').toLowerCase().includes(q) ||
-          this.statusLabels[s.status].toLowerCase().includes(q)
-      );
-    }
-    return this.tableSort.apply(list, (row, key) => {
-      switch (key) {
-        case 'title':
-          return row.title;
-        case 'status':
-          return this.statusLabel(row.status);
-        case 'questions':
-          return row.questions.length;
-        case 'responses':
-          return row.responseCount;
-        case 'updatedAt':
-          return new Date(row.updatedAt).getTime();
-      }
-    });
-  });
-
-  readonly pager = createClientPager(this.filtered);
-
   ngOnInit(): void {
-    this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.reload();
+    this.list.start();
   }
 
   reload(): void {
-    this.api.list().subscribe({
-      next: (list) => this.surveys.set(list),
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
-    });
+    this.list.reload({ invalidate: true });
   }
 
   statusLabel(status: SurveyStatus): string {
     return this.statusLabels[status];
   }
 
-  toggleSort(key: 'title' | 'status' | 'questions' | 'responses' | 'updatedAt'): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: string): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(key: 'title' | 'status' | 'questions' | 'responses' | 'updatedAt'): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: string): string {
+    return this.list.sortIcon(key);
   }
 
   openCreate(): void {

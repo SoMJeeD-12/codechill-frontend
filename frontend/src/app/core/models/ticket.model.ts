@@ -63,7 +63,7 @@ export interface Ticket {
   /** จาก API — ห้ามคำนวณเองจาก dueAt */
   isOverdue?: boolean;
   customer?: { id: number; name: string } | null;
-  project?: { id: number; name: string } | null;
+  project?: { id: number; name: string; code?: string | null; status?: string | null } | null;
   resolutions?: TicketResolution[];
   createdAt?: string;
   updatedAt?: string;

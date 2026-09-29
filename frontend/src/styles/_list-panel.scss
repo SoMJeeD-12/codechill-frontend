@@ -133,6 +133,26 @@
   }
 }
 
+/* ดรอปดาวน์กรองแบบไอคอนนำหน้า — สูง / ขอบ / มุม เท่าช่องค้นหา (ไม่ใช้ mat-label) */
+.ui-filter--icon {
+  --mat-form-field-container-height: 44px;
+  --mat-form-field-container-vertical-padding: 10px;
+  --mdc-outlined-text-field-container-shape: var(--app-radius-control);
+  --mdc-outlined-text-field-outline-color: #cfe0db;
+  --mdc-outlined-text-field-hover-outline-color: rgba(15, 118, 110, 0.45);
+  --mdc-outlined-text-field-focus-outline-color: var(--app-accent);
+  --mat-select-trigger-text-size: 0.92rem;
+  --mat-select-placeholder-text-color: #1c2b28;
+  --mat-form-field-leading-icon-color: #6b7f79;
+
+  .mat-icon[matPrefix] {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    padding: 0 0.35rem 0 0.75rem;
+  }
+}
+
 .ui-add-btn {
   height: 44px !important;
   border-radius: var(--app-radius-control) !important;

@@ -1,6 +1,6 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -9,9 +9,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { debounceTime, switchMap } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import {
-  OPEN_TICKET_STATUSES,
   TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
   Ticket,
@@ -25,13 +24,15 @@ import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketDemoOverlayService } from '../../core/services/ticket-demo-overlay.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
-import { createTableSort } from '../../shared/utils/table-sort';
+import { createServerList } from '../../shared/utils/server-list';
 import { TicketFormDialogComponent } from './ticket-form-dialog.component';
 
 @Component({
@@ -51,6 +52,8 @@ import { TicketFormDialogComponent } from './ticket-form-dialog.component';
     MatMenuModule,
     RowActionsComponent,
     TablePaginatorComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './tickets-page.component.html',
   styleUrl: './tickets-page.component.scss',
@@ -65,15 +68,35 @@ export class TicketsPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
-  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly tickets = signal<Ticket[]>([]);
-  readonly loading = signal(false);
-  /** ค่าเริ่มต้นคือ "รอรับการแก้ไข" — คิวที่ต้องทำวันนี้ */
-  readonly view = signal<'open' | 'all'>('open');
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  /**
+   * แบ่งหน้าฝั่ง server — มุมมอง「รอรับการแก้ไข」ใช้ GET /tickets/pending · 「ทั้งหมด」ใช้ GET /tickets
+   * ค่าเริ่มต้นคือ "รอรับการแก้ไข" — คิวที่ต้องทำวันนี้
+   */
+  readonly list = createServerList<Ticket, { view: 'open' | 'all' }>({
+    namespace: 'tickets',
+    filters: { view: 'open' },
+    sortBy: 'priority',
+    sortOrder: 'DESC',
+    sortOrderFor: (key) => (key === 'priority' || key === 'reportedAt' ? 'DESC' : 'ASC'),
+    fetch: ({ filters, ...req }) =>
+      (filters.view === 'open'
+        ? this.ticketsApi.listPendingPage(req)
+        : this.ticketsApi.listPage(req)
+      ).pipe(
+        switchMap((page) =>
+          this.ticketsApi
+            .enrichIncompleteWork(page.items)
+            .pipe(map((items) => ({ items, total: page.total })))
+        )
+      ),
+  });
+  readonly loading = this.list.loading;
+  readonly view = computed(() => this.list.filters().view);
+  readonly searchControl = this.list.searchControl;
+  /** เลขบนชิป「รอรับการแก้ไข」— total ของ /tickets/pending */
+  private readonly pendingTotal = signal<number | null>(null);
 
   readonly statusLabels = TICKET_STATUS_LABELS;
   readonly priorityLabels = TICKET_PRIORITY_LABELS;
@@ -107,126 +130,61 @@ export class TicketsPageComponent implements OnInit {
     'actions',
   ];
 
-  readonly tableSort = createTableSort<
-    'ticketNo' | 'priority' | 'title' | 'status' | 'customer' | 'reportedAt'
-  >('priority');
-
-  readonly openCount = computed(
-    () => this.tickets().filter((t) => this.isOpen(t)).length
+  readonly openCount = computed(() =>
+    this.view() === 'open' && !this.list.initialLoading()
+      ? this.list.total()
+      : (this.pendingTotal() ?? 0)
   );
-
-  readonly filtered = computed(() => {
-    let list = this.tickets();
-    if (this.view() === 'open') {
-      list = list.filter((t) => this.isOpen(t));
-    }
-
-    const priorityRank: Record<TicketPriority, number> = {
-      URGENT: 0,
-      HIGH: 1,
-      NORMAL: 2,
-      LOW: 3,
-    };
-    return this.tableSort.apply(list, (row, key) => {
-      switch (key) {
-        case 'ticketNo':
-          return row.ticketNo ?? '';
-        case 'priority':
-          return priorityRank[row.priority];
-        case 'title':
-          return row.title;
-        case 'status':
-          return this.statusLabelFor(row);
-        case 'customer':
-          return this.customerName(row);
-        case 'reportedAt':
-          return new Date(row.reportedAt).getTime();
-      }
-    });
-  });
-
-  readonly pager = createClientPager(this.filtered);
 
   constructor() {
     // เปิดใบจากปุ่มลัดบนแถบบนขณะอยู่หน้านี้ — โหลดรายการใหม่ให้เห็นทันที
+    let lastCreated: unknown = undefined;
+    let first = true;
     effect(() => {
-      this.quickActions.ticketCreated();
-      if (this.loadedOnce) {
-        this.reload();
+      const created = this.quickActions.ticketCreated();
+      if (first) {
+        first = false;
+        lastCreated = created;
+        return;
+      }
+      if (created !== lastCreated) {
+        lastCreated = created;
+        untracked(() => this.reload());
       }
     });
   }
-
-  private loadedOnce = false;
 
   openCreate(): void {
     this.quickActions.openTicketForm().subscribe();
   }
 
   ngOnInit(): void {
-    this.loadedOnce = true;
-    this.searchControl.valueChanges
-      .pipe(debounceTime(PICKER_DEBOUNCE_MS))
-      .subscribe((v) => {
-        this.search.set(v);
-        this.pager.reset();
-        this.reload();
-      });
-    // เข้ามาจากการ์ด "ปัญหารอแก้" บนหน้าแรก
-    if (this.route.snapshot.queryParamMap.get('view') === 'all') {
-      this.view.set('all');
-    }
-    this.reload();
+    this.list.start();
+    this.loadPendingTotal();
   }
 
   reload(): void {
-    this.loading.set(true);
-    const q = this.search().trim();
-    const params = q.length >= PICKER_MIN_CHARS ? { search: q } : {};
-    this.ticketsApi
-      .listAll(params)
-      .pipe(switchMap((list) => this.ticketsApi.enrichIncompleteWork(list)))
-      .subscribe({
-        next: (list) => {
-          this.tickets.set(list);
-          this.loading.set(false);
-        },
-        error: (err: Error) => {
-          this.loading.set(false);
-          this.snack.open(err.message || 'โหลดใบแจ้งปัญหาไม่สำเร็จ', 'ปิด', {
-            duration: 4000,
-          });
-        },
-      });
+    this.list.reload({ invalidate: true });
+    this.loadPendingTotal();
   }
 
   setView(view: 'open' | 'all'): void {
-    this.view.set(view);
-    this.pager.reset();
+    this.list.setFilter('view', view);
   }
 
-  toggleSort(
-    key: 'ticketNo' | 'priority' | 'title' | 'status' | 'customer' | 'reportedAt'
-  ): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: string): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(
-    key: 'ticketNo' | 'priority' | 'title' | 'status' | 'customer' | 'reportedAt'
-  ): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: string): string {
+    return this.list.sortIcon(key);
   }
 
-  /** ใช้ flag จาก API ก่อนเสมอ — รวมสถานะ ASSIGNED / สำเร็จบางส่วนยังไม่จบ */
-  private isOpen(ticket: Ticket): boolean {
-    const shown = this.displayStatus(ticket);
-    return (
-      ticket.isPending ||
-      OPEN_TICKET_STATUSES.includes(shown) ||
-      OPEN_TICKET_STATUSES.includes(ticket.status) ||
-      shown === 'IN_PROGRESS'
-    );
+  private loadPendingTotal(): void {
+    this.ticketsApi.listPendingPage({ page: 1, limit: 1 }).subscribe({
+      next: ({ total }) => this.pendingTotal.set(total),
+      error: () => undefined,
+    });
   }
 
   /** สถานะที่โชว์ในตาราง (รวมขั้น ASSIGNED + PARTIAL/FAILED ยังไม่จบ) */

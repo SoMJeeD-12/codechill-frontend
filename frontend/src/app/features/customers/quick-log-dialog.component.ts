@@ -28,8 +28,8 @@ import {
 import {
   EntityPickerComponent,
   PickerOption,
-  searchViaBackend,
 } from '../../shared/components/entity-picker.component';
+import { customerSearchFn } from '../../shared/components/entity-search';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 
 export interface QuickLogDialogData {
@@ -75,6 +75,7 @@ export interface QuickLogDialogData {
           <app-entity-picker
             label="ลูกค้า"
             placeholder="พิมพ์ชื่อลูกค้า"
+            [openOnFocus]="true"
             [searchFn]="searchCustomers"
             (selectionChange)="onCustomerPicked($event)"
           />
@@ -226,17 +227,7 @@ export class QuickLogDialogComponent {
     }
   }
 
-  readonly searchCustomers = (query: string) =>
-    searchViaBackend(
-      (params) => this.api.listCustomers(params),
-      (c): PickerOption => ({
-        id: c.id,
-        label: c.name,
-        code: c.code,
-        meta: [c.code ?? '—', c.phone].filter(Boolean).join(' · '),
-      }),
-      query
-    );
+  readonly searchCustomers = customerSearchFn(this.api);
 
   onCustomerPicked(option: PickerOption | null): void {
     this.customerId = option?.id ?? null;

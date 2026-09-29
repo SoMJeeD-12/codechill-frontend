@@ -44,6 +44,11 @@ import {
 } from '../../core/services/warranty.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { CodeLabelComponent } from '../../shared/components/code-label.component';
+import {
+  EntityPickerComponent,
+  PickerOption,
+} from '../../shared/components/entity-picker.component';
+import { customerPickerOption, customerSearchFn } from '../../shared/components/entity-search';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
@@ -156,8 +161,6 @@ export class WarrantiesPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.searchControl.valueChanges.subscribe((v) => this.search.set(v));
-    this.customersApi.listCustomers().subscribe();
-    this.projectsApi.listProjects().subscribe();
     // เข้ามาจากการ์ด "ประกัน / MA ใกล้หมด" บนหน้าแรก
     if (this.route.snapshot.queryParamMap.get('expiring')) {
       this.view.set('near');
@@ -306,6 +309,7 @@ export type WarrantyFormDialogData =
     MatButtonModule,
     MatSnackBarModule,
     MatIconModule,
+    EntityPickerComponent,
   ],
   templateUrl: './warranty-form-dialog.component.html',
   styleUrl: './warranty-form-dialog.component.scss',
@@ -322,7 +326,8 @@ export class WarrantyFormDialogComponent {
   private readonly ref = inject(MatDialogRef<WarrantyFormDialogComponent, boolean>);
   readonly data = inject<WarrantyFormDialogData>(MAT_DIALOG_DATA);
 
-  readonly customers = this.customersApi.customers;
+  readonly searchCustomers = customerSearchFn(this.customersApi);
+  readonly customerOption = signal<PickerOption | null>(null);
   /** โปรเจกต์ของลูกค้าที่เลือก — GET ?customerId= · รวม CLOSED */
   readonly customerProjects = signal<Project[]>([]);
   readonly deliveries = signal<Delivery[]>([]);
@@ -421,7 +426,7 @@ export class WarrantyFormDialogComponent {
       const preset =
         this.data && 'customerId' in this.data && !('id' in this.data)
           ? this.data.customerId
-          : this.customers()[0]?.id;
+          : null;
       if (preset) {
         this.form.patchValue({ customerId: preset });
       }
@@ -462,6 +467,7 @@ export class WarrantyFormDialogComponent {
     });
 
     const { customerId, projectId } = this.form.getRawValue();
+    this.resolveCustomerOption(Number(customerId) || 0);
     this.loadCustomerProjects(Number(customerId) || 0);
     if (projectId) {
       this.loadDeliveries(projectId);
@@ -471,6 +477,30 @@ export class WarrantyFormDialogComponent {
 
   filteredProjects() {
     return this.customerProjects();
+  }
+
+  onCustomerPicked(option: PickerOption | null): void {
+    this.customerOption.set(option);
+    this.form.controls.customerId.setValue(option?.id ?? 0);
+  }
+
+  private resolveCustomerOption(customerId: number): void {
+    if (!customerId) {
+      return;
+    }
+    const embedded = this.editRow?.project?.customerName;
+    const cached = this.customersApi.getCustomer(customerId);
+    if (cached) {
+      this.customerOption.set(customerPickerOption(cached));
+      return;
+    }
+    this.customerOption.set({ id: customerId, label: embedded || `ลูกค้า #${customerId}` });
+    if (!embedded) {
+      this.customersApi.fetchCustomer(customerId).subscribe({
+        next: (c) => this.customerOption.set(customerPickerOption(c)),
+        error: () => undefined,
+      });
+    }
   }
 
   private loadCustomerProjects(customerId: number): void {

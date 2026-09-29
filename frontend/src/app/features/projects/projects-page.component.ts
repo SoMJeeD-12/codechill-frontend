@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -51,7 +51,11 @@ import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { CodeLabelComponent } from '../../shared/components/code-label.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { createClientPager } from '../../shared/utils/client-pager';
+import { createServerList } from '../../shared/utils/server-list';
+import {
+  ListLoadingBarComponent,
+  ListSkeletonComponent,
+} from '../../shared/components/list-loading.component';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
@@ -85,6 +89,8 @@ import { catchError, debounceTime, distinctUntilChanged, map } from 'rxjs/operat
     MatMenuModule,
     TablePaginatorComponent,
     CodeLabelComponent,
+    ListLoadingBarComponent,
+    ListSkeletonComponent,
   ],
   templateUrl: './projects-page.component.html',
   styleUrl: './projects-page.component.scss',
@@ -99,10 +105,21 @@ export class ProjectsPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
-  readonly projects = signal<Project[]>([]);
-  readonly statusFilter = signal<ProjectStatus | 'ALL'>('ALL');
-  readonly search = signal('');
-  readonly searchControl = this.fb.nonNullable.control('');
+  /** GET /projects?page&limit&search&status&sortBy — แบ่งหน้าฝั่ง server */
+  readonly list = createServerList<Project, { status: ProjectStatus | 'ALL' }>({
+    namespace: 'projects',
+    filters: { status: 'ALL' },
+    sortBy: 'code',
+    sortOrder: 'ASC',
+    sortOrderFor: (key) => (key === 'targetEndDate' ? 'DESC' : 'ASC'),
+    fetch: ({ filters, ...req }) =>
+      this.projectsApi.listProjectsPage({
+        ...req,
+        status: filters.status === 'ALL' ? undefined : filters.status,
+      }),
+  });
+  readonly statusFilter = computed(() => this.list.filters().status);
+  readonly searchControl = this.list.searchControl;
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly statuses = PROJECT_STATUSES;
   readonly priorityLabels = PRIORITY_LABELS;
@@ -116,11 +133,6 @@ export class ProjectsPageComponent implements OnInit {
     'targetEndDate',
     'actions',
   ];
-
-  /** คอลัมน์ที่จัดเรียงได้ */
-  readonly tableSort = createTableSort<
-    'code' | 'name' | 'customer' | 'status' | 'progress' | 'manager' | 'targetEndDate'
-  >('code');
 
   readonly canUpdate = computed(() => {
     this.auth.session();
@@ -141,84 +153,45 @@ export class ProjectsPageComponent implements OnInit {
     return false;
   });
 
-  readonly filtered = computed(() => {
-    const status = this.statusFilter();
-    const list = this.projects().filter((p) => status === 'ALL' || p.status === status);
-    const statusRank: Record<ProjectStatus, number> = {
-      IN_PROGRESS: 0,
-      DRAFT: 1,
-      DELIVERED: 2,
-      CLOSED: 3,
-      CANCELLED: 4,
-    };
-    return this.tableSort.apply(list, (row, key) => {
-      switch (key) {
-        case 'code':
-          return row.code || '';
-        case 'name':
-          return row.name;
-        case 'customer':
-          return this.customerName(row);
-        case 'status':
-          return statusRank[row.status];
-        case 'progress':
-          return this.progressOf(row) ?? -1;
-        case 'manager':
-          return row.manager?.fullName || '';
-        case 'targetEndDate':
-          return row.targetEndDate
-            ? new Date(row.targetEndDate).getTime()
-            : Number.MAX_SAFE_INTEGER;
-      }
-    });
-  });
+  /** id ที่เคยดึงรายตัวเพื่อหา progress แล้ว — กันยิงซ้ำ */
+  private readonly progressTried = new Set<number>();
 
-  readonly pager = createClientPager(this.filtered);
+  constructor() {
+    effect(() => {
+      const rows = this.list.items();
+      untracked(() => this.loadMissingProgress(rows));
+    });
+  }
 
   ngOnInit(): void {
-    this.reload();
-    this.searchControl.valueChanges
-      .pipe(debounceTime(PICKER_DEBOUNCE_MS), distinctUntilChanged())
-      .subscribe((v) => {
-        this.search.set(v);
-        this.pager.reset();
-        this.reload();
-      });
+    this.list.start();
   }
 
   setStatusFilter(status: ProjectStatus | 'ALL'): void {
-    this.statusFilter.set(status);
-    this.pager.reset();
+    this.list.setFilter('status', status);
   }
 
-  toggleSort(
-    key: 'code' | 'name' | 'customer' | 'status' | 'progress' | 'manager' | 'targetEndDate'
-  ): void {
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
+  toggleSort(key: string): void {
+    this.list.toggleSort(key);
   }
 
-  sortIcon(
-    key: 'code' | 'name' | 'customer' | 'status' | 'progress' | 'manager' | 'targetEndDate'
-  ): string {
-    return this.tableSort.sortIcon(key);
+  sortIcon(key: string): string {
+    return this.list.sortIcon(key);
   }
 
   reload(): void {
-    const q = this.search().trim();
-    const params = q.length >= PICKER_MIN_CHARS ? { search: q, limit: 100 } : { limit: 100 };
-    this.projectsApi.listProjects(params).subscribe((list) => {
-      this.projects.set(list);
-      this.loadMissingProgress(list);
-    });
+    this.list.reload({ invalidate: true });
   }
 
-  /** GET /projects มักไม่ส่ง progress — ดึงรายตัวเฉพาะที่ยังไม่มี (เหมือนหน้ารายละเอียด) */
+  /** GET /projects มักไม่ส่ง progress — ดึงรายตัวเฉพาะแถวในหน้านี้ที่ยังไม่มี */
   private loadMissingProgress(list: Project[]): void {
-    const missing = list.filter((p) => this.projectsApi.progressPercentOf(p) == null);
+    const missing = list.filter(
+      (p) => this.projectsApi.progressPercentOf(p) == null && !this.progressTried.has(p.id)
+    );
     if (!missing.length) {
       return;
     }
+    missing.forEach((p) => this.progressTried.add(p.id));
     forkJoin(
       missing.map((p) =>
         this.projectsApi.fetchProject(p.id).pipe(catchError(() => of(null)))
@@ -227,7 +200,7 @@ export class ProjectsPageComponent implements OnInit {
       if (!rows.some(Boolean)) {
         return;
       }
-      this.projects.update((current) =>
+      this.list.patchItems((current) =>
         current.map((p) => this.projectsApi.getProject(p.id) ?? p)
       );
     });
