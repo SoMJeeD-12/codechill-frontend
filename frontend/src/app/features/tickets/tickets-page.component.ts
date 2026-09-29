@@ -23,7 +23,6 @@ import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
 import { TicketDemoOverlayService } from '../../core/services/ticket-demo-overlay.service';
 import { TicketService } from '../../core/services/ticket.service';
-import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import {
   ListLoadingBarComponent,
   ListSkeletonComponent,
@@ -107,10 +106,6 @@ export class TicketsPageComponent implements OnInit {
       this.auth.hasPermission('tickets', 'edit') ||
       this.auth.hasPermissionCode('ticket.update')
     );
-  });
-  readonly canDelete = computed(() => {
-    // ไม่มี DELETE ใบ — ห้ามโชว์ปุ่มลบ
-    return false;
   });
   readonly canCreate = computed(() => {
     this.auth.session();
@@ -255,9 +250,6 @@ export class TicketsPageComponent implements OnInit {
     if (this.canEdit()) {
       actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openEdit(row) });
     }
-    if (this.canDelete()) {
-      actions.push({ label: 'ลบ', icon: 'delete', danger: true, run: () => this.remove(row) });
-    }
     return actions;
   }
 
@@ -277,27 +269,5 @@ export class TicketsPageComponent implements OnInit {
           this.reload();
         }
       });
-  }
-
-  remove(row: Ticket): void {
-    if (!this.canDelete()) {
-      return;
-    }
-    openConfirmDialog(this.dialog, {
-      title: 'ลบใบแจ้งปัญหา',
-      message: `ต้องการลบ「${row.title}」หรือไม่?`,
-      confirmLabel: 'ลบ',
-    }).subscribe((ok) => {
-      if (!ok) {
-        return;
-      }
-      this.ticketsApi.remove(row.id).subscribe({
-        next: () => {
-          this.snack.open('ลบใบแจ้งปัญหาแล้ว', 'ปิด', { duration: 2500 });
-          this.reload();
-        },
-        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
-      });
-    });
   }
 }

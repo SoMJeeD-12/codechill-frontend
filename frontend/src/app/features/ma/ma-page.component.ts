@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -62,7 +63,11 @@ import {
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { createServerList } from '../../shared/utils/server-list';
 import { forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, skip, tap } from 'rxjs/operators';
+import { NavAttentionService } from '../../core/services/nav-attention.service';
+
+/** ตรงกับ maContractsExpiringSoon ใน /nav/counts */
+const MA_EXPIRING_DAYS = 30;
 
 function isEditableStatus(status: MaContractStatus): status is MaEditableStatus {
   return (MA_EDITABLE_STATUSES as MaContractStatus[]).includes(status);
@@ -99,6 +104,8 @@ export class MaPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  private readonly attention = inject(NavAttentionService);
+  private readonly route = inject(ActivatedRoute);
 
   readonly canCreate = computed(() => {
     this.auth.session();
@@ -113,16 +120,38 @@ export class MaPageComponent implements OnInit {
    * แบ่งหน้าฝั่ง server (GET /ma-contracts) · ค่าเริ่มต้น = ทั้งหมด —
    * สัญญาใหม่มักเป็น DRAFT จึงไม่ผ่านแท็บใช้งานอยู่
    */
-  readonly list = createServerList<MaContract, { view: 'active' | 'all' }>({
+  readonly list = createServerList<MaContract, { view: 'active' | 'all'; expiringInDays: number }>({
     namespace: 'ma-contracts',
-    filters: { view: 'all' },
+    filters: { view: 'all', expiringInDays: 0 },
     sortBy: 'id',
     sortOrder: 'DESC',
     sortOrderFor: (key) => (key === 'price' ? 'DESC' : 'ASC'),
-    fetch: ({ filters, ...req }) =>
-      this.api.listPage({ ...req, status: filters.view === 'active' ? 'ACTIVE' : undefined }),
+    fetch: ({ filters, ...req }) => {
+      const expiringInDays = filters.expiringInDays > 0 ? filters.expiringInDays : undefined;
+      const request = this.api.listPage({
+        ...req,
+        status: filters.view === 'active' ? 'ACTIVE' : undefined,
+        expiringInDays,
+      });
+      if (expiringInDays !== MA_EXPIRING_DAYS || filters.view !== 'all' || req.search) {
+        return request;
+      }
+      // badge เมนู = total ของ ?expiringInDays=30 — ไม่ตรงให้ดึง /nav/counts ใหม่
+      return request.pipe(
+        tap((page) => {
+          if (page.total !== this.attention.badge('ma')) {
+            this.attention.refreshBadges();
+          }
+        })
+      );
+    },
   });
   readonly view = computed(() => this.list.filters().view);
+  readonly expiringDays = MA_EXPIRING_DAYS;
+  readonly expiringBadge = computed(() => this.attention.badge('ma'));
+  readonly chip = computed<'all' | 'active' | 'expiring'>(() =>
+    this.list.filters().expiringInDays > 0 ? 'expiring' : this.list.filters().view
+  );
   readonly searchControl = this.list.searchControl;
   /** โควตารอบปัจจุบัน — list API ไม่พ่วง ต้องโหลด GET /ma-contracts/:id/quota (เฉพาะแถวในหน้า) */
   readonly quotasById = signal<Record<number, MaQuotaStatus>>({});
@@ -145,11 +174,25 @@ export class MaPageComponent implements OnInit {
       const rows = this.list.items();
       untracked(() => this.loadQuotasForList(rows));
     });
+    // คลิกเมนู (มี badge) ขณะอยู่หน้านี้ — component เดิม ต้องตาม query เอง
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe((q) => {
+      if (Number(q.get('expiringInDays')) === MA_EXPIRING_DAYS && this.chip() !== 'expiring') {
+        this.setChip('expiring');
+      }
+    });
   }
 
   ngOnInit(): void {
     this.api.listPlans({ isActive: true }).subscribe({ error: () => undefined });
     this.list.start();
+  }
+
+  setChip(chip: 'all' | 'active' | 'expiring'): void {
+    this.list.patchFilters(
+      chip === 'expiring'
+        ? { view: 'all', expiringInDays: MA_EXPIRING_DAYS }
+        : { view: chip, expiringInDays: 0 }
+    );
   }
 
   reload(): void {

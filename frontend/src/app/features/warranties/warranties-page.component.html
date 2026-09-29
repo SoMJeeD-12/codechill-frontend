@@ -34,6 +34,9 @@
         </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'near'" (click)="setView('near')">
           ใกล้หมดอายุ
+          @if (nearBadge(); as n) {
+            <span class="ui-chip__count">{{ n }}</span>
+          }
         </button>
       </div>
     </div>

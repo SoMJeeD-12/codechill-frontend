@@ -55,6 +55,8 @@ export interface FollowUpListParams {
   status?: FollowUpStatus;
   /** ใช้ query ?overdue=true ตาม API */
   overdue?: boolean;
+  /** งานเปิด (PLANNED/OVERDUE) ที่ครบกำหนดภายในวันนี้หรือก่อนหน้า */
+  dueByToday?: boolean;
   dueFrom?: string;
   dueTo?: string;
 }

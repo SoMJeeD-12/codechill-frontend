@@ -551,14 +551,6 @@ export class TicketService {
       );
   }
 
-  /** ลบใบปัญหา — ใช้เทส/ล้างข้อมูล (ถ้า backend ยังไม่มีจะได้ error จาก API) */
-  remove(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`).pipe(
-      tap(() => this.items.update((list) => list.filter((t) => t.id !== id))),
-      catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
-    );
-  }
-
   assign(
     id: number,
     assignedUserId: number | null,

@@ -1,5 +1,7 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
@@ -8,6 +10,9 @@ import {
   USER_STATUS_LABELS,
 } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
+import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
+import { ProfileEditDialogComponent, ProfileEditDialogData } from './profile-edit-dialog.component';
 
 const MODULE_LABELS: Record<string, string> = {
   dashboard: 'หน้าแรก',
@@ -74,14 +79,39 @@ const ACTION_ORDER = [
 @Component({
   selector: 'app-profile-page',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSnackBarModule, UserAvatarComponent],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })
 export class ProfilePageComponent implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snack = inject(MatSnackBar);
 
   readonly user = this.auth.currentUser;
+
+  openEdit(): void {
+    const me = this.user();
+    if (!me) {
+      return;
+    }
+    this.dialog
+      .open(ProfileEditDialogComponent, {
+        ...FORM_DIALOG_COMPACT,
+        data: {
+          fullName: me.fullName,
+          nickname: me.nickname,
+          avatarUrl: me.avatarUrl,
+        } satisfies ProfileEditDialogData,
+      })
+      .afterClosed()
+      .subscribe((saved: string | true | undefined) => {
+        if (saved) {
+          const message = typeof saved === 'string' ? saved : 'บันทึกโปรไฟล์แล้ว';
+          this.snack.open(message, 'ปิด', { duration: 2500 });
+        }
+      });
+  }
   readonly statusLabels = USER_STATUS_LABELS;
 
   readonly permissionGroups = computed(() => {

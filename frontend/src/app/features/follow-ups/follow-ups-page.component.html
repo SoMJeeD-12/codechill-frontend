@@ -36,6 +36,12 @@
         <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="setView('all')">
           ทั้งหมด
         </button>
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'today'" (click)="setView('today')">
+          ต้องทำวันนี้
+          @if (todayBadge(); as n) {
+            <span class="ui-chip__count">{{ n }}</span>
+          }
+        </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'mine'" (click)="setView('mine')">
           ของฉัน
         </button>
@@ -161,6 +167,8 @@
             ไม่พบรายการตามคำค้นหา/ตัวกรอง
           } @else if (view() === 'overdue') {
             ไม่มีงานติดตามที่เลยกำหนด
+          } @else if (view() === 'today') {
+            ไม่มีงานติดตามของคุณที่ต้องทำภายในวันนี้
           } @else {
             ไม่มีรายการในมุมมองนี้
           }

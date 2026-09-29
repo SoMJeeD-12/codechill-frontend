@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
+import { NavigationEnd, Params, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -21,7 +21,20 @@ interface NavCountsResponse {
   tasksMeRejected: number | null;
   /** งานของฉันที่ยังไม่เสร็จ (TODO/DOING/WAITING) = total ของ /tasks/me — รอ backend เพิ่ม */
   tasksMeOpen?: number | null;
+  /** = total ของ /follow-ups?assignedUserId=<me>&dueByToday=true */
+  followUpsMineDue?: number | null;
+  /** = total ของ /warranties/expiring?days=30 */
+  warrantiesExpiringSoon?: number | null;
+  /** = total ของ /ma-contracts?expiringInDays=30 */
+  maContractsExpiringSoon?: number | null;
 }
+
+/** คลิกเมนูที่มี badge → เปิดรายการด้วยตัวกรองชุดเดียวกับที่นับ */
+const BADGE_QUERY: Partial<Record<MenuCode, Params>> = {
+  'follow-ups': { view: 'today' },
+  warranties: { view: 'near' },
+  ma: { expiringInDays: 30 },
+};
 
 const EMPTY_ADMIN: Record<AdminQueueTab, number> = {
   AWAITING_CLAIM: 0,
@@ -83,6 +96,12 @@ export class NavAttentionService {
 
   badge(code: MenuCode): number {
     return this.counts()[code] ?? 0;
+  }
+
+  /** query ของลิงก์เมนู — มี badge เท่านั้น */
+  badgeQuery(code: MenuCode): Params | null {
+    const query = BADGE_QUERY[code];
+    return query && this.badge(code) > 0 ? query : null;
   }
 
   start(): void {
@@ -191,6 +210,9 @@ export class NavAttentionService {
         put('tickets-mine', body?.ticketsMineOpen);
         put('tasks-review', body?.taskReviewsPending);
         put('tasks-me', body?.tasksMeOpen !== undefined ? body.tasksMeOpen : body?.tasksMeRejected);
+        put('follow-ups', body?.followUpsMineDue);
+        put('warranties', body?.warrantiesExpiringSoon);
+        put('ma', body?.maContractsExpiringSoon);
         this.menuCountsSignal.set(menu);
         this.finishRun();
       },

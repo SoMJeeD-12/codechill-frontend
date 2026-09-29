@@ -1,8 +1,8 @@
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { startWith } from 'rxjs/operators';
+import { skip, startWith, tap } from 'rxjs/operators';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -36,6 +36,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { MaService } from '../../core/services/ma.service';
+import { NavAttentionService } from '../../core/services/nav-attention.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
   WarrantyCreateInput,
@@ -94,6 +95,10 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly attention = inject(NavAttentionService);
+
+  /** badge เมนู = total ของ /warranties/expiring?days=30 */
+  readonly nearBadge = computed(() => this.attention.badge('warranties'));
 
   readonly canCreate = computed(() => {
     this.auth.session();
@@ -116,7 +121,13 @@ export class WarrantiesPageComponent implements OnInit {
     sortOrderFor: () => 'ASC',
     fetch: ({ filters, sortBy, sortOrder, ...req }) =>
       filters.view === 'near'
-        ? this.api.listExpiringPage({ ...req, days: this.nearDays })
+        ? this.api.listExpiringPage({ ...req, days: this.nearDays }).pipe(
+            tap((page) => {
+              if (!req.search && page.total !== this.attention.badge('warranties')) {
+                this.attention.refreshBadges();
+              }
+            })
+          )
         : this.api.listPage({
             ...req,
             sortBy,
@@ -130,6 +141,15 @@ export class WarrantiesPageComponent implements OnInit {
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
   readonly columns = ['warrantyNo', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
   readonly maLinkLabel = warrantyMaLinkLabel;
+
+  constructor() {
+    // คลิกเมนู (มี badge) ขณะอยู่หน้านี้ — component เดิม ต้องตาม query เอง
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe((q) => {
+      if (q.get('view') === 'near' && this.view() !== 'near') {
+        this.list.setFilter('view', 'near');
+      }
+    });
+  }
 
   ngOnInit(): void {
     // เข้ามาจากการ์ด "ประกัน / MA ใกล้หมด" บนหน้าแรก

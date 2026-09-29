@@ -31,11 +31,17 @@
         }
       </div>
       <div class="ui-chips" role="tablist" aria-label="มุมมองสัญญา MA">
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'all'" (click)="list.setFilter('view', 'all')">
+        <button type="button" class="ui-chip" [class.is-active]="chip() === 'all'" (click)="setChip('all')">
           ทั้งหมด
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'active'" (click)="list.setFilter('view', 'active')">
+        <button type="button" class="ui-chip" [class.is-active]="chip() === 'active'" (click)="setChip('active')">
           ใช้งานอยู่
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="chip() === 'expiring'" (click)="setChip('expiring')">
+          ใกล้หมดอายุ ({{ expiringDays }} วัน)
+          @if (expiringBadge(); as n) {
+            <span class="ui-chip__count">{{ n }}</span>
+          }
         </button>
       </div>
     </div>
@@ -161,6 +167,8 @@
             {{ err }}
           } @else if (list.search()) {
             ไม่พบรายการตามคำค้นหา
+          } @else if (chip() === 'expiring') {
+            ไม่มีสัญญา MA ที่จะหมดอายุภายใน {{ expiringDays }} วัน
           } @else if (view() === 'active') {
             ไม่มีสัญญาที่ใช้งานอยู่ตอนนี้ — สลับไปแท็บ «ทั้งหมด» เพื่อดูแบบร่าง/สัญญาอื่น
           } @else {

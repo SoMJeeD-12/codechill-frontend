@@ -63,9 +63,11 @@ import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog
 import { createServerList } from '../../shared/utils/server-list';
 import { CustomerRecordPreviewDialogComponent } from '../customers/customer-record-preview-dialog.component';
 import { Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, skip, tap } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavAttentionService } from '../../core/services/nav-attention.service';
 
-type FollowUpView = 'all' | 'overdue' | 'planned' | 'mine';
+type FollowUpView = 'all' | 'today' | 'overdue' | 'planned' | 'mine';
 
 /** preset เมื่อสร้างจากหน้าโปรเจกต์/ลูกค้า */
 export type FollowUpFormPreset = {
@@ -113,7 +115,9 @@ export class FollowUpsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly quickActions = inject(QuickActionsService);
 
-  /** GET /follow-ups?page&limit&search&(overdue|status|assignedUserId)&sortBy — แบ่งหน้าฝั่ง server */
+  private readonly attention = inject(NavAttentionService);
+
+  /** GET /follow-ups?page&limit&search&(overdue|status|assignedUserId|dueByToday)&sortBy — แบ่งหน้าฝั่ง server */
   readonly list = createServerList<FollowUp, { view: FollowUpView }>({
     namespace: 'follow-ups',
     filters: { view: 'all' },
@@ -122,14 +126,36 @@ export class FollowUpsPageComponent implements OnInit {
     fetch: ({ filters, ...req }) => {
       const me = this.auth.currentUser();
       const view = filters.view;
-      return this.api.listPage({
+      const request = this.api.listPage({
         ...req,
         overdue: view === 'overdue' ? true : undefined,
         status: view === 'planned' ? 'PLANNED' : undefined,
-        assignedUserId: view === 'mine' && me ? me.id : undefined,
+        assignedUserId: (view === 'mine' || view === 'today') && me ? me.id : undefined,
+        dueByToday: view === 'today' ? true : undefined,
       });
+      if (view !== 'today' || req.search) {
+        return request;
+      }
+      // badge = total ของ ?assignedUserId=me&dueByToday=true — ไม่ตรงให้ดึง /nav/counts ใหม่
+      return request.pipe(
+        tap((page) => {
+          if (page.total !== this.attention.badge('follow-ups')) {
+            this.attention.refreshBadges();
+          }
+        })
+      );
     },
   });
+  readonly todayBadge = computed(() => this.attention.badge('follow-ups'));
+
+  constructor() {
+    // คลิกเมนู (มี badge) ขณะอยู่หน้านี้ — component เดิม ต้องตาม query เอง
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe((q) => {
+      if (q.get('view') === 'today' && this.view() !== 'today') {
+        this.list.setFilter('view', 'today');
+      }
+    });
+  }
   readonly items = this.list.items;
   readonly loading = this.list.loading;
   readonly view = computed(() => this.list.filters().view);

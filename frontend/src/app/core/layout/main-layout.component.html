@@ -38,7 +38,14 @@
                 @if (isGroupOpen(node)) {
                   <div class="nav-branch__children" role="group" [attr.aria-label]="node.label">
                     @for (child of node.children; track child.code) {
-                      <a mat-list-item class="nav-child" [routerLink]="child.route" routerLinkActive="active">
+                      <a
+                        mat-list-item
+                        class="nav-child"
+                        [routerLink]="child.route"
+                        [queryParams]="badgeQuery(child.code)"
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="navActiveOptions"
+                      >
                         <mat-icon matListItemIcon>{{ child.icon }}</mat-icon>
                         <span matListItemTitle class="nav-item__label">
                           {{ child.label }}
@@ -110,7 +117,14 @@
               </div>
             } @else {
               @let item = node.item;
-              <a mat-list-item [routerLink]="item.route" routerLinkActive="active" class="nav-item">
+              <a
+                mat-list-item
+                [routerLink]="item.route"
+                [queryParams]="badgeQuery(item.code)"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="navActiveOptions"
+                class="nav-item"
+              >
                 <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
                 <span matListItemTitle class="nav-item__label">
                   {{ item.label }}
@@ -172,7 +186,7 @@
       <app-notification-bell />
 
       <button mat-button [matMenuTriggerFor]="userMenu" class="user-chip">
-        <mat-icon>account_circle</mat-icon>
+        <app-user-avatar [url]="user()?.avatarUrl" [name]="user()?.fullName" [size]="30" />
         <span class="user-meta">
           <strong>{{ user()?.fullName }}</strong>
           <small>{{ roleSummary() }}</small>

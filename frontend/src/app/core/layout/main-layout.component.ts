@@ -8,7 +8,15 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  IsActiveMatchOptions,
+  NavigationEnd,
+  Params,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -25,6 +33,7 @@ import { NavAttentionService } from '../services/nav-attention.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { NotificationBellComponent } from './notification-bell.component';
 import { InboxToastHostComponent } from '../../shared/toasts/inbox-toast-host.component';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 
 interface NavGroupNode {
   type: 'group';
@@ -58,6 +67,7 @@ function navGroupStorageKey(userId: number): string {
     HasPermissionDirective,
     NotificationBellComponent,
     InboxToastHostComponent,
+    UserAvatarComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -249,6 +259,19 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     // อ่าน signal ผ่าน counts() ให้ template re-render เมื่ออัปเดต
     this.attention.counts();
     return this.attention.badge(code as MenuItem['code']);
+  }
+
+  /** ลิงก์เมนูอาจพ่วง query ตาม badge — ไฮไลต์ตาม path อย่างเดียว */
+  readonly navActiveOptions: IsActiveMatchOptions = {
+    paths: 'subset',
+    queryParams: 'ignored',
+    matrixParams: 'ignored',
+    fragment: 'ignored',
+  };
+
+  badgeQuery(code: string): Params | null {
+    this.attention.counts();
+    return this.attention.badgeQuery(code as MenuItem['code']);
   }
 
   hasChildren(item: MenuItem): boolean {

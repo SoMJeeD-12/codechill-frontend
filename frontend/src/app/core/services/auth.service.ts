@@ -29,6 +29,7 @@ import {
   mapAuthProfileToUser,
 } from '../models/user.model';
 import { UserService } from './user.service';
+import { AvatarService } from './avatar.service';
 
 import {
   ACCESS_TOKEN_KEY,
@@ -82,6 +83,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly users = inject(UserService);
+  private readonly avatars = inject(AvatarService);
   private readonly tokenStorage = inject(TokenStorageService);
   private readonly base = `${environment.apiBaseUrl}/auth`;
 
@@ -255,6 +257,46 @@ export class AuthService {
     });
   }
 
+  /** PATCH /users/me — ส่งได้แค่ nickname · คืน AuthProfile → แทน session ทันที */
+  updateMyNickname(nickname: string | null): Observable<void> {
+    return this.http
+      .patch<AuthProfile>(`${environment.apiBaseUrl}/users/me`, { nickname })
+      .pipe(this.applyProfileResult());
+  }
+
+  /** POST /users/me/avatar — multipart ฟิลด์ `file` */
+  uploadMyAvatar(file: File): Observable<void> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http
+      .post<AuthProfile>(`${environment.apiBaseUrl}/users/me/avatar`, form)
+      .pipe(this.applyProfileResult());
+  }
+
+  /** DELETE /users/me/avatar — ไม่มีรูปอยู่แล้วก็ได้ 200 */
+  deleteMyAvatar(): Observable<void> {
+    return this.http
+      .delete<AuthProfile>(`${environment.apiBaseUrl}/users/me/avatar`)
+      .pipe(this.applyProfileResult());
+  }
+
+  private applyProfileResult() {
+    return (source: Observable<AuthProfile>): Observable<void> =>
+      source.pipe(
+        tap((profile) => this.applyProfile(profile)),
+        map(() => undefined),
+        catchError((err) =>
+          throwError(() => {
+            const bodyMessage = (err as HttpErrorResponse)?.error?.message;
+            if ((err as HttpErrorResponse)?.status === 413 && typeof bodyMessage !== 'string') {
+              return new Error('ไฟล์มีขนาดใหญ่เกินกำหนด');
+            }
+            return new Error(apiErrorMessage(err));
+          })
+        )
+      );
+  }
+
   /** เช็คสิทธิ์แบบ API เช่น customer.view — รองรับ edit/update ที่ API ใช้สลับกัน */
   hasPermission(
     menuCode: MenuCode,
@@ -421,6 +463,7 @@ export class AuthService {
     this.sessionSignal.set(null);
     this.tokenStorage.clearRefreshToken();
     this.users.clearCache();
+    this.avatars.clear();
     if (broadcast) {
       this.channel?.postMessage({ type: 'logout' } satisfies AuthChannelMessage);
     }

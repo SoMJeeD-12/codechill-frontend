@@ -27,6 +27,7 @@ import {
   ListLoadingBarComponent,
   ListSkeletonComponent,
 } from '../../shared/components/list-loading.component';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createServerList } from '../../shared/utils/server-list';
 
@@ -34,6 +35,7 @@ import { createServerList } from '../../shared/utils/server-list';
   selector: 'app-users-page',
   standalone: true,
   imports: [
+    UserAvatarComponent,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,

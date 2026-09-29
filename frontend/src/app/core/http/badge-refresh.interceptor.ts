@@ -3,7 +3,7 @@ import { Injector, inject } from '@angular/core';
 import { tap } from 'rxjs/operators';
 import { NavAttentionService } from '../services/nav-attention.service';
 
-const BADGE_PATHS = /\/api\/(tickets|notifications)(\/|\?|$)/;
+const BADGE_PATHS = /\/api\/(tickets|notifications|tasks|follow-ups|warranties|ma-contracts)(\/|\?|$)/;
 
 /**
  * ทำรายการใบปัญหา / แจ้งเตือนสำเร็จ → refreshBadges() ให้เลขเมนู + กระดิ่งตามทันที

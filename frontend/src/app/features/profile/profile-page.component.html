@@ -5,6 +5,10 @@
       <h1 class="app-page-title">โปรไฟล์</h1>
     </div>
     <div class="app-header-actions">
+      <button mat-flat-button color="primary" type="button" (click)="openEdit()" [disabled]="!user()">
+        <mat-icon>edit</mat-icon>
+        แก้ไขโปรไฟล์
+      </button>
       <button mat-stroked-button type="button" (click)="refresh()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช
@@ -16,9 +20,7 @@
     <article class="hero app-panel">
       <div class="hero__body">
         <div class="hero__left">
-          <div class="avatar" aria-hidden="true">
-            <mat-icon>account_circle</mat-icon>
-          </div>
+          <app-user-avatar [url]="me.avatarUrl" [name]="me.fullName" [size]="64" />
           <div class="hero__text">
             <h2>{{ me.fullName }}</h2>
             <p class="hero__user">{{ me.username }}</p>

@@ -44,6 +44,12 @@
   width: 100%;
 }
 
+.user-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .pill {
   display: inline-block;
   padding: 0.15rem 0.55rem;

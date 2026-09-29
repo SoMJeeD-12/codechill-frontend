@@ -54,7 +54,12 @@
               <mat-icon>{{ sortIcon('fullName') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row">{{ row.fullName }}</td>
+          <td mat-cell *matCellDef="let row">
+            <span class="user-cell">
+              <app-user-avatar [url]="row.avatarUrl" [name]="row.fullName" [size]="28" />
+              {{ row.fullName }}
+            </span>
+          </td>
         </ng-container>
         <ng-container matColumnDef="nickname">
           <th mat-header-cell *matHeaderCellDef>
