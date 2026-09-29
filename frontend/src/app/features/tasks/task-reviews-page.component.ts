@@ -19,6 +19,7 @@ import {
   TaskReviewSortBy,
   TaskReviewTab,
 } from '../../core/models/project.model';
+import { NavAttentionService } from '../../core/services/nav-attention.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
   EntityPickerComponent,
@@ -70,6 +71,7 @@ export class TaskReviewsPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly attention = inject(NavAttentionService);
 
   readonly tab = signal<TaskReviewTab>('PENDING');
   readonly resultFilter = signal<ResultFilter>('ALL');
@@ -199,6 +201,10 @@ export class TaskReviewsPageComponent implements OnInit {
           this.rows.set(items);
           this.total.set(total);
           this.loading.set(false);
+          const unfiltered = tab === 'PENDING' && !this.projectId() && !this.searchControl.value.trim();
+          if (unfiltered && total !== this.attention.badge('tasks-review')) {
+            this.attention.refreshBadges();
+          }
         },
         error: (err: Error) => {
           this.rows.set([]);
