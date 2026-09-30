@@ -65,6 +65,7 @@ export function mainMenuOrder(opts: {
       : 'tickets-mine';
   return [
     { kind: 'item', code: 'dashboard' },
+    { kind: 'item', code: 'my-dashboard' },
     { kind: 'item', code: pinned },
     { kind: 'item', code: 'projects' },
     {
@@ -96,6 +97,14 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'ดูสรุปงานวันนี้',
     icon: 'home',
     route: '/app/home',
+    group: 'main',
+  },
+  {
+    code: 'my-dashboard',
+    label: 'แดชบอร์ดของฉัน',
+    description: 'สรุปงานที่ฉันทำในแต่ละช่วง — เห็นเฉพาะตัวเอง',
+    icon: 'insights',
+    route: '/app/dashboard',
     group: 'main',
   },
   {

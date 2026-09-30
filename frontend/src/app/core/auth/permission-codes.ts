@@ -6,6 +6,8 @@ import { MenuCode, PermissionAction } from '../models/permission.model';
  */
 export const MENU_PERMISSION_MODULE: Record<MenuCode, string> = {
   dashboard: 'dashboard',
+  /** แดชบอร์ดของฉัน — ทุกคนที่ล็อกอินเข้าได้ ไม่เช็ค permission (ดู AuthService) */
+  'my-dashboard': 'dashboard',
   tasks: 'task',
   'tasks-me': 'task',
   'tasks-unassigned': 'task',

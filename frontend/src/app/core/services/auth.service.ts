@@ -317,6 +317,10 @@ export class AuthService {
         session.user.accountType === 'ADMIN'
       );
     }
+    // แดชบอร์ดของฉัน — GET /dashboard/me เรียกได้ทุกคน (ช่องที่ไม่มีสิทธิ์ BE ส่ง null)
+    if (menuCode === 'my-dashboard') {
+      return true;
+    }
     // หน้าแรก — รวมงานที่มีสิทธิ์ดู (ไม่มี permission แยกเป็นหลัก)
     if (menuCode === 'dashboard') {
       return (

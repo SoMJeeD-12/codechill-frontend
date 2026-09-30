@@ -1,0 +1,634 @@
+$line: var(--app-line);
+$muted: #7b8a85;
+$ink: #1c2b28;
+$accent: #0f766e;
+$track-h: 200px;
+
+.swatch {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.is-dim {
+  opacity: 0.3;
+}
+
+/* ——— แถวบน ——— */
+
+.dash-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dash-top__filters {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.privacy-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.3rem 0 0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #f1f5f4;
+  color: #5b6762;
+  font-size: 0.8rem;
+
+  mat-icon {
+    width: 15px;
+    height: 15px;
+    font-size: 15px;
+  }
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.8rem;
+}
+
+.filter-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #5b6762;
+}
+
+.range-field {
+  width: 260px;
+}
+
+.dash-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.84rem;
+}
+
+.dash-hint {
+  padding: 1.5rem 0;
+  color: $muted;
+  text-align: center;
+}
+
+.loading-row {
+  display: flex;
+  gap: 0.7rem;
+  padding: 1.5rem 0;
+}
+
+.dash-body.is-loading {
+  opacity: 0.55;
+}
+
+.range-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.8rem;
+  color: #5b6762;
+  font-size: 0.88rem;
+}
+
+.focus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+  border: 1px solid $accent;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.focus-chip mat-icon,
+.mode-switch mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+/* ——— ① การ์ด (ตัวเลขสีเดียว ไม่สื่อดี/แย่) ——— */
+
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.total-card {
+  display: grid;
+  grid-template-areas:
+    'icon value'
+    'label label'
+    'hint hint';
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.1rem 0.6rem;
+  padding: 0.9rem 1rem 0.8rem;
+  border: 1px solid $line;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+button.total-card {
+  cursor: pointer;
+}
+
+.total-card--now {
+  background: #f7fbf9;
+}
+
+.total-card__icon {
+  grid-area: icon;
+  color: #6b7f79;
+}
+
+.total-card__value {
+  grid-area: value;
+  justify-self: end;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: $ink;
+}
+
+.total-card__label {
+  grid-area: label;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: $ink;
+}
+
+.total-card__info {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  color: $muted;
+  cursor: help;
+}
+
+.total-card__hint {
+  grid-area: hint;
+  font-size: 0.74rem;
+  color: #8a9792;
+}
+
+/* ——— กล่อง ——— */
+
+.box {
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid $line;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.box__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.box__title,
+.section-label {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #34524c;
+}
+
+.section-label {
+  margin: 1.2rem 0 0.6rem;
+}
+
+.box__note,
+.chart-empty {
+  margin: 0.3rem 0;
+  font-size: 0.78rem;
+  color: #8a9792;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.mode-switch {
+  display: inline-flex;
+  border: 1px solid $line;
+  border-radius: 8px;
+  overflow: hidden;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.25rem 0.6rem;
+    border: 0;
+    background: #fff;
+    font: inherit;
+    font-size: 0.8rem;
+    color: #5b6762;
+    cursor: pointer;
+
+    &.is-active {
+      background: #e7f3f0;
+      color: #0f5f58;
+      font-weight: 600;
+    }
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid $line;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  color: #34524c;
+  cursor: pointer;
+
+  &.is-off {
+    color: #a3aeaa;
+    text-decoration: line-through;
+
+    .swatch {
+      opacity: 0.3;
+    }
+  }
+}
+
+/* ——— ② กราฟกิจกรรม ——— */
+
+/* กว้างตามกล่อง — คอลัมน์หดได้ ไม่ต้องเลื่อน · tooltip อยู่ใน overlay กลาง */
+.chart__area {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr));
+  padding-top: 1.2rem;
+
+  &.is-dense .chart__sum {
+    display: none;
+  }
+}
+
+.chart__plot {
+  position: absolute;
+  top: 1.2rem;
+  left: 0;
+  right: 0;
+  height: $track-h;
+  pointer-events: none;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+}
+
+.chart__dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  transform: translate(-50%, 50%);
+}
+
+.chart__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  outline: none;
+
+  &:hover .chart__track,
+  &:focus .chart__track {
+    background: rgba(15, 118, 110, 0.05);
+  }
+}
+
+.chart__track {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: $track-h;
+  border-bottom: 1px solid $line;
+}
+
+.chart__stack {
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse;
+  width: 70%;
+  max-width: 40px;
+  height: 100%;
+}
+
+.chart__seg:last-of-type {
+  border-radius: 5px 5px 0 0;
+}
+
+.chart__sum {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding-bottom: 2px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #5b6762;
+}
+
+.chart__axis {
+  height: 1.3rem;
+  margin-top: 0.3rem;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  color: $muted;
+}
+
+/* ป้ายแกนที่ขอบ ชิดในกล่องแทนการล้นออกนอก */
+.chart__col:first-child .chart__axis {
+  align-self: flex-start;
+}
+
+.chart__col:last-child .chart__axis {
+  align-self: flex-end;
+}
+
+/* ——— ③ โดนัท ——— */
+
+.donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.donut__chart {
+  position: relative;
+  width: 180px;
+  height: 180px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donut__total {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: $ink;
+}
+
+.donut__caption {
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: $muted;
+}
+
+.donut__legend {
+  flex: 1;
+  min-width: 170px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0;
+    font-size: 0.82rem;
+  }
+}
+
+.donut__label {
+  flex: 1;
+}
+
+.donut__pct {
+  min-width: 2.4rem;
+  text-align: right;
+  color: $muted;
+}
+
+/* ——— ④ แยกรายเรื่อง ——— */
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.8rem;
+}
+
+.mini {
+  padding: 0.75rem 0.85rem 0.6rem;
+}
+
+button.total-card.is-active,
+.mini.is-focus {
+  border-color: $accent;
+  box-shadow: 0 0 0 1px $accent inset;
+}
+
+.mini__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.mini__title {
+  flex: 1;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.mini__total {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.mini__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 70px;
+  border-bottom: 1px solid $line;
+}
+
+.mini__col {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  height: 100%;
+}
+
+.mini__bar {
+  width: 100%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+}
+
+.mini__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: $muted;
+}
+
+/* ——— ⑤ ตาราง ——— */
+
+.details {
+  margin-top: 1rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.details__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #34524c;
+  cursor: pointer;
+}
+
+/* ตาราง (ไม่ใช่กล่องกราฟ) เลื่อนในตัวเอง — หัวและแถวรวมปักไว้ */
+.table-wrap {
+  max-height: 28rem;
+  overflow: auto;
+}
+
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+
+  th,
+  td {
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid #eef3f1;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #5b6762;
+    background: #f7fbf9;
+  }
+
+  tbody th {
+    font-weight: 500;
+  }
+
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .is-focus {
+    background: #eef6f4;
+  }
+
+  tfoot th,
+  tfoot td {
+    position: sticky;
+    bottom: 0;
+    font-weight: 700;
+    background: #fff;
+    box-shadow: inset 0 2px 0 $line;
+    border-bottom: 0;
+  }
+}
+
+/* ——— responsive ——— */
+
+@media (max-width: 960px) {
+  .main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-top__filters {
+    align-items: flex-start;
+  }
+
+  .filter-row {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

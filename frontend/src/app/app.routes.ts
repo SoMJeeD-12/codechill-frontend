@@ -40,8 +40,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/home/home-page.component').then((m) => m.HomePageComponent),
       },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/my-dashboard/my-dashboard-page.component').then(
+            (m) => m.MyDashboardPageComponent
+          ),
+      },
       // ลิงก์เดิม
-      { path: 'dashboard', redirectTo: 'home', pathMatch: 'full' },
       { path: 'my-work', redirectTo: 'tickets/mine', pathMatch: 'full' },
       {
         path: 'customers',

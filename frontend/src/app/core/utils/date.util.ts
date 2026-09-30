@@ -163,6 +163,54 @@ export function formatThaiDateTime(value: Date | string | null | undefined): str
   return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()} ${formatThaiTime(d)}`;
 }
 
+/**
+ * ป้ายช่วงวันแบบสั้น เช่น 5 ก.ย. · 1–7 ก.ย. · 29 ก.ย.–5 ต.ค. · ก.ย. (ทั้งเดือน)
+ * withYear = ต่อท้ายปี (ใช้เมื่อช่วงข้ามปี)
+ */
+export function formatThaiPeriodLabel(
+  start: string | Date | null | undefined,
+  end: string | Date | null | undefined,
+  withYear = false
+): string {
+  const s = parseDateOnly(start);
+  const e = parseDateOnly(end) ?? s;
+  if (!s || !e) {
+    return '';
+  }
+  const year = (d: Date) => (withYear ? ` ${d.getFullYear()}` : '');
+  const month = (d: Date) => THAI_MONTHS_SHORT[d.getMonth()];
+  if (s.getTime() === e.getTime()) {
+    return `${s.getDate()} ${month(s)}${year(s)}`;
+  }
+  const sameMonth = s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth();
+  const lastOfMonth = new Date(e.getFullYear(), e.getMonth() + 1, 0).getDate();
+  if (sameMonth && s.getDate() === 1 && e.getDate() === lastOfMonth) {
+    return `${month(s)}${year(s)}`;
+  }
+  if (sameMonth) {
+    return `${s.getDate()}–${e.getDate()} ${month(s)}${year(s)}`;
+  }
+  const sameYear = s.getFullYear() === e.getFullYear();
+  return `${s.getDate()} ${month(s)}${sameYear ? '' : year(s)}–${e.getDate()} ${month(e)}${year(e)}`;
+}
+
+/** ช่วงวันเต็ม เช่น 1 ก.ย. – 29 ก.ย. 2026 · 1 ธ.ค. 2025 – 5 ม.ค. 2026 */
+export function formatThaiDateRange(
+  start: string | Date | null | undefined,
+  end: string | Date | null | undefined
+): string {
+  const s = parseDateOnly(start);
+  const e = parseDateOnly(end);
+  if (!s || !e) {
+    return '';
+  }
+  const day = (d: Date) => `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]}`;
+  if (s.getFullYear() === e.getFullYear()) {
+    return `${day(s)} – ${day(e)} ${e.getFullYear()}`;
+  }
+  return `${day(s)} ${s.getFullYear()} – ${day(e)} ${e.getFullYear()}`;
+}
+
 /** เฉพาะวันที่ เช่น 9 ก.ย. 2026 */
 export function formatThaiDate(value: Date | string | null | undefined): string {
   const d = asValidDate(value);
