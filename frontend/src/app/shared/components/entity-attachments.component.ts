@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -50,6 +50,10 @@ export class EntityAttachmentsComponent {
   readonly subtitle = input<string | null>(null);
   /** หมายเหตุเริ่มต้นตอนอัปโหลด (เช่น noteSuggestion จาก confirmation-print) */
   readonly defaultNote = input<string | null>(null);
+  /** จำนวนไฟล์ทุกครั้งที่รู้ค่า (โหลด / แนบ / ลบ) */
+  readonly countChange = output<number>();
+  /** แนบหรือลบสำเร็จ — ให้หน้าที่เปิดโหลดรายการใหม่ */
+  readonly changed = output<void>();
 
   readonly accept = ATTACHMENT_ACCEPT;
   readonly items = signal<Attachment[]>([]);
@@ -112,6 +116,7 @@ export class EntityAttachmentsComponent {
       next: (rows) => {
         this.items.set(rows);
         this.loading.set(false);
+        this.countChange.emit(rows.length);
       },
       error: (err: Error) => {
         this.items.set([]);
@@ -143,6 +148,8 @@ export class EntityAttachmentsComponent {
       next: (row) => {
         this.uploading.set(false);
         this.items.update((list) => [row, ...list.filter((x) => x.id !== row.id)]);
+        this.countChange.emit(this.items().length);
+        this.changed.emit();
         this.snack.open('อัปโหลดไฟล์แล้ว', 'ปิด', { duration: 2500 });
       },
       error: (err: Error) => {
@@ -201,6 +208,8 @@ export class EntityAttachmentsComponent {
       this.api.remove(row.id).subscribe({
         next: () => {
           this.items.update((list) => list.filter((x) => x.id !== row.id));
+          this.countChange.emit(this.items().length);
+          this.changed.emit();
           this.snack.open('ลบออกจากรายการแล้ว', 'ปิด', { duration: 2500 });
         },
         error: (err: Error) =>

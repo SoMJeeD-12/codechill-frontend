@@ -81,11 +81,10 @@ import {
 import {
   WARRANTY_STATUS_LABELS,
   Warranty,
-  readWarrantyConfirmMock,
   warrantyDisplayLabel,
   warrantyDisplayState,
   warrantyMaLinkLabel,
-  writeWarrantyConfirmMock,
+  warrantyNeedsSignedScan,
 } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -119,9 +118,8 @@ import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils
 import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
-import { WarrantyConfirmDialogComponent } from '../warranties/warranty-confirm-dialog.component';
 import {
-  WarrantyDocumentsDialogComponent,
+  openWarrantyDocuments,
   printWarranty,
 } from '../warranties/warranty-documents-dialog.component';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
@@ -368,14 +366,11 @@ export class ProjectDetailPageComponent implements OnInit {
       },
     ];
     if (this.canViewWarranties()) {
-      const confirmed = readWarrantyConfirmMock(this.projectId);
       items.push({
         id: 'warranty',
         ok: issuedWarranty || canIssue,
         label: issuedWarranty
-          ? confirmed
-            ? 'มีประกันแล้ว · ยืนยันแล้ว (mock)'
-            : 'มีประกันแล้ว — ยืนยันหลังส่งมอบได้'
+          ? 'มีประกันแล้ว'
           : canIssue
             ? 'พร้อมออกประกัน'
             : 'ยังออกประกันไม่ได้',
@@ -1745,23 +1740,21 @@ export class ProjectDetailPageComponent implements OnInit {
     const actions: RowAction[] = [
       { label: 'รายละเอียด', primary: true, icon: 'visibility', run: () => this.openDeliveryDetail(row) },
     ];
-    const existing = this.existingWarrantyForDelivery(row);
-    if (existing) {
-      actions.push({
-        label: 'ยืนยันประกัน',
-        icon: 'verified_user',
-        disabled: !(row.canIssueWarranty || row.acceptanceStatus === 'ACCEPTED'),
-        run: () => this.openConfirmExistingWarranty(existing, row),
-      });
-    } else {
-      actions.push({
-        label: 'ออกประกัน',
-        icon: 'verified',
-        disabled: !row.canIssueWarranty,
-        run: () => this.openIssueWarranty(row),
-      });
-    }
+    actions.push({
+      label: 'ออกประกัน',
+      icon: 'verified',
+      disabled: !row.canIssueWarranty,
+      run: () => this.openIssueWarranty(row),
+    });
     return actions;
+  }
+
+  warrantyNeedsSignedScan(row: Warranty): boolean {
+    return warrantyNeedsSignedScan(row);
+  }
+
+  openWarrantyDocuments(row: Warranty): void {
+    openWarrantyDocuments(this.dialog, row, () => this.loadWarranties());
   }
 
   warrantyRowActions(row: Warranty): RowAction[] {
@@ -1770,11 +1763,7 @@ export class ProjectDetailPageComponent implements OnInit {
         label: 'ดู / แนบเอกสาร',
         primary: true,
         icon: 'attach_file',
-        run: () =>
-          this.dialog.open(WarrantyDocumentsDialogComponent, {
-            ...FORM_DIALOG,
-            data: { warranty: row },
-          }),
+        run: () => this.openWarrantyDocuments(row),
       },
       {
         label: 'พิมพ์ใบรับประกัน',
@@ -1808,48 +1797,10 @@ export class ProjectDetailPageComponent implements OnInit {
     return warrantyDisplayState(row);
   }
 
-  /** มีประกันของโปรเจกต์/ใบส่งมอบนี้อยู่แล้วหรือไม่ */
-  private existingWarrantyForDelivery(row: Delivery): Warranty | null {
-    const list = this.warranties();
-    const byDelivery = list.find((w) => w.deliveryId === row.id);
-    if (byDelivery) {
-      return byDelivery;
-    }
-    // พี่เลี้ยง: มีประกันก่อนหน้าแล้ว ไม่ต้องโผล่「ออกประกัน」ซ้ำ — ใช้ใบล่าสุดของโปรเจกต์
-    if (list.length > 0 && (row.canIssueWarranty || row.isFinal)) {
-      return list[0];
-    }
-    return null;
-  }
-
-  openConfirmExistingWarranty(warranty: Warranty, delivery: Delivery): void {
-    const code = warranty.warrantyNo?.trim() || `#${warranty.id}`;
-    const already = readWarrantyConfirmMock(this.projectId);
-    const deliveryLabel = `${delivery.title}${delivery.version ? ' · ' + delivery.version : ''}`;
-    this.dialog
-      .open(WarrantyConfirmDialogComponent, {
-        ...FORM_DIALOG_COMPACT,
-        width: '440px',
-        data: {
-          warrantyCode: code,
-          deliveryTitle: deliveryLabel,
-          alreadyConfirmed: !!already,
-        },
-      })
-      .afterClosed()
-      .subscribe((ok) => {
-        if (!ok) {
-          return;
-        }
-        writeWarrantyConfirmMock({
-          projectId: this.projectId,
-          warrantyId: warranty.id,
-          confirmedAt: new Date().toISOString(),
-        });
-        this.snack.open(`ยืนยันประกัน「${code}」แล้ว`, 'ปิด', { duration: 3000 });
-      });
-  }
-
+  /**
+   * เปิดฟอร์มออกประกันทุกครั้ง แม้ใบส่งมอบนี้มีประกันแล้ว (ออกได้หลายใบถ้าระยะต่างกัน)
+   * ระยะซ้ำกับใบเดิมที่ยังไม่ VOID → backend ตอบ 409 ข้อความไทย ฟอร์มแสดงตรง ๆ
+   */
   openIssueWarranty(delivery: Delivery): void {
     if (!delivery.canIssueWarranty) {
       this.snack.open(
@@ -1857,11 +1808,6 @@ export class ProjectDetailPageComponent implements OnInit {
         'ปิด',
         { duration: 4000 }
       );
-      return;
-    }
-    const existing = this.existingWarrantyForDelivery(delivery);
-    if (existing) {
-      this.openConfirmExistingWarranty(existing, delivery);
       return;
     }
     const project = this.project();

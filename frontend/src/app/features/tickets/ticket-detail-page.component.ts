@@ -36,7 +36,6 @@ import { DOCUMENT_ACCEPT, DOCUMENT_MAX_BYTES, formatDocumentFileSize } from '../
 import { AttachmentService } from '../../core/services/attachment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
-import { DocumentService } from '../../core/services/document.service';
 import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
@@ -1023,17 +1022,12 @@ export interface TicketResolutionFormData {
             </mat-select>
           </mat-form-field>
         }
+        @if (canUploadFiles) {
         <div class="files">
           <div class="files__head">
             <div>
               <strong>ไฟล์แนบ</strong>
-              <span class="files__hint">
-                @if (data.projectId) {
-                  เก็บในเอกสารของโปรเจกต์ {{ data.projectName }}
-                } @else {
-                  ใบนี้ไม่มีโปรเจกต์ — แนบไว้กับรอบแก้ไขนี้
-                }
-              </span>
+              <span class="files__hint">แนบไว้กับรอบแก้ไขนี้</span>
             </div>
             <button
               mat-stroked-button
@@ -1076,6 +1070,7 @@ export interface TicketResolutionFormData {
             <p class="files__empty">ยังไม่ได้เลือกไฟล์ (ไม่บังคับ)</p>
           }
         </div>
+        }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -1171,11 +1166,11 @@ export class TicketResolutionFormDialogComponent {
   private readonly auth = inject(AuthService);
   private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly snack = inject(MatSnackBar);
-  private readonly documentsApi = inject(DocumentService);
   private readonly attachmentsApi = inject(AttachmentService);
   private readonly ref = inject(MatDialogRef<TicketResolutionFormDialogComponent, boolean>);
   readonly data = inject<TicketResolutionFormData>(MAT_DIALOG_DATA);
 
+  readonly canUploadFiles = this.auth.hasPermissionCode('file.upload');
   readonly fileAccept = DOCUMENT_ACCEPT;
   readonly files = signal<File[]>([]);
   readonly saving = signal(false);
@@ -1300,13 +1295,8 @@ export class TicketResolutionFormDialogComponent {
           if (handedOff) {
             msg += ' · ส่งต่อผู้รับผิดชอบแล้ว';
           }
-          if (upload.toProject > 0) {
-            msg += ` · เก็บไฟล์ ${upload.toProject} ไฟล์ในเอกสารโปรเจกต์แล้ว`;
-          }
-          if (upload.toRound > 0) {
-            msg += this.data.projectId
-              ? ` · แนบไฟล์ ${upload.toRound} ไฟล์ไว้กับรอบแก้ไขแทน (เก็บเข้าเอกสารโปรเจกต์ไม่ได้)`
-              : ` · แนบไฟล์ ${upload.toRound} ไฟล์กับรอบแก้ไขแล้ว`;
+          if (upload.uploaded > 0) {
+            msg += ` · แนบไว้กับรอบที่ ${upload.round} แล้ว ${upload.uploaded} ไฟล์`;
           }
           if (upload.failed.length) {
             msg += ` · อัปโหลดไม่สำเร็จ: ${upload.failed.join(', ')}`;
@@ -1325,7 +1315,6 @@ export class TicketResolutionFormDialogComponent {
               quota?.isOverQuota ||
               incomplete ||
               upload.failed.length ||
-              (upload.toRound > 0 && !!this.data.projectId) ||
               this.claimWarning
                 ? 6000
                 : 2800,
@@ -1400,48 +1389,30 @@ export class TicketResolutionFormDialogComponent {
   }
 
   /**
-   * อัปโหลดทีละไฟล์ — เข้าเอกสารโปรเจกต์ก่อน ถ้าไม่ผ่าน (เช่น ไม่มีสิทธิ์ document.create)
-   * แนบไว้กับรอบแก้ไขแทน · ไม่ให้รอบที่บันทึกแล้วล้ม
+   * อัปโหลดทีละไฟล์เข้ารอบแก้ไขนี้ (refType TICKET_RESOLUTION) · ไฟล์ที่ไม่ผ่านไม่ทำให้รอบที่บันทึกแล้วล้ม
    */
   private uploadFiles(resolution: TicketResolution): Observable<UploadSummary> {
     const files = this.files();
-    const empty: UploadSummary = { toProject: 0, toRound: 0, failed: [] };
+    const empty: UploadSummary = { round: resolution.round, uploaded: 0, failed: [] };
     if (!files.length) {
       return of(empty);
     }
-    const projectId = this.data.projectId;
-    const round = resolution.round;
-    const toRound$ = (file: File): Observable<UploadOutcome> =>
+    const uploads = files.map((file) =>
       this.attachmentsApi
         .upload({ file, refType: 'TICKET_RESOLUTION', refId: resolution.id })
-        .pipe(map((): UploadOutcome => 'round'));
-    const uploads = files.map((file) => {
-      const upload$: Observable<UploadOutcome> = projectId
-        ? this.documentsApi
-            .uploadToProject(projectId, {
-              file,
-              title: `${this.data.ticketNo} · รอบ ${round} · ${file.name}`,
-              note: `แนบจากใบปัญหา ${this.data.ticketNo} รอบแก้ไขที่ ${round}`,
-            })
-            .pipe(
-              map((): UploadOutcome => 'project'),
-              catchError(() => toRound$(file))
-            )
-        : toRound$(file);
-      return upload$.pipe(
-        catchError((err: unknown) => of(`${file.name} (${apiErrorMessage(err)})`))
-      );
-    });
+        .pipe(
+          map((): string | null => null),
+          catchError((err: unknown) => of(`${file.name} (${apiErrorMessage(err)})`))
+        )
+    );
     return concat(...uploads).pipe(
       toArray(),
       map((outcomes) =>
-        outcomes.reduce<UploadSummary>((acc, o) => {
-          if (o === 'project') {
-            acc.toProject++;
-          } else if (o === 'round') {
-            acc.toRound++;
+        outcomes.reduce<UploadSummary>((acc, failed) => {
+          if (failed == null) {
+            acc.uploaded++;
           } else {
-            acc.failed.push(o);
+            acc.failed.push(failed);
           }
           return acc;
         }, empty)
@@ -1450,12 +1421,10 @@ export class TicketResolutionFormDialogComponent {
   }
 }
 
-type UploadOutcome = 'project' | 'round';
-
 interface UploadSummary {
-  toProject: number;
-  toRound: number;
-  /** ชื่อไฟล์ (เหตุผล) ที่อัปโหลดไม่ผ่านทั้งสองทาง */
+  round: number;
+  uploaded: number;
+  /** ชื่อไฟล์ (เหตุผล) ที่อัปโหลดไม่ผ่าน */
   failed: string[];
 }
 

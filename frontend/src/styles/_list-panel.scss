@@ -823,8 +823,63 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* คอลัมน์ที่กว้างเท่าเนื้อหาพอดี (เช่นรหัส) — ให้พื้นที่เหลือไปอยู่กับคอลัมน์ .cell-fill */
+.data-table :is(.mat-mdc-header-cell, .mat-mdc-cell).col-shrink {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .full-table {
   width: 100%;
+}
+
+/* ประกันที่ยังไม่แนบใบที่ลูกค้าเซ็น (attachmentCount === 0 และไม่ใช่ VOID) — ป้ายเตือนสีส้ม + ปุ่มแนบสแกน */
+.unsigned-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.unsigned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fff4e5;
+  color: #b45309;
+  font-size: 0.74rem;
+  font-weight: 650;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.unsigned-attach-icon.mat-mdc-icon-button {
+  --mdc-icon-button-state-layer-size: 26px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: #b45309;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.unsigned-attach.mat-mdc-button-base {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 0.55rem;
+  font-size: 0.76rem;
+  line-height: 26px;
 }
 
 /* ปุ่มหลักของหน้า — ต้องมีปุ่มเดียวที่เด่นกว่าปุ่มอื่นเสมอ */

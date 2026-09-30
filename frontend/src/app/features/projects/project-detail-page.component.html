@@ -408,6 +408,19 @@
                     <span class="status" [attr.data-status]="warrantyDisplayState(row)">
                       {{ warrantyDisplayLabel(row) }}
                     </span>
+                    @if (warrantyNeedsSignedScan(row)) {
+                      <div class="unsigned-row">
+                        <span class="unsigned-badge">ยังไม่แนบใบที่ลูกค้าเซ็น</span>
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          class="unsigned-attach"
+                          (click)="openWarrantyDocuments(row)"
+                        >
+                          แนบสแกน
+                        </button>
+                      </div>
+                    }
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="actions">

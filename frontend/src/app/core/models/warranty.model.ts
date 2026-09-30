@@ -51,6 +51,8 @@ export interface Warranty {
   maContract: WarrantyMaContractSummary | null;
   /** มีค่าเฉพาะ GET /warranties/:id — รายการอื่นคืนอาเรย์ว่าง */
   attachments: WarrantyAttachmentSummary[];
+  /** จำนวนไฟล์แนบ (ใบที่ลูกค้าเซ็น) — มีทุก response ทั้งรายการและรายละเอียด */
+  attachmentCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -204,35 +206,10 @@ export function warrantyPeriodPreview(
   };
 }
 
-/** session mock — ยืนยันประกันที่มีอยู่แล้วหลังส่งมอบ (ยังไม่มี API) */
-export const WARRANTY_CONFIRM_MOCK_KEY = 'cpams_warranty_confirm_mock_v1';
-
-export interface WarrantyConfirmMock {
-  projectId: number;
-  warrantyId: number;
-  confirmedAt: string;
-}
-
-export function readWarrantyConfirmMock(projectId: number): WarrantyConfirmMock | null {
-  try {
-    const raw = sessionStorage.getItem(WARRANTY_CONFIRM_MOCK_KEY);
-    if (!raw) {
-      return null;
-    }
-    const map = JSON.parse(raw) as Record<string, WarrantyConfirmMock>;
-    return map[String(projectId)] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeWarrantyConfirmMock(entry: WarrantyConfirmMock): void {
-  try {
-    const raw = sessionStorage.getItem(WARRANTY_CONFIRM_MOCK_KEY);
-    const map = raw ? (JSON.parse(raw) as Record<string, WarrantyConfirmMock>) : {};
-    map[String(entry.projectId)] = entry;
-    sessionStorage.setItem(WARRANTY_CONFIRM_MOCK_KEY, JSON.stringify(map));
-  } catch {
-    /* ignore */
-  }
+/**
+ * หลักฐานลูกค้ารับประกัน = สแกนใบที่ลูกค้าเซ็นแนบกับประกัน (BR-12) — ไม่มีขั้น "ยืนยัน" แยก
+ * ยังไม่แนบ (attachmentCount === 0) และไม่ใช่ VOID → เตือนให้แนบ
+ */
+export function warrantyNeedsSignedScan(w: Pick<Warranty, 'attachmentCount' | 'status'>): boolean {
+  return w.attachmentCount === 0 && w.status !== 'VOID';
 }

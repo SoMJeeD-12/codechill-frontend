@@ -19,6 +19,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Delivery, Project } from '../../core/models/project.model';
 import { MaContract, maCoverageLabel } from '../../core/models/ma.model';
 import {
@@ -31,6 +32,7 @@ import {
   warrantyDisplayLabel,
   warrantyDisplayState,
   warrantyMaLinkLabel,
+  warrantyNeedsSignedScan,
   warrantyPeriodPreview,
 } from '../../core/models/warranty.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -58,7 +60,7 @@ import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { swallowHttpError } from '../../shared/utils/swallow-http-error';
 import { createServerList, invalidateListCache } from '../../shared/utils/server-list';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
-import { WarrantyDocumentsDialogComponent, printWarranty } from './warranty-documents-dialog.component';
+import { openWarrantyDocuments, printWarranty } from './warranty-documents-dialog.component';
 
 function isEditableWarrantyStatus(status: WarrantyStatus): status is WarrantyEditableStatus {
   return (WARRANTY_EDITABLE_STATUSES as readonly WarrantyStatus[]).includes(status);
@@ -78,6 +80,7 @@ function isEditableWarrantyStatus(status: WarrantyStatus): status is WarrantyEdi
     MatDialogModule,
     MatSnackBarModule,
     MatMenuModule,
+    MatTooltipModule,
     TablePaginatorComponent,
     CodeLabelComponent,
     ListLoadingBarComponent,
@@ -220,11 +223,12 @@ export class WarrantiesPageComponent implements OnInit {
     return warrantyDisplayState(w);
   }
 
+  needsSignedScan(w: Warranty): boolean {
+    return warrantyNeedsSignedScan(w);
+  }
+
   openDocuments(row: Warranty): void {
-    this.dialog.open(WarrantyDocumentsDialogComponent, {
-      ...FORM_DIALOG,
-      data: { warranty: row },
-    });
+    openWarrantyDocuments(this.dialog, row, () => this.reload());
   }
 
   print(row: Warranty): void {

@@ -1,16 +1,36 @@
 import { Component, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Warranty, warrantyDisplayLabel, warrantyDisplayState } from '../../core/models/warranty.model';
+import {
+  Warranty,
+  warrantyDisplayLabel,
+  warrantyDisplayState,
+  warrantyNeedsSignedScan,
+} from '../../core/models/warranty.model';
 import { WarrantyService } from '../../core/services/warranty.service';
 import { EntityAttachmentsComponent } from '../../shared/components/entity-attachments.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
+import { FORM_DIALOG } from '../../shared/utils/form-dialog';
 import { openWarrantyPrintWindow } from './warranty-print';
 
 export interface WarrantyDocumentsDialogData {
   warranty: Warranty;
+  /** แนบ/ลบไฟล์สำเร็จ — หน้าที่เปิดโหลดรายการใหม่ (ป้าย "ยังไม่แนบใบที่ลูกค้าเซ็น" จะหายเอง) */
+  onChanged?: () => void;
+}
+
+/** เปิดรายละเอียด/เอกสารของใบประกัน — ใช้ร่วมกันทุกหน้า */
+export function openWarrantyDocuments(
+  dialog: MatDialog,
+  warranty: Warranty,
+  onChanged?: () => void
+): void {
+  dialog.open(WarrantyDocumentsDialogComponent, {
+    ...FORM_DIALOG,
+    data: { warranty, onChanged } satisfies WarrantyDocumentsDialogData,
+  });
 }
 
 /** พิมพ์ใบรับประกัน — ใช้ร่วมกันทุกหน้า · พิมพ์ได้ทุกสถานะ (ยกเลิก/หมดอายุมีลายน้ำ) */
@@ -60,6 +80,12 @@ export function printWarranty(
         @if (data.warranty.delivery?.title) {
           <span class="muted">· {{ data.warranty.delivery?.title }}</span>
         }
+        @if (needsScan()) {
+          <span class="unsigned-badge">
+            <mat-icon>error_outline</mat-icon>
+            ยังไม่แนบใบที่ลูกค้าเซ็น
+          </span>
+        }
       </div>
 
       <div class="print-row">
@@ -81,6 +107,8 @@ export function printWarranty(
         heading="เอกสารแนบของใบประกัน"
         subtitle="เช่น ใบรับประกันที่ลูกค้าเซ็นแล้ว (สแกน/ถ่ายรูป)"
         [defaultNote]="noteSuggestion()"
+        (countChange)="attachmentCount.set($event)"
+        (changed)="data.onChanged?.()"
       />
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -130,6 +158,15 @@ export class WarrantyDocumentsDialogComponent {
   readonly state = warrantyDisplayState(this.data.warranty);
   readonly statusLabel = warrantyDisplayLabel(this.data.warranty);
   readonly noteSuggestion = signal<string | null>(`ใบรับประกัน ${this.code} ที่ลูกค้าเซ็นแล้ว`);
+  /** เริ่มจาก attachmentCount ของ API แล้วอัปเดตตามรายการไฟล์จริงในกล่อง */
+  readonly attachmentCount = signal(this.data.warranty.attachmentCount);
+
+  needsScan(): boolean {
+    return warrantyNeedsSignedScan({
+      attachmentCount: this.attachmentCount(),
+      status: this.data.warranty.status,
+    });
+  }
 
   print(): void {
     printWarranty(this.api, this.snack, this.data.warranty.id, (note) => {
