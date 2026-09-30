@@ -73,7 +73,7 @@ export function mainMenuOrder(opts: {
       key: 'tasks',
       label: 'งาน',
       icon: 'task_alt',
-      codes: ['tasks-me', 'tasks-review'],
+      codes: ['tasks-me', 'tasks-review', 'tasks'],
       defaultExpanded: true,
     },
     {
@@ -129,6 +129,14 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'งานที่รอตรวจ และประวัติที่ฉันตรวจ',
     icon: 'rate_review',
     route: '/app/tasks/review',
+    group: 'main',
+  },
+  {
+    code: 'tasks',
+    label: 'กระดานงาน',
+    description: 'ภาพรวมงานโปรเจกต์ทุกสถานะแบบกระดาน',
+    icon: 'view_kanban',
+    route: '/app/tasks/board',
     group: 'main',
   },
   {

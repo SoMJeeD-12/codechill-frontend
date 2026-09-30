@@ -51,22 +51,66 @@ $track-h: 200px;
   }
 }
 
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
+.filter-panel {
+  display: grid;
+  grid-template-columns: auto auto auto;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem 0.8rem;
+  gap: 0.5rem 0.75rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.9rem;
 }
 
 .filter-label {
-  font-size: 0.82rem;
+  grid-column: 1;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: #5b6762;
+  color: $muted;
+  white-space: nowrap;
+}
+
+.seg,
+.range-field {
+  grid-column: 2;
 }
 
 .range-field {
-  width: 260px;
+  min-width: 240px;
+}
+
+.refresh-btn {
+  grid-column: 3;
+  grid-row: 1;
+  color: #5b6762;
+}
+
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f1f5f4;
+}
+
+.seg__btn {
+  padding: 0.3rem 0.8rem;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #4b5d58;
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+
+  &.is-active {
+    background: #fff;
+    color: $accent;
+    font-weight: 650;
+    box-shadow: 0 1px 2px #0002;
+  }
+
+  &:disabled {
+    color: #b3bfbb;
+    cursor: default;
+  }
 }
 
 .dash-error {
@@ -146,9 +190,6 @@ $track-h: 200px;
   align-items: center;
   gap: 0.1rem 0.6rem;
   padding: 0.9rem 1rem 0.8rem;
-  border: 1px solid $line;
-  border-radius: 14px;
-  background: #fff;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -158,7 +199,7 @@ button.total-card {
   cursor: pointer;
 }
 
-.total-card--now {
+.total-card.total-card--now {
   background: #f7fbf9;
 }
 
@@ -207,6 +248,11 @@ button.total-card {
 .box {
   min-width: 0;
   padding: 0.9rem 1rem;
+}
+
+.filter-panel,
+.total-card,
+.box {
   border: 1px solid $line;
   border-radius: 14px;
   background: #fff;
@@ -246,30 +292,12 @@ button.total-card {
   gap: 1rem;
 }
 
-.mode-switch {
+.mode-switch .seg__btn {
   display: inline-flex;
-  border: 1px solid $line;
-  border-radius: 8px;
-  overflow: hidden;
-
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-    padding: 0.25rem 0.6rem;
-    border: 0;
-    background: #fff;
-    font: inherit;
-    font-size: 0.8rem;
-    color: #5b6762;
-    cursor: pointer;
-
-    &.is-active {
-      background: #e7f3f0;
-      color: #0f5f58;
-      font-weight: 600;
-    }
-  }
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
 }
 
 .legend {
@@ -291,6 +319,11 @@ button.total-card {
   font-size: 0.78rem;
   color: #34524c;
   cursor: pointer;
+
+  &.is-zero {
+    opacity: 0.45;
+    cursor: default;
+  }
 
   &.is-off {
     color: #a3aeaa;
@@ -347,8 +380,8 @@ button.total-card {
   min-width: 0;
   outline: none;
 
-  &:hover .chart__track,
-  &:focus .chart__track {
+  &:not(.is-empty):hover .chart__track,
+  &:not(.is-empty):focus .chart__track {
     background: rgba(15, 118, 110, 0.05);
   }
 }
@@ -529,6 +562,25 @@ button.total-card.is-active,
   border-radius: 2px 2px 0 0;
 }
 
+.mini.is-empty {
+  align-self: start;
+}
+
+.mini__empty {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #8a9792;
+}
+
+.mini-placeholder {
+  height: 140px;
+}
+
+.details__filter {
+  display: block;
+  margin: 0.2rem 0.4rem 0.5rem;
+}
+
 .mini__axis {
   display: flex;
   justify-content: space-between;
@@ -619,11 +671,8 @@ button.total-card.is-active,
   }
 
   .dash-top__filters {
-    align-items: flex-start;
-  }
-
-  .filter-row {
-    justify-content: flex-start;
+    align-items: stretch;
+    width: 100%;
   }
 }
 

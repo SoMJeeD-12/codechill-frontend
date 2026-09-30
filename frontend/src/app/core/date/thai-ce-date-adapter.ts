@@ -155,6 +155,11 @@ export class ThaiCeDateAdapter extends NativeDateAdapter {
       return `${monthName} ${year}`;
     }
 
+    // ค่าในช่องกรอกแบบตัวเลข dd/mm/yyyy — parse() อ่านกลับได้
+    if (monthStyle === '2-digit') {
+      return `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+    }
+
     // ค่าในช่องกรอก เช่น "7 ก.ย. 2026"
     const monthName =
       monthStyle === 'long' ? THAI_MONTHS_LONG[month] : THAI_MONTHS_SHORT[month];
@@ -188,5 +193,14 @@ export const THAI_CE_DATE_FORMATS = {
     monthYearLabel: { month: 'short', year: 'numeric' },
     dateA11yLabel: { day: 'numeric', month: 'long', year: 'numeric' },
     monthYearA11yLabel: { month: 'long', year: 'numeric' },
+  },
+};
+
+/** ช่องกรอกวันที่แบบตัวเลข dd/mm/yyyy (ค.ศ.) — ใช้ผ่าน providers ของคอมโพเนนต์ */
+export const THAI_CE_NUMERIC_DATE_FORMATS = {
+  ...THAI_CE_DATE_FORMATS,
+  display: {
+    ...THAI_CE_DATE_FORMATS.display,
+    dateInput: { day: '2-digit', month: '2-digit', year: 'numeric' },
   },
 };

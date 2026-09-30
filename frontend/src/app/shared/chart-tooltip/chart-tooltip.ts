@@ -167,10 +167,14 @@ export class ChartTooltipDirective implements OnDestroy {
   private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly tooltip = inject(ChartTooltipService);
 
-  readonly appChartTooltip = input.required<ChartTooltipData>();
+  /** null = จุดนี้ไม่รับ hover (เช่น ช่วงที่ไม่มีข้อมูล) */
+  readonly appChartTooltip = input.required<ChartTooltipData | null>();
 
   show(): void {
-    this.tooltip.show(this.el.nativeElement, this.appChartTooltip());
+    const data = this.appChartTooltip();
+    if (data) {
+      this.tooltip.show(this.el.nativeElement, data);
+    }
   }
 
   hide(): void {

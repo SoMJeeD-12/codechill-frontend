@@ -12,8 +12,14 @@
   gap: 0.75rem;
 }
 
+/*
+ * table-layout: fixed ไม่นับ min-width ของเซลล์ — หัวข้อ (width: auto) ได้ "ที่เหลือ" เท่านั้น
+ * จึงต้องให้ตารางกว้างอย่างน้อย = คอลัมน์คงที่ที่เหลือแสดงในจอแคบ + หัวข้อ 12rem
+ * (ลูกค้า/วันรับแจ้งซ่อนตาม col-hide-lg / col-hide-xl จาก container query กลาง)
+ */
 .tickets-table {
   width: 100%;
+  min-width: 40rem;
   table-layout: fixed;
 
   /* คอลัมน์สั้น — กว้างตามเนื้อหา */
@@ -59,6 +65,8 @@
   .mat-column-title.mat-mdc-header-cell,
   .mat-column-title.mat-mdc-cell {
     width: auto;
+    min-width: 12rem;
+    overflow: hidden;
   }
 
   /* ไม่มีเส้นสีความเร่งด่วนข้างซ้ายแถว */

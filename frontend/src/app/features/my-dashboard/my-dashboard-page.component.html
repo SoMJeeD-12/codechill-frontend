@@ -10,13 +10,14 @@
     </div>
 
     <div class="dash-top__filters">
-      <div class="filter-row">
-        <div class="ui-chips" role="tablist" aria-label="เลือกช่วงเวลา">
+      <div class="filter-panel">
+        <span class="filter-label">ช่วงเวลา</span>
+        <div class="seg" role="tablist" aria-label="เลือกช่วงเวลา">
           @for (p of periods; track p.value) {
             <button
               type="button"
               role="tab"
-              class="ui-chip"
+              class="seg__btn"
               [class.is-active]="period() === p.value"
               [attr.aria-selected]="period() === p.value"
               (click)="setPeriod(p.value)"
@@ -26,20 +27,21 @@
           }
         </div>
         <button
-          mat-stroked-button
+          mat-icon-button
           type="button"
+          class="refresh-btn"
+          matTooltip="รีเฟรช"
+          aria-label="รีเฟรช"
           (click)="reload()"
           [disabled]="loading() || customRangeIncomplete()"
         >
           <mat-icon>refresh</mat-icon>
-          รีเฟรช
         </button>
-      </div>
-      <div class="filter-row">
+
         @if (period() === 'CUSTOM') {
+          <span class="filter-label">วันที่</span>
           <mat-form-field appearance="outline" class="range-field" subscriptSizing="dynamic">
-            <mat-label>ช่วงวันที่</mat-label>
-            <mat-date-range-input [formGroup]="range" [rangePicker]="picker">
+            <mat-date-range-input [formGroup]="range" [rangePicker]="picker" aria-label="ช่วงวันที่">
               <input matStartDate formControlName="start" placeholder="วันเริ่ม" />
               <input matEndDate formControlName="end" placeholder="วันสิ้นสุด" (dateChange)="onRangeClosed()" />
             </mat-date-range-input>
@@ -47,13 +49,14 @@
             <mat-date-range-picker #picker />
           </mat-form-field>
         }
+
         <span class="filter-label">แบ่งกราฟ</span>
-        <div class="ui-chips" role="tablist" aria-label="แบ่งกราฟตาม">
+        <div class="seg" role="tablist" aria-label="แบ่งกราฟตาม">
           @for (g of groupBys; track g.label) {
             <button
               type="button"
               role="tab"
-              class="ui-chip"
+              class="seg__btn"
               [class.is-active]="groupBy() === g.value"
               [attr.aria-selected]="groupBy() === g.value"
               [disabled]="g.value === 'DAY' && dayDisabled()"
@@ -142,10 +145,11 @@
           <article class="box">
             <header class="box__head">
               <h2 class="box__title">กิจกรรมตามช่วงเวลา</h2>
-              <div class="mode-switch" role="tablist" aria-label="รูปแบบกราฟ">
+              <div class="seg mode-switch" role="tablist" aria-label="รูปแบบกราฟ">
                 <button
                   type="button"
                   role="tab"
+                  class="seg__btn"
                   [class.is-active]="activityMode() === 'bar'"
                   [attr.aria-selected]="activityMode() === 'bar'"
                   (click)="setActivityMode('bar')"
@@ -155,6 +159,7 @@
                 <button
                   type="button"
                   role="tab"
+                  class="seg__btn"
                   [class.is-active]="activityMode() === 'line'"
                   [attr.aria-selected]="activityMode() === 'line'"
                   (click)="setActivityMode('line')"
@@ -171,7 +176,10 @@
                     type="button"
                     class="legend__item"
                     [class.is-off]="isHidden(m.key)"
-                    [attr.aria-pressed]="!isHidden(m.key)"
+                    [class.is-zero]="isZeroTotal(m.key)"
+                    [disabled]="isZeroTotal(m.key)"
+                    [attr.aria-pressed]="isZeroTotal(m.key) ? null : !isHidden(m.key)"
+                    [attr.title]="isZeroTotal(m.key) ? 'ไม่มีข้อมูลในช่วงนี้' : null"
                     (click)="toggleMetric(m.key)"
                   >
                     <span class="swatch" [style.background]="m.color"></span>
@@ -212,7 +220,12 @@
                   </div>
                 }
                 @for (col of periodColumns(); track col.key) {
-                  <div class="chart__col" tabindex="0" [appChartTooltip]="col.tip">
+                  <div
+                    class="chart__col"
+                    [class.is-empty]="!col.tip"
+                    [attr.tabindex]="col.tip ? 0 : null"
+                    [appChartTooltip]="col.tip"
+                  >
                     <div class="chart__track">
                       @if (activityMode() === 'bar') {
                         <div class="chart__stack">
@@ -290,28 +303,41 @@
 
         <!-- ④ แยกรายเรื่อง -->
         <h2 class="section-label">แยกรายเรื่อง</h2>
-        <div class="mini-grid">
-          @for (mc of miniCharts(); track mc.metric.key) {
-            <article class="box mini" [class.is-focus]="isFocused(mc.metric.key)" [class.is-dim]="isDimmed(mc.metric.key)">
-              <header class="mini__head">
-                <span class="swatch" [style.background]="mc.metric.color"></span>
-                <span class="mini__title">{{ mc.metric.label }}</span>
-                <span class="mini__total">{{ mc.total }}</span>
-              </header>
-              <div class="mini__bars">
-                @for (b of mc.bars; track b.key) {
-                  <div class="mini__col" [appChartTooltip]="b.tip">
-                    <div class="mini__bar" [style.height.%]="b.heightPct" [style.background]="mc.metric.color"></div>
+        @defer (on viewport) {
+          <div class="mini-grid">
+            @for (mc of miniCharts(); track mc.metric.key) {
+              <article
+                class="box mini"
+                [class.is-empty]="mc.total === 0"
+                [class.is-focus]="isFocused(mc.metric.key)"
+                [class.is-dim]="isDimmed(mc.metric.key)"
+              >
+                <header class="mini__head">
+                  <span class="swatch" [style.background]="mc.metric.color"></span>
+                  <span class="mini__title">{{ mc.metric.label }}</span>
+                  <span class="mini__total">{{ mc.total }}</span>
+                </header>
+                @if (mc.total === 0) {
+                  <p class="mini__empty">ไม่มีข้อมูลในช่วงนี้</p>
+                } @else {
+                  <div class="mini__bars">
+                    @for (b of mc.bars; track b.key) {
+                      <div class="mini__col" [appChartTooltip]="b.tip">
+                        <div class="mini__bar" [style.height.%]="b.heightPct" [style.background]="mc.metric.color"></div>
+                      </div>
+                    }
+                  </div>
+                  <div class="mini__axis">
+                    <span>{{ mc.firstLabel }}</span>
+                    <span>{{ mc.lastLabel }}</span>
                   </div>
                 }
-              </div>
-              <div class="mini__axis">
-                <span>{{ mc.firstLabel }}</span>
-                <span>{{ mc.lastLabel }}</span>
-              </div>
-            </article>
-          }
-        </div>
+              </article>
+            }
+          </div>
+        } @placeholder {
+          <div class="mini-placeholder"></div>
+        }
 
         <!-- ⑤ ดูตัวเลขละเอียด -->
         <section class="box details">
@@ -320,12 +346,22 @@
             ดูตัวเลขละเอียด
           </button>
           @if (tableOpen()) {
+            <mat-slide-toggle
+              class="details__filter"
+              [checked]="hideEmptyInTable()"
+              (change)="setHideEmptyInTable($event.checked)"
+            >
+              ซ่อนช่วงที่ไม่มีข้อมูล
+            </mat-slide-toggle>
+            @if (tablePager.length() === 0) {
+              <p class="dash-hint">ไม่มีช่วงที่มีข้อมูล</p>
+            } @else {
             <div class="table-wrap">
               <table class="dash-table">
                 <thead>
                   <tr>
                     <th scope="col">ช่วง</th>
-                    @for (m of visibleMetrics(); track m.key) {
+                    @for (m of tableMetrics(); track m.key) {
                       <th scope="col" class="num" [class.is-focus]="isFocused(m.key)">
                         <span class="swatch" [style.background]="m.color"></span>
                         {{ m.label }}
@@ -337,7 +373,7 @@
                   @for (row of tablePager.paged(); track row.key) {
                     <tr>
                       <th scope="row">{{ row.label }}</th>
-                      @for (m of visibleMetrics(); track m.key) {
+                      @for (m of tableMetrics(); track m.key) {
                         <td class="num" [class.is-focus]="isFocused(m.key)">{{ row.point[m.key] ?? 0 }}</td>
                       }
                     </tr>
@@ -346,7 +382,7 @@
                 <tfoot>
                   <tr>
                     <th scope="row">รวมทั้งช่วง</th>
-                    @for (m of visibleMetrics(); track m.key) {
+                    @for (m of tableMetrics(); track m.key) {
                       <td class="num" [class.is-focus]="isFocused(m.key)">{{ d.totals[m.key] }}</td>
                     }
                   </tr>
@@ -360,6 +396,7 @@
               [pageSizeOptions]="tablePager.pageSizeOptions"
               (page)="tablePager.onPage($event)"
             />
+            }
           }
         </section>
       }

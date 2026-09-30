@@ -58,7 +58,7 @@
       <table
         mat-table
         [dataSource]="list.items()"
-        class="data-table customers-table"
+        class="data-table data-table--own-cols customers-table"
         [class.is-360]="is360Mode"
       >
         <ng-container matColumnDef="name">
@@ -70,28 +70,30 @@
           </th>
           <td mat-cell *matCellDef="let row" [attr.title]="row.name + (row.code ? ' · รหัส ' + row.code : '')">
             @if (is360Mode) {
-              <a [routerLink]="['/app/customer-360', row.id]">{{ row.name }}</a>
+              <a class="cell-fill" [routerLink]="['/app/customer-360', row.id]">{{ row.name }}</a>
             } @else {
-              <button type="button" class="app-link border-0 bg-transparent p-0 text-left cursor-pointer" (click)="openDetail(row)">
+              <button type="button" class="app-link cell-fill border-0 bg-transparent p-0 text-left cursor-pointer" (click)="openDetail(row)">
                 {{ row.name }}
               </button>
             }
           </td>
         </ng-container>
         <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-600">
             <button type="button" class="sort-header" (click)="toggleSort('phone')">
               โทรศัพท์
               <mat-icon>{{ sortIcon('phone') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row">{{ row.phone || '—' }}</td>
+          <td mat-cell *matCellDef="let row" class="col-hide-600">{{ row.phone || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="owner">
-          <th mat-header-cell *matHeaderCellDef>
+          <th mat-header-cell *matHeaderCellDef class="col-hide-760">
             ผู้ดูแล
           </th>
-          <td mat-cell *matCellDef="let row">{{ row.owner?.fullName || '—' }}</td>
+          <td mat-cell *matCellDef="let row" class="col-hide-760">
+            <span class="cell-clip cell-clip--sm">{{ row.owner?.fullName || '—' }}</span>
+          </td>
         </ng-container>
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>

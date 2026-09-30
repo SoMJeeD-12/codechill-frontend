@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 import {
@@ -58,7 +59,8 @@ interface PeriodColumn {
   values: { metric: MetricDef; value: number }[];
   sum: number;
   segments: { metric: MetricDef; value: number; heightPct: number }[];
-  tip: ChartTooltipData;
+  /** null = ช่วงว่าง ไม่รับ hover */
+  tip: ChartTooltipData | null;
 }
 
 interface LineSeries {
@@ -79,7 +81,7 @@ interface DonutSlice {
 interface MiniChart {
   metric: MetricDef;
   total: number;
-  bars: { key: string; heightPct: number; tip: ChartTooltipData }[];
+  bars: { key: string; heightPct: number; tip: ChartTooltipData | null }[];
   firstLabel: string;
   lastLabel: string;
 }
@@ -163,6 +165,7 @@ function readStoredMode(): ActivityMode {
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     MatTooltipModule,
     ChartTooltipDirective,
     TablePaginatorComponent,
@@ -267,13 +270,23 @@ export class MyDashboardPageComponent implements OnInit, OnDestroy {
       segments: r.values
         .filter((v) => v.value > 0)
         .map((v) => ({ ...v, heightPct: maxSum > 0 ? (v.value / maxSum) * 100 : 0 })),
-      tip: {
-        title: labels[i],
-        rows: r.values.map((v) => ({ label: v.metric.label, value: v.value, color: v.metric.color })),
-        total: r.values.length > 1 ? r.sum : null,
-      },
+      tip: r.sum > 0 ? this.periodTip(labels[i], r.values) : null,
     }));
   });
+
+  /** tooltip: เฉพาะเรื่องที่ > 0 · มีเรื่องเดียวไม่ต้องมีบรรทัดรวม */
+  private periodTip(title: string, values: { metric: MetricDef; value: number }[]): ChartTooltipData {
+    const rows = values
+      .filter((v) => v.value > 0)
+      .map((v) => ({ label: v.metric.label, value: v.value, color: v.metric.color }));
+    const total = rows.reduce((s, r) => s + Number(r.value), 0);
+    return { title, rows, total: rows.length > 1 ? total : null };
+  }
+
+  /** เรื่องที่ totals = 0 ในช่วงนี้ — legend จางและกดไม่ได้ */
+  isZeroTotal(key: MyDashboardMetric): boolean {
+    return (this.data()?.totals[key] ?? 0) === 0;
+  }
 
   readonly activityMax = computed(() => Math.max(...this.periodColumns().map((c) => c.sum), 0));
 
@@ -331,39 +344,68 @@ export class MyDashboardPageComponent implements OnInit, OnDestroy {
     return { total, slices };
   });
 
-  /** กล่องแยกรายเรื่อง — สเกลของแต่ละกล่องเอง */
+  /** กล่องแยกรายเรื่อง — สเกลของแต่ละกล่องเอง · เรื่องที่มีข้อมูลขึ้นก่อน เรื่องที่เป็น 0 ไปท้าย */
   readonly miniCharts = computed<MiniChart[]>(() => {
     const d = this.data();
     if (!d) {
       return [];
     }
     const labels = this.periodLabels();
-    return this.visibleMetrics().map((metric) => {
+    const charts = this.visibleMetrics().map((metric) => {
+      const total = d.totals[metric.key] ?? 0;
+      if (total === 0) {
+        return { metric, total, bars: [], firstLabel: '', lastLabel: '' };
+      }
       const values = d.series.map((p) => p[metric.key] ?? 0);
       const max = Math.max(...values, 0);
       return {
         metric,
-        total: d.totals[metric.key] ?? 0,
+        total,
         bars: values.map((value, i) => ({
           key: d.series[i].periodStart,
           heightPct: max > 0 ? (value / max) * 100 : 0,
-          tip: { title: labels[i], rows: [{ label: metric.label, value, color: metric.color }] },
+          tip:
+            value > 0
+              ? { title: labels[i], rows: [{ label: metric.label, value, color: metric.color }] }
+              : null,
         })),
         firstLabel: labels[0] ?? '',
         lastLabel: labels.length > 1 ? labels[labels.length - 1] : '',
       };
     });
+    return [...charts.filter((c) => c.total > 0), ...charts.filter((c) => c.total === 0)];
   });
 
-  /** ตาราง — ช่วงล่าสุดขึ้นก่อน (กราฟเรียงเก่า → ใหม่) · แบ่งหน้าที่ FE */
+  /** ซ่อนช่วงและคอลัมน์ที่ไม่มีข้อมูล — กรองเฉพาะในตาราง ไม่กระทบกราฟ */
+  readonly hideEmptyInTable = signal(true);
+
+  readonly tableMetrics = computed(() => {
+    const totals = this.data()?.totals;
+    const visible = this.visibleMetrics();
+    return this.hideEmptyInTable() && totals
+      ? visible.filter((m) => (totals[m.key] ?? 0) > 0)
+      : visible;
+  });
+
+  /** ตาราง — ช่วงล่าสุดขึ้นก่อน (กราฟเรียงเก่า → ใหม่) · แบ่งหน้านับหลังกรอง */
   readonly tableRows = computed(() => {
     const d = this.data();
     if (!d) {
       return [];
     }
     const labels = this.periodLabels();
-    return d.series.map((p, i) => ({ key: p.periodStart, label: labels[i], point: p })).reverse();
+    const metrics = this.visibleMetrics();
+    const hideEmpty = this.hideEmptyInTable();
+    return d.series
+      .map((p, i) => ({ key: p.periodStart, label: labels[i], point: p }))
+      .filter((row) => !hideEmpty || metrics.some((m) => (row.point[m.key] ?? 0) > 0))
+      .reverse();
   });
+
+  setHideEmptyInTable(value: boolean): void {
+    this.hideEmptyInTable.set(value);
+    this.tablePager.reset();
+  }
 
   readonly tablePager = createClientPager(this.tableRows, 10);
 

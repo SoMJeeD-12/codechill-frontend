@@ -32,29 +32,20 @@
         }
       </mat-select>
     </mat-form-field>
-    <div class="date-range" role="group" aria-label="ช่วงวันที่">
-      <mat-icon>event</mat-icon>
-      <input
-        type="date"
-        [value]="dateFrom()"
-        [max]="dateTo() || null"
-        aria-label="ตั้งแต่วันที่"
-        (change)="setDateFrom($any($event.target).value)"
-      />
-      <span class="date-sep">ถึง</span>
-      <input
-        type="date"
-        [value]="dateTo()"
-        [min]="dateFrom() || null"
-        aria-label="ถึงวันที่"
-        (change)="setDateTo($any($event.target).value)"
-      />
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ui-filter ui-filter--icon date-filter">
+      <mat-icon matPrefix>event</mat-icon>
+      <mat-date-range-input [formGroup]="dateRange" [rangePicker]="rangePicker" aria-label="ช่วงวันที่">
+        <input matStartDate formControlName="start" placeholder="วว/ดด/ปปปป" aria-label="ตั้งแต่วันที่" (dateChange)="applyDateRange()" />
+        <input matEndDate formControlName="end" placeholder="วว/ดด/ปปปป" aria-label="ถึงวันที่" (dateChange)="applyDateRange()" />
+      </mat-date-range-input>
       @if (dateFrom() || dateTo()) {
-        <button mat-icon-button type="button" class="date-clear" aria-label="ล้างช่วงวันที่" (click)="clearDates()">
+        <button matSuffix mat-icon-button type="button" class="date-clear" aria-label="ล้างช่วงวันที่" (click)="clearDates()">
           <mat-icon>close</mat-icon>
         </button>
       }
-    </div>
+      <mat-datepicker-toggle matSuffix [for]="rangePicker" />
+      <mat-date-range-picker #rangePicker />
+    </mat-form-field>
     <button
       mat-icon-button
       type="button"
@@ -127,21 +118,23 @@
                   <strong class="actor" [class.actor--system]="!log.user">{{ actorLabel(log) }}</strong>
                   {{ log.summary || '—' }}
                 </p>
-                <div class="feed-meta">
-                  @if (recordLink(log); as link) {
-                    <a class="tag tag--link" [routerLink]="link" (click)="$event.stopPropagation()">
-                      {{ tableLabel(log) }} #{{ log.recordId }}
-                      <mat-icon>arrow_outward</mat-icon>
-                    </a>
-                  } @else {
-                    <span class="tag">
-                      {{ tableLabel(log) }}
-                      @if (log.recordId != null) {
-                        #{{ log.recordId }}
-                      }
-                    </span>
-                  }
-                </div>
+                @let recordName = recordLabel(log);
+                @let link = recordLink(log);
+                @if (link || recordName) {
+                  <div class="feed-meta">
+                    @if (link) {
+                      <a class="tag tag--link" [routerLink]="link" (click)="$event.stopPropagation()">
+                        {{ tableLabel(log) }}
+                        @if (recordName) {
+                          · {{ recordName }}
+                        }
+                        <mat-icon>arrow_outward</mat-icon>
+                      </a>
+                    } @else {
+                      <span class="tag">{{ tableLabel(log) }} · {{ recordName }}</span>
+                    }
+                  </div>
+                }
               </div>
               <time class="feed-time" [matTooltip]="fullTime(log)" matTooltipShowDelay="300">
                 {{ time(log) }}

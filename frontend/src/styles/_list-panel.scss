@@ -271,6 +271,9 @@
     padding-bottom: 0.7rem !important;
     white-space: nowrap;
     vertical-align: middle;
+    /* table-layout: fixed — หัวคอลัมน์ยาวต้องไม่ล้นออกนอกคอลัมน์จนเกิดแถบเลื่อนแนวนอน */
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mat-mdc-row:hover {
@@ -334,7 +337,11 @@
     z-index: 3;
   }
 
-  /* คอลัมน์สุดท้ายติดขวา — ปุ่ม actions ฯลฯ · ต้องกว้างพอไม่ให้ปุ่มล้นทับคอลัมน์ก่อน */
+  /*
+   * คอลัมน์สุดท้ายติดขวา — ปุ่ม actions ฯลฯ กว้างตามเนื้อหา (width: 1% + nowrap)
+   * ตารางจริงเป็น auto layout: .mat-mdc-table ของ Material (table-layout: auto) ทับ .data-table
+   * ตารางที่ตั้ง table-layout: fixed เองต้องกำหนดความกว้างคอลัมน์ปุ่มรายหน้า
+   */
   .mat-mdc-header-cell:last-of-type,
   .mat-mdc-cell:last-of-type,
   .col-sticky-end {
@@ -345,8 +352,8 @@
     box-shadow: -1px 0 0 #eef2f0;
     text-align: right;
     white-space: nowrap;
-    width: 11rem;
-    min-width: 11rem;
+    width: 1%;
+    min-width: 0;
     overflow: hidden;
     padding-left: 0.75rem;
   }
@@ -371,8 +378,21 @@
     vertical-align: bottom;
   }
 
+  /* ความกว้างคงที่ (ไม่ใช้ %) — auto layout จึงไม่ให้ข้อความยาวดันคอลัมน์ */
   .cell-clip--sm {
-    max-width: min(100%, 9rem);
+    max-width: 9rem;
+  }
+
+  /*
+   * คอลัมน์หลักของตาราง (ชื่อ/หัวข้อ) — กินพื้นที่ที่เหลือ ตัด … ตามจริง
+   * width: 0 + min-width: 100% = ไม่นับความยาวข้อความตอนคำนวณคอลัมน์ ตารางจึงไม่ล้นเพราะชื่อยาว
+   */
+  .mat-mdc-cell .cell-fill,
+  .mat-mdc-cell a.cell-fill {
+    display: block;
+    width: 0;
+    min-width: 100%;
+    max-width: none;
   }
 
   .cell-clip--lg,
@@ -422,6 +442,10 @@
     white-space: nowrap;
   }
 
+  .mat-column-progress {
+    width: 9.5rem;
+  }
+
   .mat-column-owner {
     width: 9.5rem;
     white-space: nowrap;
@@ -432,7 +456,7 @@
   .mat-column-actions,
   .mat-mdc-cell.actions,
   .mat-mdc-cell.row-actions {
-    width: 12.25rem;
+    width: 1%;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -608,7 +632,18 @@
   display: none;
 }
 
-@media (max-width: 840px) {
+/*
+ * ซ่อนคอลัมน์ตามความกว้าง "พื้นที่ตารางจริง" (container query) ไม่ใช่ความกว้างหน้าต่าง
+ * — พื้นที่ตารางแคบกว่าหน้าต่างตามเมนูซ้าย/ระยะขอบ ถ้าวัดหน้าต่าง คอลัมน์จะไม่ถูกซ่อนแล้วตารางล้น
+ * กล่องครอบตารางทุกแบบเป็น container ชื่อ table-host
+ */
+.app-panel-body,
+.table-wrap,
+.data-card__body {
+  container: table-host / inline-size;
+}
+
+@container table-host (max-width: 840px) {
   .row-action--secondary {
     display: none !important;
   }
@@ -616,11 +651,21 @@
   .row-action--more.is-compact {
     display: inline-flex;
   }
+
+  .data-table .mat-mdc-header-cell,
+  .data-table .mat-mdc-cell {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
 }
 
-/* ซ่อนคอลัมน์รองบนจอแคบ — ใช้ mat-column-* จาก Material ครอบทุกหน้า */
-@media (max-width: 1280px) {
-  .data-table {
+/*
+ * ซ่อนคอลัมน์รองตามชื่อ mat-column-* — ค่าเริ่มต้นของตารางที่ยังไม่ได้กำหนดเอง
+ * ตารางที่ใส่ .data-table--own-cols ไม่ใช้รายการนี้ — ใช้ col-hide-{px} ตามผลรวมความกว้างคอลัมน์ของตารางนั้น
+ * คอลัมน์ที่ใช้ตัดสินใจ (สถานะ · เหลือ · โควตา · SLA · ระดับบัญชี) ไม่อยู่ในรายการนี้ — ซ่อนท้ายสุด
+ */
+@container table-host (max-width: 1280px) {
+  .data-table:not(.data-table--own-cols) {
     .mat-column-description,
     .mat-column-startDate,
     .mat-column-completedAt,
@@ -628,11 +673,8 @@
     .mat-column-uploadedBy,
     .mat-column-ip,
     .mat-column-sortOrder,
-    .mat-column-responseTimeHour,
-    .mat-column-bugQuotaPerMonth,
     .mat-column-extraQuota,
     .mat-column-permissions,
-    .mat-column-accountType,
     .mat-column-nickname,
     .mat-column-lineId,
     .mat-column-position,
@@ -646,8 +688,8 @@
   }
 }
 
-@media (max-width: 1024px) {
-  .data-table {
+@container table-host (max-width: 1024px) {
+  .data-table:not(.data-table--own-cols) {
     .mat-column-isOverdue,
     .mat-column-reportedAt,
     .mat-column-targetEndDate,
@@ -657,12 +699,9 @@
     .mat-column-sentAt,
     .mat-column-answeredAt,
     .mat-column-deliveredAt,
-    .mat-column-daysLeft,
     .mat-column-period,
-    .mat-column-quota,
     .mat-column-fee,
     .mat-column-price,
-    .mat-column-progress,
     .mat-column-manager,
     .mat-column-assignee,
     .mat-column-owner,
@@ -696,7 +735,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@container table-host (max-width: 768px) {
   .data-table {
     min-width: 0;
 
@@ -707,15 +746,17 @@
       font-size: 0.84rem;
     }
 
-    .mat-column-priority,
-    .mat-column-customer,
-    .mat-column-project,
-    .mat-column-dueDate,
-    .mat-column-contractNo,
-    .mat-column-isPrimary,
-    .mat-column-open,
-    .mat-column-overdue {
-      display: none !important;
+    &:not(.data-table--own-cols) {
+      .mat-column-priority,
+      .mat-column-customer,
+      .mat-column-project,
+      .mat-column-dueDate,
+      .mat-column-contractNo,
+      .mat-column-isPrimary,
+      .mat-column-open,
+      .mat-column-overdue {
+        display: none !important;
+      }
     }
 
     .cell-clip,
@@ -729,7 +770,9 @@
       max-width: 7rem;
     }
   }
+}
 
+@media (max-width: 768px) {
   .app-panel-body {
     -webkit-overflow-scrolling: touch;
   }
@@ -739,36 +782,45 @@
   }
 }
 
-/* ซ่อนคอลัมน์รองแบบใส่ class เอง (ถ้ามีในบางหน้า) */
-.col-hide-xl {
-  @media (max-width: 1280px) {
+/* ซ่อนคอลัมน์รองแบบใส่ class เอง — วัดพื้นที่ตาราง (table-host) ไม่ใช่หน้าต่าง */
+@container table-host (max-width: 1280px) {
+  .col-hide-xl,
+  .data-table :is(.mat-mdc-header-cell, .mat-mdc-cell).col-project-code {
     display: none !important;
   }
 }
 
-.col-hide-lg {
-  @media (max-width: 1024px) {
+@container table-host (max-width: 1024px) {
+  .col-hide-lg {
     display: none !important;
   }
 }
 
-.col-hide-md {
-  @media (max-width: 768px) {
+@container table-host (max-width: 768px) {
+  .col-hide-md {
     display: none !important;
   }
 }
 
-/* รหัสโปรเจกต์แยกคอลัมน์ — แคบ · ไม่ตัดบรรทัด · จอแคบซ่อนก่อนคอลัมน์ชื่อ */
+/*
+ * เกณฑ์รายตาราง: col-hide-{px} = ซ่อนเมื่อพื้นที่ตาราง ≤ px
+ * เลือกค่าจาก "ผลรวมความกว้างคอลัมน์ที่ยังแสดง + คอลัมน์หลักขั้นต่ำ ~11rem" ของตารางนั้น
+ */
+@each $w in (600, 680, 760, 840, 920, 1000, 1080, 1160, 1240, 1320, 1400) {
+  @container table-host (max-width: #{$w}px) {
+    .col-hide-#{$w} {
+      display: none !important;
+    }
+  }
+}
+
+/* รหัสโปรเจกต์แยกคอลัมน์ — แคบ · ไม่ตัดบรรทัด · พื้นที่แคบซ่อนก่อนคอลัมน์ชื่อ */
 .data-table :is(.mat-mdc-header-cell, .mat-mdc-cell).col-project-code {
   width: 8.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
-
-  @media (max-width: 1280px) {
-    display: none !important;
-  }
 }
 
 .full-table {

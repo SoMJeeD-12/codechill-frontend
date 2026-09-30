@@ -50,34 +50,14 @@
   width: 100%;
 }
 
+/* auto layout ตามตารางกลาง — ชื่อ (.cell-fill) กินที่เหลือ · ปุ่มกว้างตามเนื้อหา */
 .data-table {
-  width: 100%;
-  table-layout: fixed;
-
-  .mat-column-name {
-    width: auto;
-  }
-
   .mat-column-phone {
     width: 9rem;
   }
 
   .mat-column-owner {
     width: 10rem;
-  }
-
-  .mat-column-status {
-    width: 9.5rem;
-  }
-
-  .mat-column-actions {
-    width: 10.5rem;
-    min-width: 0;
-  }
-
-  &.is-360 .mat-column-actions {
-    width: 11.5rem;
-    min-width: 0;
   }
 }
 
@@ -110,24 +90,12 @@ button.name-link {
 .actions {
   white-space: nowrap;
   text-align: right;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.35rem;
-  max-width: 100%;
 }
 
 .empty {
   padding: 1.25rem;
   color: #5b6762;
   text-align: center;
-}
-
-@media (max-width: 900px) {
-  .data-table .mat-column-actions {
-    width: 11rem;
-    min-width: 10rem;
-  }
 }
 
 @media (max-width: 700px) {

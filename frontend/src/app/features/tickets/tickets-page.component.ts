@@ -188,18 +188,13 @@ export class TicketsPageComponent implements OnInit {
     return this.demoOverlay.effectiveStatus(ticket);
   }
 
+  /** สถานะของใบจาก ticket.status — ไม่ใช่ผลของรอบแก้ (result) */
   statusLabelFor(ticket: Ticket): string {
-    this.demoOverlay.state();
-    return (
-      this.demoOverlay.incompleteStatusLabel(ticket) ??
-      this.statusLabels[this.displayStatus(ticket)] ??
-      this.displayStatus(ticket)
-    );
+    return this.statusLabels[ticket.status as TicketStatus] ?? ticket.status;
   }
 
   statusAttr(ticket: Ticket): string {
-    this.demoOverlay.state();
-    return this.demoOverlay.statusAttr(ticket);
+    return ticket.status;
   }
 
   customerName(row: Ticket): string {

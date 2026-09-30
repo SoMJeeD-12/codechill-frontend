@@ -31,13 +31,14 @@
   color: #b91c1c;
 }
 
+/* td ต้องคง display: table-cell — ถ้าเป็น flex เซลล์จะหลุดจากกริดตาราง */
 .row-actions {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.45rem;
-  align-items: center;
-  justify-content: flex-end;
+  text-align: right;
   white-space: nowrap;
+
+  > * + * {
+    margin-left: 0.45rem;
+  }
 }
 
 :host ::ng-deep .data-table {
@@ -45,6 +46,17 @@
   .mat-mdc-cell.col-sticky-start,
   .mat-mdc-cell:first-of-type {
     box-shadow: none !important;
+  }
+
+  .mat-mdc-header-cell.mat-column-ticketNo,
+  .mat-mdc-cell.mat-column-ticketNo {
+    width: 8rem;
+  }
+
+  /* วันรับเรื่องแสดงเฉพาะวันที่ — ไม่ต้องกว้าง 13.25rem แบบวัน+เวลา */
+  .mat-column-reportedAt {
+    width: 8rem;
+    min-width: 0;
   }
 
   .mat-mdc-header-cell.col-sticky-end,

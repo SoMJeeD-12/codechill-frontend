@@ -1430,18 +1430,13 @@ export class ProjectDetailPageComponent implements OnInit {
     return this.ticketStatusLabels[status] ?? status;
   }
 
+  /** สถานะของใบจาก ticket.status — ไม่ใช่ผลของรอบแก้ (result) */
   ticketStatusLabelFor(ticket: Ticket): string {
-    this.ticketDemoOverlay.state();
-    return (
-      this.ticketDemoOverlay.incompleteStatusLabel(ticket) ??
-      this.ticketStatusLabels[this.ticketDemoOverlay.effectiveStatus(ticket)] ??
-      ticket.status
-    );
+    return this.ticketStatusLabels[ticket.status] ?? ticket.status;
   }
 
   ticketStatusAttr(ticket: Ticket): string {
-    this.ticketDemoOverlay.state();
-    return this.ticketDemoOverlay.statusAttr(ticket);
+    return ticket.status;
   }
 
   ticketPriorityLabel(priority: Ticket['priority']): string {

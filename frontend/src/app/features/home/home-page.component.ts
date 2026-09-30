@@ -115,10 +115,10 @@ export class HomePageComponent implements OnInit {
     const cards: TodoCard[] = [
       {
         key: 'tickets',
-        label: 'ปัญหารอแก้',
+        label: 'ปัญหาค้างทั้งทีม',
         count: this.pendingTickets(),
         icon: 'support_agent',
-        hint: 'ใบที่ยังไม่ปิดงาน',
+        hint: 'ใบที่รอลงมือแก้ · ใบของคุณดูที่「ใบที่ฉันต้องแก้」',
         route: '/app/tickets',
         queryParams: { view: 'open' },
         tone: 'urgent',

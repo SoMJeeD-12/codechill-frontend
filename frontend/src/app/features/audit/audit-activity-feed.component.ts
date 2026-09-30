@@ -1,12 +1,17 @@
 import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MAT_DATE_FORMATS } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { THAI_CE_NUMERIC_DATE_FORMATS } from '../../core/date/thai-ce-date-adapter';
 import { AUDIT_NOTIFICATION_TABLE, AuditLog } from '../../core/models/audit.model';
+import { toDateOnlyString } from '../../core/utils/date.util';
 import { UserSummary } from '../../core/models/user.model';
 import { AuditService } from '../../core/services/audit.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -62,15 +67,18 @@ interface FeedGroup {
   selector: 'app-audit-activity-feed',
   standalone: true,
   imports: [
+    ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
     MatCheckboxModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatSelectModule,
     MatTooltipModule,
     InfiniteScrollDirective,
   ],
+  providers: [{ provide: MAT_DATE_FORMATS, useValue: THAI_CE_NUMERIC_DATE_FORMATS }],
   templateUrl: './audit-activity-feed.component.html',
   styleUrl: './audit-activity-feed.component.scss',
 })
@@ -100,6 +108,10 @@ export class AuditActivityFeedComponent implements OnInit {
   readonly tableFilter = signal<string | null>(null);
   readonly dateFrom = signal('');
   readonly dateTo = signal('');
+  readonly dateRange = new FormGroup({
+    start: new FormControl<Date | null>(null),
+    end: new FormControl<Date | null>(null),
+  });
   readonly hideSessionEvents = signal(true);
   readonly hideNotifications = signal(true);
   readonly hideSystemEvents = signal(true);
@@ -172,17 +184,24 @@ export class AuditActivityFeedComponent implements OnInit {
     this.reload();
   }
 
-  setDateFrom(value: string): void {
-    this.dateFrom.set(value);
-    this.reload();
-  }
-
-  setDateTo(value: string): void {
-    this.dateTo.set(value);
+  /** โหลดใหม่เมื่อช่วงเปลี่ยนจริง — ระหว่างเลือกวันแรกในปฏิทินยังไม่ยิงซ้ำ */
+  applyDateRange(): void {
+    const { start, end } = this.dateRange.value;
+    const from = toDateOnlyString(start);
+    const to = toDateOnlyString(end);
+    if (start && !end && this.dateTo()) {
+      return;
+    }
+    if (from === this.dateFrom() && to === this.dateTo()) {
+      return;
+    }
+    this.dateFrom.set(from);
+    this.dateTo.set(to);
     this.reload();
   }
 
   clearDates(): void {
+    this.dateRange.reset({ start: null, end: null });
     this.dateFrom.set('');
     this.dateTo.set('');
     this.reload();
@@ -246,6 +265,18 @@ export class AuditActivityFeedComponent implements OnInit {
 
   tableLabel(log: AuditLog): string {
     return log.tableLabel?.trim() || log.tableName;
+  }
+
+  /** ชื่อของรายการที่ถูกกระทำ — ไม่โชว์เลข id ภายใน · ไม่รู้ชื่อคืน null */
+  recordLabel(log: AuditLog): string | null {
+    if (log.recordId == null || log.tableName !== 'users') {
+      return null;
+    }
+    if (log.user?.id === log.recordId) {
+      return log.user.fullName || log.user.username || null;
+    }
+    const u = this.users().find((x) => x.id === log.recordId);
+    return u?.fullName || null;
   }
 
   recordLink(log: AuditLog): (string | number)[] | null {

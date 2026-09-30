@@ -19,6 +19,7 @@ import { Ticket } from '../models/ticket.model';
 import { MaContract } from '../models/ma.model';
 import { WARRANTY_NEAR_EXPIRY_DAYS, Warranty } from '../models/warranty.model';
 import { formatMoneyDisplay } from '../utils/money.util';
+import { AuthService } from './auth.service';
 import { CustomerService } from './customer.service';
 import { FollowUpService } from './follow-up.service';
 import { MaService } from './ma.service';
@@ -91,6 +92,7 @@ export interface ExecutiveReport {
 export class ReportService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/reports`;
+  private readonly auth = inject(AuthService);
   private readonly customers = inject(CustomerService);
   private readonly projects = inject(ProjectService);
   private readonly tickets = inject(TicketService);
@@ -160,7 +162,10 @@ export class ReportService {
       // ไม่งั้นเปิดหน้ารายงานตรง ๆ ตัวเลขด้านบนจะขึ้น 0 ทั้งที่มีข้อมูลจริง
       customers: this.customers.listCustomers({ limit: 100 }).pipe(catchError(() => of([]))),
       projects: this.projects.listProjects({ limit: 100 }).pipe(catchError(() => of([]))),
-      tickets: this.tickets.listPending({ limit: 100 }).pipe(catchError(() => of([]))),
+      // ไม่มี ticket.view / โหลดไม่ได้ = null ("—") ไม่ใช่ 0 — หลักเดียวกับ nav/counts
+      tickets: this.auth.hasPermissionCode('ticket.view')
+        ? this.tickets.listPending({ limit: 100 }).pipe(catchError(() => of(null)))
+        : of(null),
     }).pipe(map((data) => this.buildReport(data)));
   }
 
@@ -176,7 +181,7 @@ export class ReportService {
     surveys: Array<{ title: string; id: number; responseCount: number }>;
     customers: Customer[];
     projects: Project[];
-    tickets: Ticket[];
+    tickets: Ticket[] | null;
   }): ExecutiveReport {
     const customerList = data.customers;
     const projectList = data.projects;
@@ -205,7 +210,7 @@ export class ReportService {
         `มีสัญญา MA ช่วงเวลาซ้อนกัน ${data.upcoming!.overlappingContractCount} รายการ — ยอดอาจนับซ้ำ`
       );
     }
-    if (openTickets.length > 0) {
+    if (openTickets && openTickets.length > 0) {
       alerts.push(`ปัญหาค้างในคิว ${openTickets.length} ใบ`);
     }
     if (alerts.length === 0) {
@@ -260,16 +265,20 @@ export class ReportService {
           hint: `จากทั้งหมด ${projectList.length}`,
           icon: 'folder_special',
         },
-        {
-          label: 'ปัญหาในคิว',
-          value: String(openTickets.length),
-          hint: 'รอรับ / กำลังทำ / กลับมาซ้ำ',
-          icon: 'support_agent',
-        },
+        ...(this.auth.hasPermissionCode('ticket.view')
+          ? [
+              {
+                label: 'ปัญหาในคิว',
+                value: openTickets ? String(openTickets.length) : '—',
+                hint: 'รอรับ / กำลังทำ / กลับมาซ้ำ',
+                icon: 'support_agent',
+              },
+            ]
+          : []),
         {
           label: 'มูลค่าตามสัญญารวม',
           value: byType ? this.thb(byType.totalContractValue) : '—',
-          hint: 'จากรายงาน API',
+          hint: 'โปรเจกต์ + สัญญา MA',
           icon: 'payments',
         },
       ],

@@ -44,9 +44,6 @@
     <div class="sections">
       <mat-card>
         <h2>มูลค่าตามสัญญา</h2>
-        @if (r.disclaimer) {
-          <p class="disclaimer inline">{{ r.disclaimer }}</p>
-        }
         @if (r.grandTotalContractValue) {
           <p class="grand-total">
             รวมทั้งสิ้น <strong>{{ r.grandTotalContractValue | baht }}</strong>
@@ -155,9 +152,6 @@
       @if (r.upcoming; as upcoming) {
         <mat-card>
           <h2>สัญญา MA ที่ยังคุ้มครองอยู่</h2>
-          @if (upcoming.disclaimer) {
-            <p class="disclaimer inline">{{ upcoming.disclaimer }}</p>
-          }
           <p class="metric-note">
             {{ upcoming.contractCount }} สัญญา · มูลค่าตามสัญญา {{ upcoming.totalContractValue | baht }}
           </p>
@@ -187,7 +181,7 @@
       @if (r.serviceCost; as sc) {
         <mat-card>
           <h2>ต้นทุนบริการ (ชั่วโมง)</h2>
-          @if (sc.disclaimer) {
+          @if (sc.disclaimer && sc.disclaimer !== r.disclaimer) {
             <p class="disclaimer inline">{{ sc.disclaimer }}</p>
           }
           <p class="grand-total">

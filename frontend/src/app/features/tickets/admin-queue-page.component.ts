@@ -44,6 +44,7 @@ const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
 ];
 
 type AdminSortKey =
+  | 'ticketNo'
   | 'title'
   | 'project'
   | 'receiver'
@@ -109,6 +110,7 @@ export class AdminQueuePageComponent implements OnInit {
   });
 
   readonly columns = [
+    'ticketNo',
     'title',
     'project',
     'receiver',
@@ -377,6 +379,8 @@ export class AdminQueuePageComponent implements OnInit {
 
   private sortValue(row: Ticket, key: AdminSortKey): string | number | null {
     switch (key) {
+      case 'ticketNo':
+        return row.ticketNo ?? '';
       case 'title':
         return row.title;
       case 'project':
