@@ -319,6 +319,13 @@
     display: none;
   }
 
+  /* เซลล์ที่มีบรรทัดที่สอง (เช่น ป้ายเตือนใต้สถานะ) — ปลดความสูงตายตัวของแถว */
+  .mat-mdc-cell.cell-stack {
+    height: auto;
+    max-height: none;
+    white-space: normal;
+  }
+
   /* คอลัมน์แรกกินพื้นที่เหลือ — ตารางกว้างเต็มแผง */
   .mat-mdc-header-cell:first-of-type,
   .mat-mdc-cell:first-of-type,
@@ -580,8 +587,8 @@
   }
 }
 
-/* ปุ่มการกระทำในตาราง — สูง 32px เว้นระยะ แยกปุ่มหลักกับปุ่มรอง */
-.row-actions {
+/* ปุ่มการกระทำในตาราง — สูง 32px เว้นระยะ แยกปุ่มหลักกับปุ่มรอง · ห้ามโดน <td class="row-actions"> (เซลล์จะเสีย display: table-cell) */
+.row-actions:not(td, th) {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
@@ -835,10 +842,10 @@
 
 /* ประกันที่ยังไม่แนบใบที่ลูกค้าเซ็น (attachmentCount === 0 และไม่ใช่ VOID) — ป้ายเตือนสีส้ม + ปุ่มแนบสแกน */
 .unsigned-row {
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: flex;
   align-items: center;
-  gap: 0.35rem 0.5rem;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
 }
 
 .unsigned-badge {
@@ -873,15 +880,6 @@
     font-size: 18px;
   }
 }
-
-.unsigned-attach.mat-mdc-button-base {
-  height: 26px;
-  min-height: 26px;
-  padding: 0 0.55rem;
-  font-size: 0.76rem;
-  line-height: 26px;
-}
-
 /* ปุ่มหลักของหน้า — ต้องมีปุ่มเดียวที่เด่นกว่าปุ่มอื่นเสมอ */
 .primary-action {
   height: 44px !important;

@@ -29,12 +29,12 @@
 }
 
 .row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  align-items: center;
-  justify-content: flex-end;
+  text-align: right;
   white-space: nowrap;
+
+  > * + * {
+    margin-left: 0.45rem;
+  }
 }
 
 :host ::ng-deep .data-table {
