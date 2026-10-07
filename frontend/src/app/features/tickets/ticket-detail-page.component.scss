@@ -385,59 +385,82 @@
   font-weight: 650;
 }
 
-.reopen-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0.5rem 0 0;
-  max-width: none;
-}
+.appended-notes {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed #d7e4df;
 
-.reopen-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  max-width: 100%;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid #fcd34d;
-  background: #fffbeb;
-  color: #92400e;
-  font: inherit;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  text-align: left;
-  cursor: pointer;
-
-  &:hover {
-    background: #fef3c7;
+  h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #6b7f79;
   }
 
-  &.is-expanded {
+  ul {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.4rem 0.65rem;
     border-radius: 10px;
-    align-items: flex-start;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.86rem;
+    line-height: 1.45;
+
+    &[data-kind='reject'] {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+  }
+
+  mat-icon {
+    flex: none;
+    align-self: center;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
   }
 }
 
-.reopen-chip__label {
-  flex: 0 0 auto;
+.appended-notes__label {
+  flex: none;
   font-weight: 700;
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
-.reopen-chip__text {
+.appended-notes__text {
   min-width: 0;
+  color: #3d4f49;
   overflow-wrap: anywhere;
 }
 
-.reopen-chips__more {
-  min-height: 2rem;
-  padding: 0 0.4rem;
+.reported-detail__status {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed #d7e4df;
+
+  .ticket-workflow,
+  app-status-bar {
+    margin: 0 !important;
+  }
+
+  .ticket-workflow {
+    padding: 0.55rem 0.85rem;
+  }
+}
+
+.reported-detail .appended-notes__more {
+  margin: 0.25rem 0 0 -0.5rem;
   font-size: 0.8rem;
-  color: #92400e;
 }
 
 .ticket-workflow {

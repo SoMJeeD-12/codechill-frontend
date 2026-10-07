@@ -15,18 +15,6 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <div class="status-row">
-          <span
-            class="status project-status-badge"
-            [attr.data-status]="p.status"
-            [attr.data-project-status]="p.status"
-          >
-            {{ projectStatusLabel(p.status) }}
-          </span>
-          <span class="priority-badge" [attr.data-priority]="p.priority">
-            {{ projectPriorityLabel(p.priority) }}
-          </span>
-        </div>
         <h1 class="app-page-title">{{ p.name }}</h1>
         <p class="app-subtitle">
           รหัส {{ p.code || '—' }}
@@ -94,13 +82,41 @@
     </header>
 
     <section class="project-summary" aria-label="สรุปโปรเจกต์">
-      <aside class="project-summary__note" [class.is-empty]="!projectDescription(p)">
-        <div class="project-summary__note-head">
-          <mat-icon aria-hidden="true">notes</mat-icon>
-          <span>รายละเอียดโปรเจกต์</span>
+      <div class="project-summary__top">
+      <aside class="summary-card">
+        <div class="status-item">
+          <span class="summary-kicker">สถานะโปรเจกต์</span>
+          <span
+            class="status project-status-badge"
+            [attr.data-status]="p.status"
+            [attr.data-project-status]="p.status"
+          >
+            {{ projectStatusLabel(p.status) }}
+          </span>
         </div>
-        <p>{{ projectDescription(p) || 'ยังไม่มีรายละเอียดเพิ่มเติม' }}</p>
+        <div class="status-item">
+          <span class="summary-kicker">ความเร่งด่วน</span>
+          <span class="priority-badge" [attr.data-priority]="p.priority">
+            {{ projectPriorityLabel(p.priority) }}
+          </span>
+        </div>
       </aside>
+      <aside class="summary-card summary-card--desc">
+        <div class="status-item">
+          <span class="summary-kicker">รายละเอียดโปรเจกต์</span>
+          @if (projectDescription(p); as desc) {
+            <p>{{ desc }}</p>
+            @if (isLongDescription(desc)) {
+              <button type="button" class="desc-toggle" (click)="openDescription(p, desc)">
+                ดูรายละเอียด
+              </button>
+            }
+          } @else {
+            <p class="is-empty">ยังไม่มีรายละเอียดเพิ่มเติม</p>
+          }
+        </div>
+      </aside>
+      </div>
 
       <div class="project-summary__spotlight">
         <article class="summary-hero">
@@ -490,7 +506,7 @@
                 </div>
               </div>
               <div class="app-panel-body">
-                <table mat-table [dataSource]="documents()" class="data-table">
+                <table mat-table [dataSource]="documentsPager.paged()" class="data-table">
                   <ng-container matColumnDef="title">
                     <th mat-header-cell *matHeaderCellDef>
                       <button type="button" class="sort-header" (click)="toggleDocumentSort('title')">
@@ -504,8 +520,13 @@
                       [attr.title]="row.note ? documentTitle(row) + ' — ' + row.note : documentTitle(row)"
                     >
                       <strong class="cell-clip">{{ documentTitle(row) }}</strong>
-                      @if (documentFileName(row); as fileName) {
-                        <span class="doc-file">{{ fileName }}</span>
+                      @if (row.warranty) {
+                        <span class="doc-file doc-source">
+                          <mat-icon>verified_user</mat-icon>
+                          ใบประกัน {{ warrantyCode(row.warranty) }}
+                        </span>
+                      } @else if (documentFileName(row)) {
+                        <span class="doc-file">{{ documentFileName(row) }}</span>
                       }
                     </td>
                   </ng-container>
@@ -543,15 +564,15 @@
                   <tr mat-row *matRowDef="let row; columns: documentColumns"></tr>
                 </table>
                 <app-table-paginator
-                  [length]="documentsTotal()"
-                  [pageIndex]="documentPageIndex()"
-                  [pageSize]="documentPageSize()"
-                  [pageSizeOptions]="documentPageSizeOptions"
-                  (page)="onDocumentsPage($event)"
+                  [length]="documentsPager.length()"
+                  [pageIndex]="documentsPager.pageIndex()"
+                  [pageSize]="documentsPager.pageSize()"
+                  [pageSizeOptions]="documentsPager.pageSizeOptions"
+                  (page)="documentsPager.onPage($event)"
                 />
-                @if (documents().length === 0 && documentsLoading()) {
+                @if (documentRows().length === 0 && documentsLoading()) {
                   <app-list-skeleton [rows]="3" [cols]="5" />
-                } @else if (documents().length === 0) {
+                } @else if (documentRows().length === 0) {
                   <p class="data-empty">
                     @if (documentSearch().trim()) {
                       ไม่พบเอกสารตามคำค้นหา

@@ -206,16 +206,8 @@ export const MENU_ITEMS: MenuItem[] = [
     group: 'support',
   },
   {
-    code: 'ma',
-    label: 'สัญญา MA',
-    description: 'สัญญาบำรุงรักษาทั้งระบบ',
-    icon: 'handshake',
-    route: '/app/ma',
-    group: 'support',
-  },
-  {
     code: 'ma-plans',
-    label: 'แผน MA',
+    label: 'สัญญา MA',
     description: 'แพ็กเกจดูแลรักษาระบบ',
     icon: 'playlist_add_check',
     route: '/app/ma/plans',

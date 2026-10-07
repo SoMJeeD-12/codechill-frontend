@@ -2,7 +2,6 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { DataCompleteness, formatCompleteness } from '../../core/models/report.model';
 import { ExecutiveReport, ReportService } from '../../core/services/report.service';
@@ -11,7 +10,7 @@ import { BahtPipe } from '../../shared/pipes/baht.pipe';
 @Component({
   selector: 'app-reports-page',
   standalone: true,
-  imports: [ThaiDatePipe, BahtPipe, RouterLink, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [ThaiDatePipe, BahtPipe, RouterLink, MatButtonModule, MatIconModule],
   templateUrl: './reports-page.component.html',
   styleUrl: './reports-page.component.scss',
 })

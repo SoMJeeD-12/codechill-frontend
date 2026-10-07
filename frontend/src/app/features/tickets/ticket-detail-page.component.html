@@ -112,49 +112,6 @@
       </div>
     </header>
 
-    <section
-      class="reported-detail"
-      [class.is-empty]="!reportedDetail()"
-      aria-label="รายละเอียดที่แจ้ง"
-    >
-      <h2>รายละเอียดที่แจ้ง</h2>
-      @if (reportedDetail(); as text) {
-        <p [class.is-clamped]="reportedDetailLong() && !reportedDetailExpanded()">{{ text }}</p>
-        @if (reportedDetailLong()) {
-          <button mat-button type="button" (click)="toggleReportedDetail()">
-            {{ reportedDetailExpanded() ? 'ย่อ' : 'ดูเพิ่ม' }}
-          </button>
-        }
-      } @else {
-        <p class="reported-detail__empty">ไม่มีรายละเอียด</p>
-      }
-      @if (reopenNoteRows().length) {
-        <div class="reopen-chips" aria-label="อาการที่กลับมาอีกครั้ง">
-          @for (row of visibleReopenNotes(); track row.index) {
-            <button
-              type="button"
-              class="reopen-chip"
-              [class.is-expanded]="showAllReopenNotes()"
-              (click)="toggleReopenNotes()"
-            >
-              <span class="reopen-chip__label">กลับมา · ครั้งที่ {{ row.index }}</span>
-              <span class="reopen-chip__text">{{ shortText(row.text, showAllReopenNotes() ? 160 : 72) }}</span>
-            </button>
-          }
-          @if (reopenNoteRows().length > 1) {
-            <button
-              mat-button
-              type="button"
-              class="reopen-chips__more"
-              (click)="toggleReopenNotes()"
-            >
-              {{ showAllReopenNotes() ? 'ย่อ' : 'ดูทั้งหมด (' + reopenNoteRows().length + ')' }}
-            </button>
-          }
-        </div>
-      }
-    </section>
-
     <nav class="ticket-stepper" aria-label="ขั้นตอนใบปัญหา">
       @for (step of stepperSteps(); track step.status; let last = $last) {
         <div
@@ -194,43 +151,73 @@
       </mat-card>
     </div>
 
+    <section
+      class="reported-detail"
+      [class.is-empty]="!reportedDetail()"
+      aria-label="รายละเอียดที่แจ้ง"
+    >
+      <h2>รายละเอียดที่แจ้ง</h2>
+      @if (reportedDetail(); as text) {
+        <p [class.is-clamped]="reportedDetailLong() && !reportedDetailExpanded()">{{ text }}</p>
+        @if (reportedDetailLong()) {
+          <button mat-button type="button" (click)="toggleReportedDetail()">
+            {{ reportedDetailExpanded() ? 'ย่อ' : 'ดูเพิ่ม' }}
+          </button>
+        }
+      } @else {
+        <p class="reported-detail__empty">ไม่มีรายละเอียด</p>
+      }
+      @if (reopenNoteRows().length) {
+        <div class="appended-notes" aria-label="บันทึกหลังแจ้ง">
+          <h3>บันทึกหลังแจ้ง</h3>
+          <ul>
+            @for (row of visibleReopenNotes(); track row.key) {
+              <li [attr.data-kind]="row.kind">
+                <mat-icon aria-hidden="true">{{ row.kind === 'reopen' ? 'replay' : 'undo' }}</mat-icon>
+                <span class="appended-notes__label">
+                  {{ row.kind === 'reopen' ? 'เปิดกลับมาครั้งที่ ' + row.index : 'ตรวจไม่ผ่านครั้งที่ ' + row.index }}
+                </span>
+                <span class="appended-notes__text">
+                  {{ row.kind === 'reopen' ? 'อาการ: ' : 'เหตุผล: ' }}{{ row.text }}
+                </span>
+              </li>
+            }
+          </ul>
+          @if (reopenNoteRows().length > 2) {
+            <button mat-button type="button" class="appended-notes__more" (click)="toggleReopenNotes()">
+              {{ showAllReopenNotes() ? 'ย่อ' : 'ดูทั้งหมด (' + reopenNoteRows().length + ')' }}
+            </button>
+          }
+        </div>
+      }
+      <div class="reported-detail__status">
+        @if (isIncompleteWork() && ticketNextHint()) {
+          <aside
+            class="ticket-workflow"
+            [attr.data-result]="statusBarAttr()"
+            aria-label="สถานะใบปัญหา"
+          >
+            <div class="ticket-workflow__main">
+              <span class="ticket-workflow__badge">{{ statusBarLabel() }}</span>
+              <span class="ticket-workflow__meta">
+                ผู้รับผิดชอบ {{ userName(t.assignedUserId) }}
+                · รวมแก้ {{ t.resolutionCount || 0 }} ครั้ง
+              </span>
+            </div>
+          </aside>
+        } @else {
+          <app-status-bar
+            [status]="statusBarAttr()"
+            [label]="statusBarLabel()"
+            [detail]="ticketNextHint()?.detail || ticketNextHint()?.title || statusDetail(t)"
+            [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
+          />
+        }
+      </div>
+    </section>
+
     @if (demoBanner()) {
       <p class="demo-banner">{{ demoBanner() }}</p>
-    }
-
-    <!-- เคสแก้ไขบางส่วน / ยังไม่สำเร็จ: สถานะ + CTA ในแถบเดียว -->
-    @if (isIncompleteWork() && ticketNextHint()) {
-      <aside
-        class="ticket-workflow"
-        [attr.data-result]="statusBarAttr()"
-        aria-label="สถานะใบปัญหา"
-      >
-        <div class="ticket-workflow__main">
-          <span class="ticket-workflow__badge">{{ statusBarLabel() }}</span>
-          <span class="ticket-workflow__meta">
-            ผู้รับผิดชอบ {{ userName(t.assignedUserId) }}
-            · รวมแก้ {{ t.resolutionCount || 0 }} ครั้ง
-          </span>
-        </div>
-      </aside>
-    } @else {
-      <app-status-bar
-        [status]="statusBarAttr()"
-        [label]="statusBarLabel()"
-        [detail]="statusDetail(t)"
-        [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
-      />
-
-      @if (ticketNextHint(); as hint) {
-        <aside class="next-hint" [attr.data-tone]="hint.tone" aria-label="ขั้นถัดไปของใบปัญหา">
-          <div class="next-hint__body">
-            <p class="next-hint__title">{{ hint.title }}</p>
-            @if (hint.detail) {
-              <p class="next-hint__detail">{{ hint.detail }}</p>
-            }
-          </div>
-        </aside>
-      }
     }
 
     @if (timelineEvents().length) {

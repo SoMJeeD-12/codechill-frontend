@@ -27,56 +27,93 @@
     </header>
 
     @if (summary(); as sum) {
-      <div class="app-meta-grid">
-        <mat-card class="app-meta-card">
-          <strong>จำนวนคำตอบ</strong>
-          <span>{{ sum.responseCount }}</span>
-        </mat-card>
-        <mat-card class="app-meta-card">
-          <strong>อัตราตอบกลับ</strong>
-          <span>{{ sum.responseRate }}%</span>
-        </mat-card>
-        <mat-card class="app-meta-card">
-          <strong>คะแนนเฉลี่ย</strong>
-          <span>{{ scoreDisplay(sum.averageScore) }}</span>
-        </mat-card>
-        <mat-card class="dist-card">
-          <strong>คะแนนเฉลี่ยรายคำถาม (ให้คะแนน)</strong>
-          @if (ratingQuestionSummaries().length === 0) {
-            <p class="empty">ยังไม่มีคำถามแบบให้คะแนน หรือยังไม่มีข้อมูล</p>
-          } @else {
-            <div class="bars">
-              @for (q of ratingQuestionSummaries(); track q.questionId) {
-                <div class="bar-row wide">
-                  <span class="q-label" [title]="q.questionText">{{ q.questionText }}</span>
-                  <div class="track">
-                    <div class="fill" [style.width.%]="ratingBarPercent(q.averageScore)"></div>
-                  </div>
-                  <span class="pct">{{ scoreDisplay(q.averageScore) }}</span>
-                </div>
-              }
-            </div>
-          }
-        </mat-card>
+      <div class="totals-grid">
+        <div class="total-card">
+          <mat-icon class="total-card__icon">forum</mat-icon>
+          <span class="total-card__value">{{ sum.responseCount }}</span>
+          <span class="total-card__label">จำนวนคำตอบ</span>
+          <span class="total-card__hint">ชุดคำตอบที่ลูกค้าส่งกลับ</span>
+        </div>
+        <div class="total-card">
+          <mat-icon class="total-card__icon">reply</mat-icon>
+          <span class="total-card__value">{{ sum.responseRate }}%</span>
+          <span class="total-card__label">อัตราตอบกลับ</span>
+          <span class="total-card__hint">ตอบแล้วเทียบกับที่ส่งออก</span>
+        </div>
+        <div class="total-card">
+          <mat-icon class="total-card__icon">star_outline</mat-icon>
+          <span class="total-card__value">
+            {{ scoreDisplay(sum.averageScore) }}
+            @if (sum.averageScore != null) {
+              <small class="of-five">/ 5</small>
+            }
+          </span>
+          <span class="total-card__label">คะแนนเฉลี่ย</span>
+          <span class="total-card__hint">เฉลี่ยจากคำถามแบบให้คะแนน</span>
+        </div>
       </div>
+
+      <section class="box">
+        <div class="box__head">
+          <div>
+            <h2 class="box__title">คะแนนเฉลี่ยรายคำถาม</h2>
+            <p class="box__note">เฉพาะคำถามแบบให้คะแนน · เต็ม 5</p>
+          </div>
+        </div>
+        @if (ratingQuestionSummaries().length === 0) {
+          <p class="empty">ยังไม่มีคำถามแบบให้คะแนน หรือยังไม่มีข้อมูล</p>
+        } @else {
+          <div class="q-bars">
+            @for (q of ratingQuestionSummaries(); track q.questionId; let i = $index) {
+              <div class="q-row">
+                <span class="q-no">{{ i + 1 }}</span>
+                <span class="q-text">{{ q.questionText }}</span>
+                <div class="track">
+                  <div class="fill" [style.width.%]="ratingBarPercent(q.averageScore)"></div>
+                </div>
+                <span class="q-score">
+                  <strong>{{ scoreDisplay(q.averageScore) }}</strong> / 5
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </section>
     }
 
-    <mat-card class="breakdown-card">
-      <div class="breakdown-head">
+    <section class="box">
+      <div class="box__head">
         <div>
-          <h2>สรุปคะแนนตามลูกค้าและรายเดือน</h2>
-          <p class="muted">กรองตามวันที่ลูกค้าตอบ · คะแนน null แสดงเป็น — ไม่นับเป็น 0</p>
+          <h2 class="box__title">สรุปคะแนนตามลูกค้าและรายเดือน</h2>
+          <p class="box__note">กรองตามวันที่ลูกค้าตอบ · เดือนที่ไม่มีคะแนนไม่นับเป็น 0</p>
         </div>
         <form class="breakdown-filters" [formGroup]="breakdownRange" (ngSubmit)="loadBreakdown()">
           <mat-form-field appearance="outline">
             <mat-label>จากวันที่</mat-label>
-            <input matInput type="date" formControlName="dateFrom" />
+            <input
+              matInput
+              [matDatepicker]="fromPicker"
+              formControlName="dateFrom"
+              [max]="breakdownRange.controls.dateTo.value"
+              readonly
+              (click)="fromPicker.open()"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+            <mat-datepicker #fromPicker />
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>ถึงวันที่</mat-label>
-            <input matInput type="date" formControlName="dateTo" />
+            <input
+              matInput
+              [matDatepicker]="toPicker"
+              formControlName="dateTo"
+              [min]="breakdownRange.controls.dateFrom.value"
+              readonly
+              (click)="toPicker.open()"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+            <mat-datepicker #toPicker />
           </mat-form-field>
-          <button mat-stroked-button type="submit" [disabled]="breakdownLoading()">ดูสรุป</button>
         </form>
       </div>
 
@@ -85,47 +122,58 @@
       } @else {
         @if (breakdown(); as bd) {
         <p class="overall">
-          เฉลี่ยรวม {{ scoreWithCount(bd.overall.averageScore, bd.overall.scoredCount) }}
-          · คำตอบ {{ bd.overall.responseCount }} ชุด
+          <span class="overall__chip">
+            เฉลี่ยรวม <strong>{{ scoreDisplay(bd.overall.averageScore) }}</strong> / 5
+          </span>
+          <span class="overall__meta">
+            จาก {{ bd.overall.scoredCount }} คำตอบที่ให้คะแนน · ทั้งหมด {{ bd.overall.responseCount }} ชุด
+          </span>
         </p>
 
         <div class="breakdown-grid">
           <div>
-            <h3>รายเดือน</h3>
-            <div class="bars">
-              @for (m of bd.byMonth; track m.month) {
-                <div class="bar-row">
-                  <span>{{ m.month }}</span>
-                  <div class="track">
-                    @if (m.averageScore != null) {
-                      <div class="fill" [style.width.%]="monthBarPercent(m.averageScore)"></div>
-                    }
+            <h3 class="section-label">รายเดือน</h3>
+            <div class="col-chart" role="img" aria-label="กราฟคะแนนเฉลี่ยรายเดือน">
+              <div class="col-chart__plot">
+                @for (m of bd.byMonth; track m.month) {
+                  <div
+                    class="col-chart__col"
+                    [class.is-empty]="m.averageScore == null"
+                    [title]="monthLabel(m.month) + ' · ' + (m.averageScore == null ? 'ยังไม่มีคะแนน' : scoreWithCount(m.averageScore, m.scoredCount))"
+                  >
+                    <div class="col-chart__bar-area">
+                      @if (m.averageScore != null) {
+                        <div class="col-chart__bar" [style.height.%]="monthBarPercent(m.averageScore)">
+                          <span class="col-chart__value">{{ m.averageScore | number: '1.2-2' }}</span>
+                        </div>
+                      }
+                    </div>
+                    <span class="col-chart__label">{{ monthLabel(m.month) }}</span>
                   </div>
-                  <span class="pct">{{ scoreWithCount(m.averageScore, m.scoredCount) }}</span>
-                </div>
-              }
+                }
+              </div>
             </div>
           </div>
           <div>
-            <h3>รายลูกค้า</h3>
-            <table mat-table [dataSource]="breakdownByCustomerPager.paged()" class="data-table full-table">
-              <ng-container matColumnDef="customer">
-                <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
-                <td mat-cell *matCellDef="let row">{{ row.customerName || ('#' + row.customerId) }}</td>
-              </ng-container>
-              <ng-container matColumnDef="avg">
-                <th mat-header-cell *matHeaderCellDef>เฉลี่ย</th>
-                <td mat-cell *matCellDef="let row">
-                  {{ scoreWithCount(row.averageScore, row.scoredCount) }}
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="count">
-                <th mat-header-cell *matHeaderCellDef>คำตอบ</th>
-                <td mat-cell *matCellDef="let row">{{ row.responseCount }}</td>
-              </ng-container>
-              <tr mat-header-row *matHeaderRowDef="['customer', 'avg', 'count']"></tr>
-              <tr mat-row *matRowDef="let row; columns: ['customer', 'avg', 'count']"></tr>
-            </table>
+            <h3 class="section-label">รายลูกค้า</h3>
+            <div class="h-chart">
+              @for (row of breakdownByCustomerPager.paged(); track row.customerId) {
+                <div class="h-chart__row">
+                  <span class="h-chart__name" [title]="row.customerName || ''">
+                    {{ row.customerName || ('#' + row.customerId) }}
+                  </span>
+                  <div class="track">
+                    @if (row.averageScore != null) {
+                      <div class="fill" [style.width.%]="monthBarPercent(row.averageScore)"></div>
+                    }
+                  </div>
+                  <span class="h-chart__value">
+                    <strong>{{ row.averageScore != null ? (row.averageScore | number: '1.2-2') : '—' }}</strong>
+                    <small>{{ row.responseCount }} คำตอบ</small>
+                  </span>
+                </div>
+              }
+            </div>
             <app-table-paginator
               [length]="breakdownByCustomerPager.length()"
               [pageIndex]="breakdownByCustomerPager.pageIndex()"
@@ -142,14 +190,16 @@
           <p class="empty">ยังไม่มีข้อมูลสรุปในช่วงที่เลือก</p>
         }
       }
-    </mat-card>
+    </section>
 
     <div class="stack">
-      <mat-card>
-        <div class="card-head">
-          <h2>ประวัติการส่ง</h2>
+      <section class="box">
+        <div class="box__head">
+          <div>
+            <h2 class="box__title">ประวัติการส่ง</h2>
+            <p class="box__note">ส่งและคีย์คำตอบทำที่แท็บ「แบบประเมิน」ในโปรเจกต์</p>
+          </div>
         </div>
-        <p class="hint">ส่งและคีย์คำตอบทำที่แท็บ「แบบประเมิน」ในโปรเจกต์</p>
         <table mat-table [dataSource]="assignmentsPager.paged()" class="data-table full-table">
           <ng-container matColumnDef="customer">
             <th mat-header-cell *matHeaderCellDef>ลูกค้า</th>
@@ -197,11 +247,11 @@
         @if (assignments().length === 0) {
           <p class="empty">ยังไม่มีการส่ง</p>
         }
-      </mat-card>
+      </section>
 
-      <mat-card>
-        <div class="card-head">
-          <h2>คำตอบล่าสุด</h2>
+      <section class="box">
+        <div class="box__head">
+          <h2 class="box__title">คำตอบล่าสุด</h2>
         </div>
         <table mat-table [dataSource]="responsesPager.paged()" class="data-table full-table">
           <ng-container matColumnDef="customer">
@@ -229,7 +279,7 @@
         @if (responses().length === 0) {
           <p class="empty">ยังไม่มีคำตอบ</p>
         }
-      </mat-card>
+      </section>
     </div>
   </section>
   }

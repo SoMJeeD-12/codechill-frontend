@@ -1,5 +1,6 @@
-import { Location } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DecimalPipe, Location } from '@angular/common';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,6 +24,8 @@ import {
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
 import { navigateBack } from '../../core/utils/navigation.util';
+import { THAI_MONTHS_SHORT, toDateOnlyString } from '../../core/utils/date.util';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -31,6 +34,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
   selector: 'app-survey-detail-page',
   standalone: true,
   imports: [
+    DecimalPipe,
     ThaiDatePipe,
     RouterLink,
     ReactiveFormsModule,
@@ -39,6 +43,7 @@ import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatDatepickerModule,
     MatTableModule,
     MatSnackBarModule,
     TablePaginatorComponent,
@@ -53,6 +58,7 @@ export class SurveyDetailPageComponent implements OnInit {
   private readonly api = inject(SurveyService);
   private readonly fb = inject(FormBuilder);
   private readonly snack = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly survey = signal<Survey | null>(null);
   readonly responses = signal<SurveyResponseDetail[]>([]);
@@ -66,7 +72,12 @@ export class SurveyDetailPageComponent implements OnInit {
   readonly responseColumns = ['customer', 'score', 'at'];
   readonly assignmentColumns = ['customer', 'project', 'status', 'sentAt', 'answeredAt'];
 
-  readonly breakdownByCustomer = computed(() => this.breakdown()?.byCustomer ?? []);
+  /** เรียงคะแนนมาก → น้อย สำหรับกราฟ · ไม่มีคะแนนไว้ท้าย */
+  readonly breakdownByCustomer = computed(() =>
+    [...(this.breakdown()?.byCustomer ?? [])].sort(
+      (a, b) => (b.averageScore ?? -1) - (a.averageScore ?? -1)
+    )
+  );
   readonly breakdownByCustomerPager = createClientPager(this.breakdownByCustomer);
   readonly assignmentsPager = createClientPager(this.assignments);
   readonly responsesPager = createClientPager(this.responses);
@@ -91,6 +102,9 @@ export class SurveyDetailPageComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.reload(id);
+    this.breakdownRange.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadBreakdown());
   }
 
   reload(id?: number): void {
@@ -126,7 +140,9 @@ export class SurveyDetailPageComponent implements OnInit {
     if (!id) {
       return;
     }
-    const { dateFrom, dateTo } = this.breakdownRange.getRawValue();
+    const range = this.breakdownRange.getRawValue();
+    const dateFrom = toDateOnlyString(range.dateFrom);
+    const dateTo = toDateOnlyString(range.dateTo);
     this.breakdownLoading.set(true);
     this.api.getScoreBreakdown(id, { dateFrom, dateTo }).subscribe({
       next: (row) => {
@@ -148,6 +164,15 @@ export class SurveyDetailPageComponent implements OnInit {
     return Math.max(0, Math.min(100, Math.round((score / 5) * 100)));
   }
 
+  /** '2026-09' → 'ก.ย. 2026' (ค.ศ.) */
+  monthLabel(month: string): string {
+    const [y, m] = month.split('-').map(Number);
+    if (!y || !m || m < 1 || m > 12) {
+      return month;
+    }
+    return `${THAI_MONTHS_SHORT[m - 1]} ${y}`;
+  }
+
   scoreWithCount(avg: number | null, scoredCount: number): string {
     if (avg == null) {
       return '—';
@@ -164,7 +189,7 @@ export class SurveyDetailPageComponent implements OnInit {
   }
 
   scoreDisplay(score: number | null | undefined): string {
-    return score == null ? '—' : String(score);
+    return score == null ? '—' : Number(score).toFixed(2);
   }
 
   ratingBarPercent(averageScore: number | null | undefined): number {
@@ -175,14 +200,13 @@ export class SurveyDetailPageComponent implements OnInit {
   }
 }
 
-function defaultBreakdownTo(): string {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+function defaultBreakdownTo(): Date {
+  return new Date();
 }
 
-function defaultBreakdownFrom(): string {
+function defaultBreakdownFrom(): Date {
   const d = new Date();
   d.setMonth(d.getMonth() - 5);
   d.setDate(1);
-  return d.toISOString().slice(0, 10);
+  return d;
 }

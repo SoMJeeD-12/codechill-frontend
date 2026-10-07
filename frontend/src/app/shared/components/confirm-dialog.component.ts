@@ -56,6 +56,7 @@ export interface ConfirmDialogData {
       color: #334155;
       max-width: 28rem;
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
     .confirm-danger {
       --mdc-filled-button-container-color: #dc2626;

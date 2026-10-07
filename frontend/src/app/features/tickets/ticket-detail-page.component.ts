@@ -193,20 +193,25 @@ export class TicketDetailPageComponent implements OnInit {
     this.reportedDetailExpanded.update((open) => !open);
   }
 
-  /** รายการอาการกลับมา ใหม่→เก่า พร้อมเลขครั้ง */
+  /** บันทึกที่ระบบต่อท้าย (เปิดกลับมา / ตรวจไม่ผ่าน) ใหม่→เก่า พร้อมเลขครั้งต่อชนิด */
   readonly reopenNoteRows = computed(() => {
-    const notes = this.descriptionParts().reopenNotes;
-    return notes
-      .map((text, i) => ({ index: i + 1, text }))
+    const counts = { reopen: 0, reject: 0 };
+    return this.descriptionParts()
+      .notes.map((note, i) => ({
+        key: i,
+        kind: note.kind,
+        index: ++counts[note.kind],
+        text: note.text,
+      }))
       .reverse();
   });
 
   readonly visibleReopenNotes = computed(() => {
     const rows = this.reopenNoteRows();
-    if (this.showAllReopenNotes() || rows.length <= 1) {
+    if (this.showAllReopenNotes() || rows.length <= 2) {
       return rows;
     }
-    return rows.slice(0, 1);
+    return rows.slice(0, 2);
   });
 
   /** รอบถัดไปหลังเปิดกลับมา (resolutionCount เดิม + 1) */
@@ -1178,7 +1183,8 @@ export class TicketResolutionFormDialogComponent {
 
   readonly users = this.usersApi.assignableTicket;
   readonly resultLabels = RESOLUTION_RESULT_LABELS;
-  readonly results = Object.keys(RESOLUTION_RESULT_LABELS) as ResolutionResult[];
+  /** PARTIAL เลิกให้เลือกแล้ว — label ยังคงไว้แสดงรอบเก่าที่เคยบันทึก */
+  readonly results: ResolutionResult[] = ['SUCCESS', 'FAILED'];
 
   readonly form = this.fb.nonNullable.group({
     rootCause: [''],

@@ -120,7 +120,7 @@ export function addDays(start: Date, days: number): Date {
 /** pattern สำหรับช่องกรอกเวลาไทย */
 export const THAI_TIME_PATTERN = /^\d{1,2}[.:]\d{2}$/;
 
-const THAI_MONTHS_SHORT = [
+export const THAI_MONTHS_SHORT = [
   'ม.ค.',
   'ก.พ.',
   'มี.ค.',

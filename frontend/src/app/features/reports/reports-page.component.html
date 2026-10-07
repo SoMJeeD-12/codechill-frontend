@@ -2,7 +2,12 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">รายงาน</h1>
-      <p class="app-subtitle">ดูสรุปตัวเลขตามสัญญา</p>
+      <p class="app-subtitle">
+        สรุปตัวเลขตามสัญญา
+        @if (report(); as r) {
+          · ข้อมูล ณ {{ r.generatedAt | thaiDate }}
+        }
+      </p>
     </div>
     <div class="app-header-actions">
       <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
@@ -13,200 +18,213 @@
   </header>
 
   @if (report(); as r) {
-    <p class="generated">สร้างเมื่อ {{ r.generatedAt | thaiDate }}</p>
-
     @if (r.disclaimer) {
-      <p class="disclaimer">{{ r.disclaimer }}</p>
+      <p class="note-box">
+        <mat-icon>info</mat-icon>
+        <span>{{ r.disclaimer }}</span>
+      </p>
     }
 
     <div class="kpi-grid">
       @for (k of r.kpis; track k.label) {
-        <mat-card class="kpi">
-          <mat-icon>{{ k.icon }}</mat-icon>
-          <div>
-            <strong>{{ k.value }}</strong>
-            <span>{{ k.label }}</span>
-            <small>{{ k.hint }}</small>
+        <div class="kpi">
+          <span class="kpi__icon"><mat-icon>{{ k.icon }}</mat-icon></span>
+          <div class="kpi__body">
+            <span class="kpi__label">{{ k.label }}</span>
+            <strong class="kpi__value">{{ k.value }}</strong>
+            @if (k.hint) {
+              <small>{{ k.hint }}</small>
+            }
           </div>
-        </mat-card>
+        </div>
       }
     </div>
 
-    <div class="alerts">
-      <h2>จุดที่ควรจับตา</h2>
-      <ul>
-        @for (a of r.alerts; track a) {
-          <li>{{ a }}</li>
-        }
-      </ul>
-    </div>
+    @if (r.alerts.length) {
+      <div class="alerts">
+        <h2><mat-icon>priority_high</mat-icon> จุดที่ควรจับตา ({{ r.alerts.length }})</h2>
+        <ul>
+          @for (a of r.alerts; track a) {
+            <li>{{ a }}</li>
+          }
+        </ul>
+      </div>
+    }
 
-    <div class="sections">
-      <mat-card>
-        <h2>มูลค่าตามสัญญา</h2>
+    <h2 class="group-title">การเงินตามสัญญา</h2>
+    <div class="cards">
+      <article class="card">
+        <h3><mat-icon>payments</mat-icon> มูลค่าตามสัญญา</h3>
         @if (r.grandTotalContractValue) {
-          <p class="grand-total">
-            รวมทั้งสิ้น <strong>{{ r.grandTotalContractValue | baht }}</strong>
+          <p class="total">
+            <span>รวมทั้งสิ้น</span>
+            <strong>{{ r.grandTotalContractValue | baht }}</strong>
           </p>
         }
         @for (row of r.contractValue; track row.label) {
-          <div class="metric">
-            <div class="metric-top">
+          <div class="bar-row">
+            <div class="bar-row__top">
               <span>{{ row.label }}</span>
               <strong>{{ row.display }}</strong>
             </div>
+            <div class="track"><div class="fill" [style.width.%]="barWidth(row.value, r.contractValue)"></div></div>
             @if (row.note) {
-              <p class="metric-note">{{ row.note }}</p>
+              <small class="muted">{{ row.note }}</small>
             }
-            <div class="track">
-              <div class="fill" [style.width.%]="barWidth(row.value, r.contractValue)"></div>
-            </div>
           </div>
         }
         @if (completeness(r.oneTimeCompletenessLabel); as oneTimeLabel) {
-          <p class="completeness">ค่าบริการรายครั้ง: {{ oneTimeLabel }}</p>
+          <p class="foot">ค่าบริการรายครั้ง: {{ oneTimeLabel }}</p>
         }
         @if (hasExcluded(r)) {
-          <p class="excluded">
+          <p class="foot">
             ไม่นับสัญญาที่ยกเลิก {{ r.excludedCancelledValue | baht }}
             @if (r.excludedCancelledCount > 0) {
               ({{ r.excludedCancelledCount }} รายการ)
             }
           </p>
         }
-      </mat-card>
+      </article>
 
-      <mat-card>
-        <h2>อันดับลูกค้าตามมูลค่าตามสัญญา</h2>
-        @for (row of r.ranking; track row.customerId) {
-          <div class="rank-row">
-            <div class="rank-main">
-              <a [routerLink]="['/app/customers', row.customerId]">{{ row.label }}</a>
+      <article class="card">
+        <h3><mat-icon>leaderboard</mat-icon> ลูกค้าที่มีมูลค่าตามสัญญาสูงสุด</h3>
+        @for (row of r.ranking; track row.customerId; let i = $index) {
+          <div class="bar-row">
+            <div class="bar-row__top">
+              <span class="rank-no">{{ i + 1 }}</span>
+              <a class="app-link" [routerLink]="['/app/customers', row.customerId]">{{ row.label }}</a>
               <strong>{{ row.display }}</strong>
             </div>
+            <div class="track"><div class="fill" [style.width.%]="barWidth(row.value, r.ranking)"></div></div>
             @if (row.overlappingContractCount > 0) {
-              <p class="overlap-warn">
-                <mat-icon>warning</mat-icon>
-                สัญญาซ้อน {{ row.overlappingContractCount }} — ยอดอาจนับซ้ำ
-              </p>
+              <small class="warn"><mat-icon>warning</mat-icon> สัญญาซ้อน {{ row.overlappingContractCount }} — ยอดอาจนับซ้ำ</small>
             }
-            <div class="track">
-              <div class="fill" [style.width.%]="barWidth(row.value, r.ranking)"></div>
-            </div>
           </div>
         } @empty {
-          <p class="empty">ยังไม่มีข้อมูลจัดอันดับ</p>
+          <p class="muted">ยังไม่มีข้อมูลจัดอันดับ</p>
         }
-      </mat-card>
+      </article>
 
-      <mat-card>
-        <h2>การดำเนินงาน</h2>
+      @if (r.upcoming; as upcoming) {
+        <article class="card card--wide">
+          <h3><mat-icon>handshake</mat-icon> สัญญา MA ที่ยังคุ้มครองอยู่</h3>
+          <p class="muted">
+            {{ upcoming.contractCount }} สัญญา · มูลค่าตามสัญญารวม {{ upcoming.totalContractValue | baht }}
+          </p>
+          @if (upcoming.overlappingContractCount > 0) {
+            <small class="warn"><mat-icon>warning</mat-icon> สัญญาซ้อน {{ upcoming.overlappingContractCount }} — ยอดอาจนับซ้ำ</small>
+          }
+          <ul class="rows">
+            @for (item of upcoming.items; track item.contractId) {
+              <li>
+                <div class="rows__main">
+                  <a class="app-link" [routerLink]="['/app/ma', item.contractId]">
+                    {{ item.contractNo || ('#' + item.contractId) }}
+                  </a>
+                  <small class="muted">{{ item.customerName || ('ลูกค้า #' + item.customerId) }}</small>
+                </div>
+                <strong>{{ item.price | baht }}</strong>
+                <span class="muted">ถึง {{ item.endDate | thaiDate: 'date' }}</span>
+              </li>
+            } @empty {
+              <li class="muted">ไม่มีสัญญาที่ยังคุ้มครองอยู่</li>
+            }
+          </ul>
+        </article>
+      }
+    </div>
+
+    <h2 class="group-title">ใกล้หมดอายุภายใน {{ r.nearExpiryDays }} วัน</h2>
+    <article class="card">
+      <p class="muted">ประกันและสัญญา MA — เกณฑ์เดียวกับการ์ดหน้าแรก</p>
+      <ul class="rows">
+        @for (item of r.nearExpiry; track item.kind + '-' + item.id) {
+          <li>
+            <span class="kind">{{ item.kind === 'ma' ? 'MA' : 'ประกัน' }}</span>
+            <div class="rows__main">
+              <a class="app-link" [routerLink]="item.link" [queryParams]="item.queryParams">{{ item.title }}</a>
+              <small class="muted">{{ item.meta }}</small>
+            </div>
+            <span class="muted">ถึง {{ item.endDate | thaiDate: 'date' }}</span>
+            <span class="days" [class.days--urgent]="item.daysRemaining <= 7">
+              เหลือ {{ item.daysRemaining }} วัน
+            </span>
+          </li>
+        } @empty {
+          <li class="muted">ไม่มีประกันหรือสัญญา MA ที่จะหมดภายใน {{ r.nearExpiryDays }} วัน</li>
+        }
+      </ul>
+    </article>
+
+    <h2 class="group-title">การดำเนินงานและบริการ</h2>
+    <div class="cards">
+      <article class="card">
+        <h3><mat-icon>insights</mat-icon> การดำเนินงาน</h3>
         @for (row of r.operations; track row.label) {
-          <div class="metric">
-            <div class="metric-top">
+          <div class="bar-row">
+            <div class="bar-row__top">
               <span>{{ row.label }}</span>
               <strong>{{ row.display }}</strong>
             </div>
-            <div class="track">
-              <div class="fill ops" [style.width.%]="barWidth(row.value, r.operations)"></div>
-            </div>
+            <div class="track"><div class="fill fill--ops" [style.width.%]="barWidth(row.value, r.operations)"></div></div>
           </div>
         }
         @if (serviceCostCompleteness(r); as scLabel) {
-          <p class="completeness">ชั่วโมงบริการ: {{ scLabel }}</p>
+          <p class="foot">ชั่วโมงบริการ: {{ scLabel }}</p>
         }
-      </mat-card>
+      </article>
 
-      <mat-card>
-        <h2>ความพึงพอใจตามแบบประเมิน</h2>
-        @for (row of r.satisfaction; track row.label) {
-          <div class="sat-row">
-            <div>
-              <strong>{{ row.label }}</strong>
-              <p>{{ row.display }}</p>
-            </div>
-            <a mat-button routerLink="/app/surveys">ดูแบบประเมิน</a>
-          </div>
-        } @empty {
-          <p class="empty">ยังไม่มีแบบประเมิน</p>
-        }
-      </mat-card>
-
-      <mat-card>
-        <h2>ใกล้หมดอายุภายใน {{ r.nearExpiryDays }} วัน</h2>
-        <p class="metric-note">ประกันและสัญญา MA — เกณฑ์เดียวกับการ์ดหน้าแรก</p>
-        <ul class="upcoming-list">
-          @for (item of r.nearExpiry; track item.kind + '-' + item.id) {
+      <article class="card">
+        <h3>
+          <mat-icon>sentiment_satisfied</mat-icon> ความพึงพอใจตามแบบประเมิน
+          <a class="app-link head-link" routerLink="/app/surveys">ดูแบบประเมิน</a>
+        </h3>
+        <ul class="rows">
+          @for (row of r.satisfaction; track row.label) {
             <li>
-              <a [routerLink]="item.link" [queryParams]="item.queryParams">{{ item.title }}</a>
-              · {{ item.meta }}
-              · ถึง {{ item.endDate | thaiDate: 'date' }}
-              · เหลือ {{ item.daysRemaining }} วัน
+              <div class="rows__main">
+                <strong>{{ row.label }}</strong>
+                <small class="muted">{{ row.display }}</small>
+              </div>
             </li>
           } @empty {
-            <li class="empty">ไม่มีประกันหรือสัญญา MA ที่จะหมดภายใน {{ r.nearExpiryDays }} วัน</li>
+            <li class="muted">ยังไม่มีแบบประเมิน</li>
           }
         </ul>
-      </mat-card>
-
-      @if (r.upcoming; as upcoming) {
-        <mat-card>
-          <h2>สัญญา MA ที่ยังคุ้มครองอยู่</h2>
-          <p class="metric-note">
-            {{ upcoming.contractCount }} สัญญา · มูลค่าตามสัญญา {{ upcoming.totalContractValue | baht }}
-          </p>
-          @if (upcoming.overlappingContractCount > 0) {
-            <p class="overlap-warn">
-              <mat-icon>warning</mat-icon>
-              สัญญาซ้อน {{ upcoming.overlappingContractCount }} — ยอดอาจนับซ้ำ
-            </p>
-          }
-          <ul class="upcoming-list">
-            @for (item of upcoming.items; track item.contractId) {
-              <li>
-                <a [routerLink]="['/app/ma', item.contractId]">
-                  {{ item.contractNo || ('#' + item.contractId) }}
-                </a>
-                · {{ item.customerName || ('ลูกค้า #' + item.customerId) }}
-                · {{ item.price | baht }}
-                · ถึง {{ item.endDate | thaiDate: 'date' }}
-              </li>
-            } @empty {
-              <li class="empty">ไม่มีสัญญาที่ยังคุ้มครองอยู่</li>
-            }
-          </ul>
-        </mat-card>
-      }
+      </article>
 
       @if (r.serviceCost; as sc) {
-        <mat-card>
-          <h2>ต้นทุนบริการ (ชั่วโมง)</h2>
+        <article class="card card--wide">
+          <h3><mat-icon>schedule</mat-icon> ต้นทุนบริการ (ชั่วโมง)</h3>
           @if (sc.disclaimer && sc.disclaimer !== r.disclaimer) {
-            <p class="disclaimer inline">{{ sc.disclaimer }}</p>
+            <p class="note-box note-box--sm"><mat-icon>info</mat-icon><span>{{ sc.disclaimer }}</span></p>
           }
-          <p class="grand-total">
-            รวม {{ sc.totalHours }} ชม.
+          <p class="total">
+            <span>รวม</span>
+            <strong>{{ sc.totalHours }} ชม.</strong>
             @if (formatCompletenessLabel(sc.completeness); as label) {
-              <span class="completeness"> · {{ label }}</span>
+              <small class="muted">{{ label }}</small>
             }
           </p>
-          @for (row of sc.items; track row.customerId) {
-            <div class="rank-row">
-              <div class="rank-main">
-                <a [routerLink]="['/app/customers', row.customerId]">{{ row.customerName }}</a>
+          <ul class="rows">
+            @for (row of sc.items; track row.customerId) {
+              <li>
+                <div class="rows__main">
+                  <a class="app-link" [routerLink]="['/app/customers', row.customerId]">{{ row.customerName }}</a>
+                  @if (formatCompletenessLabel(row.completeness); as rowLabel) {
+                    <small class="muted">{{ rowLabel }}</small>
+                  }
+                </div>
                 <strong>{{ row.totalHours }} ชม.</strong>
-              </div>
-              @if (formatCompletenessLabel(row.completeness); as rowLabel) {
-                <p class="metric-note">{{ rowLabel }}</p>
-              }
-            </div>
-          } @empty {
-            <p class="empty">ยังไม่มีข้อมูลชั่วโมงบริการ</p>
-          }
-        </mat-card>
+              </li>
+            } @empty {
+              <li class="muted">ยังไม่มีข้อมูลชั่วโมงบริการ</li>
+            }
+          </ul>
+        </article>
       }
     </div>
   } @else if (loading()) {
-    <p class="empty">กำลังโหลดรายงาน…</p>
+    <p class="muted">กำลังโหลดรายงาน…</p>
   }
 </section>

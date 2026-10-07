@@ -113,16 +113,6 @@ const NOTE_MAX = 2000;
       }
 
       @if (mode() === 'approve') {
-        <div class="to">
-          <mat-icon>support_agent</mat-icon>
-          <div>
-            <p>
-              จะส่งเข้า <strong>คิวซัพพอร์ต</strong> แท็บ「แอดมินส่งกลับมา」— ซัพพอร์ตทุกคนเห็นและแจ้งลูกค้าได้
-            </p>
-            <p class="sub">ผู้รับเรื่องเดิม: {{ data.receiverName }}</p>
-          </div>
-        </div>
-
         <mat-form-field appearance="outline" class="text-field" subscriptSizing="dynamic">
           <mat-label>หมายเหตุถึงซัพพอร์ต (ไม่บังคับ)</mat-label>
           <textarea
@@ -134,23 +124,9 @@ const NOTE_MAX = 2000;
             [disabled]="submitting()"
             placeholder="เช่น บอกลูกค้าให้ล้างแคชก่อนใช้งาน"
           ></textarea>
-          <mat-hint>ต่อท้ายรายละเอียดใบเป็น「[ตรวจผ่าน] …」ซัพพอร์ตเห็นในหน้าใบ</mat-hint>
           <mat-hint align="end">{{ note().length }}/{{ noteMax }}</mat-hint>
         </mat-form-field>
       } @else {
-        <div class="to to--reject">
-          <mat-icon>undo</mat-icon>
-          <div>
-            <p>
-              ใบจะกลับเป็น <strong>กำลังดำเนินการ</strong> และส่งกลับให้
-              <strong>{{ data.assigneeName }}</strong> แก้ต่อ
-            </p>
-            <p class="sub">
-              ผู้แก้ได้แจ้งเตือนในแอป · รอบที่ผู้แก้บันทึกครั้งถัดไปจะเป็นรอบใหม่ของใบเดิม
-            </p>
-          </div>
-        </div>
-
         <mat-form-field appearance="outline" class="text-field" subscriptSizing="dynamic">
           <mat-label>เหตุผลที่ไม่ผ่าน</mat-label>
           <textarea
@@ -164,7 +140,6 @@ const NOTE_MAX = 2000;
             [disabled]="submitting()"
             placeholder="เช่น ยอดในรายงานยังไม่ตรงกับระบบบัญชี"
           ></textarea>
-          <mat-hint>ต่อท้ายรายละเอียดใบเป็น「[ตรวจไม่ผ่าน] …」ผู้แก้เห็นในหน้าใบ</mat-hint>
           <mat-hint align="end">{{ reason().length }}/{{ noteMax }}</mat-hint>
         </mat-form-field>
       }
@@ -311,38 +286,11 @@ const NOTE_MAX = 2000;
       gap: 0.4rem;
       color: #92400e;
     }
-    .to {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.4rem;
-      margin: 0.9rem 0 0;
-      color: #334155;
-      font-size: 0.9rem;
-
-      p {
-        margin: 0;
-      }
-      .sub {
-        margin-top: 0.15rem;
-        color: #64748b;
-        font-size: 0.82rem;
-      }
-      mat-icon {
-        margin-top: 0.1rem;
-      }
-    }
     mat-icon {
       width: 18px;
       height: 18px;
       font-size: 18px;
       flex: 0 0 auto;
-    }
-    .to--reject {
-      color: #7c2d12;
-
-      mat-icon {
-        color: #c2410c;
-      }
     }
     .text-field {
       width: 100%;

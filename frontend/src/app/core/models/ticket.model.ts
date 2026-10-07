@@ -228,32 +228,46 @@ export function ticketWorkflowStatus(ticket: Ticket): TicketStatus {
  */
 export const TICKET_REOPEN_NOTE_PREFIX = '[เปิดกลับมาอีกครั้ง]';
 
+/** บรรทัดที่ BE ต่อท้าย description ตอนแอดมินตีกลับผลแก้ */
+export const TICKET_REVIEW_REJECT_PREFIX = '[ตรวจไม่ผ่าน]';
+
+export interface TicketAppendedNote {
+  kind: 'reopen' | 'reject';
+  text: string;
+}
+
 export function splitTicketDescription(raw: string | null | undefined): {
   base: string;
   /** เก่า → ใหม่ ตามลำดับที่ต่อใน description */
   reopenNotes: string[];
+  /** บรรทัดที่ระบบต่อท้าย (เปิดกลับมา / ตรวจไม่ผ่าน) เก่า → ใหม่ */
+  notes: TicketAppendedNote[];
 } {
   const text = (raw ?? '').replace(/\r\n/g, '\n').trim();
   if (!text) {
-    return { base: '', reopenNotes: [] };
+    return { base: '', reopenNotes: [], notes: [] };
   }
 
-  const reopenNotes: string[] = [];
+  const notes: TicketAppendedNote[] = [];
   const baseParts: string[] = [];
 
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (trimmed.startsWith(TICKET_REOPEN_NOTE_PREFIX)) {
       const note = trimmed.slice(TICKET_REOPEN_NOTE_PREFIX.length).trim();
-      reopenNotes.push(note || 'ไม่ระบุอาการ');
+      notes.push({ kind: 'reopen', text: note || 'ไม่ระบุอาการ' });
+    } else if (trimmed.startsWith(TICKET_REVIEW_REJECT_PREFIX)) {
+      const note = trimmed.slice(TICKET_REVIEW_REJECT_PREFIX.length).trim();
+      notes.push({ kind: 'reject', text: note || 'ไม่ระบุเหตุผล' });
     } else {
       baseParts.push(line);
     }
   }
 
   return {
-    base: baseParts.join('\n').trim(),
-    reopenNotes,
+    base: baseParts.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+    reopenNotes: notes.filter((n) => n.kind === 'reopen').map((n) => n.text),
+    notes,
   };
 }
 

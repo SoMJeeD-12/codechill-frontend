@@ -32,7 +32,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
-import { forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 import {
   DELIVERY_ACCEPTANCE_LABELS,
@@ -86,6 +86,8 @@ import {
   warrantyMaLinkLabel,
   warrantyNeedsSignedScan,
 } from '../../core/models/warranty.model';
+import { Attachment } from '../../core/models/attachment.model';
+import { AttachmentService } from '../../core/services/attachment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
@@ -114,7 +116,7 @@ import { FilePickerComponent } from '../../shared/components/file-picker.compone
 import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
 import { RowAction, RowActionsComponent } from '../../shared/components/row-actions.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { DEFAULT_PAGE_SIZE_OPTIONS, createClientPager } from '../../shared/utils/client-pager';
+import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG, FORM_DIALOG_WIDE, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { DocumentPreviewDialogComponent } from '../documents/document-preview-dialog.component';
 import { WarrantyFormDialogComponent } from '../warranties/warranties-page.component';
@@ -135,6 +137,7 @@ import {
   FollowUpFormPreset,
 } from '../follow-ups/follow-ups-page.component';
 import { ListSkeletonComponent } from '../../shared/components/list-loading.component';
+import { openProjectDescription } from './project-description-dialog.component';
 
 type DetailTab =
   | 'deliveries'
@@ -144,6 +147,25 @@ type DetailTab =
   | 'followUps'
   | 'ma'
   | 'surveys';
+
+/** แถวตารางเอกสาร — มี warranty = ไฟล์แนบของใบประกัน (ลบ/แก้ที่ใบประกัน) */
+type DocumentRow = ApiProjectDocument & { warranty?: Warranty; attachment?: Attachment };
+
+function warrantyFileRow(file: Attachment, warranty: Warranty): DocumentRow {
+  return {
+    id: file.id,
+    title: file.fileName,
+    fileName: file.fileName,
+    fileSize: file.fileSize ?? 0,
+    mimeType: file.mimeType,
+    downloadUrl: file.downloadUrl,
+    note: file.note,
+    uploadedBy: null,
+    createdAt: file.createdAt,
+    warranty,
+    attachment: file,
+  };
+}
 
 @Component({
   selector: 'app-project-detail-page',
@@ -182,6 +204,7 @@ export class ProjectDetailPageComponent implements OnInit {
   private readonly followUpsApi = inject(FollowUpService);
   private readonly followUpComplete = inject(FollowUpCompleteFlowService);
   private readonly warrantiesApi = inject(WarrantyService);
+  private readonly attachmentsApi = inject(AttachmentService);
   private readonly maApi = inject(MaService);
   private readonly ticketsApi = inject(TicketService);
   private readonly ticketDemoOverlay = inject(TicketDemoOverlayService);
@@ -209,18 +232,45 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantySearchControl = this.fb.nonNullable.control('');
   readonly warrantySearch = signal('');
   readonly documents = signal<ApiProjectDocument[]>([]);
-  readonly documentsTotal = signal(0);
   readonly documentsLoading = signal(false);
   readonly documentsDenied = signal(false);
   readonly documentSearch = signal('');
   readonly selectedTab = signal(0);
   readonly documentSearchControl = this.fb.nonNullable.control('');
-  /** ไม่ส่ง sort จนกว่าจะกดหัวคอลัมน์ — ให้ BE เรียง createdAt DESC */
+  /** ยังไม่กดหัวคอลัมน์ = ใหม่สุดก่อน */
   readonly documentSortBy = signal<'title' | 'fileName' | 'fileSize' | 'createdAt' | null>(null);
   readonly documentSortOrder = signal<'ASC' | 'DESC'>('DESC');
-  readonly documentPageIndex = signal(0);
-  readonly documentPageSize = signal(10);
-  readonly documentPageSizeOptions = [...DEFAULT_PAGE_SIZE_OPTIONS];
+  /** ไฟล์แนบของใบประกัน (refType WARRANTY) — รวมแสดงในตารางเอกสาร */
+  readonly warrantyFiles = signal<{ file: Attachment; warranty: Warranty }[]>([]);
+  /**
+   * เอกสารโปรเจกต์ + ไฟล์ใบประกัน ในตารางเดียว
+   * ค้นหา/เรียง/แบ่งหน้าฝั่ง FE เพราะมาจากสอง API
+   */
+  readonly documentRows = computed<DocumentRow[]>(() => {
+    const rows: DocumentRow[] = [
+      ...this.documents(),
+      ...this.warrantyFiles().map(({ file, warranty }) => warrantyFileRow(file, warranty)),
+    ];
+    const q = this.documentSearch().trim().toLowerCase();
+    const filtered =
+      q.length >= PICKER_MIN_CHARS
+        ? rows.filter((r) =>
+            [r.title, r.fileName, r.note, r.warranty?.warrantyNo]
+              .some((v) => (v ?? '').toLowerCase().includes(q))
+          )
+        : rows;
+    const key = this.documentSortBy() ?? 'createdAt';
+    const dir = (this.documentSortBy() ? this.documentSortOrder() : 'DESC') === 'ASC' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (key === 'fileSize') {
+        return ((a.fileSize ?? 0) - (b.fileSize ?? 0)) * dir;
+      }
+      const av = key === 'title' ? this.documentTitle(a) : (a[key] ?? '');
+      const bv = key === 'title' ? this.documentTitle(b) : (b[key] ?? '');
+      return av.localeCompare(bv, 'th') * dir;
+    });
+  });
+  readonly documentsPager = createClientPager(this.documentRows);
   readonly followUps = signal<FollowUp[]>([]);
   readonly followUpsLoading = signal(false);
   readonly followUpSearch = signal('');
@@ -651,14 +701,10 @@ export class ProjectDetailPageComponent implements OnInit {
     }
     const q = (search ?? '').trim();
     const next = q.length >= PICKER_MIN_CHARS ? q : '';
-    const changed = this.documentSearch() !== next;
     this.documentSearch.set(next);
     this.documentSearchControl.setValue(next, { emitEvent: false });
+    this.documentsPager.reset();
     this.queueDocumentsTab();
-    if (changed && this.project()) {
-      this.documentPageIndex.set(0);
-      this.loadDocuments();
-    }
   }
 
   /** แท็บถูกสร้างหลังโปรเจกต์โหลด — ตั้ง index อีกรอบหลัง MatTabGroup init */
@@ -724,6 +770,7 @@ export class ProjectDetailPageComponent implements OnInit {
         break;
       case 'documents':
         this.loadDocuments();
+        this.loadWarrantyFiles();
         break;
       case 'tickets':
         this.loadProjectTickets();
@@ -778,8 +825,7 @@ export class ProjectDetailPageComponent implements OnInit {
       )
       .subscribe((v) => {
         this.documentSearch.set(v);
-        this.documentPageIndex.set(0);
-        this.loadDocuments();
+        this.documentsPager.reset();
       });
   }
 
@@ -797,6 +843,23 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   /** ซ่อนค่าว่าง / ตัวเลขเดี่ยวที่มักใส่ผิด เช่น "0" */
+  isLongDescription(text: string): boolean {
+    return text.length > 90 || text.includes('\n');
+  }
+
+  openDescription(p: Project, text: string): void {
+    openProjectDescription(this.dialog, {
+      name: p.name,
+      code: p.code,
+      customerName: p.customerId ? this.customerName() : null,
+      status: p.status,
+      statusLabel: this.projectStatusLabel(p.status),
+      priority: p.priority,
+      priorityLabel: this.projectPriorityLabel(p.priority),
+      description: text,
+    });
+  }
+
   projectDescription(project: Project): string | null {
     const text = project.description?.trim() ?? '';
     if (!text || text === '0' || text === '-' || text === '—') {
@@ -1461,41 +1524,76 @@ export class ProjectDetailPageComponent implements OnInit {
   loadDocuments(): void {
     if (!this.canViewDocuments()) {
       this.documents.set([]);
-      this.documentsTotal.set(0);
       this.documentsDenied.set(false);
       this.documentsLoading.set(false);
       return;
     }
     this.documentsLoading.set(true);
     this.documentsDenied.set(false);
-    const q = this.documentSearch().trim();
-    this.documentsApi
-      .listByProject(this.projectId, {
-        search: q.length >= PICKER_MIN_CHARS ? q : undefined,
-        page: this.documentPageIndex() + 1,
-        limit: this.documentPageSize(),
-        sortBy: this.documentSortBy() ?? undefined,
-        sortOrder: this.documentSortBy() ? this.documentSortOrder() : undefined,
+    this.fetchAllProjectDocuments().subscribe({
+      next: (items) => {
+        this.documents.set(items);
+        this.documentsLoading.set(false);
+      },
+      error: (err: Error) => {
+        this.documents.set([]);
+        this.documentsLoading.set(false);
+        this.snack.open(err.message, 'ปิด', { duration: 5000 });
+      },
+    });
+  }
+
+  /** ดึงครบทุกหน้า — ตารางรวมกับไฟล์ใบประกันจึงต้องมีข้อมูลทั้งหมดฝั่ง FE */
+  private fetchAllProjectDocuments(): Observable<ApiProjectDocument[]> {
+    const limit = 100;
+    return this.documentsApi.listByProject(this.projectId, { page: 1, limit }).pipe(
+      switchMap(({ items, total }) => {
+        const pages = Math.ceil(total / limit);
+        if (pages <= 1) {
+          return of(items);
+        }
+        return forkJoin(
+          Array.from({ length: pages - 1 }, (_, i) =>
+            this.documentsApi
+              .listByProject(this.projectId, { page: i + 2, limit })
+              .pipe(map((res) => res.items))
+          )
+        ).pipe(map((rest) => items.concat(...rest)));
       })
+    );
+  }
+
+  loadWarrantyFiles(): void {
+    if (!this.canViewWarranties()) {
+      this.warrantyFiles.set([]);
+      return;
+    }
+    this.warrantiesApi
+      .listByProject(this.projectId)
+      .pipe(
+        switchMap((warranties) => {
+          const withFiles = warranties.filter((w) => w.attachmentCount !== 0);
+          if (withFiles.length === 0) {
+            return of([]);
+          }
+          return forkJoin(
+            withFiles.map((warranty) =>
+              this.attachmentsApi.list({ refType: 'WARRANTY', refId: warranty.id }).pipe(
+                map((files) => files.map((file) => ({ file, warranty }))),
+                catchError(() => of([]))
+              )
+            )
+          ).pipe(map((groups) => groups.flat()));
+        })
+      )
       .subscribe({
-        next: ({ items, total }) => {
-          this.documents.set(items);
-          this.documentsTotal.set(total);
-          this.documentsLoading.set(false);
-        },
-        error: (err: Error) => {
-          this.documents.set([]);
-          this.documentsTotal.set(0);
-          this.documentsLoading.set(false);
-          this.snack.open(err.message, 'ปิด', { duration: 5000 });
-        },
+        next: (rows) => this.warrantyFiles.set(rows),
+        error: () => this.warrantyFiles.set([]),
       });
   }
 
-  onDocumentsPage(event: PageEvent): void {
-    this.documentPageIndex.set(event.pageIndex);
-    this.documentPageSize.set(event.pageSize);
-    this.loadDocuments();
+  warrantyCode(w: Warranty): string {
+    return w.warrantyNo?.trim() || `#${w.id}`;
   }
 
   toggleDocumentSort(key: 'title' | 'fileName' | 'fileSize' | 'createdAt'): void {
@@ -1505,8 +1603,7 @@ export class ProjectDetailPageComponent implements OnInit {
       this.documentSortBy.set(key);
       this.documentSortOrder.set(key === 'createdAt' || key === 'fileSize' ? 'DESC' : 'ASC');
     }
-    this.documentPageIndex.set(0);
-    this.loadDocuments();
+    this.documentsPager.reset();
   }
 
   documentSortIcon(key: 'title' | 'fileName' | 'fileSize' | 'createdAt'): string {
@@ -1545,7 +1642,7 @@ export class ProjectDetailPageComponent implements OnInit {
     });
     ref.afterClosed().subscribe((saved) => {
       if (saved) {
-        this.documentPageIndex.set(0);
+        this.documentsPager.reset();
         this.loadDocuments();
       }
     });
@@ -1754,7 +1851,12 @@ export class ProjectDetailPageComponent implements OnInit {
   }
 
   openWarrantyDocuments(row: Warranty): void {
-    openWarrantyDocuments(this.dialog, row, () => this.loadWarranties());
+    openWarrantyDocuments(this.dialog, row, () => {
+      this.loadWarranties();
+      if (this.loadedTabs.has('documents')) {
+        this.loadWarrantyFiles();
+      }
+    });
   }
 
   warrantyRowActions(row: Warranty): RowAction[] {
@@ -1834,10 +1936,25 @@ export class ProjectDetailPageComponent implements OnInit {
     });
   }
 
-  documentRowActions(row: ApiProjectDocument): RowAction[] {
+  documentRowActions(row: DocumentRow): RowAction[] {
     const actions: RowAction[] = [
       { label: 'ดูรายละเอียด', primary: true, icon: 'visibility', run: () => this.openDocumentPreview(row) },
     ];
+    const { warranty, attachment } = row;
+    if (warranty && attachment) {
+      actions.push(
+        {
+          label: 'ดาวน์โหลด',
+          icon: 'download',
+          run: () =>
+            this.attachmentsApi.download(attachment).subscribe({
+              error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+            }),
+        },
+        { label: 'เปิดใบประกัน', icon: 'verified_user', run: () => this.openWarrantyDocuments(warranty) }
+      );
+      return actions;
+    }
     if (this.canUpdateDocument()) {
       actions.push({ label: 'แก้ไข', icon: 'edit', run: () => this.openEditDocument(row) });
     }
