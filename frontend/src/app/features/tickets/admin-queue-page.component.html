@@ -193,21 +193,6 @@
                   <mat-icon>fact_check</mat-icon>
                   ตรวจ
                 </button>
-              } @else if (tab() === 'REOPENED') {
-                <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  [disabled]="actingId() === row.id"
-                  matTooltip="เลือกผู้รับผิดชอบรอบใหม่ — ตั้งต้นเป็นผู้แก้คนเดิม"
-                  (click)="openAssign(row, true)"
-                >
-                  @if (actingId() === row.id) {
-                    กำลังมอบหมาย…
-                  } @else {
-                    รับงานรอบใหม่
-                  }
-                </button>
               } @else if (tab() === 'WITH_SUPPORT') {
                 <span class="muted">รอซัพพอร์ตบอกลูกค้า</span>
               }

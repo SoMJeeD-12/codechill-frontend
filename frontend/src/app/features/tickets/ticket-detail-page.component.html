@@ -104,11 +104,6 @@
             ส่งให้ซัพพอร์ต
           </button>
         }
-        @if (canReopen() && ticket()?.status === 'CLOSED') {
-          <button mat-stroked-button type="button" (click)="openProblemReturned()">
-            เปิดปัญหาเดิมกลับมา
-          </button>
-        }
       </div>
     </header>
 

@@ -367,15 +367,18 @@ export class TicketFormDialogComponent {
       .reopen(t.id, reason)
       .pipe(
         switchMap(() => {
-          if (!assigneeId) {
-            return of(false);
-          }
-          return this.ticketsApi.assign(t.id, assigneeId).pipe(
-            switchMap(() => of(true)),
+          // ไม่เลือกผู้รับผิดชอบ = ส่งเข้าคิวแอดมิน「รอรับ」ให้แอดมินคนไหนก็รับได้
+          const next = assigneeId
+            ? this.ticketsApi.assign(t.id, assigneeId)
+            : this.ticketsApi.sendToAdmin(t.id);
+          return next.pipe(
+            switchMap(() => of(!!assigneeId)),
             catchError((err: Error) => {
               this.saving.set(false);
               this.snack.open(
-                `เปิด ${no} กลับมาแล้ว แต่ยังมอบหมายไม่สำเร็จ: ${err.message}`,
+                assigneeId
+                  ? `เปิด ${no} กลับมาแล้ว แต่ยังมอบหมายไม่สำเร็จ: ${err.message}`
+                  : `เปิด ${no} กลับมาแล้ว แต่ยังส่งเข้าคิวแอดมินไม่สำเร็จ: ${err.message}`,
                 'ปิด',
                 { duration: 6500 }
               );
@@ -391,7 +394,7 @@ export class TicketFormDialogComponent {
           this.snack.open(
             assigned
               ? `เปิด ${no} รอบใหม่แล้ว — ส่งงานให้ผู้รับผิดชอบแล้ว`
-              : `เปิด ${no} กลับมาแล้ว — อยู่ในคิวแอดมิน「รอรับงานรอบใหม่」`,
+              : `เปิด ${no} กลับมาแล้ว — ส่งเข้าคิวแอดมิน「รอรับ」แล้ว`,
             'ปิด',
             { duration: 4500 }
           );

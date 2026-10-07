@@ -235,14 +235,14 @@
               <mat-form-field appearance="outline" class="full">
                 <mat-label>ผู้รับผิดชอบรอบนี้</mat-label>
                 <mat-select [formControl]="reopenAssignee">
-                  <mat-option [value]="null">ยังไม่มอบหมาย — ไปรอในคิวแอดมิน</mat-option>
+                  <mat-option [value]="null">ไม่เลือก — ส่งเข้าคิวแอดมิน「รอรับ」</mat-option>
                   @for (u of assignableUsers(); track u.id) {
                     <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
             } @else {
-              <p class="old-empty">หลังเปิดรอบใหม่ ใบจะไปรอในคิวแอดมิน「รอรับงานรอบใหม่」</p>
+              <p class="old-empty">หลังเปิดรอบใหม่ ใบจะถูกส่งเข้าคิวแอดมิน「รอรับ」ให้แอดมินรับเรื่องต่อ</p>
             }
           </section>
         } @else {

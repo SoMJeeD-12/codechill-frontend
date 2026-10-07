@@ -127,7 +127,7 @@ export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   /** ซัพพอร์ตส่งเข้าคิวกลางแล้ว — รอแอดมินรับเรื่อง/มอบหมาย */
   WAITING_ADMIN: 'รอแอดมิน',
   /** BE: หลังมอบหมาย — ยังไม่เริ่มดำเนินการ */
-  ASSIGNED: 'ส่งงานแล้ว',
+  ASSIGNED: 'รอเริ่มงาน',
   IN_PROGRESS: 'กำลังดำเนินการ',
   /** แก้เสร็จแล้ว — รอแอดมินตรวจ */
   RESOLVED: 'แก้ไขแล้ว',

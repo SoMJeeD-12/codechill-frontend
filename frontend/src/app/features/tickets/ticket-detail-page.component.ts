@@ -595,10 +595,6 @@ export class TicketDetailPageComponent implements OnInit {
       this.pickupReopened();
       return;
     }
-    if (id === 'reopen') {
-      this.openProblemReturned();
-      return;
-    }
     if (id === 'add-resolution') {
       this.openAddResolution();
       return;
@@ -660,7 +656,7 @@ export class TicketDetailPageComponent implements OnInit {
     const shown = this.displayStatus();
     if (shown === 'CLOSED') {
       this.snack.open(
-        'ใบปิดงานแล้ว — กด「ปัญหาเดิมกลับมา」ก่อนจึงจะบันทึกรอบแก้ไขได้',
+        'ใบปิดงานแล้ว — ถ้าปัญหากลับมา ให้กด「เปิดใบแจ้งปัญหา」แล้วเลือก「ปัญหาเดิมกลับมา」',
         'ปิด',
         { duration: 4500 }
       );
@@ -689,8 +685,8 @@ export class TicketDetailPageComponent implements OnInit {
     if (shown === 'RESOLVED' || shown === 'WAITING_SUPPORT') {
       this.snack.open(
         shown === 'RESOLVED'
-          ? 'แก้ไขเรียบร้อยแล้ว — รอแอดมินตรวจและส่งให้ซัพพอร์ต ถ้าปัญหากลับมาหลังปิดใบ ให้กด「ปัญหาเดิมกลับมา」'
-          : 'รอซัพพอร์ตแจ้งลูกค้า — ระบบจะปิดใบให้เอง ถ้าปัญหากลับมาหลังปิดใบ ให้กด「ปัญหาเดิมกลับมา」',
+          ? 'แก้ไขเรียบร้อยแล้ว — รอแอดมินตรวจและส่งให้ซัพพอร์ต'
+          : 'รอซัพพอร์ตแจ้งลูกค้า — ระบบจะปิดใบให้เอง',
         'ปิด',
         { duration: 4500 }
       );
@@ -751,52 +747,6 @@ export class TicketDetailPageComponent implements OnInit {
         this.snack.open(err.message || 'โหลดใบยืนยันไม่สำเร็จ', 'ปิด', {
           duration: 4000,
         }),
-    });
-  }
-
-  reopen(): void {
-    this.openProblemReturned();
-  }
-
-  /** CLOSED เท่านั้น → reopen (+ assign ถ้ามีสิทธิ์) — อย่าโชว์ตอนยังแค่แก้ไขเรียบร้อย */
-  openProblemReturned(): void {
-    if (!this.canReopen()) {
-      this.snack.open('ไม่มีสิทธิ์เปิดปัญหาเดิมกลับมา (ticket.reopen)', 'ปิด', {
-        duration: 3500,
-      });
-      return;
-    }
-    const ticket = this.ticket();
-    if (!ticket || ticket.status !== 'CLOSED') {
-      this.snack.open(
-        'กด「ปัญหาเดิมกลับมา」ได้หลังปิดใบแล้วเท่านั้น — ใบจะปิดเองเมื่อซัพพอร์ตกด「บอกลูกค้าแล้ว」',
-        'ปิด',
-        { duration: 4500 }
-      );
-      return;
-    }
-    const last = [...this.resolutions()].sort((a, b) => b.round - a.round)[0] ?? null;
-    this.usersApi.loadForPicker(this.auth.currentUser(), { capability: 'TICKET' }).subscribe({
-      next: (users) => {
-        const ref = this.dialog.open(TicketProblemReturnedDialogComponent, {
-          ...FORM_DIALOG,
-          data: {
-            ticketId: this.ticketId,
-            ticket,
-            closedAtSnapshot: ticket.closedAt,
-            lastResolution: last,
-            users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
-            canAssign: this.canAssign(),
-            defaultAssigneeId: ticket.assignedUserId,
-          } satisfies TicketProblemReturnedDialogData,
-        });
-        ref.afterClosed().subscribe((ok) => {
-          if (ok) {
-            this.loadTicket();
-          }
-        });
-      },
-      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 4000 }),
     });
   }
 
@@ -878,7 +828,7 @@ export class TicketDetailPageComponent implements OnInit {
 
   /** REOPENED → รับงานรอบใหม่ (ส่งคนเดิมก็ได้) */
   pickupReopened(): void {
-    this.pickAssigneeAndAssign('รับงานรอบใหม่แล้ว — สถานะ「ส่งงานแล้ว」รอเริ่มดำเนินการ', {
+    this.pickAssigneeAndAssign('รับงานรอบใหม่แล้ว — สถานะ「รอเริ่มงาน」', {
       preferCurrent: true,
     });
   }
@@ -1842,7 +1792,7 @@ export class TicketProblemReturnedDialogComponent {
           this.saving.set(false);
           if (result.assigned) {
             this.snack.open(
-              'เปิดรอบใหม่แล้ว — สถานะส่งงานแล้ว พร้อมเริ่มรอบถัดไป',
+              'เปิดรอบใหม่แล้ว — สถานะ「รอเริ่มงาน」',
               'ปิด',
               { duration: 3500 }
             );
