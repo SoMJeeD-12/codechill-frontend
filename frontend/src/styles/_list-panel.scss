@@ -213,6 +213,13 @@
   font-weight: 700;
 }
 
+/* แท็บที่มีงานรอ — ใส่ class นี้เฉพาะตอนจำนวน > 0 */
+.ui-chip .ui-chip__count--alert,
+.ui-chip.is-active .ui-chip__count--alert {
+  background: #dc2626;
+  color: #fff;
+}
+
 /* ปุ่มจัดเรียงที่หัวคอลัมน์ */
 .sort-header {
   display: inline-flex;

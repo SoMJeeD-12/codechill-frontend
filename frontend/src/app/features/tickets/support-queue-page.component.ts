@@ -272,7 +272,10 @@ export class SupportQueuePageComponent implements OnInit {
   markNotified(row: Ticket): void {
     openConfirmDialog(this.dialog, {
       title: 'บอกลูกค้าแล้ว',
-      message: `ยืนยันว่าได้แจ้งลูกค้าเรื่อง「${row.title}」แล้ว?\n\n(บันทึกในระบบเท่านั้น — ไม่ส่งหาลูกค้าจากแอป)`,
+      icon: 'campaign',
+      message: 'ยืนยันว่าได้แจ้งลูกค้าเรื่องนี้แล้ว',
+      subject: row.ticketNo ? `${row.ticketNo} · ${row.title}` : row.title,
+      note: 'บันทึกในระบบเท่านั้น ไม่ได้ส่งข้อความหาลูกค้าจากแอป',
       confirmLabel: 'บอกลูกค้าแล้ว',
       cancelLabel: 'ยกเลิก',
       danger: false,

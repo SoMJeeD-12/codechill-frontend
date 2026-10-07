@@ -87,9 +87,23 @@ const NOTE_MAX = 2000;
             <dt>ชั่วโมง</dt>
             <dd>{{ r.hoursSpent != null ? r.hoursSpent + ' ชม.' : '—' }}</dd>
             <dt>สาเหตุ</dt>
-            <dd class="clip">{{ r.rootCause?.trim() || '—' }}</dd>
+            <dd>
+              <div class="clip" [class.clip--open]="causeOpen()">{{ r.rootCause?.trim() || '—' }}</div>
+              @if (isLong(r.rootCause)) {
+                <button type="button" class="more" (click)="causeOpen.set(!causeOpen())">
+                  {{ causeOpen() ? 'ย่อ' : 'ดูเพิ่มเติม' }}
+                </button>
+              }
+            </dd>
             <dt>วิธีแก้</dt>
-            <dd class="clip">{{ r.detail.trim() || '—' }}</dd>
+            <dd>
+              <div class="clip" [class.clip--open]="detailOpen()">{{ r.detail.trim() || '—' }}</div>
+              @if (isLong(r.detail)) {
+                <button type="button" class="more" (click)="detailOpen.set(!detailOpen())">
+                  {{ detailOpen() ? 'ย่อ' : 'ดูเพิ่มเติม' }}
+                </button>
+              }
+            </dd>
             <dt>ไฟล์แนบ</dt>
             <dd>{{ r.attachments.length ? r.attachments.length + ' ไฟล์' : '—' }}</dd>
           </dl>
@@ -261,6 +275,28 @@ const NOTE_MAX = 2000;
       -webkit-box-orient: vertical;
       overflow: hidden;
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .clip--open {
+      display: block;
+      -webkit-line-clamp: unset;
+      max-height: 14rem;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+    .more {
+      margin: 0.2rem 0 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: #0f766e;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .more:hover {
+      text-decoration: underline;
     }
     .warnings {
       list-style: none;
@@ -343,6 +379,8 @@ export class TicketReturnSupportDialogComponent implements OnInit {
   readonly reason = signal('');
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
+  readonly causeOpen = signal(false);
+  readonly detailOpen = signal(false);
 
   readonly loading = signal(true);
   readonly loadError = signal(false);
@@ -422,6 +460,12 @@ export class TicketReturnSupportDialogComponent implements OnInit {
         this.submitError.set(err.message || 'ทำรายการไม่สำเร็จ');
       },
     });
+  }
+
+  /** ยาวเกิน 3 บรรทัดโดยประมาณ — แสดงปุ่มดูเพิ่มเติม */
+  isLong(text: string | null | undefined): boolean {
+    const t = text?.trim() ?? '';
+    return t.length > 150 || t.split('\n').length > 3;
   }
 
   resultLabel(r: TicketResolution): string {

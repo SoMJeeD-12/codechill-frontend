@@ -24,7 +24,7 @@
           (click)="setTab('active')"
         >
           ต้องทำ
-          <span class="ui-chip__count">{{ activeCount() }}</span>
+          <span class="ui-chip__count" [class.ui-chip__count--alert]="activeCount() > 0">{{ activeCount() }}</span>
         </button>
         <button
           type="button"

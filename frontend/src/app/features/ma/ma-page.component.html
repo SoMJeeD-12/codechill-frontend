@@ -40,7 +40,7 @@
         <button type="button" class="ui-chip" [class.is-active]="chip() === 'expiring'" (click)="setChip('expiring')">
           ใกล้หมดอายุ ({{ expiringDays }} วัน)
           @if (expiringBadge(); as n) {
-            <span class="ui-chip__count">{{ n }}</span>
+            <span class="ui-chip__count ui-chip__count--alert">{{ n }}</span>
           }
         </button>
       </div>

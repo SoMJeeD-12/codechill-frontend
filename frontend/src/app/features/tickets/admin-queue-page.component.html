@@ -28,7 +28,7 @@
             (click)="setTab(t.id)"
           >
             {{ t.label }}
-            <span class="ui-chip__count">{{ tabCount(t.id) }}</span>
+            <span class="ui-chip__count" [class.ui-chip__count--alert]="t.alert && tabCount(t.id) > 0">{{ tabCount(t.id) }}</span>
           </button>
         }
       </div>
@@ -190,7 +190,7 @@
                   "
                   (click)="returnToSupport(row)"
                 >
-                  ตรวจผ่าน · ส่งซัพพอร์ต
+                  ตรวจ
                 </button>
                 @if (canRejectReview()) {
                   <button

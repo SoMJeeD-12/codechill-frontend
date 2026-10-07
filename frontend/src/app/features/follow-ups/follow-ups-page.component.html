@@ -39,7 +39,7 @@
         <button type="button" class="ui-chip" [class.is-active]="view() === 'today'" (click)="setView('today')">
           ต้องทำวันนี้
           @if (todayBadge(); as n) {
-            <span class="ui-chip__count">{{ n }}</span>
+            <span class="ui-chip__count ui-chip__count--alert">{{ n }}</span>
           }
         </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'mine'" (click)="setView('mine')">

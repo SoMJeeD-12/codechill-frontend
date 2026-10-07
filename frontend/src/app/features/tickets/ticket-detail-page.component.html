@@ -209,7 +209,6 @@
           <app-status-bar
             [status]="statusBarAttr()"
             [label]="statusBarLabel()"
-            [detail]="ticketNextHint()?.detail || ticketNextHint()?.title || statusDetail(t)"
             [owner]="'ผู้รับผิดชอบ: ' + userName(t.assignedUserId)"
           />
         }

@@ -1103,7 +1103,8 @@ export interface TicketResolutionFormData {
     }
     .dlg-form {
       display: grid;
-      gap: 0.35rem;
+      gap: 0.6rem;
+      padding-top: 0.5rem;
       min-width: min(720px, 92vw);
     }
     .row {

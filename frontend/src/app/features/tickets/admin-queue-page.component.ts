@@ -36,10 +36,10 @@ import {
   TicketReviewDialogResult,
 } from './ticket-return-support-dialog.component';
 
-const ADMIN_TABS: { id: AdminQueueTab; label: string }[] = [
-  { id: 'AWAITING_CLAIM', label: 'รอรับ' },
-  { id: 'CLAIMED', label: 'ของฉัน' },
-  { id: 'AWAITING_REVIEW', label: 'รอตรวจ' },
+const ADMIN_TABS: { id: AdminQueueTab; label: string; alert?: boolean }[] = [
+  { id: 'AWAITING_CLAIM', label: 'รอรับ', alert: true },
+  { id: 'CLAIMED', label: 'ของฉัน', alert: true },
+  { id: 'AWAITING_REVIEW', label: 'รอตรวจ', alert: true },
   { id: 'WITH_SUPPORT', label: 'ส่งซัพพอร์ตแล้ว' },
 ];
 

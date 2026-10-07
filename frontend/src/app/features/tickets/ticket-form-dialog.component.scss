@@ -408,48 +408,6 @@
   line-height: 1.3;
 }
 
-.form-notes {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.assign-note {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0;
-  font-size: 0.76rem;
-  color: rgb(15 23 42 / 0.6);
-}
-
-.assign-note mat-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-}
-
-.recurring-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0.45rem 0.55rem;
-  border-radius: 8px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
-  font-size: 0.74rem;
-  line-height: 1.4;
-}
-
-.recurring-note mat-icon {
-  flex-shrink: 0;
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  margin-top: 0.05rem;
-}
-
 .form-error {
   margin: 0.15rem 0 0;
   color: #b3261e;

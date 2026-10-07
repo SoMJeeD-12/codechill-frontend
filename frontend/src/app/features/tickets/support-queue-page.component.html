@@ -27,7 +27,7 @@
           (click)="setTab('AWAITING_SEND')"
         >
           รอส่งหัวหน้า
-          <span class="ui-chip__count">{{ tabCount('AWAITING_SEND') }}</span>
+          <span class="ui-chip__count" [class.ui-chip__count--alert]="tabCount('AWAITING_SEND') > 0">{{ tabCount('AWAITING_SEND') }}</span>
         </button>
         <button
           type="button"
@@ -38,7 +38,7 @@
           (click)="setTab('RETURNED')"
         >
           แอดมินส่งกลับมา
-          <span class="ui-chip__count">{{ tabCount('RETURNED') }}</span>
+          <span class="ui-chip__count" [class.ui-chip__count--alert]="tabCount('RETURNED') > 0">{{ tabCount('RETURNED') }}</span>
         </button>
       </div>
       <div class="app-panel-toolbar-row">

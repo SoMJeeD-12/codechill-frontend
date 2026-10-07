@@ -18,7 +18,7 @@
     </button>
     <button type="button" class="ui-chip" [class.is-active]="view() === 'overdue'" (click)="setView('overdue')">
       เกินกำหนด
-      <span class="ui-chip__count">{{ overdue().length }}</span>
+      <span class="ui-chip__count" [class.ui-chip__count--alert]="overdue().length > 0">{{ overdue().length }}</span>
     </button>
     <button type="button" class="ui-chip" [class.is-active]="view() === 'dueSoon'" (click)="setView('dueSoon')">
       ใกล้ครบกำหนด

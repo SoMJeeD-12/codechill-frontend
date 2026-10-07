@@ -29,7 +29,7 @@
         >
           รอตรวจ
           @if (tab() === 'PENDING' && !loading()) {
-            <span class="ui-chip__count">{{ total() }}</span>
+            <span class="ui-chip__count" [class.ui-chip__count--alert]="total() > 0">{{ total() }}</span>
           }
         </button>
         <button

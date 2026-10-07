@@ -37,7 +37,7 @@
             </button>
             <button type="button" class="ui-chip" [class.is-active]="myView() === 'todo'" (click)="setMyView('todo')">
               งานที่ต้องทำ
-              <span class="ui-chip__count">{{ myViewCounts().todo }}</span>
+              <span class="ui-chip__count" [class.ui-chip__count--alert]="myViewCounts().todo > 0">{{ myViewCounts().todo }}</span>
             </button>
             <button type="button" class="ui-chip" [class.is-active]="myView() === 'doing'" (click)="setMyView('doing')">
               กำลังดำเนินการ
@@ -54,7 +54,7 @@
               (click)="setMyView('overdue')"
             >
               เกินกำหนด
-              <span class="ui-chip__count">{{ myViewCounts().overdue }}</span>
+              <span class="ui-chip__count" [class.ui-chip__count--alert]="myViewCounts().overdue > 0">{{ myViewCounts().overdue }}</span>
             </button>
           </div>
         }
