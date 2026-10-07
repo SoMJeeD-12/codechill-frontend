@@ -27,17 +27,13 @@
   color: #94a3b8;
 }
 
-.btn-reject:not(:disabled) {
-  color: #b91c1c;
-}
-
 /* td ต้องคง display: table-cell — ถ้าเป็น flex เซลล์จะหลุดจากกริดตาราง */
 .row-actions {
-  text-align: right;
+  text-align: center;
   white-space: nowrap;
 
-  > * + * {
-    margin-left: 0.45rem;
+  .mat-mdc-button-base {
+    min-width: 6.5rem;
   }
 }
 

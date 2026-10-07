@@ -36,10 +36,14 @@ import {
   TicketReviewDialogResult,
 } from './ticket-return-support-dialog.component';
 
-const ADMIN_TABS: { id: AdminQueueTab; label: string; alert?: boolean }[] = [
+/** REOPENED ไม่มีใน /tickets/admin-queue — ดึงจาก GET /tickets?status=REOPENED */
+type AdminPageTab = AdminQueueTab | 'REOPENED';
+
+const ADMIN_TABS: { id: AdminPageTab; label: string; alert?: boolean }[] = [
   { id: 'AWAITING_CLAIM', label: 'รอรับ', alert: true },
   { id: 'CLAIMED', label: 'ของฉัน', alert: true },
   { id: 'AWAITING_REVIEW', label: 'รอตรวจ', alert: true },
+  { id: 'REOPENED', label: 'รอรับงานรอบใหม่', alert: true },
   { id: 'WITH_SUPPORT', label: 'ส่งซัพพอร์ตแล้ว' },
 ];
 
@@ -84,15 +88,16 @@ export class AdminQueuePageComponent implements OnInit {
   private loadedOnce = false;
 
   readonly tabs = ADMIN_TABS;
-  readonly tab = signal<AdminQueueTab>('AWAITING_CLAIM');
+  readonly tab = signal<AdminPageTab>('AWAITING_CLAIM');
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly items = signal<Ticket[]>([]);
   readonly total = signal(0);
-  readonly tabTotals = signal<Record<AdminQueueTab, number>>({
+  readonly tabTotals = signal<Record<AdminPageTab, number>>({
     AWAITING_CLAIM: 0,
     CLAIMED: 0,
     AWAITING_REVIEW: 0,
+    REOPENED: 0,
     WITH_SUPPORT: 0,
   });
   readonly loading = signal(false);
@@ -148,7 +153,7 @@ export class AdminQueuePageComponent implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       const tabParam = String(params.get('tab') ?? '').trim().toUpperCase();
       if (ADMIN_TABS.some((t) => t.id === tabParam) && this.tab() !== tabParam) {
-        this.tab.set(tabParam as AdminQueueTab);
+        this.tab.set(tabParam as AdminPageTab);
         this.pageIndex.set(0);
         this.reload();
       }
@@ -168,7 +173,7 @@ export class AdminQueuePageComponent implements OnInit {
     this.reload();
   }
 
-  setTab(tab: AdminQueueTab): void {
+  setTab(tab: AdminPageTab): void {
     if (this.tab() === tab) {
       return;
     }
@@ -184,8 +189,8 @@ export class AdminQueuePageComponent implements OnInit {
   }
 
   /** ไม่มีคำค้น = เลขชุดเดียวกับเมนู sidebar · มีคำค้น = นับตามคำค้น */
-  tabCount(tab: AdminQueueTab): number {
-    if (!this.search().trim()) {
+  tabCount(tab: AdminPageTab): number {
+    if (tab !== 'REOPENED' && !this.search().trim()) {
       return this.attention.adminTabCounts()[tab] ?? 0;
     }
     return this.tabTotals()[tab] ?? 0;
@@ -206,22 +211,25 @@ export class AdminQueuePageComponent implements OnInit {
   reload(): void {
     this.loading.set(true);
     const tab = this.tab();
-    this.ticketsApi
-      .listAdminQueue({
-        tab,
-        page: this.pageIndex() + 1,
-        limit: this.pageSize(),
-        search: this.search().trim() || undefined,
-      })
-      .subscribe({
+    const search = this.search().trim() || undefined;
+    const page = this.pageIndex() + 1;
+    const limit = this.pageSize();
+    const req =
+      tab === 'REOPENED'
+        ? this.ticketsApi.listPage({ status: 'REOPENED', page, limit, search })
+        : this.ticketsApi.listAdminQueue({ tab, page, limit, search });
+    req.subscribe({
         next: (body) => {
           this.items.set(body.items);
           this.total.set(body.total);
           this.tabTotals.update((m) => ({ ...m, [tab]: body.total }));
           this.loading.set(false);
+          if (tab !== 'REOPENED') {
+            this.refreshReopenedCount();
+          }
           if (this.search().trim()) {
             this.refreshSiblingCounts(tab);
-          } else {
+          } else if (tab !== 'REOPENED') {
             this.attention.setAdminTabCount(tab, body.total);
           }
         },
@@ -234,14 +242,26 @@ export class AdminQueuePageComponent implements OnInit {
       });
   }
 
-  private refreshSiblingCounts(active: AdminQueueTab): void {
+  private refreshReopenedCount(): void {
+    this.ticketsApi
+      .listPage({ status: 'REOPENED', page: 1, limit: 1, search: this.search().trim() || undefined })
+      .subscribe({
+        next: (body) => this.tabTotals.update((m) => ({ ...m, REOPENED: body.total })),
+        error: () => {
+          /* ignore */
+        },
+      });
+  }
+
+  private refreshSiblingCounts(active: AdminPageTab): void {
     for (const t of ADMIN_TABS) {
-      if (t.id === active) {
+      if (t.id === active || t.id === 'REOPENED') {
         continue;
       }
+      const id = t.id;
       this.ticketsApi
         .listAdminQueue({
-          tab: t.id,
+          tab: id,
           page: 1,
           limit: 1,
           search: this.search().trim() || undefined,
@@ -294,7 +314,7 @@ export class AdminQueuePageComponent implements OnInit {
   }
 
   /** แท็บของฉัน — กดมอบหมายแล้วเลือกพนักงานใน dialog */
-  openAssign(row: Ticket): void {
+  openAssign(row: Ticket, reopened = false): void {
     const users = this.assignableUsers();
     if (!users.length) {
       this.toast.info('ยังไม่มีรายชื่อผู้รับผิดชอบ — โหลดหรือเพิ่มผู้ใช้ที่มีสิทธิ์รับใบก่อน');
@@ -308,8 +328,8 @@ export class AdminQueuePageComponent implements OnInit {
       ...FORM_DIALOG_COMPACT,
       data: {
         users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
-        defaultUserId: null,
-        title: `มอบหมาย「${row.title}」`,
+        defaultUserId: reopened ? (row.assignedUserId ?? null) : null,
+        title: reopened ? `รับงานรอบใหม่「${row.title}」` : `มอบหมาย「${row.title}」`,
       },
     });
 
@@ -334,17 +354,7 @@ export class AdminQueuePageComponent implements OnInit {
     });
   }
 
-  readonly canRejectReview = computed(() => {
-    this.auth.session();
-    return this.auth.hasPermissionCode('ticket.assign');
-  });
-
-  /** ตรวจไม่ผ่าน — PATCH /tickets/:id/reject-review (ไม่ใช่ reopen) · ใบไม่มีผู้แก้จะได้ 409 */
-  rejectReview(row: Ticket): void {
-    this.returnToSupport(row, 'reject');
-  }
-
-  returnToSupport(row: Ticket, initialMode: 'approve' | 'reject' = 'approve'): void {
+  returnToSupport(row: Ticket): void {
     if (row.status !== 'RESOLVED') {
       this.toast.info(
         'ใบต้องเป็น「แก้ไขแล้ว」ก่อน — ให้พนักงานบันทึก resolution ให้จบ'
@@ -362,7 +372,6 @@ export class AdminQueuePageComponent implements OnInit {
           title: row.title,
           receiverName: this.userName(row.receivedByUserId),
           assigneeName: this.userName(row.assignedUserId),
-          initialMode,
         } satisfies TicketReturnSupportDialogData,
       })
       .afterClosed()

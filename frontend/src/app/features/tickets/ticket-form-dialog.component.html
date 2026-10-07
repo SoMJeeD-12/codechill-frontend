@@ -2,6 +2,39 @@
 
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="ticket-form" (ngSubmit)="save()">
+    @if (!isEdit && canReopen()) {
+      <div class="mode-switch" role="tablist" aria-label="ประเภทการแจ้ง">
+        <button
+          type="button"
+          role="tab"
+          class="mode-switch__btn"
+          [class.is-active]="mode() === 'new'"
+          [attr.aria-selected]="mode() === 'new'"
+          (click)="setMode('new')"
+        >
+          <mat-icon>add_circle_outline</mat-icon>
+          <span>
+            <strong>ปัญหาใหม่</strong>
+            <small>เปิดใบใหม่ เลือกการคิดค่าใช้จ่ายได้</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="mode-switch__btn"
+          [class.is-active]="mode() === 'returned'"
+          [attr.aria-selected]="mode() === 'returned'"
+          (click)="setMode('returned')"
+        >
+          <mat-icon>replay</mat-icon>
+          <span>
+            <strong>ปัญหาเดิมกลับมา</strong>
+            <small>เปิดรอบใหม่ในใบที่ปิดแล้ว ใช้สิทธิ์ตามใบเดิม</small>
+          </span>
+        </button>
+      </div>
+    }
+
     <div class="form-layout">
       <div class="form-layout__main">
         <!-- 1) ใคร -->
@@ -51,6 +84,64 @@
           </div>
         </section>
 
+        @if (mode() === 'returned') {
+          <!-- 2) เลือกใบเดิม -->
+          <section class="block">
+            <h3 class="block-title">2 · เลือกใบเดิมที่ปัญหากลับมา</h3>
+            @let t = oldTicket();
+            @if (!project() && !customer()) {
+              <p class="old-empty">เลือกโปรเจกต์หรือลูกค้าก่อน แล้วระบบจะแสดงใบที่ปิดแล้ว</p>
+            } @else if (t) {
+              <div class="old-picked">
+                <div class="old-picked__main">
+                  <strong>{{ t.ticketNo || 'ใบ #' + t.id }} · {{ t.title }}</strong>
+                  <small>
+                    ปิดเมื่อ {{ t.closedAt ? (t.closedAt | thaiDate: 'date') : '—' }}
+                    · แก้มาแล้ว {{ t.resolutionCount || 0 }} รอบ
+                  </small>
+                </div>
+                <button mat-stroked-button type="button" (click)="clearOldTicket()">เปลี่ยนใบ</button>
+              </div>
+            } @else {
+              <label class="old-search">
+                <mat-icon>search</mat-icon>
+                <input
+                  type="search"
+                  [formControl]="closedSearch"
+                  placeholder="ค้นหาเลขใบ / หัวข้อ"
+                  aria-label="ค้นหาใบที่ปิดแล้ว"
+                />
+              </label>
+              @if (closedLoading()) {
+                <p class="old-empty">กำลังโหลดใบที่ปิดแล้ว…</p>
+              } @else if (!closedTickets().length) {
+                <p class="old-empty">ไม่พบใบที่ปิดแล้ว — ถ้าเป็นเรื่องที่ไม่เคยแจ้ง ให้เลือก「ปัญหาใหม่」</p>
+              } @else {
+                <ul class="old-list">
+                  @for (t of closedTickets(); track t.id) {
+                    <li>
+                      <button type="button" class="old-row" (click)="pickOldTicket(t)">
+                        <span class="old-row__main">
+                          <strong>{{ t.ticketNo || 'ใบ #' + t.id }}</strong>
+                          <span class="old-row__title">{{ t.title }}</span>
+                        </span>
+                        <span class="old-row__meta">
+                          <span class="old-row__billing" [attr.data-billing]="t.billingType">
+                            {{ billingLabels[t.billingType] }}
+                          </span>
+                          <small>ปิด {{ t.closedAt ? (t.closedAt | thaiDate: 'date') : '—' }}</small>
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+                @if (closedTotal() > closedTickets().length) {
+                  <p class="old-more">แสดง {{ closedTickets().length }} จาก {{ closedTotal() }} ใบ — พิมพ์ค้นหาเพื่อหาใบที่เก่ากว่า</p>
+                }
+              }
+            }
+          </section>
+        } @else {
         <!-- 2) ปัญหาอะไร -->
         <section class="block">
           <h3 class="block-title">2 · ปัญหาคืออะไร</h3>
@@ -76,9 +167,85 @@
             }
           </mat-form-field>
         </section>
+        }
       </div>
 
       <div class="form-layout__side">
+        @if (mode() === 'returned') {
+          <!-- 3) สิทธิ์ของใบเดิม -->
+          <section class="block block--decide">
+            <h3 class="block-title">3 · สิทธิ์ที่ใช้</h3>
+            @if (oldTicket(); as t) {
+              <dl class="coverage">
+                <dt>ใบเดิมคิดแบบ</dt>
+                <dd>
+                  <span class="old-row__billing" [attr.data-billing]="t.billingType">
+                    {{ billingLabels[t.billingType] }}
+                  </span>
+                  @if (t.billingType === 'WARRANTY' && t.warrantyId) {
+                    <small>ใบรับประกัน #{{ t.warrantyId }}</small>
+                  }
+                  @if (t.billingType === 'MA_QUOTA' && t.maContractId) {
+                    <small>สัญญา MA #{{ t.maContractId }}</small>
+                  }
+                </dd>
+                @if (billingSuggestion(); as s) {
+                  <dt>สิทธิ์ ณ วันนี้</dt>
+                  <dd>
+                    {{ billingSuggestionLabel() || billingLabels.ONE_TIME }}
+                    @if (s.warrantyEndDate) {
+                      <small>ประกันถึง {{ s.warrantyEndDate | thaiDate: 'date' }}</small>
+                    }
+                    @if (s.maRemaining != null) {
+                      <small>โควตา MA เหลือ {{ s.maRemaining }} ครั้ง</small>
+                    }
+                  </dd>
+                }
+              </dl>
+              @if (coverageWarning(); as w) {
+                <p class="coverage__warn">
+                  <mat-icon>warning_amber</mat-icon>
+                  <span>{{ w }}</span>
+                </p>
+              }
+              <p class="coverage__note">
+                รอบใหม่จะนับอยู่ในใบเดิมและใช้การคิดค่าใช้จ่ายแบบเดียวกับใบเดิม
+              </p>
+            } @else {
+              <p class="old-empty">เลือกใบเดิมก่อน แล้วจะเห็นว่าใช้ประกันหรือโควตา MA อะไรไป</p>
+            }
+          </section>
+
+          <!-- 4) อาการ + ผู้รับผิดชอบ -->
+          <section class="block block--secondary">
+            <h3 class="block-title">4 · อาการที่กลับมา</h3>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>อาการที่กลับมา</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                [formControl]="reopenSymptom"
+                placeholder="ลูกค้าแจ้งว่าเจออะไรอีกครั้ง"
+              ></textarea>
+              @if (reopenSymptom.touched && reopenSymptom.invalid) {
+                <mat-error>กรอกอาการที่กลับมา</mat-error>
+              }
+            </mat-form-field>
+            @if (canAssign()) {
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>ผู้รับผิดชอบรอบนี้</mat-label>
+                <mat-select [formControl]="reopenAssignee">
+                  <mat-option [value]="null">ยังไม่มอบหมาย — ไปรอในคิวแอดมิน</mat-option>
+                  @for (u of assignableUsers(); track u.id) {
+                    <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            } @else {
+              <p class="old-empty">หลังเปิดรอบใหม่ ใบจะไปรอในคิวแอดมิน「รอรับงานรอบใหม่」</p>
+            }
+          </section>
+        } @else {
         <!-- 3) ความเร่งด่วน + คิดเงิน -->
         <section class="block block--decide">
           <h3 class="block-title">3 · ความเร่งด่วนและการคิดค่าใช้จ่าย</h3>
@@ -232,6 +399,7 @@
             </mat-form-field>
           }
         </section>
+        }
       </div>
     </div>
 
@@ -250,6 +418,6 @@
     form="ticket-form"
     [disabled]="saving()"
   >
-    {{ isEdit ? 'บันทึกการแก้ไข' : 'เปิดใบแจ้งปัญหา' }}
+    {{ isEdit ? 'บันทึกการแก้ไข' : mode() === 'returned' ? 'เปิดรอบใหม่ในใบเดิม' : 'เปิดใบแจ้งปัญหา' }}
   </button>
 </mat-dialog-actions>

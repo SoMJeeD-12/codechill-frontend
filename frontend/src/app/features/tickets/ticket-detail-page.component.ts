@@ -1520,6 +1520,7 @@ export interface TicketProblemReturnedDialogData {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatIconModule,
     MatSnackBarModule,
   ],
   template: `
@@ -1528,23 +1529,46 @@ export interface TicketProblemReturnedDialogData {
       <p class="intro">เปิดรอบใหม่ในใบเดิม — ไม่สร้างใบใหม่ · ให้คนตัดสินว่าเป็นปัญหาเดิมจริง</p>
 
       @if (data.lastResolution; as last) {
-        <div class="last-round">
-          <strong>รอบล่าสุด (รอบที่ {{ last.round }})</strong>
-          <p>สาเหตุ「{{ last.rootCause?.trim() || '—' }}」</p>
-          <p>วิธีแก้「{{ last.detail.trim() || '—' }}」</p>
-          <p class="tip">ดูวิธีแก้รอบก่อน เพื่อไม่แก้ด้วยวิธีเดิมซ้ำ</p>
-        </div>
+        <section class="last-round">
+          <header class="last-round__head">
+            <strong>รอบล่าสุด · งานครั้งที่ {{ last.round }}</strong>
+            @if (closedAgo(); as ago) {
+              <span class="ago-chip" [class.ago-chip--warn]="ago.old">{{ ago.label }}</span>
+            }
+          </header>
+          <dl>
+            <dt>สาเหตุ</dt>
+            <dd>
+              <div class="clip" [class.clip--open]="causeOpen()">{{ last.rootCause?.trim() || '—' }}</div>
+              @if (isLong(last.rootCause)) {
+                <button type="button" class="more" (click)="causeOpen.set(!causeOpen())">
+                  {{ causeOpen() ? 'ย่อ' : 'ดูเพิ่มเติม' }}
+                </button>
+              }
+            </dd>
+            <dt>วิธีแก้</dt>
+            <dd>
+              <div class="clip" [class.clip--open]="detailOpen()">{{ last.detail.trim() || '—' }}</div>
+              @if (isLong(last.detail)) {
+                <button type="button" class="more" (click)="detailOpen.set(!detailOpen())">
+                  {{ detailOpen() ? 'ย่อ' : 'ดูเพิ่มเติม' }}
+                </button>
+              }
+            </dd>
+          </dl>
+          <p class="tip">
+            <mat-icon>lightbulb</mat-icon>
+            ดูวิธีแก้รอบก่อน เพื่อไม่แก้ด้วยวิธีเดิมซ้ำ
+          </p>
+        </section>
+        @if (closedAgo()?.old) {
+          <p class="ago-warn">ปิดไปนานแล้ว — ยืนยันว่าเป็นอาการเดิมจริงก่อนเปิดรอบใหม่</p>
+        }
       } @else {
         <p class="muted">ยังไม่มีประวัติรอบแก้ไขในใบนี้</p>
-      }
-
-      @if (closedAgo(); as ago) {
-        <p class="ago" [class.ago-warn]="ago.old">
-          {{ ago.label }}
-          @if (ago.old) {
-            <span> — ปิดไปนานแล้ว ยืนยันว่าเป็นอาการเดิม?</span>
-          }
-        </p>
+        @if (closedAgo(); as ago) {
+          <p class="muted" [class.ago-warn]="ago.old">{{ ago.label }}</p>
+        }
       }
 
       <form [formGroup]="form" id="ticket-reopen-form" class="dlg-form" (ngSubmit)="confirm()">
@@ -1596,32 +1620,97 @@ export interface TicketProblemReturnedDialogData {
       font-size: 0.86rem;
     }
     .last-round {
-      margin: 0 0 0.75rem;
-      padding: 0.75rem 0.85rem;
-      border-radius: 10px;
-      background: #f0f7f5;
+      margin: 0 0 0.85rem;
+      padding: 0.8rem 0.95rem;
+      border-radius: 12px;
+      background: #f8fbfa;
       border: 1px solid #d5e8e2;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
-    .last-round strong {
+    .last-round__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+      color: #1c2b28;
+    }
+    .ago-chip {
+      padding: 0.12rem 0.6rem;
+      border-radius: 999px;
+      background: #e7f3f0;
+      color: #0f766e;
+      font-size: 0.76rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .ago-chip--warn {
+      background: #fff7ed;
+      color: #9a3412;
+    }
+    .last-round dl {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      gap: 0.5rem 0.75rem;
+      margin: 0;
+    }
+    .last-round dt {
+      color: #7b8a85;
+    }
+    .last-round dd {
+      margin: 0;
+      min-width: 0;
+      color: #1e293b;
+    }
+    .clip {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+    .clip--open {
       display: block;
-      margin-bottom: 0.35rem;
+      -webkit-line-clamp: unset;
+      max-height: 12rem;
+      overflow-y: auto;
+      padding-right: 0.25rem;
     }
-    .last-round p {
-      margin: 0.2rem 0;
+    .more {
+      margin: 0.15rem 0 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: #0f766e;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .more:hover {
+      text-decoration: underline;
     }
     .tip {
-      margin-top: 0.45rem !important;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0.7rem 0 0;
+      padding-top: 0.6rem;
+      border-top: 1px dashed #d5e8e2;
       color: #0f766e;
       font-size: 0.8rem;
     }
-    .ago {
-      margin: 0 0 0.75rem;
-      font-size: 0.88rem;
-      color: #334155;
+    .tip mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
     }
     .ago-warn {
+      margin: 0 0 0.75rem;
       color: #9a3412;
+      font-size: 0.85rem;
       font-weight: 500;
     }
     .muted {
@@ -1632,7 +1721,8 @@ export interface TicketProblemReturnedDialogData {
     }
     .dlg-form {
       display: grid;
-      gap: 0.25rem;
+      gap: 0.5rem;
+      padding-top: 0.5rem;
       min-width: min(720px, 92vw);
     }
     .full {
@@ -1654,6 +1744,8 @@ export class TicketProblemReturnedDialogComponent {
 
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly causeOpen = signal(false);
+  readonly detailOpen = signal(false);
 
   readonly form = this.fb.group({
     symptom: [''],
@@ -1664,6 +1756,12 @@ export class TicketProblemReturnedDialogComponent {
       this.data.canAssign ? [Validators.required, Validators.min(1)] : [],
     ],
   });
+
+  /** ยาวเกิน 2 บรรทัดโดยประมาณ — แสดงปุ่มดูเพิ่มเติม */
+  isLong(text: string | null | undefined): boolean {
+    const t = text?.trim() ?? '';
+    return t.length > 110 || t.split('\n').length > 2;
+  }
 
   closedAgo(): { label: string; old: boolean } | null {
     const closedAt = this.data.closedAtSnapshot;

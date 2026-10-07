@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,8 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { merge } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { EMPTY, merge, of } from 'rxjs';
+import { catchError, debounceTime, switchMap } from 'rxjs/operators';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -28,6 +28,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { ProjectService } from '../../core/services/project.service';
+import { UserService } from '../../core/services/user.service';
 import {
   TICKET_CATEGORY_DEMO_LABELS,
   TicketCategoryDemo,
@@ -111,6 +112,7 @@ export class TicketFormDialogComponent {
   private readonly ticketsApi = inject(TicketService);
   private readonly customersApi = inject(CustomerService);
   private readonly projectsApi = inject(ProjectService);
+  private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly demoOverlay = inject(TicketDemoOverlayService);
   private readonly snack = inject(MatSnackBar);
@@ -142,6 +144,26 @@ export class TicketFormDialogComponent {
 
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+
+  /** ปัญหาใหม่ = POST /tickets · ปัญหาเดิมกลับมา = reopen ใบที่ปิดแล้ว (ไม่สร้างใบใหม่) */
+  readonly mode = signal<'new' | 'returned'>('new');
+  readonly canReopen = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.reopen');
+  });
+  readonly canAssign = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.assign');
+  });
+  readonly closedTickets = signal<Ticket[]>([]);
+  readonly closedTotal = signal(0);
+  readonly closedLoading = signal(false);
+  readonly oldTicket = signal<Ticket | null>(null);
+  readonly closedSearch = this.fb.nonNullable.control('');
+  readonly reopenSymptom = this.fb.nonNullable.control('', Validators.required);
+  readonly reopenAssignee = this.fb.control<number | null>(null);
+  readonly assignableUsers = this.usersApi.assignableTicket;
+  private closedRequest = 0;
 
   readonly customer = signal<PickerOption | null>(null);
   readonly project = signal<PickerOption | null>(null);
@@ -227,7 +249,159 @@ export class TicketFormDialogComponent {
       if (presetProject?.id) {
         this.loadBillingSuggestion(presetProject.id);
       }
+
+      this.closedSearch.valueChanges
+        .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.loadClosedTickets());
     }
+  }
+
+  setMode(mode: 'new' | 'returned'): void {
+    if (this.mode() === mode) {
+      return;
+    }
+    this.mode.set(mode);
+    this.error.set(null);
+    if (mode === 'returned') {
+      this.loadClosedTickets();
+      if (this.canAssign() && !this.assignableUsers().length) {
+        this.usersApi.listAssignable('TICKET').subscribe({ error: () => undefined });
+      }
+    }
+  }
+
+  /** ใบที่ปิดแล้วของโปรเจกต์ (หรือลูกค้า) ที่เลือก — GET /tickets?status=CLOSED */
+  loadClosedTickets(): void {
+    if (this.mode() !== 'returned') {
+      return;
+    }
+    const projectId = this.project()?.id ?? null;
+    const customerId = this.customer()?.id ?? null;
+    const requestId = ++this.closedRequest;
+    if (projectId == null && customerId == null) {
+      this.closedTickets.set([]);
+      this.closedTotal.set(0);
+      this.closedLoading.set(false);
+      return;
+    }
+    this.closedLoading.set(true);
+    this.ticketsApi
+      .listPage({
+        status: 'CLOSED',
+        ...(projectId != null ? { projectId } : { customerId: customerId! }),
+        search: this.closedSearch.value.trim() || undefined,
+        page: 1,
+        limit: 20,
+      })
+      .subscribe({
+        next: (body) => {
+          if (requestId !== this.closedRequest) {
+            return;
+          }
+          this.closedTickets.set(body.items);
+          this.closedTotal.set(body.total);
+          this.closedLoading.set(false);
+        },
+        error: (err: Error) => {
+          if (requestId !== this.closedRequest) {
+            return;
+          }
+          this.closedTickets.set([]);
+          this.closedTotal.set(0);
+          this.closedLoading.set(false);
+          this.error.set(err.message);
+        },
+      });
+  }
+
+  pickOldTicket(t: Ticket): void {
+    this.oldTicket.set(t);
+    this.error.set(null);
+    this.reopenAssignee.setValue(this.canAssign() ? t.assignedUserId : null);
+    if (t.projectId && t.projectId !== this.project()?.id) {
+      this.loadBillingSuggestion(t.projectId);
+    }
+  }
+
+  clearOldTicket(): void {
+    this.oldTicket.set(null);
+  }
+
+  /** เทียบสิทธิ์ของใบเดิมกับสิทธิ์ ณ วันนี้ (billing-suggestion) */
+  readonly coverageWarning = computed(() => {
+    const t = this.oldTicket();
+    const s = this.billingSuggestion();
+    if (!t || !s) {
+      return null;
+    }
+    if (t.billingType === 'WARRANTY' && s.suggested !== 'WARRANTY') {
+      return 'ใบเดิมใช้ประกัน แต่วันนี้ระบบไม่พบประกันที่ครอบคลุมแล้ว — ตรวจก่อนว่ารอบนี้ยังเป็นงานในประกันหรือไม่';
+    }
+    if (t.billingType === 'MA_QUOTA' && s.maIsExhausted && !s.maIsReferenceOnly) {
+      return 'ใบเดิมใช้โควตา MA แต่ตอนนี้โควตาเต็มแล้ว';
+    }
+    if (t.billingType === 'MA_QUOTA' && s.suggested !== 'MA_QUOTA' && !s.maPlanName) {
+      return 'ใบเดิมใช้โควตา MA แต่วันนี้ระบบไม่พบสัญญา MA ที่ใช้งานอยู่';
+    }
+    return null;
+  });
+
+  private saveReturned(): void {
+    const t = this.oldTicket();
+    if (!t) {
+      this.error.set('เลือกใบเดิมที่ปัญหากลับมาก่อน');
+      return;
+    }
+    if (this.reopenSymptom.invalid) {
+      this.reopenSymptom.markAsTouched();
+      this.error.set('กรอกอาการที่กลับมาก่อนบันทึก');
+      return;
+    }
+    const reason = this.reopenSymptom.value.trim();
+    const assigneeId = this.canAssign() ? this.reopenAssignee.value : null;
+    const no = t.ticketNo?.trim() || `ใบ #${t.id}`;
+
+    this.saving.set(true);
+    this.error.set(null);
+    this.ticketsApi
+      .reopen(t.id, reason)
+      .pipe(
+        switchMap(() => {
+          if (!assigneeId) {
+            return of(false);
+          }
+          return this.ticketsApi.assign(t.id, assigneeId).pipe(
+            switchMap(() => of(true)),
+            catchError((err: Error) => {
+              this.saving.set(false);
+              this.snack.open(
+                `เปิด ${no} กลับมาแล้ว แต่ยังมอบหมายไม่สำเร็จ: ${err.message}`,
+                'ปิด',
+                { duration: 6500 }
+              );
+              this.ref.close(true);
+              return EMPTY;
+            })
+          );
+        })
+      )
+      .subscribe({
+        next: (assigned) => {
+          this.saving.set(false);
+          this.snack.open(
+            assigned
+              ? `เปิด ${no} รอบใหม่แล้ว — ส่งงานให้ผู้รับผิดชอบแล้ว`
+              : `เปิด ${no} กลับมาแล้ว — อยู่ในคิวแอดมิน「รอรับงานรอบใหม่」`,
+            'ปิด',
+            { duration: 4500 }
+          );
+          this.ref.close(true);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.error.set(err.message);
+        },
+      });
   }
 
   /** คนเลือกเอง — ไม่ทับด้วยค่าที่ระบบเสนอ */
@@ -278,9 +452,13 @@ export class TicketFormDialogComponent {
         this.customerFromProject.set(false);
       }
       this.clearBillingSuggestion();
+      this.oldTicket.set(null);
+      this.loadClosedTickets();
       return;
     }
 
+    this.oldTicket.set(null);
+    this.loadClosedTickets();
     this.projectsApi.fetchProject(option.id).subscribe({
       next: (project) => {
         if (project.customer) {
@@ -302,6 +480,8 @@ export class TicketFormDialogComponent {
     this.customer.set(option);
     this.customerFromProject.set(false);
     this.error.set(null);
+    this.oldTicket.set(null);
+    this.loadClosedTickets();
   }
 
   clearCustomerLock(): void {
@@ -309,6 +489,8 @@ export class TicketFormDialogComponent {
     this.customerFromProject.set(false);
     this.project.set(null);
     this.clearBillingSuggestion();
+    this.oldTicket.set(null);
+    this.loadClosedTickets();
   }
 
   /**
@@ -362,6 +544,10 @@ export class TicketFormDialogComponent {
   }
 
   save(): void {
+    if (!this.isEdit && this.mode() === 'returned') {
+      this.saveReturned();
+      return;
+    }
     const customerId = this.customer()?.id ?? null;
     if (customerId == null) {
       this.error.set('เลือกโปรเจกต์ หรือเลือกลูกค้าก่อนเปิดใบ');
