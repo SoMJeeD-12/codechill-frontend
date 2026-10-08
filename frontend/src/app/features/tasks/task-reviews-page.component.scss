@@ -46,7 +46,7 @@
     cursor: pointer;
 
     &:hover td {
-      background: rgba(15, 118, 110, 0.05);
+      background: color-mix(in srgb, var(--app-accent) 5%, transparent);
     }
   }
 }
@@ -63,17 +63,17 @@
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 600;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--app-surface-3);
+  color: var(--app-text-soft);
 
   &[data-result='APPROVED'] {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--app-success-soft);
+    color: var(--app-success);
   }
 
   &[data-result='REJECTED'] {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--app-danger-soft);
+    color: var(--app-danger-ink);
   }
 }
 

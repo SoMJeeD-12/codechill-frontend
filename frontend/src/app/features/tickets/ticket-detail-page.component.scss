@@ -80,13 +80,13 @@
   font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .ticket-stepper {
@@ -96,8 +96,8 @@
   margin: 0 0 0.65rem;
   padding: 0.55rem 0.75rem;
   border-radius: 10px;
-  background: #f3f7f6;
-  border: 1px solid #d7e5e1;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-line);
   overflow-x: auto;
 }
 
@@ -105,7 +105,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: #6b7874;
+  color: var(--app-muted);
   white-space: nowrap;
   font-size: 0.82rem;
 }
@@ -114,28 +114,28 @@
   width: 0.65rem;
   height: 0.65rem;
   border-radius: 999px;
-  border: 2px solid #cfdad6;
-  background: #fff;
+  border: 2px solid var(--app-line);
+  background: var(--app-surface);
 }
 
 .ticket-stepper__item.is-done {
-  color: #0f766e;
+  color: var(--app-accent);
 }
 
 .ticket-stepper__item.is-done .ticket-stepper__dot {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: var(--app-accent);
+  border-color: var(--app-accent);
 }
 
 .ticket-stepper__item.is-current {
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 700;
 }
 
 .ticket-stepper__item.is-current .ticket-stepper__dot {
-  background: #0f766e;
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 16%, transparent);
 }
 
 .ticket-stepper__rail {
@@ -143,21 +143,21 @@
   min-width: 0.75rem;
   height: 2px;
   margin: 0 0.35rem;
-  background: #cfdad6;
+  background: var(--app-line);
   border-radius: 999px;
 }
 
 .ticket-stepper__rail.is-done {
-  background: #0f766e;
+  background: var(--app-accent);
 }
 
 .ma-link {
   margin: 0.25rem 0 0;
   font-size: 0.9rem;
-  color: #5b6762;
+  color: var(--app-muted);
 
   a {
-    color: #0f766e;
+    color: var(--app-accent);
     font-weight: 600;
     text-decoration: none;
   }
@@ -167,9 +167,9 @@
   margin: 0.5rem 0 0;
   padding: 0.55rem 0.75rem;
   border-radius: 10px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
+  background: var(--app-warn-soft);
+  border: 1px solid var(--app-warn-line);
+  color: var(--app-warn-ink);
   font-size: 0.88rem;
   line-height: 1.4;
   max-width: 40rem;
@@ -179,9 +179,9 @@
   margin: 0 0 0.75rem;
   padding: 0.55rem 0.75rem;
   border-radius: 10px;
-  background: #eff6ff;
-  border: 1px dashed #93c5fd;
-  color: #1e3a8a;
+  background: var(--app-info-soft);
+  border: 1px dashed var(--app-info-line);
+  color: var(--app-info);
   font-size: 0.86rem;
   line-height: 1.45;
 }
@@ -192,8 +192,8 @@
   margin-left: 0.35rem;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--app-info-soft);
+  color: var(--app-info);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -202,7 +202,7 @@
 .category-chip {
   margin: 0 0 0.65rem;
   font-size: 0.86rem;
-  color: #64748b;
+  color: var(--app-muted);
   font-weight: 500;
 }
 
@@ -210,8 +210,8 @@
   margin: 0 0 1rem;
   padding: 0.85rem 1rem;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border: 1px solid var(--app-line);
+  background: var(--app-surface-2);
 }
 
 .ticket-timeline__head {
@@ -230,7 +230,7 @@
 
 .list-count {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--app-muted);
   font-weight: 500;
 }
 
@@ -239,17 +239,17 @@
   align-items: center;
   margin: 0.35rem 0 0.15rem;
   padding: 0.35rem 0.55rem;
-  border: 1px dashed rgb(15 118 110 / 0.35);
+  border: 1px dashed color-mix(in srgb, var(--app-accent) 35%, transparent);
   border-radius: 8px;
-  background: rgb(15 118 110 / 0.06);
-  color: #0f766e;
+  background: color-mix(in srgb, var(--app-accent) 6%, transparent);
+  color: var(--app-accent);
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
 
   &:hover {
-    background: rgb(15 118 110 / 0.12);
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
   }
 }
 
@@ -262,7 +262,7 @@
   gap: 0;
 
   li {
-    --tone: #64748b;
+    --tone: var(--app-muted);
     position: relative;
     display: grid;
     grid-template-columns: 1.5rem 1fr;
@@ -276,14 +276,14 @@
       top: 2rem;
       bottom: -0.5rem;
       width: 2px;
-      background: #cbd5e1;
+      background: var(--app-control-line);
     }
 
-    &[data-tone='info'] { --tone: #2563eb; }
-    &[data-tone='progress'] { --tone: #b45309; }
-    &[data-tone='success'] { --tone: #0f766e; }
-    &[data-tone='warn'] { --tone: #c2410c; }
-    &[data-tone='danger'] { --tone: #b91c1c; }
+    &[data-tone='info'] { --tone: var(--app-info); }
+    &[data-tone='progress'] { --tone: var(--app-warn); }
+    &[data-tone='success'] { --tone: var(--app-accent); }
+    &[data-tone='warn'] { --tone: var(--app-warn); }
+    &[data-tone='danger'] { --tone: var(--app-danger); }
   }
 }
 
@@ -294,7 +294,7 @@
   height: 1.5rem;
   border-radius: 50%;
   border: 2px solid var(--tone);
-  background: #fff;
+  background: var(--app-surface);
   color: var(--tone);
   z-index: 1;
 
@@ -309,9 +309,9 @@
   padding: 0.3rem 0.5rem;
   border-left: 3px solid var(--tone);
   border-radius: 4px;
-  background: #fff;
+  background: var(--app-surface);
   font-size: 0.84rem;
-  color: #334155;
+  color: var(--app-text-soft);
   white-space: pre-line;
 }
 
@@ -323,39 +323,39 @@
 
   strong {
     font-size: 0.9rem;
-    color: #0f172a;
+    color: var(--app-ink);
   }
 
   time {
     font-size: 0.78rem;
-    color: #64748b;
+    color: var(--app-muted);
   }
 }
 
 .ticket-timeline__detail {
   font-size: 0.84rem;
-  color: #475569;
+  color: var(--app-text-soft);
 }
 
 .reported-detail {
   margin: 0 0 1rem;
   padding: 0.95rem 1.05rem 0.85rem;
   border-radius: 1rem;
-  border: 1px solid #d7e4df;
-  background: linear-gradient(135deg, rgb(240 253 250 / 0.9), #fff 42%);
-  box-shadow: 0 4px 14px rgb(28 43 40 / 0.05);
+  border: 1px solid var(--app-line);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--app-accent-soft) 90%, transparent), var(--app-surface) 42%);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--app-shadow-ink) 5%, transparent);
 
   h2 {
     margin: 0;
     font-size: 0.78rem;
     font-weight: 750;
     letter-spacing: 0.02em;
-    color: #0f766e;
+    color: var(--app-accent);
   }
 
   p {
     margin: 0.45rem 0 0;
-    color: #1c2b28;
+    color: var(--app-ink);
     font-size: 1.02rem;
     line-height: 1.55;
     white-space: pre-wrap;
@@ -376,25 +376,25 @@
 
   &.is-empty {
     border-style: dashed;
-    background: #f7faf9;
+    background: var(--app-surface-2);
   }
 }
 
 .reported-detail__empty {
-  color: #3d4f49 !important;
+  color: var(--app-text-soft) !important;
   font-weight: 650;
 }
 
 .appended-notes {
   margin-top: 0.75rem;
   padding-top: 0.65rem;
-  border-top: 1px dashed #d7e4df;
+  border-top: 1px dashed var(--app-line);
 
   h3 {
     margin: 0 0 0.4rem;
     font-size: 0.74rem;
     font-weight: 700;
-    color: #6b7f79;
+    color: var(--app-muted);
   }
 
   ul {
@@ -411,14 +411,14 @@
     gap: 0.5rem;
     padding: 0.4rem 0.65rem;
     border-radius: 10px;
-    background: #fffbeb;
-    color: #92400e;
+    background: var(--app-warn-soft);
+    color: var(--app-warn-ink);
     font-size: 0.86rem;
     line-height: 1.45;
 
     &[data-kind='reject'] {
-      background: #fef2f2;
-      color: #b91c1c;
+      background: var(--app-danger-soft);
+      color: var(--app-danger);
     }
   }
 
@@ -439,14 +439,14 @@
 
 .appended-notes__text {
   min-width: 0;
-  color: #3d4f49;
+  color: var(--app-text-soft);
   overflow-wrap: anywhere;
 }
 
 .reported-detail__status {
   margin-top: 0.75rem;
   padding-top: 0.65rem;
-  border-top: 1px dashed #d7e4df;
+  border-top: 1px dashed var(--app-line);
 
   .ticket-workflow,
   app-status-bar {
@@ -472,13 +472,13 @@
   margin: 0 0 1rem;
   padding: 0.85rem 1.1rem;
   border-radius: 12px;
-  border: 1px solid #fcd34d;
-  background: #fffbeb;
+  border: 1px solid var(--app-warn-line);
+  background: var(--app-warn-soft);
 }
 
 .ticket-workflow[data-result='FAILED'] {
-  border-color: #fdba74;
-  background: #fff7ed;
+  border-color: var(--app-warn-line);
+  background: var(--app-warn-soft);
 }
 
 .ticket-workflow__main {
@@ -492,16 +492,16 @@
 .ticket-workflow__badge {
   font-weight: 700;
   font-size: 0.95rem;
-  color: #b45309;
+  color: var(--app-warn);
 }
 
 .ticket-workflow[data-result='FAILED'] .ticket-workflow__badge {
-  color: #c2410c;
+  color: var(--app-warn);
 }
 
 .ticket-workflow__meta {
   font-size: 0.88rem;
-  color: #78716c;
+  color: var(--app-muted);
 }
 
 .ticket-workflow__actions {
@@ -539,7 +539,7 @@
 
   .round-list {
     margin-top: 0.75rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-line);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -548,17 +548,17 @@
 .section-sub {
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--app-muted);
   line-height: 1.35;
 }
 
 .not-filled {
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--app-subtle);
 }
 
 .muted {
-  color: #64748b;
+  color: var(--app-muted);
   font-size: 0.85rem;
 }
 
@@ -575,7 +575,7 @@
     strong {
       display: block;
       font-size: 0.72rem;
-      color: #5b6762;
+      color: var(--app-muted);
       margin-bottom: 0.2rem;
     }
   }
@@ -601,13 +601,13 @@
   gap: 0.85rem;
   padding: 0.85rem 1rem;
   border: 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--app-surface-3);
   background: transparent;
   text-align: left;
   cursor: pointer;
 
   &:hover {
-    background: #f8fafc;
+    background: var(--app-surface-2);
   }
 }
 
@@ -621,11 +621,11 @@
   min-width: 0;
 
   strong {
-    color: #0f172a;
+    color: var(--app-ink);
   }
 
   .meta {
-    color: #64748b;
+    color: var(--app-muted);
     font-size: 0.85rem;
   }
 }
@@ -634,26 +634,26 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  color: #64748b;
+  color: var(--app-muted);
   flex: 0 0 auto;
 
   .pill {
     display: inline-flex;
     padding: 0.1rem 0.45rem;
     border-radius: 999px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: var(--app-surface-3);
+    border: 1px solid var(--app-line);
     font-size: 0.75rem;
     font-weight: 600;
   }
 
   mat-icon {
-    color: #94a3b8;
+    color: var(--app-subtle);
   }
 }
 
 .empty {
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .missing {

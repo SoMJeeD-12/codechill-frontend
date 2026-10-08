@@ -53,7 +53,7 @@
   background: var(--app-surface);
   border: 1px solid var(--app-line);
   border-radius: var(--app-radius-card);
-  box-shadow: 0 4px 18px rgba(28, 43, 40, 0.04);
+  box-shadow: 0 4px 18px var(--app-shadow);
   overflow: hidden;
 }
 
@@ -61,7 +61,7 @@
   display: grid;
   gap: 0.75rem;
   padding: 0.95rem 1.15rem;
-  background: linear-gradient(180deg, #f7fbf9 0%, #ffffff 88%);
+  background: linear-gradient(180deg, var(--app-surface-2) 0%, var(--app-surface) 88%);
   border-bottom: 1px solid var(--app-line-soft);
 }
 
@@ -91,14 +91,14 @@
   min-width: 0;
   height: 44px;
   padding: 0 0.85rem;
-  border: 1px solid #cfe0db;
+  border: 1px solid var(--app-control-line);
   border-radius: var(--app-radius-control);
   background: var(--app-surface);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
   mat-icon,
   .mat-icon {
-    color: #6b7f79;
+    color: var(--app-muted);
     width: 20px;
     height: 20px;
     font-size: 20px;
@@ -111,16 +111,16 @@
     background: transparent;
     font: inherit;
     font-size: 0.92rem;
-    color: #1c2b28;
+    color: var(--app-ink);
 
     &::placeholder {
-      color: #8a9792;
+      color: var(--app-faint);
     }
   }
 
   &:focus-within {
     border-color: var(--app-accent);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 15%, transparent);
   }
 }
 
@@ -138,12 +138,12 @@
   --mat-form-field-container-height: 44px;
   --mat-form-field-container-vertical-padding: 10px;
   --mdc-outlined-text-field-container-shape: var(--app-radius-control);
-  --mdc-outlined-text-field-outline-color: #cfe0db;
-  --mdc-outlined-text-field-hover-outline-color: rgba(15, 118, 110, 0.45);
+  --mdc-outlined-text-field-outline-color: var(--app-control-line);
+  --mdc-outlined-text-field-hover-outline-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
   --mdc-outlined-text-field-focus-outline-color: var(--app-accent);
   --mat-select-trigger-text-size: 0.92rem;
-  --mat-select-placeholder-text-color: #1c2b28;
-  --mat-form-field-leading-icon-color: #6b7f79;
+  --mat-select-placeholder-text-color: var(--app-ink);
+  --mat-form-field-leading-icon-color: var(--app-muted);
 
   .mat-icon[matPrefix] {
     width: 20px;
@@ -169,9 +169,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 1px solid #d7e4e0;
-  background: #fff;
-  color: #3f534e;
+  border: 1px solid var(--app-control-line);
+  background: var(--app-surface);
+  color: var(--app-text-soft);
   border-radius: 999px;
   padding: 0.38rem 0.85rem;
   font: inherit;
@@ -181,19 +181,19 @@
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 
   &:hover {
-    border-color: rgba(15, 118, 110, 0.45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
     color: var(--app-accent-dark);
     background: var(--app-accent-soft);
   }
 
   &.is-active {
     background: var(--app-accent-soft);
-    border-color: rgba(15, 118, 110, 0.4);
+    border-color: color-mix(in srgb, var(--app-accent) 40%, transparent);
     color: var(--app-accent-dark);
     font-weight: 600;
 
     .ui-chip__count {
-      background: rgba(15, 118, 110, 0.14);
+      background: color-mix(in srgb, var(--app-accent) 14%, transparent);
       color: var(--app-accent-dark);
     }
   }
@@ -207,8 +207,8 @@
   height: 1.35rem;
   padding: 0 0.35rem;
   border-radius: 999px;
-  background: #e7f3f0;
-  color: #0f766e;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -216,8 +216,8 @@
 /* แท็บที่มีงานรอ — ใส่ class นี้เฉพาะตอนจำนวน > 0 */
 .ui-chip .ui-chip__count--alert,
 .ui-chip.is-active .ui-chip__count--alert {
-  background: #dc2626;
-  color: #fff;
+  background: var(--app-danger);
+  color: var(--app-on-solid);
 }
 
 /* ปุ่มจัดเรียงที่หัวคอลัมน์ */
@@ -265,7 +265,7 @@
   border-spacing: 0;
 
   .mat-mdc-header-row {
-    background: #f8faf9;
+    background: var(--app-surface-2);
   }
 
   .mat-mdc-header-cell {
@@ -284,14 +284,14 @@
   }
 
   .mat-mdc-row:hover {
-    background: #f7faf9;
+    background: var(--app-hover);
   }
 
   .mat-mdc-row:hover .mat-mdc-cell:first-of-type,
   .mat-mdc-row:hover .mat-mdc-cell:last-of-type,
   .mat-mdc-row:hover .mat-mdc-cell.col-sticky-start,
   .mat-mdc-row:hover .mat-mdc-cell.col-sticky-end {
-    background: #f7faf9;
+    background: var(--app-hover);
   }
 
   .mat-mdc-row {
@@ -301,7 +301,7 @@
   .mat-mdc-cell {
     height: 3.15rem;
     max-height: 3.15rem;
-    border-bottom-color: #eef2f0 !important;
+    border-bottom-color: var(--app-line-soft) !important;
     padding-top: 0.45rem !important;
     padding-bottom: 0.45rem !important;
     vertical-align: middle;
@@ -340,14 +340,14 @@
     position: sticky;
     left: 0;
     z-index: 2;
-    background: #fff;
-    box-shadow: 1px 0 0 #eef2f0;
+    background: var(--app-surface);
+    box-shadow: 1px 0 0 var(--app-line-soft);
     width: auto;
   }
 
   .mat-mdc-header-cell:first-of-type,
   .mat-mdc-header-cell.col-sticky-start {
-    background: #f8faf9;
+    background: var(--app-surface-2);
     z-index: 3;
   }
 
@@ -362,8 +362,8 @@
     position: sticky;
     right: 0;
     z-index: 2;
-    background: #fff;
-    box-shadow: -1px 0 0 #eef2f0;
+    background: var(--app-surface);
+    box-shadow: -1px 0 0 var(--app-line-soft);
     text-align: right;
     white-space: nowrap;
     width: 1%;
@@ -374,7 +374,7 @@
 
   .mat-mdc-header-cell:last-of-type,
   .mat-mdc-header-cell.col-sticky-end {
-    background: #f8faf9;
+    background: var(--app-surface-2);
     z-index: 3;
   }
 
@@ -621,19 +621,19 @@
 }
 
 .row-action--secondary.mat-mdc-outlined-button {
-  --mdc-outlined-button-outline-color: #c5d5d0;
-  color: #3f4a46;
-  background: #fff;
+  --mdc-outlined-button-outline-color: var(--app-control-line);
+  color: var(--app-text-soft);
+  background: var(--app-surface);
 }
 
 .row-action--more.mat-mdc-icon-button {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid #c5d5d0;
+  border: 1px solid var(--app-control-line);
   border-radius: 8px;
-  background: #fff;
-  color: #3f4a46;
+  background: var(--app-surface);
+  color: var(--app-text-soft);
 
   .mat-icon {
     font-size: 20px;
@@ -861,8 +861,8 @@
   gap: 0.2rem;
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: #fff4e5;
-  color: #b45309;
+  background: var(--app-warn-soft);
+  color: var(--app-warn);
   font-size: 0.74rem;
   font-weight: 650;
   white-space: nowrap;
@@ -879,7 +879,7 @@
   width: 26px;
   height: 26px;
   padding: 0;
-  color: #b45309;
+  color: var(--app-warn);
 
   mat-icon {
     width: 18px;
@@ -894,14 +894,14 @@
   border-radius: 12px !important;
   font-weight: 600 !important;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.16) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--app-accent) 16%, transparent) !important;
 }
 
 /* คอลัมน์รหัส — ค่าว่างแสดง "—" */
 .col-code {
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
-  color: #5b6762;
+  color: var(--app-muted);
   white-space: nowrap;
 }
 
@@ -914,13 +914,13 @@
 .row-sub {
   display: block;
   margin-top: 0.1rem;
-  color: #7b8a85;
+  color: var(--app-faint);
   font-size: 0.76rem;
 }
 
 /* ค่าที่ยังไม่กรอก — ห้ามแสดง 0 */
 .not-filled {
-  color: #98a5a0;
+  color: var(--app-faint);
   font-style: italic;
   font-size: 0.85rem;
 }
@@ -931,8 +931,8 @@
   align-items: center;
   padding: 0.24rem 0.65rem;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--app-surface-3);
+  color: var(--app-text-soft);
   font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
@@ -942,29 +942,29 @@
   &[data-status='DOING'],
   &[data-status='RECEIVED'],
   &[data-status='WAITING_ADMIN'] {
-    background: #e0f2fe;
-    color: #075985;
+    background: var(--app-info-soft);
+    color: var(--app-info);
   }
 
   /* มอบหมายแล้ว รอเริ่มงาน / รอซัพพอร์ตแจ้งลูกค้า */
   &[data-status='ASSIGNED'],
   &[data-status='WAITING_SUPPORT'] {
-    background: #e0e7ff;
-    color: #3730a3;
+    background: var(--app-violet-soft);
+    color: var(--app-violet);
   }
 
   /* ต้องรีบดู */
   &[data-status='REOPENED'],
   &[data-status='WAITING'] {
-    background: #ffedd5;
-    color: #9a3412;
+    background: var(--app-warn-soft);
+    color: var(--app-warn-ink);
   }
 
   /* แก้ไขบางส่วน / ยังไม่สำเร็จ — อำพัน ไม่ใช่แดง error */
   &[data-status='PARTIAL'],
   &[data-status='FAILED'] {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--app-warn-soft);
+    color: var(--app-warn-ink);
   }
 
   /* เรียบร้อย */
@@ -972,23 +972,23 @@
   &[data-status='DONE'],
   &[data-status='DELIVERED'],
   &[data-status='ACCEPTED'] {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--app-success-soft);
+    color: var(--app-success);
   }
 
   /* ปิด / ยกเลิก */
   &[data-status='CLOSED'],
   &[data-status='CANCELLED'],
   &[data-status='REJECTED'] {
-    background: #f1f5f9;
-    color: #64748b;
+    background: var(--app-surface-3);
+    color: var(--app-muted);
   }
 
   /* ร่าง — ต้องมองเห็นชัด ไม่กลืนกับพื้นหลัง */
   &[data-status='DRAFT'] {
-    background: #e2e8f0;
-    color: #1e293b;
-    box-shadow: inset 0 0 0 1px #94a3b8;
+    background: var(--app-line);
+    color: var(--app-ink);
+    box-shadow: inset 0 0 0 1px var(--app-subtle);
   }
 }
 
@@ -1004,7 +1004,7 @@
   flex: 1;
   height: 6px;
   border-radius: 999px;
-  background: #e7edeb;
+  background: var(--app-line-soft);
   overflow: hidden;
 }
 
@@ -1012,13 +1012,13 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: #0f766e;
+  background: var(--app-accent);
 }
 
 .progress-value {
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
-  color: #5b6762;
+  color: var(--app-muted);
   min-width: 2.5rem;
   text-align: right;
 }
@@ -1064,26 +1064,26 @@
 
   /* ต่ำ = เขียว */
   &[data-priority='LOW'] {
-    background: #ecfdf5;
-    color: #15803d;
+    background: var(--app-accent-soft);
+    color: var(--app-success);
   }
 
   /* ปานกลาง = เหลือง */
   &[data-priority='NORMAL'] {
-    background: #fef9c3;
-    color: #a16207;
+    background: var(--app-warn-soft);
+    color: var(--app-warn);
   }
 
   /* สูง = ส้ม */
   &[data-priority='HIGH'] {
-    background: #ffedd5;
-    color: #c2410c;
+    background: var(--app-warn-soft);
+    color: var(--app-warn);
   }
 
   /* ด่วนมาก = แดง */
   &[data-priority='URGENT'] {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--app-danger-soft);
+    color: var(--app-danger);
   }
 
   &.is-editable {
@@ -1093,7 +1093,7 @@
 
     &:hover {
       filter: brightness(0.97);
-      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 12%, transparent);
     }
   }
 }
@@ -1123,11 +1123,11 @@
   gap: 0.85rem;
   flex-wrap: wrap;
   border-radius: var(--app-radius-control);
-  border: 1px solid rgb(180 83 9 / 0.22);
-  background: #fffbeb;
+  border: 1px solid var(--app-warn-line);
+  background: var(--app-warn-soft);
 
   &[data-tone='ok'] {
-    border-color: rgb(15 118 110 / 0.28);
+    border-color: color-mix(in srgb, var(--app-accent) 28%, transparent);
     background: var(--app-accent-soft);
 
     .next-hint__title {
@@ -1149,14 +1149,14 @@
   margin: 0;
   font-size: 0.92rem;
   font-weight: 700;
-  color: #92400e;
+  color: var(--app-warn-ink);
 }
 
 .next-hint__detail {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
   line-height: 1.4;
-  color: #78350f;
+  color: var(--app-warn-ink);
 }
 
 .next-hint__list {
@@ -1164,12 +1164,5 @@
   padding-left: 1.1rem;
   font-size: 0.85rem;
   line-height: 1.45;
-  color: #78350f;
-}
-
-.next-hint__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  justify-content: flex-end;
+  color: var(--app-warn-ink);
 }

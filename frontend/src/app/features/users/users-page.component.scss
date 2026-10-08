@@ -21,13 +21,13 @@
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .header-actions {
@@ -54,18 +54,18 @@
   display: inline-block;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  background: #eef2f1;
+  background: var(--app-surface-3);
   font-size: 0.78rem;
   font-weight: 600;
 
   &.admin {
-    background: #ecfdf5;
-    color: #0f766e;
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
   }
 
   &.super {
-    background: #fff7ed;
-    color: #c2410c;
+    background: var(--app-warn-soft);
+    color: var(--app-warn);
   }
 }
 
@@ -92,18 +92,18 @@
   }
 
   &[data-status='ACTIVE'] {
-    background: #ecfdf5;
-    color: #0f766e;
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
   }
 
   &[data-status='SUSPENDED'] {
-    background: #fff7ed;
-    color: #c2410c;
+    background: var(--app-warn-soft);
+    color: var(--app-warn);
   }
 
   &[data-status='RESIGNED'] {
-    background: #f1f5f4;
-    color: #5b6762;
+    background: var(--app-surface-3);
+    color: var(--app-muted);
   }
 
   &.is-editable {
@@ -112,7 +112,7 @@
 
     &:hover {
       filter: brightness(0.97);
-      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 12%, transparent);
     }
   }
 }

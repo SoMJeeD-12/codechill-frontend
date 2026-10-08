@@ -7,20 +7,20 @@
   > div {
     padding: 0.9rem 1rem;
     border-radius: 1rem;
-    border: 1px solid #d7e4df;
-    background: #fff;
+    border: 1px solid var(--app-line);
+    background: var(--app-surface);
   }
 
   h2 {
     margin: 0;
     font-size: 0.78rem;
     font-weight: 750;
-    color: #0f766e;
+    color: var(--app-accent);
   }
 
   p {
     margin: 0.4rem 0 0;
-    color: #1c2b28;
+    color: var(--app-ink);
     font-size: 0.98rem;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -28,7 +28,7 @@
   }
 
   p.is-empty {
-    color: #3d4f49;
+    color: var(--app-text-soft);
     font-weight: 650;
   }
 }
@@ -70,13 +70,13 @@
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .meta-grid {
@@ -92,7 +92,7 @@
     strong {
       display: block;
       font-size: 0.75rem;
-      color: #5b6762;
+      color: var(--app-muted);
       margin-bottom: 0.25rem;
     }
   }
@@ -104,8 +104,8 @@
 
   &:hover,
   &:focus-visible {
-    border-color: #0f766e;
-    box-shadow: 0 0 0 2px rgb(15 118 110 / 0.12);
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 12%, transparent);
     outline: none;
   }
 }
@@ -113,7 +113,7 @@
 .lifetime-meta {
   span {
     font-weight: 700;
-    color: #1c2b28;
+    color: var(--app-ink);
   }
 
   .lifetime-meta__note,
@@ -128,7 +128,7 @@
     margin-top: 0.35rem;
     font-size: 0.72rem;
     line-height: 1.35;
-    color: #5b6762;
+    color: var(--app-muted);
   }
 
   .lifetime-meta__warn {
@@ -136,7 +136,7 @@
     margin-top: 0.2rem;
     font-size: 0.72rem;
     font-weight: 600;
-    color: #b45309;
+    color: var(--app-warn);
   }
 }
 
@@ -153,8 +153,8 @@
   height: 1.15rem;
   padding: 0 0.28rem;
   border-radius: 999px;
-  background: #0f766e;
-  color: #fff;
+  background: var(--app-accent);
+  color: var(--app-on-solid);
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;
@@ -173,7 +173,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #1c2b28;
+  color: var(--app-ink);
 }
 
 .tab-toolbar {
@@ -202,17 +202,17 @@
 }
 
 .cell-muted {
-  color: #94a3a0;
+  color: var(--app-subtle);
 }
 
 .ticket-no {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  color: #475552;
+  color: var(--app-text-soft);
 }
 
 .ticket-project-link {
-  color: #0f766e;
+  color: var(--app-accent);
   text-decoration: none;
   font-weight: 500;
 
@@ -230,8 +230,8 @@
 .primary-tag {
   display: inline-block;
   font-size: 0.7rem;
-  background: #ecfdf5;
-  color: #0f766e;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
 }
@@ -239,8 +239,8 @@
 .overdue-tag {
   margin-left: 0.35rem;
   font-size: 0.7rem;
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--app-warn-soft);
+  color: var(--app-warn);
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
 }

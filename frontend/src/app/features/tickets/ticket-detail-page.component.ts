@@ -1048,7 +1048,7 @@ export interface TicketResolutionFormData {
   styles: `
     .hint {
       margin: 0 0 0.75rem;
-      color: #0f766e;
+      color: var(--app-accent);
       font-size: 0.82rem;
     }
     .dlg-form {
@@ -1066,7 +1066,7 @@ export interface TicketResolutionFormData {
       width: 100%;
     }
     .files {
-      border: 1px dashed #cbd5e1;
+      border: 1px dashed var(--app-control-line);
       border-radius: 10px;
       padding: 0.6rem 0.75rem;
     }
@@ -1079,7 +1079,7 @@ export interface TicketResolutionFormData {
     .files__hint {
       display: block;
       font-size: 0.8rem;
-      color: #64748b;
+      color: var(--app-muted);
     }
     .files__list {
       list-style: none;
@@ -1095,7 +1095,7 @@ export interface TicketResolutionFormData {
       font-size: 0.875rem;
     }
     .files__list mat-icon {
-      color: #64748b;
+      color: var(--app-muted);
     }
     .files__name {
       flex: 1;
@@ -1105,13 +1105,13 @@ export interface TicketResolutionFormData {
       white-space: nowrap;
     }
     .files__size {
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.8rem;
     }
     .files__empty {
       margin: 0.4rem 0 0;
       font-size: 0.8rem;
-      color: #94a3b8;
+      color: var(--app-subtle);
     }
   `,
 })
@@ -1566,15 +1566,15 @@ export interface TicketProblemReturnedDialogData {
   styles: `
     .intro {
       margin: 0 0 0.75rem;
-      color: #5b6762;
+      color: var(--app-muted);
       font-size: 0.86rem;
     }
     .last-round {
       margin: 0 0 0.85rem;
       padding: 0.8rem 0.95rem;
       border-radius: 12px;
-      background: #f8fbfa;
-      border: 1px solid #d5e8e2;
+      background: var(--app-surface-2);
+      border: 1px solid var(--app-line);
       font-size: 0.88rem;
     }
     .last-round__head {
@@ -1583,20 +1583,20 @@ export interface TicketProblemReturnedDialogData {
       justify-content: space-between;
       gap: 0.75rem;
       margin-bottom: 0.6rem;
-      color: #1c2b28;
+      color: var(--app-ink);
     }
     .ago-chip {
       padding: 0.12rem 0.6rem;
       border-radius: 999px;
-      background: #e7f3f0;
-      color: #0f766e;
+      background: var(--app-accent-soft);
+      color: var(--app-accent);
       font-size: 0.76rem;
       font-weight: 600;
       white-space: nowrap;
     }
     .ago-chip--warn {
-      background: #fff7ed;
-      color: #9a3412;
+      background: var(--app-warn-soft);
+      color: var(--app-warn-ink);
     }
     .last-round dl {
       display: grid;
@@ -1605,12 +1605,12 @@ export interface TicketProblemReturnedDialogData {
       margin: 0;
     }
     .last-round dt {
-      color: #7b8a85;
+      color: var(--app-muted);
     }
     .last-round dd {
       margin: 0;
       min-width: 0;
-      color: #1e293b;
+      color: var(--app-ink);
     }
     .clip {
       display: -webkit-box;
@@ -1633,7 +1633,7 @@ export interface TicketProblemReturnedDialogData {
       padding: 0;
       border: 0;
       background: none;
-      color: #0f766e;
+      color: var(--app-accent);
       font: inherit;
       font-size: 0.8rem;
       font-weight: 600;
@@ -1648,8 +1648,8 @@ export interface TicketProblemReturnedDialogData {
       gap: 0.35rem;
       margin: 0.7rem 0 0;
       padding-top: 0.6rem;
-      border-top: 1px dashed #d5e8e2;
-      color: #0f766e;
+      border-top: 1px dashed var(--app-line);
+      color: var(--app-accent);
       font-size: 0.8rem;
     }
     .tip mat-icon {
@@ -1659,12 +1659,12 @@ export interface TicketProblemReturnedDialogData {
     }
     .ago-warn {
       margin: 0 0 0.75rem;
-      color: #9a3412;
+      color: var(--app-warn-ink);
       font-size: 0.85rem;
       font-weight: 500;
     }
     .muted {
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.86rem;
       margin: 0 0 0.75rem;
       line-height: 1.4;
@@ -1679,7 +1679,7 @@ export interface TicketProblemReturnedDialogData {
       width: 100%;
     }
     .error {
-      color: #991b1b;
+      color: var(--app-danger-ink);
       font-size: 0.86rem;
       margin: 0.35rem 0 0;
     }
@@ -2014,7 +2014,7 @@ export function printTicketConfirmationFromPayload(
   styles: `
     .ticket-ref {
       margin: 0 0 0.85rem;
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.86rem;
     }
     .round-steps {
@@ -2022,12 +2022,12 @@ export function printTicketConfirmationFromPayload(
       margin: 0 0 1rem;
       padding: 0.65rem 0.85rem;
       border-radius: 10px;
-      background: #f0fdfa;
-      border: 1px solid #ccfbf1;
+      background: var(--app-accent-soft);
+      border: 1px solid var(--app-accent-soft);
       display: grid;
       gap: 0.45rem;
       font-size: 0.86rem;
-      color: #0f766e;
+      color: var(--app-accent);
       counter-reset: step;
     }
     .round-steps li {
@@ -2048,8 +2048,8 @@ export function printTicketConfirmationFromPayload(
       width: 1.05rem;
       height: 1.05rem;
       border-radius: 999px;
-      background: #99f6e4;
-      color: #115e59;
+      background: var(--app-accent-line);
+      color: var(--app-accent-dark);
       font-size: 0.68rem;
       font-weight: 700;
       display: grid;
@@ -2059,10 +2059,10 @@ export function printTicketConfirmationFromPayload(
       opacity: 1;
     }
     .round-steps li.is-failed {
-      color: #b91c1c;
+      color: var(--app-danger);
     }
     .round-steps li.is-partial {
-      color: #b45309;
+      color: var(--app-warn);
     }
     .round-steps__main {
       display: flex;
@@ -2072,11 +2072,11 @@ export function printTicketConfirmationFromPayload(
     }
     .round-steps__result {
       font-size: 0.78rem;
-      color: #475569;
+      color: var(--app-text-soft);
     }
     .round-steps__at {
       font-size: 0.78rem;
-      color: #64748b;
+      color: var(--app-muted);
     }
     .round-steps__at.muted {
       font-style: italic;
@@ -2093,13 +2093,13 @@ export function printTicketConfirmationFromPayload(
     .detail-grid dt {
       margin: 0;
       font-size: 0.75rem;
-      color: #64748b;
+      color: var(--app-muted);
     }
     .detail-grid dd {
       margin: 0.15rem 0 0;
       white-space: pre-wrap;
       line-height: 1.45;
-      color: #0f172a;
+      color: var(--app-ink);
     }
     mat-dialog-actions mat-icon,
     mat-dialog-actions mat-spinner {

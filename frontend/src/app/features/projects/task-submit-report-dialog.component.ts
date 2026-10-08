@@ -94,7 +94,7 @@ export interface TaskSubmitReportDialogData {
   styles: `
     .task-ref {
       margin: 0 0 0.35rem;
-      color: #5b6762;
+      color: var(--app-muted);
       font-size: 0.9rem;
     }
     .history {
@@ -108,7 +108,7 @@ export interface TaskSubmitReportDialogData {
     }
     .hint {
       margin: 0 0 0.85rem;
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.82rem;
     }
     .form {
@@ -126,7 +126,7 @@ export interface TaskSubmitReportDialogData {
     }
     .file-label {
       font-size: 0.82rem;
-      color: #64748b;
+      color: var(--app-muted);
       font-weight: 600;
     }
     .file-name {
@@ -143,10 +143,10 @@ export interface TaskSubmitReportDialogData {
     }
     .error {
       margin: 0.5rem 0 0;
-      color: #991b1b;
+      color: var(--app-danger-ink);
     }
     .field-error {
-      color: #991b1b;
+      color: var(--app-danger-ink);
       font-size: 0.78rem;
       margin-top: -0.35rem;
     }

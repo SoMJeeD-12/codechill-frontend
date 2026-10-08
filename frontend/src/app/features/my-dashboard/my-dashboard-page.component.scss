@@ -1,7 +1,7 @@
 $line: var(--app-line);
-$muted: #7b8a85;
-$ink: #1c2b28;
-$accent: #0f766e;
+$muted: var(--app-muted);
+$ink: var(--app-ink);
+$accent: var(--app-accent);
 $track-h: 200px;
 
 .swatch {
@@ -40,8 +40,8 @@ $track-h: 200px;
   margin: 0.3rem 0 0;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: #f1f5f4;
-  color: #5b6762;
+  background: var(--app-surface-3);
+  color: var(--app-muted);
   font-size: 0.8rem;
 
   mat-icon {
@@ -79,7 +79,7 @@ $track-h: 200px;
 .refresh-btn {
   grid-column: 3;
   grid-row: 1;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .seg {
@@ -87,7 +87,7 @@ $track-h: 200px;
   flex-wrap: wrap;
   padding: 3px;
   border-radius: 10px;
-  background: #f1f5f4;
+  background: var(--app-surface-3);
 }
 
 .seg__btn {
@@ -95,20 +95,20 @@ $track-h: 200px;
   border: 0;
   border-radius: 8px;
   background: none;
-  color: #4b5d58;
+  color: var(--app-text-soft);
   font: inherit;
   font-size: 0.84rem;
   cursor: pointer;
 
   &.is-active {
-    background: #fff;
+    background: var(--app-surface);
     color: $accent;
     font-weight: 650;
-    box-shadow: 0 1px 2px #0002;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--app-shadow-ink) 13%, transparent);
   }
 
   &:disabled {
-    color: #b3bfbb;
+    color: var(--app-control-line);
     cursor: default;
   }
 }
@@ -120,8 +120,8 @@ $track-h: 200px;
   margin: 0;
   padding: 0.45rem 0.7rem;
   border-radius: 10px;
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--app-warn-soft);
+  color: var(--app-warn-ink);
   font-size: 0.84rem;
 }
 
@@ -147,7 +147,7 @@ $track-h: 200px;
   align-items: center;
   gap: 0.6rem;
   margin: 0 0 0.8rem;
-  color: #5b6762;
+  color: var(--app-muted);
   font-size: 0.88rem;
 }
 
@@ -158,7 +158,7 @@ $track-h: 200px;
   padding: 0.15rem 0.3rem 0.15rem 0.6rem;
   border: 1px solid $accent;
   border-radius: 999px;
-  background: #fff;
+  background: var(--app-surface);
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
@@ -200,12 +200,12 @@ button.total-card {
 }
 
 .total-card.total-card--now {
-  background: #f7fbf9;
+  background: var(--app-surface-2);
 }
 
 .total-card__icon {
   grid-area: icon;
-  color: #6b7f79;
+  color: var(--app-muted);
 }
 
 .total-card__value {
@@ -240,7 +240,7 @@ button.total-card {
 .total-card__hint {
   grid-area: hint;
   font-size: 0.74rem;
-  color: #8a9792;
+  color: var(--app-subtle);
 }
 
 /* ——— กล่อง ——— */
@@ -255,7 +255,7 @@ button.total-card {
 .box {
   border: 1px solid $line;
   border-radius: 14px;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .box__head {
@@ -272,7 +272,7 @@ button.total-card {
   margin: 0;
   font-size: 0.96rem;
   font-weight: 700;
-  color: #34524c;
+  color: var(--app-text-soft);
 }
 
 .section-label {
@@ -283,7 +283,7 @@ button.total-card {
 .chart-empty {
   margin: 0.3rem 0;
   font-size: 0.78rem;
-  color: #8a9792;
+  color: var(--app-subtle);
 }
 
 .main-grid {
@@ -314,10 +314,10 @@ button.total-card {
   padding: 0.2rem 0.55rem;
   border: 1px solid $line;
   border-radius: 999px;
-  background: #fff;
+  background: var(--app-surface);
   font: inherit;
   font-size: 0.78rem;
-  color: #34524c;
+  color: var(--app-text-soft);
   cursor: pointer;
 
   &.is-zero {
@@ -326,7 +326,7 @@ button.total-card {
   }
 
   &.is-off {
-    color: #a3aeaa;
+    color: var(--app-subtle);
     text-decoration: line-through;
 
     .swatch {
@@ -368,7 +368,7 @@ button.total-card {
   position: absolute;
   width: 6px;
   height: 6px;
-  border: 2px solid #fff;
+  border: 2px solid var(--app-surface);
   border-radius: 50%;
   transform: translate(-50%, 50%);
 }
@@ -382,7 +382,7 @@ button.total-card {
 
   &:not(.is-empty):hover .chart__track,
   &:not(.is-empty):focus .chart__track {
-    background: rgba(15, 118, 110, 0.05);
+    background: color-mix(in srgb, var(--app-accent) 5%, transparent);
   }
 }
 
@@ -415,7 +415,7 @@ button.total-card {
   padding-bottom: 2px;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .chart__axis {
@@ -569,7 +569,7 @@ button.total-card.is-active,
 .mini__empty {
   margin: 0;
   font-size: 0.76rem;
-  color: #8a9792;
+  color: var(--app-subtle);
 }
 
 .mini-placeholder {
@@ -606,7 +606,7 @@ button.total-card.is-active,
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #34524c;
+  color: var(--app-text-soft);
   cursor: pointer;
 }
 
@@ -624,7 +624,7 @@ button.total-card.is-active,
   th,
   td {
     padding: 0.45rem 0.65rem;
-    border-bottom: 1px solid #eef3f1;
+    border-bottom: 1px solid var(--app-surface-3);
     text-align: left;
     white-space: nowrap;
   }
@@ -635,8 +635,8 @@ button.total-card.is-active,
     z-index: 1;
     font-size: 0.78rem;
     font-weight: 600;
-    color: #5b6762;
-    background: #f7fbf9;
+    color: var(--app-muted);
+    background: var(--app-surface-2);
   }
 
   tbody th {
@@ -649,7 +649,7 @@ button.total-card.is-active,
   }
 
   .is-focus {
-    background: #eef6f4;
+    background: var(--app-surface-3);
   }
 
   tfoot th,
@@ -657,7 +657,7 @@ button.total-card.is-active,
     position: sticky;
     bottom: 0;
     font-weight: 700;
-    background: #fff;
+    background: var(--app-surface);
     box-shadow: inset 0 2px 0 $line;
     border-bottom: 0;
   }

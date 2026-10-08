@@ -4,6 +4,7 @@ import { NavigationEnd, Params, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { RateLimitService } from '../http/rate-limit.interceptor';
 import { MenuCode } from '../models/permission.model';
 import { AuthService } from './auth.service';
 import { NotificationInboxService } from './notification-inbox.service';
@@ -11,6 +12,8 @@ import { AdminQueueTab, SupportQueueTab } from './ticket.service';
 
 const POLL_MS = 30_000;
 const DEBOUNCE_MS = 300;
+/** เปลี่ยนหน้าถี่ ๆ ไม่ต้องดึงเลขใหม่ทุกครั้ง — เว้นอย่างน้อยเท่านี้หลังรอบล่าสุด */
+const ROUTE_REFRESH_MIN_MS = 15_000;
 
 /** GET /nav/counts — ช่องที่ไม่มีสิทธิ์ = null */
 interface NavCountsResponse {
@@ -66,6 +69,8 @@ export class NavAttentionService {
   private debounceId: number | null = null;
   private timerId: number | null = null;
   private routeSub: Subscription | null = null;
+  private lastRunAt = 0;
+  private readonly rateLimit = inject(RateLimitService);
   private readonly onVisibility = () => {
     if (document.visibilityState === 'visible') {
       this.startTimer();
@@ -116,7 +121,11 @@ export class NavAttentionService {
     document.addEventListener('visibilitychange', this.onVisibility);
     this.routeSub = this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(() => this.refreshBadges());
+      .subscribe(() => {
+        if (Date.now() - this.lastRunAt >= ROUTE_REFRESH_MIN_MS) {
+          this.refreshBadges();
+        }
+      });
     if (document.visibilityState === 'visible') {
       this.startTimer();
     }
@@ -193,7 +202,12 @@ export class NavAttentionService {
       this.resetCounts();
       return;
     }
+    // ถูกจำกัดจำนวนคำขอ (429) — ข้ามรอบนี้ ให้ poll รอบถัดไปหลังพ้น Retry-After
+    if (this.rateLimit.isBlocked()) {
+      return;
+    }
 
+    this.lastRunAt = Date.now();
     this.inbox.poll();
 
     this.inFlight = true;

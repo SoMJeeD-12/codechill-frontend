@@ -142,7 +142,7 @@ export interface CustomerPreviewDialogData {
       }
       .meta {
         margin: 0.25rem 0 0;
-        color: #5b6762;
+        color: var(--app-muted);
         font-size: 0.88rem;
       }
     }
@@ -153,8 +153,8 @@ export interface CustomerPreviewDialogData {
       margin: 0 0 1rem;
       padding: 0.85rem 0.95rem;
       border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgb(15 23 42 / 0.06);
+      background: var(--app-surface-2);
+      border: 1px solid color-mix(in srgb, var(--app-ink) 6%, transparent);
       div {
         min-width: 0;
       }
@@ -164,7 +164,7 @@ export interface CustomerPreviewDialogData {
       dt {
         margin: 0;
         font-size: 0.75rem;
-        color: #64748b;
+        color: var(--app-muted);
       }
       dd {
         margin: 0.15rem 0 0;
@@ -189,8 +189,8 @@ export interface CustomerPreviewDialogData {
         gap: 0.1rem;
         padding: 0.55rem 0.65rem;
         border-radius: 10px;
-        border: 1px solid rgb(15 23 42 / 0.06);
-        background: #fff;
+        border: 1px solid color-mix(in srgb, var(--app-ink) 6%, transparent);
+        background: var(--app-surface);
       }
       .primary {
         display: inline-block;
@@ -199,17 +199,17 @@ export interface CustomerPreviewDialogData {
         border-radius: 999px;
         font-size: 0.72rem;
         font-weight: 700;
-        color: #0f766e;
-        background: #ecfdf5;
+        color: var(--app-accent);
+        background: var(--app-accent-soft);
       }
       .sub {
-        color: #5b6762;
+        color: var(--app-muted);
         font-size: 0.82rem;
       }
     }
     .empty {
       margin: 0;
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.9rem;
     }
     mat-dialog-actions a mat-icon {

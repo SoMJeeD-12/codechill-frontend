@@ -138,7 +138,6 @@
         @for (section of filteredSections(); track section.id) {
           <mat-expansion-panel
             class="perm-group"
-            [class.is-unused]="section.unused"
             [expanded]="isFiltering() || !section.collapsedByDefault"
           >
             <mat-expansion-panel-header>
@@ -154,9 +153,6 @@
               </mat-panel-title>
               <mat-panel-description>
                 {{ sectionSelectedCount(section) }}/{{ section.rows.length }}
-                @if (section.unused) {
-                  <span class="unused-flag">ยังไม่มีผลในระบบ</span>
-                }
               </mat-panel-description>
             </mat-expansion-panel-header>
 

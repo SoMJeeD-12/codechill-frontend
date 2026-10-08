@@ -1,6 +1,6 @@
 .app-subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
   font-size: 0.9rem;
 }
 
@@ -55,15 +55,15 @@
   }
 
   .notif-data-row.is-unread .mat-mdc-cell {
-    background: #f0fdf9;
+    background: var(--app-accent-soft);
   }
 
   .notif-data-row:hover .mat-mdc-cell {
-    background: #f7faf9;
+    background: var(--app-surface-2);
   }
 
   .notif-data-row.is-unread:hover .mat-mdc-cell {
-    background: #e6f7f2;
+    background: var(--app-accent-soft);
   }
 }
 
@@ -82,7 +82,7 @@
   height: 0.5rem;
   margin-top: 0.45rem;
   border-radius: 999px;
-  background: #dc2626;
+  background: var(--app-danger);
 
   &--empty {
     background: transparent;
@@ -111,7 +111,7 @@
     display: block;
     max-width: 100%;
     font-weight: 700;
-    color: #134e4a;
+    color: var(--app-accent-dark);
     line-height: 1.35;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -119,7 +119,7 @@
 
     &.is-read {
       font-weight: 500;
-      color: #64748b;
+      color: var(--app-muted);
     }
   }
 }
@@ -128,7 +128,7 @@
   display: block;
   max-width: 100%;
   font-size: 0.86rem;
-  color: #64748b;
+  color: var(--app-muted);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -138,10 +138,10 @@
 .notif-meta-status {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--app-muted);
 
   &.is-unread {
-    color: #b45309;
+    color: var(--app-warn);
   }
 }
 
@@ -156,7 +156,7 @@
 
 .notif-when {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--app-subtle);
   white-space: nowrap;
 }
 
@@ -165,7 +165,7 @@
   line-height: 1.2 !important;
   min-width: auto !important;
   padding: 0 0.35rem !important;
-  color: #0f766e !important;
+  color: var(--app-accent) !important;
   white-space: nowrap !important;
 }
 
@@ -176,15 +176,15 @@
   gap: 0.4rem;
   min-height: 1px;
   padding: 1rem 1.25rem 1.2rem;
-  color: #475b55;
+  color: var(--app-text-soft);
   font-size: 0.85rem;
 }
 
 .notif-feed-count {
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.8rem;
 }
 
 .notif-feed-error {
-  color: #b42318;
+  color: var(--app-danger);
 }

@@ -56,23 +56,23 @@ import { MatIconModule } from '@angular/material/icon';
       min-height: 4.25rem;
       margin: 0.15rem 0 0.35rem;
       padding: 0.75rem 0.9rem;
-      border: 1.5px dashed #9db8b2;
+      border: 1.5px dashed var(--app-control-line);
       border-radius: 12px;
-      background: #f7fbfa;
-      color: #134e4a;
+      background: var(--app-surface-2);
+      color: var(--app-accent-dark);
       cursor: pointer;
       box-sizing: border-box;
     }
     .file-drop:hover,
     .file-drop.is-drag,
     .file-drop:focus-within {
-      border-color: #0f766e;
-      background: #eef7f4;
+      border-color: var(--app-accent);
+      background: var(--app-accent-soft);
     }
     .file-drop.has-file {
       border-style: solid;
-      border-color: #0f766e;
-      background: #fff;
+      border-color: var(--app-accent);
+      background: var(--app-surface);
     }
     .file-drop__input {
       position: absolute;
@@ -88,8 +88,8 @@ import { MatIconModule } from '@angular/material/icon';
       height: 2.4rem;
       flex: 0 0 auto;
       border-radius: 10px;
-      background: #e7f3f0;
-      color: #0f766e;
+      background: var(--app-accent-soft);
+      color: var(--app-accent);
     }
     .file-drop__copy {
       display: grid;
@@ -104,7 +104,7 @@ import { MatIconModule } from '@angular/material/icon';
       word-break: break-all;
     }
     small {
-      color: #5b6762;
+      color: var(--app-muted);
       font-size: 0.78rem;
       line-height: 1.35;
     }
@@ -112,7 +112,7 @@ import { MatIconModule } from '@angular/material/icon';
       flex: 0 0 auto;
       border: 0;
       background: transparent;
-      color: #0f766e;
+      color: var(--app-accent);
       font: inherit;
       font-size: 0.82rem;
       font-weight: 650;

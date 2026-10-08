@@ -34,6 +34,7 @@ import {
 } from '../../core/models/ma.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import {
   MaAddonInput,
   MaContractRenewInput,
@@ -75,6 +76,7 @@ import { printMaContract } from './ma-contract-print';
 })
 export class MaDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly notificationInbox = inject(NotificationInboxService);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly api = inject(MaService);
@@ -137,6 +139,9 @@ export class MaDetailPageComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.reload(id);
+    if (Number.isInteger(id) && id > 0) {
+      this.notificationInbox.markReadByRef('MA_CONTRACT', id);
+    }
   }
 
   reload(id?: number): void {
@@ -400,7 +405,7 @@ export interface MaRenewDialogData {
   styles: `
     .lead {
       margin: 0 0 0.75rem;
-      color: #5b6762;
+      color: var(--app-muted);
       font-size: 0.9rem;
       line-height: 1.45;
     }
@@ -423,13 +428,13 @@ export interface MaRenewDialogData {
       align-content: start;
       padding: 0.55rem 0.75rem;
       border-radius: 10px;
-      background: #f8fafc;
-      border: 1px solid rgba(28, 43, 40, 0.1);
+      background: var(--app-surface-2);
+      border: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
     }
     .end-date__label,
     .end-date__hint {
       font-size: 0.75rem;
-      color: #64748b;
+      color: var(--app-muted);
       line-height: 1.3;
     }
     .link-btn {
@@ -437,14 +442,14 @@ export interface MaRenewDialogData {
       padding: 0;
       border: 0;
       background: none;
-      color: #0f766e;
+      color: var(--app-accent);
       font: inherit;
       font-size: 0.75rem;
       text-decoration: underline;
       cursor: pointer;
     }
     .error {
-      color: #b91c1c;
+      color: var(--app-danger);
       margin: 0.25rem 0 0;
     }
   `,
@@ -625,14 +630,14 @@ export interface MaAddonDialogData {
       gap: 0.5rem;
       margin: 0.25rem 0 0.5rem;
       font-size: 0.875rem;
-      color: #3d4a46;
+      color: var(--app-text-soft);
       cursor: pointer;
     }
     .scope input {
       margin-top: 0.15rem;
     }
     .error {
-      color: #b91c1c;
+      color: var(--app-danger);
       margin: 0.25rem 0 0;
     }
   `,

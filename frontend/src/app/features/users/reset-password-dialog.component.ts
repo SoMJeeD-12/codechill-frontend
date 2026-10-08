@@ -119,13 +119,13 @@ const passwordMatchValidator: ValidatorFn = (
     }
 
     .meta {
-      color: #5b6762;
+      color: var(--app-muted);
       font-weight: 400;
     }
 
     .hint {
       margin: 0 0 0.85rem;
-      color: #5b6762;
+      color: var(--app-muted);
       font-size: 0.85rem;
       line-height: 1.45;
     }
@@ -142,7 +142,7 @@ const passwordMatchValidator: ValidatorFn = (
 
     .error {
       margin: 0.35rem 0 0;
-      color: #991b1b;
+      color: var(--app-danger-ink);
       font-size: 0.88rem;
     }
   `,

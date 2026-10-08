@@ -21,7 +21,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
     }
     .bar.is-active {
       opacity: 1;
-      background: linear-gradient(90deg, transparent 0%, #0f766e 40%, #14b8a6 60%, transparent 100%);
+      background: linear-gradient(90deg, transparent 0%, var(--app-accent) 40%, var(--app-accent) 60%, transparent 100%);
       background-size: 200% 100%;
       animation: list-bar 1.1s linear infinite;
     }
@@ -30,7 +30,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       to { background-position: -200% 0; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .bar.is-active { animation: none; background: #0f766e; }
+      .bar.is-active { animation: none; background: var(--app-accent); }
     }
   `,
 })
@@ -63,12 +63,12 @@ export class ListLoadingBarComponent {
       gap: 1rem;
       align-items: center;
       height: 48px;
-      border-bottom: 1px solid #eef2f1;
+      border-bottom: 1px solid var(--app-surface-3);
     }
     .cell {
       height: 12px;
       border-radius: 6px;
-      background: linear-gradient(90deg, #eef2f1 25%, #f7faf9 50%, #eef2f1 75%);
+      background: linear-gradient(90deg, var(--app-surface-3) 25%, var(--app-surface-2) 50%, var(--app-surface-3) 75%);
       background-size: 200% 100%;
       animation: list-shimmer 1.2s ease-in-out infinite;
     }

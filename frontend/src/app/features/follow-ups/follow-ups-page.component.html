@@ -37,19 +37,19 @@
           ทั้งหมด
         </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'today'" (click)="setView('today')">
-          ต้องทำวันนี้
-          @if (todayBadge(); as n) {
-            <span class="ui-chip__count ui-chip__count--alert">{{ n }}</span>
+          ใกล้ครบกำหนด
+          @if (dueSoonCount() > 0) {
+            <span class="ui-chip__count ui-chip__count--alert">{{ dueSoonCount() }}</span>
           }
         </button>
-        <button type="button" class="ui-chip" [class.is-active]="view() === 'mine'" (click)="setView('mine')">
-          ของฉัน
-        </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'planned'" (click)="setView('planned')">
-          วางแผนไว้
+          กำลังติดตาม
         </button>
         <button type="button" class="ui-chip" [class.is-active]="view() === 'overdue'" (click)="setView('overdue')">
           เลยกำหนด
+        </button>
+        <button type="button" class="ui-chip" [class.is-active]="view() === 'carried'" (click)="setView('carried')">
+          แผนต่อจากครั้งก่อน
         </button>
       </div>
     </div>
@@ -69,7 +69,13 @@
           </th>
           <td mat-cell *matCellDef="let row">
             <strong class="cell-fill" [title]="row.title">{{ row.title }}</strong>
-            @if (row.detail?.trim()) {
+            @let carried = carriedResult(row);
+            @if (carried !== null) {
+              <span class="cell-sub cell-fill" [title]="'แผนต่อจากครั้งก่อน — ผลครั้งก่อน: ' + (carried || '—')">
+                <span class="carry-tag"><mat-icon>history</mat-icon>ต่อจากครั้งก่อน</span>
+                ผลครั้งก่อน: {{ carried || '—' }}
+              </span>
+            } @else if (row.detail?.trim()) {
               <span class="cell-sub cell-fill">แผน: {{ row.detail }}</span>
             }
             @if (row.resultNote?.trim()) {
@@ -87,7 +93,9 @@
             @if (row.projectId) {
               <a class="app-link cell-clip cell-clip--sm" [routerLink]="['/app/projects', row.projectId]" [title]="projectName(row)">{{ projectName(row) }}</a>
             } @else {
-              —
+              <span class="no-project-tag" title="งานเก่าก่อนบังคับผูกโปรเจกต์ — กดแก้ไขเพื่อเลือกโปรเจกต์">
+                <mat-icon>warning</mat-icon>ยังไม่ได้ผูกโปรเจกต์
+              </span>
             }
           </td>
         </ng-container>
@@ -136,11 +144,7 @@
             </button>
           </th>
           <td mat-cell *matCellDef="let row">
-            <span
-              class="status"
-              [class.overdue]="daysLeftClass(row) === 'overdue'"
-              [class.soon]="daysLeftClass(row) === 'soon'"
-            >
+            <span class="status">
               {{ statusLabel(row) }}
             </span>
           </td>
@@ -169,8 +173,10 @@
             ไม่พบรายการตามคำค้นหา/ตัวกรอง
           } @else if (view() === 'overdue') {
             ไม่มีงานติดตามที่เลยกำหนด
+          } @else if (view() === 'carried') {
+            ไม่มีงานติดตามที่นัดต่อจากครั้งก่อนและยังติดตามอยู่
           } @else if (view() === 'today') {
-            ไม่มีงานติดตามของคุณที่ต้องทำภายในวันนี้
+            ไม่มีงานติดตามของคุณที่ครบกำหนดภายใน {{ dueSoonDays }} วัน
           } @else {
             ไม่มีรายการในมุมมองนี้
           }

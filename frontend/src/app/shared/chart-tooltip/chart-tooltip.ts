@@ -69,10 +69,10 @@ const POSITIONS: ConnectedPosition[] = [
       max-width: min(320px, calc(100vw - 16px));
       padding: 0.5rem 0.65rem;
       border-radius: 10px;
-      background: #1f2d2a;
-      color: #fff;
+      background: var(--app-ink);
+      color: var(--app-on-solid);
       font-size: 0.78rem;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--app-ink) 18%, transparent);
     }
     .tip__title {
       margin-bottom: 0.25rem;
@@ -96,7 +96,7 @@ const POSITIONS: ConnectedPosition[] = [
     .tip__row--sum {
       margin-top: 0.2rem;
       padding-top: 0.2rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      border-top: 1px solid color-mix(in srgb, var(--app-surface) 20%, transparent);
     }
   `,
 })

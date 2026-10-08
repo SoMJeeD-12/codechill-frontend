@@ -264,6 +264,7 @@ export class TasksPageComponent implements OnInit {
         .subscribe({ error: () => undefined });
       this.list.start();
       this.loadSummary();
+      this.openTaskFromQuery(this.route.snapshot.queryParamMap.get('task'));
       return;
     }
 
@@ -299,6 +300,25 @@ export class TasksPageComponent implements OnInit {
         this.applyViewFromQuery(params.get('view'));
         this.pager.reset();
       }
+      this.openTaskFromQuery(params.get('task'));
+    });
+  }
+
+  /** ?task=:id — มาจากกระดิ่งแจ้งเตือน (refType TASK) · เปิดกล่องงานแล้วล้าง query */
+  private openTaskFromQuery(raw: string | null): void {
+    const id = Number(raw);
+    if (!raw || !Number.isInteger(id) || id <= 0) {
+      return;
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { task: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.projectsApi.getTask(id).subscribe({
+      next: (task) => this.openTask(task),
+      error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
   }
 

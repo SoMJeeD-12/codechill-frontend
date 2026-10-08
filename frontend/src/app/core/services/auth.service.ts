@@ -1,6 +1,8 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
+import { SessionKickedDialogComponent } from '../auth/session-kicked-dialog.component';
 import {
   Observable,
   catchError,
@@ -93,8 +95,12 @@ export class AuthService {
   private channel: BroadcastChannel | null = null;
   private peerWaiters: Array<(tokens: AuthTokens | null) => void> = [];
   private loggingOut = false;
+  private kickDialogOpen = false;
+  private readonly injector = inject(Injector);
 
   readonly initStatus = signal<'idle' | 'loading' | 'done' | 'failed'>('idle');
+  /** เหตุผลที่หลุดจากระบบ (ข้อความจาก BE) — หน้าล็อกอินแสดงแล้วล้าง */
+  readonly signedOutNotice = signal<string | null>(null);
   private initPromise: Promise<void> | null = null;
   private refreshPolicy: RefreshPolicy = 'session';
 
@@ -175,6 +181,7 @@ export class AuthService {
       .pipe(
         map((res) => this.toSession(res)),
         tap((session) => {
+          this.signedOutNotice.set(null);
           this.users.clearCache();
           this.refreshPolicy = rememberMe ? 'local' : 'session';
           this.tokenStorage.replaceTokens(
@@ -215,6 +222,7 @@ export class AuthService {
 
   logout(): void {
     this.loggingOut = true;
+    this.signedOutNotice.set(null);
     const clearAndGo = () => {
       this.clearSession(true);
       this.loggingOut = false;
@@ -257,10 +265,13 @@ export class AuthService {
     });
   }
 
-  /** PATCH /users/me — ส่งได้แค่ nickname · คืน AuthProfile → แทน session ทันที */
-  updateMyNickname(nickname: string | null): Observable<void> {
+  /**
+   * PATCH /users/me — fullName / nickname (ส่งเฉพาะที่เปลี่ยน · username ห้ามส่ง)
+   * คืน AuthProfile → แทน session ทันที ไม่ต้องเรียก /auth/me ซ้ำ
+   */
+  updateMyProfile(input: { fullName?: string; nickname?: string | null }): Observable<void> {
     return this.http
-      .patch<AuthProfile>(`${environment.apiBaseUrl}/users/me`, { nickname })
+      .patch<AuthProfile>(`${environment.apiBaseUrl}/users/me`, input)
       .pipe(this.applyProfileResult());
   }
 
@@ -610,13 +621,13 @@ export class AuthService {
           return tokens;
         } catch (retryErr) {
           if (this.isUnauthorized(retryErr)) {
-            this.failAuth(silent);
+            this.failAuth(silent, retryErr);
           }
           throw retryErr;
         }
       }
 
-      this.failAuth(silent);
+      this.failAuth(silent, err);
       throw err;
     } finally {
       if (ownedLock) {
@@ -650,14 +661,51 @@ export class AuthService {
     this.notifyPeerWaiters(tokens);
   }
 
-  private failAuth(silent: boolean): void {
+  private failAuth(silent: boolean, err?: unknown): void {
     this.clearSession(false);
+    // หน้าต่างนับถอยหลังเปิดอยู่ — คำขอที่ค้างได้ 401 ตามมา ไม่ต้องพาไปล็อกอินก่อนนับเสร็จ
+    if (this.kickDialogOpen) {
+      return;
+    }
+    // ถูกเตะจากเครื่องอื่น / ออกจากระบบแล้ว — BE ส่งเหตุผลมากับ 401 ของ refresh ให้หน้าล็อกอินแสดง
+    if (!this.loggingOut && this.isUnauthorized(err)) {
+      const message = apiErrorMessage(err, 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+      this.signedOutNotice.set(message);
+      if (!silent && message.includes('เครื่องอื่น')) {
+        this.showKickedDialog();
+        return;
+      }
+    }
     if (!silent && !this.loggingOut) {
       try {
         void this.router.navigateByUrl('/login');
       } catch {
         /* router ยังไม่พร้อมระหว่างบูต — guard จะพาไป login เอง */
       }
+    }
+  }
+
+  /** แจ้งว่าถูกเข้าสู่ระบบจากเครื่องอื่น นับถอยหลัง 5 วิ แล้วไปหน้าล็อกอิน */
+  private showKickedDialog(): void {
+    this.kickDialogOpen = true;
+    const goLogin = () => {
+      this.kickDialogOpen = false;
+      void this.router.navigateByUrl('/login', { replaceUrl: true });
+    };
+    try {
+      const dialog = this.injector.get(MatDialog);
+      dialog.closeAll();
+      dialog
+        .open(SessionKickedDialogComponent, {
+          width: '440px',
+          maxWidth: '92vw',
+          disableClose: true,
+          autoFocus: 'dialog',
+        })
+        .afterClosed()
+        .subscribe(goLogin);
+    } catch {
+      goLogin();
     }
   }
 

@@ -6,7 +6,7 @@
 .role-name {
   display: block;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--app-ink);
   line-height: 1.35;
 }
 
@@ -14,7 +14,7 @@
   display: none;
   margin-top: 0.2rem;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--app-muted);
   line-height: 1.35;
   font-weight: 400;
 }
@@ -38,13 +38,13 @@
   white-space: nowrap;
 
   &.is-on {
-    background: #ccfbf1;
-    color: #115e59;
+    background: var(--app-accent-soft);
+    color: var(--app-accent-dark);
   }
 
   &.is-off {
-    background: #f1f5f9;
-    color: #64748b;
+    background: var(--app-surface-3);
+    color: var(--app-muted);
   }
 }
 

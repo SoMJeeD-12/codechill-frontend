@@ -161,7 +161,7 @@ export const searchWithClientFallback = searchViaBackend;
         line-height: 1.3;
       }
       .picker-opt__meta {
-        color: rgb(0 0 0 / 0.55);
+        color: color-mix(in srgb, var(--app-ink) 55%, transparent);
         font-size: 12px;
       }
       .picker-opt__badge {
@@ -169,8 +169,8 @@ export const searchWithClientFallback = searchViaBackend;
         margin-left: 0.35rem;
         padding: 0 0.45rem;
         border-radius: 999px;
-        background: #f1f5f9;
-        color: #475569;
+        background: var(--app-surface-3);
+        color: var(--app-text-soft);
         font-size: 11px;
         line-height: 1.6;
         vertical-align: middle;

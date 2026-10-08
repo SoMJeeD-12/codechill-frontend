@@ -172,7 +172,7 @@ export interface QuickLogDialogData {
       padding: 0.6rem 0.75rem;
       margin-bottom: 0.6rem;
       border-radius: 10px;
-      background: rgb(15 118 110 / 0.08);
+      background: color-mix(in srgb, var(--app-accent) 8%, transparent);
     }
     .locked-customer div {
       display: flex;
@@ -180,11 +180,11 @@ export interface QuickLogDialogData {
       line-height: 1.3;
     }
     .locked-customer small {
-      color: rgb(0 0 0 / 0.6);
+      color: color-mix(in srgb, var(--app-ink) 60%, transparent);
     }
     .dlg-error {
       margin: 0.25rem 0 0;
-      color: #b3261e;
+      color: var(--app-danger);
       font-size: 0.85rem;
     }
     @media (max-width: 560px) {

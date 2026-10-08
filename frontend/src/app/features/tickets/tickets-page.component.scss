@@ -2,7 +2,7 @@
 
 .app-subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
   max-width: 42rem;
   line-height: 1.45;
   font-size: 0.9rem;
@@ -79,7 +79,7 @@
 
   .ticket-row {
     &:hover .mat-mdc-cell {
-      background: #f4faf8;
+      background: var(--app-surface-2);
     }
   }
 
@@ -108,7 +108,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #6b7f79;
+    color: var(--app-muted);
     font-size: 0.78rem;
 
     mat-icon {
@@ -116,7 +116,7 @@
       width: 0.95rem;
       height: 0.95rem;
       font-size: 0.95rem;
-      color: #0f766e;
+      color: var(--app-accent);
       opacity: 0.85;
     }
   }
@@ -128,11 +128,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 600;
-    color: #243330;
+    color: var(--app-ink);
   }
 
   .ticket-date {
-    color: #5b6762;
+    color: var(--app-muted);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }

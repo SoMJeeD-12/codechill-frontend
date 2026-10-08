@@ -48,17 +48,26 @@ export interface FollowUpCompleteResult extends FollowUp {
 export type FollowUpWritableStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
 
 export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpWritableStatus, string> = {
-  PLANNED: 'วางแผนไว้',
-  DONE: 'ติดตามแล้ว',
+  PLANNED: 'กำลังติดตาม',
+  DONE: 'ติดตามเสร็จแล้ว',
   CANCELLED: 'ยกเลิก',
 };
 
-export function followUpDisplayStatus(f: FollowUp): string {
-  if (f.isOverdue && f.status === 'PLANNED') {
-    return 'เลยกำหนด';
+const CARRIED_PLAN_PREFIX = /^\s*ต่อจากครั้งก่อน\s*[:：]\s*/;
+
+/** งานที่ backend สร้างตอน "นัดครั้งถัดไป" — detail ขึ้นต้นด้วย "ต่อจากครั้งก่อน:" ตามด้วยผลของครั้งก่อน · คืนผลครั้งก่อน หรือ null */
+export function followUpCarriedResult(f: Pick<FollowUp, 'detail'>): string | null {
+  const detail = f.detail ?? '';
+  if (!CARRIED_PLAN_PREFIX.test(detail)) {
+    return null;
   }
+  return detail.replace(CARRIED_PLAN_PREFIX, '').trim();
+}
+
+/** เลยกำหนดยังเป็น "กำลังติดตาม" — ความเลยกำหนดแสดงที่คอลัมน์วันที่แทน */
+export function followUpDisplayStatus(f: FollowUp): string {
   if (f.status === 'OVERDUE') {
-    return 'เลยกำหนด';
+    return FOLLOW_UP_STATUS_LABELS.PLANNED;
   }
   return FOLLOW_UP_STATUS_LABELS[f.status as FollowUpWritableStatus] ?? f.status;
 }

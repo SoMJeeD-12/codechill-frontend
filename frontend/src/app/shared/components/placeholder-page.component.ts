@@ -28,7 +28,7 @@ import { map } from 'rxjs/operators';
       font-size: 40px;
       width: 40px;
       height: 40px;
-      color: #0f766e;
+      color: var(--app-accent);
     }
     h1 {
       margin: 0.75rem 0 0.35rem;
@@ -36,13 +36,13 @@ import { map } from 'rxjs/operators';
     }
     p {
       margin: 0;
-      color: #5b6762;
+      color: var(--app-muted);
       line-height: 1.5;
     }
     .phase {
       margin-top: 1rem;
       font-size: 0.85rem;
-      color: #0f766e;
+      color: var(--app-accent);
       font-weight: 500;
     }
   `,

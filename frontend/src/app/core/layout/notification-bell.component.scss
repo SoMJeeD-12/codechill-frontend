@@ -28,7 +28,7 @@ app-notification-bell .notif-bell,
 
   &.is-ringing mat-icon {
     animation: notif-bell-ring 0.55s ease-in-out 3;
-    color: #0f766e;
+    color: var(--app-accent);
   }
 
   &.is-ringing .notif-bell__badge {
@@ -74,13 +74,13 @@ app-notification-bell .notif-bell,
   height: 1.15rem;
   padding: 0 0.3rem;
   border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
+  background: var(--app-danger);
+  color: var(--app-on-solid);
   font-size: 0.62rem;
   font-weight: 700;
   line-height: 1.15rem;
   text-align: center;
-  box-shadow: 0 0 0 2px #fff;
+  box-shadow: 0 0 0 2px var(--app-surface);
   pointer-events: none;
 }
 
@@ -97,7 +97,7 @@ app-notification-bell .notif-bell,
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 0.9rem 0.5rem;
-  border-bottom: 1px solid var(--app-border, #e8e4dc);
+  border-bottom: 1px solid var(--app-border, var(--app-line));
 
   strong {
     font-size: 0.9rem;
@@ -106,7 +106,7 @@ app-notification-bell .notif-bell,
 
 .notif-panel__count {
   font-size: 0.72rem;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
@@ -116,18 +116,18 @@ app-notification-bell .notif-bell,
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #0f766e;
+  color: var(--app-accent);
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    background: rgba(15, 118, 110, 0.08);
+    background: color-mix(in srgb, var(--app-accent) 8%, transparent);
   }
 
   &:disabled {
-    color: #94a3b8;
+    color: var(--app-subtle);
     cursor: default;
   }
 }
@@ -140,7 +140,7 @@ app-notification-bell .notif-bell,
   gap: 0.6rem;
   padding: 1.35rem 1rem;
   margin: 0;
-  color: #6b7280;
+  color: var(--app-muted);
   font-size: 0.85rem;
 }
 
@@ -159,14 +159,14 @@ app-notification-bell .notif-bell,
   justify-content: center;
   min-height: 2.2rem;
   padding: 0.35rem 1rem;
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.78rem;
 }
 
 .notif-panel__retry {
   border: 0;
   background: none;
-  color: #0f766e;
+  color: var(--app-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -179,7 +179,7 @@ app-notification-bell .notif-bell,
   width: 100%;
   padding: 0.65rem 0.9rem;
   border: 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 4%, transparent);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -190,7 +190,7 @@ app-notification-bell .notif-bell,
   }
 
   &:hover:not(:disabled) {
-    background: rgba(15, 118, 110, 0.06);
+    background: color-mix(in srgb, var(--app-accent) 6%, transparent);
   }
 
   &:disabled {
@@ -200,7 +200,7 @@ app-notification-bell .notif-bell,
 
   &.is-unread .notif-row__title {
     font-weight: 650;
-    color: #134e4a;
+    color: var(--app-accent-dark);
   }
 }
 
@@ -210,7 +210,7 @@ app-notification-bell .notif-bell,
   height: 8px;
   margin-top: 0.4rem;
   border-radius: 50%;
-  background: #dc2626;
+  background: var(--app-danger);
 
   &--empty {
     background: transparent;
@@ -237,7 +237,7 @@ app-notification-bell .notif-bell,
 .notif-row__msg {
   font-size: 0.78rem;
   line-height: 1.35;
-  color: #6b7280;
+  color: var(--app-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -250,7 +250,7 @@ app-notification-bell .notif-bell,
   gap: 0.75rem;
   margin-top: 0.1rem;
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--app-muted);
 }
 
 .notif-row__status {
@@ -259,11 +259,11 @@ app-notification-bell .notif-bell,
 }
 
 .notif-row.is-unread .notif-row__status {
-  color: #b45309;
+  color: var(--app-warn);
 }
 
 .notif-panel__foot {
-  border-top: 1px solid var(--app-border, #e8e4dc);
+  border-top: 1px solid var(--app-border, var(--app-line));
   padding: 0.25rem 0.4rem;
   display: flex;
   justify-content: center;

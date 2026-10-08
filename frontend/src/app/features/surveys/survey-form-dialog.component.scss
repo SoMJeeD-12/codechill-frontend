@@ -29,20 +29,20 @@
 
 .q-item {
   padding: 0.75rem;
-  border: 1px solid rgba(28, 43, 40, 0.1);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
   border-radius: 10px;
-  background: #fafaf8;
+  background: var(--app-surface-2);
 }
 
 .hint {
   margin: 0 0 0.5rem;
-  color: #5b6762;
+  color: var(--app-muted);
   font-size: 0.85rem;
 }
 
 .error {
   margin: 0.25rem 0 0;
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.9rem;
 }
 

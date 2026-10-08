@@ -1,4 +1,14 @@
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { environment, type DevAccount } from '../../../../environments/environment';
+import { RateLimitService } from '../../../core/http/rate-limit.interceptor';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -31,12 +42,49 @@ export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly rateLimit = inject(RateLimitService);
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  /** เหตุผลที่หลุดจากระบบ เช่น ถูกเข้าสู่ระบบจากเครื่องอื่น */
+  readonly notice = this.auth.signedOutNotice;
   readonly devAccounts = environment.devAccounts;
   readonly rememberMe = signal(true);
   hidePassword = true;
+
+  private readonly now = signal(Date.now());
+  /** วินาทีที่เหลือก่อนลองล็อกอินใหม่ได้ (ตาม Retry-After ของ 429) */
+  readonly lockSeconds = computed(() =>
+    Math.max(0, Math.ceil((this.rateLimit.loginBlockedUntil() - this.now()) / 1000))
+  );
+  readonly locked = computed(() => this.lockSeconds() > 0);
+
+  constructor() {
+    let tick: number | null = null;
+    const stop = () => {
+      if (tick != null) {
+        window.clearInterval(tick);
+        tick = null;
+      }
+    };
+    effect(() => {
+      const until = this.rateLimit.loginBlockedUntil();
+      untracked(() => {
+        this.now.set(Date.now());
+        if (until <= Date.now() || tick != null) {
+          return;
+        }
+        tick = window.setInterval(() => {
+          this.now.set(Date.now());
+          if (!this.locked()) {
+            stop();
+            this.error.set(null);
+          }
+        }, 1000);
+      });
+    });
+    inject(DestroyRef).onDestroy(stop);
+  }
 
   readonly form = this.fb.nonNullable.group({
     username: ['', Validators.required],
@@ -69,7 +117,7 @@ export class LoginComponent implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid || this.loading()) {
+    if (this.form.invalid || this.loading() || this.locked()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -81,6 +129,7 @@ export class LoginComponent implements OnInit {
 
     this.loading.set(true);
     this.error.set(null);
+    this.auth.signedOutNotice.set(null);
 
     const { username, password } = this.form.getRawValue();
     this.auth.login(username, password, this.rememberMe()).subscribe({

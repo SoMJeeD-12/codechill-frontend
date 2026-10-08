@@ -14,11 +14,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { ApiEnvelopeService } from '../../core/http/api-envelope.service';
 import { CHANNEL_LABELS, CommunicationChannel } from '../../core/models/customer.model';
-import { FollowUp, FollowUpCompleteResult } from '../../core/models/follow-up.model';
+import { FollowUp, FollowUpCompleteResult, followUpCarriedResult } from '../../core/models/follow-up.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { FollowUpCompleteInput, FollowUpService } from '../../core/services/follow-up.service';
@@ -67,6 +68,19 @@ function today(): Date {
       <p class="lead"><strong>{{ data.title }}</strong></p>
       <p class="muted">ลูกค้า: {{ customerLabel }}</p>
 
+      @if (carriedResult !== null) {
+        <div class="plan">
+          <span class="plan__label">แผนต่อจากครั้งก่อน</span>
+          <span class="plan__text">นัดต่อจากงานติดตาม「{{ data.title }}」ครั้งก่อน</span>
+          <span class="plan__text">ผลครั้งก่อน: {{ carriedResult || '—' }}</span>
+        </div>
+      } @else if (data.detail?.trim()) {
+        <div class="plan">
+          <span class="plan__label">สิ่งที่วางแผนไว้</span>
+          <span class="plan__text">{{ data.detail }}</span>
+        </div>
+      }
+
       <form [formGroup]="form" class="form" id="follow-up-complete-form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full">
           <mat-label>ผลการติดตาม</mat-label>
@@ -75,7 +89,13 @@ function today(): Date {
 
         <mat-checkbox formControlName="scheduleNext">นัดติดตามครั้งถัดไป</mat-checkbox>
 
-        @if (scheduleNext()) {
+        @if (scheduleNext() && noProject) {
+          <div class="no-project">
+            <span>งานติดตามนี้ยังไม่ได้ผูกโปรเจกต์ — ต้องเลือกโปรเจกต์ให้งานนี้ก่อน แล้วค่อยนัดครั้งถัดไป
+              (ถ้าจะปิดงานอย่างเดียว ให้เอาติ๊ก「นัดติดตามครั้งถัดไป」ออก)</span>
+            <button mat-stroked-button type="button" (click)="goPickProject()">เลือกโปรเจกต์ให้งานนี้</button>
+          </div>
+        } @else if (scheduleNext()) {
           <div class="next-box">
             <div class="next-date">
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -143,7 +163,7 @@ function today(): Date {
         color="primary"
         type="submit"
         form="follow-up-complete-form"
-        [disabled]="saving()"
+        [disabled]="saving() || (scheduleNext() && noProject)"
       >
         {{ saving() ? 'กำลังบันทึก…' : scheduleNext() ? 'ปิดงานและนัดครั้งถัดไป' : 'ปิดงาน' }}
       </button>
@@ -151,7 +171,19 @@ function today(): Date {
   `,
   styles: `
     .lead { margin: 0 0 0.25rem; }
-    .muted { margin: 0 0 1rem; color: #64748b; font-size: 0.9rem; }
+    .muted { margin: 0 0 1rem; color: var(--app-muted); font-size: 0.9rem; }
+    .plan {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      margin: -0.4rem 0 1rem;
+      padding: 0.55rem 0.75rem;
+      border-left: 3px solid var(--app-info);
+      border-radius: 6px;
+      background: var(--app-info-soft);
+    }
+    .plan__label { color: var(--app-info); font-size: 0.78rem; font-weight: 600; }
+    .plan__text { color: var(--app-text-soft); font-size: 0.88rem; white-space: pre-wrap; overflow-wrap: anywhere; }
     .form { display: flex; flex-direction: column; gap: 0.35rem; min-width: min(720px, 92vw); }
     .full { width: 100%; }
     .next-box {
@@ -161,11 +193,25 @@ function today(): Date {
       margin: 0.25rem 0 0.75rem;
       padding: 0.85rem 0.85rem 0.5rem;
       border-radius: 10px;
-      background: #f1f7f5;
+      background: var(--app-surface-2);
     }
     .next-date { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: flex-start; }
     .quick { display: flex; gap: 0.4rem; padding-top: 0.5rem; }
-    .error { color: #b91c1c; margin: 0.25rem 0 0; }
+    .error { color: var(--app-danger); margin: 0.25rem 0 0; }
+    .no-project {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      margin: 0.25rem 0 0.75rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      background: var(--app-warn-soft);
+      color: var(--app-warn);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+    .no-project span { flex: 1 1 18rem; }
     .date-readonly { cursor: pointer; }
   `,
 })
@@ -176,6 +222,7 @@ export class FollowUpCompleteDialogComponent {
   private readonly auth = inject(AuthService);
   private readonly envelope = inject(ApiEnvelopeService);
   private readonly snack = inject(MatSnackBar);
+  private readonly router = inject(Router);
   private readonly ref = inject(
     MatDialogRef<FollowUpCompleteDialogComponent, FollowUpCompleteDialogResult | undefined>
   );
@@ -187,6 +234,10 @@ export class FollowUpCompleteDialogComponent {
   readonly minDate = today();
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+
+  readonly carriedResult = followUpCarriedResult(this.data);
+  /** งานเก่าก่อนบังคับผูกโปรเจกต์ — ปิดเฉย ๆ ได้ แต่นัดครั้งถัดไปไม่ได้ */
+  readonly noProject = this.data.projectId == null;
 
   readonly customerLabel =
     this.data.customer?.name ??
@@ -200,7 +251,7 @@ export class FollowUpCompleteDialogComponent {
     nextTitle: ['', Validators.maxLength(NEXT_TITLE_MAX)],
     alsoLog: [true],
     channel: ['PHONE' as CommunicationChannel],
-    logContent: [this.data.resultNote || this.data.detail || this.data.title],
+    logContent: [this.data.resultNote || (this.carriedResult === null ? this.data.detail : null) || this.data.title],
   });
 
   readonly scheduleNext = toSignal(this.form.controls.scheduleNext.valueChanges, {
@@ -216,6 +267,11 @@ export class FollowUpCompleteDialogComponent {
       }
       ctrl.updateValueAndValidity();
     });
+  }
+
+  goPickProject(): void {
+    this.ref.close();
+    void this.router.navigate(['/app/follow-ups'], { queryParams: { edit: this.data.id } });
   }
 
   setNextIn(unit: 'd' | 'm', n: number): void {
@@ -234,6 +290,9 @@ export class FollowUpCompleteDialogComponent {
     }
     const raw = this.form.getRawValue();
     const input: FollowUpCompleteInput = { resultNote: raw.resultNote };
+    if (raw.scheduleNext && this.noProject) {
+      return;
+    }
     if (raw.scheduleNext) {
       const due = raw.nextDueDate;
       if (!due || due < today()) {

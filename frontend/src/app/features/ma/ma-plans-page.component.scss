@@ -58,7 +58,7 @@
   padding: 0.5rem;
   border: 1px solid var(--app-line);
   border-radius: 12px;
-  background: #f8fbfa;
+  background: var(--app-surface-2);
 }
 
 .item-fields {
@@ -76,7 +76,7 @@
 .cdk-drag-preview {
   box-sizing: border-box;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(28, 43, 40, 0.16);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--app-shadow-ink) 16%, transparent);
 }
 
 .cdk-drag-placeholder {
@@ -93,7 +93,7 @@
 
 .error {
   margin: 0.25rem 0 0;
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.9rem;
 }
 

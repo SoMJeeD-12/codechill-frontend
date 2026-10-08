@@ -86,12 +86,12 @@ export interface ConfirmDialogData {
       width: 2.25rem;
       height: 2.25rem;
       border-radius: 999px;
-      background: #e7f3f0;
-      color: #0f766e;
+      background: var(--app-accent-soft);
+      color: var(--app-accent);
     }
     .title__icon--danger {
-      background: #fee2e2;
-      color: #dc2626;
+      background: var(--app-danger-soft);
+      color: var(--app-danger);
     }
     .title__icon mat-icon {
       font-size: 20px;
@@ -101,7 +101,7 @@ export interface ConfirmDialogData {
     .message {
       margin: 0;
       line-height: 1.5;
-      color: #334155;
+      color: var(--app-text-soft);
       max-width: 28rem;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
@@ -110,9 +110,9 @@ export interface ConfirmDialogData {
       margin: 0.7rem 0 0;
       padding: 0.6rem 0.8rem;
       border-radius: 10px;
-      border: 1px solid var(--app-line, #e2e8f0);
-      background: #f8fafc;
-      color: #1c2b28;
+      border: 1px solid var(--app-line, var(--app-line));
+      background: var(--app-surface-2);
+      color: var(--app-ink);
       font-weight: 600;
       line-height: 1.45;
       overflow-wrap: anywhere;
@@ -122,7 +122,7 @@ export interface ConfirmDialogData {
       align-items: flex-start;
       gap: 0.4rem;
       margin: 0.75rem 0 0;
-      color: #7b8a85;
+      color: var(--app-muted);
       font-size: 0.8rem;
       line-height: 1.45;
     }
@@ -134,14 +134,14 @@ export interface ConfirmDialogData {
       margin-top: 0.1rem;
     }
     .confirm-danger {
-      --mdc-filled-button-container-color: #dc2626;
-      --mdc-filled-button-label-text-color: #fff;
-      background-color: #dc2626 !important;
-      color: #fff !important;
+      --mdc-filled-button-container-color: var(--app-danger);
+      --mdc-filled-button-label-text-color: var(--app-on-solid);
+      background-color: var(--app-danger) !important;
+      color: var(--app-on-solid) !important;
     }
     .confirm-danger:hover {
-      --mdc-filled-button-container-color: #b91c1c;
-      background-color: #b91c1c !important;
+      --mdc-filled-button-container-color: var(--app-danger);
+      background-color: var(--app-danger) !important;
     }
   `,
 })

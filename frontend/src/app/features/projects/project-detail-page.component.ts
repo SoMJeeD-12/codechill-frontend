@@ -92,6 +92,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { DocumentService } from '../../core/services/document.service';
 import { FollowUpService } from '../../core/services/follow-up.service';
+import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import { FollowUpCompleteFlowService } from '../follow-ups/follow-up-complete-dialog.component';
 import { ProjectService } from '../../core/services/project.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
@@ -196,6 +197,7 @@ function warrantyFileRow(file: Attachment, warranty: Warranty): DocumentRow {
 })
 export class ProjectDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly notificationInbox = inject(NotificationInboxService);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly projectsApi = inject(ProjectService);
@@ -797,6 +799,7 @@ export class ProjectDetailPageComponent implements OnInit {
       next: (project) => {
         this.project.set(project);
         this.notFound.set(false);
+        this.notificationInbox.markReadByRef('PROJECT', project.id);
         this.customersApi.fetchCustomer(project.customerId).subscribe();
         this.customersApi.listContacts(project.customerId).subscribe();
         this.refresh({ skipProject: true });
@@ -2358,7 +2361,7 @@ type EvidenceMode = 'text' | 'file';
   styles: `
     .accept-lead {
       margin: 0 0 0.75rem;
-      color: #334155;
+      color: var(--app-text-soft);
       font-weight: 600;
     }
     .dlg-form {
@@ -2378,7 +2381,7 @@ type EvidenceMode = 'text' | 'file';
       margin: 0;
       font-size: 0.82rem;
       font-weight: 600;
-      color: #334155;
+      color: var(--app-text-soft);
     }
     .evidence-modes {
       display: grid;
@@ -2392,10 +2395,10 @@ type EvidenceMode = 'text' | 'file';
       gap: 0.35rem;
       min-height: 2.5rem;
       padding: 0.45rem 0.65rem;
-      border: 1px solid #cfe0db;
+      border: 1px solid var(--app-control-line);
       border-radius: 10px;
-      background: #fff;
-      color: #5b6762;
+      background: var(--app-surface);
+      color: var(--app-muted);
       font: inherit;
       font-size: 0.88rem;
       font-weight: 600;
@@ -2407,16 +2410,16 @@ type EvidenceMode = 'text' | 'file';
       font-size: 18px;
     }
     .evidence-mode.is-active {
-      border-color: #0f766e;
-      background: #ecfdf5;
-      color: #0f766e;
-      box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+      border-color: var(--app-accent);
+      background: var(--app-accent-soft);
+      color: var(--app-accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 12%, transparent);
     }
     .file-pick {
       display: grid;
       gap: 0.35rem;
       font-size: 0.88rem;
-      color: #334155;
+      color: var(--app-text-soft);
     }
     .file-name {
       display: flex;
@@ -2424,7 +2427,7 @@ type EvidenceMode = 'text' | 'file';
       gap: 0.35rem;
       margin: 0;
       font-size: 0.88rem;
-      color: #0f766e;
+      color: var(--app-accent);
       word-break: break-all;
     }
     .file-name mat-icon {
@@ -2436,12 +2439,12 @@ type EvidenceMode = 'text' | 'file';
     .file-empty {
       margin: 0;
       font-size: 0.85rem;
-      color: #94a3b8;
+      color: var(--app-subtle);
     }
     .file-hint {
       margin: 0;
       font-size: 0.78rem;
-      color: #64748b;
+      color: var(--app-muted);
     }
     .final-check {
       display: flex;
@@ -2450,19 +2453,19 @@ type EvidenceMode = 'text' | 'file';
       margin: 0.5rem 0 0.25rem;
       cursor: pointer;
       font-size: 0.9rem;
-      color: #1e293b;
+      color: var(--app-ink);
       line-height: 1.4;
     }
     .final-hint {
       display: block;
       margin-top: 0.2rem;
       font-size: 0.78rem;
-      color: #64748b;
+      color: var(--app-muted);
       font-weight: 400;
     }
     .error {
       margin: 0.25rem 0 0;
-      color: #b91c1c;
+      color: var(--app-danger);
       font-size: 0.88rem;
     }
   `,
@@ -2632,17 +2635,17 @@ export interface ProjectDocumentUploadDialogData {
       display: grid;
       gap: 0.35rem;
       font-size: 0.9rem;
-      color: #334155;
+      color: var(--app-text-soft);
     }
     .file-name {
       margin: 0;
       font-size: 0.85rem;
-      color: #0f766e;
+      color: var(--app-accent);
       word-break: break-all;
     }
     .error {
       margin: 0;
-      color: #b91c1c;
+      color: var(--app-danger);
       font-size: 0.88rem;
     }
   `,
@@ -2772,11 +2775,11 @@ export interface ProjectDocumentEditDialogData {
       display: grid;
       gap: 0.35rem;
       font-size: 0.9rem;
-      color: #334155;
+      color: var(--app-text-soft);
     }
     .file-hint {
       margin: 0;
-      color: #0f766e;
+      color: var(--app-accent);
       font-size: 0.85rem;
       word-break: break-all;
     }
@@ -2790,7 +2793,7 @@ export interface ProjectDocumentEditDialogData {
     }
     .error {
       margin: 0;
-      color: #b91c1c;
+      color: var(--app-danger);
       font-size: 0.88rem;
     }
   `,

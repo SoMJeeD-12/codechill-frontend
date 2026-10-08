@@ -36,6 +36,7 @@ import {
 } from '../../core/models/project.model';
 import { ApiProjectDocument } from '../../core/models/document.model';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import { DocumentService } from '../../core/services/document.service';
 import { ProjectService, TaskInput } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
@@ -101,6 +102,7 @@ export class TaskEditDialogComponent implements OnInit {
   private readonly docsApi = inject(DocumentService);
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly notificationInbox = inject(NotificationInboxService);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly ref = inject(MatDialogRef<TaskEditDialogComponent, boolean>);
@@ -177,6 +179,12 @@ export class TaskEditDialogComponent implements OnInit {
     return this.auth.hasPermissionCode('task.update');
   });
 
+  /** ระบุ/เปลี่ยนผู้รับผิดชอบต้องมี task.assign — ไม่มีแล้วส่งไป BE จะได้ 403 */
+  readonly canAssign = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('task.assign');
+  });
+
   readonly canReview = computed(() => {
     this.auth.session();
     return this.auth.canAccessTaskReviewQueue();
@@ -226,6 +234,9 @@ export class TaskEditDialogComponent implements OnInit {
       // เปลี่ยนสถานะผ่านปุ่ม workflow เท่านั้น
       this.form.controls.status.disable({ emitEvent: false });
     }
+    if (!this.canAssign()) {
+      this.form.controls.assignedUserId.disable({ emitEvent: false });
+    }
   }
 
   readonly taskSubmissions = computed(() => {
@@ -243,6 +254,7 @@ export class TaskEditDialogComponent implements OnInit {
   ngOnInit(): void {
     const task = this.data.task;
     if (this.isEdit && task) {
+      this.notificationInbox.markReadByRef('TASK', task.id);
       this.projectsApi.getTask(task.id).subscribe({
         next: (fresh) => {
           this.currentTask.set({
@@ -588,7 +600,7 @@ export class TaskEditDialogComponent implements OnInit {
       description: (raw.description ?? '').trim(),
       status: taskStatus,
       priority: raw.priority as TaskPriority,
-      assignedUserId,
+      ...(this.canAssign() ? { assignedUserId } : {}),
       startDate: toDateOnlyString(raw.startDate) || null,
       dueDate: toDateOnlyString(raw.dueDate) || null,
       parentTaskId: this.data.task?.parentTaskId ?? this.data.parentTaskId ?? null,

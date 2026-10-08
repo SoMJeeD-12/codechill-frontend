@@ -122,30 +122,30 @@ type PreviewKind = 'pdf' | 'image' | 'text' | 'unsupported';
     .doc-meta h3 {
       margin: 0 0 0.25rem;
       font-size: 1.1rem;
-      color: #0f172a;
+      color: var(--app-ink);
     }
     .meta-line {
       margin: 0;
       font-size: 0.9rem;
-      color: #0f766e;
+      color: var(--app-accent);
       word-break: break-word;
     }
     .meta-line.muted {
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.85rem;
     }
     .note {
       margin: 0.45rem 0 0;
-      color: #475569;
+      color: var(--app-text-soft);
       font-size: 0.88rem;
       line-height: 1.45;
       white-space: pre-wrap;
     }
     .preview-shell {
       min-height: 22rem;
-      border: 1px solid #d8e5e1;
+      border: 1px solid var(--app-line);
       border-radius: 12px;
-      background: #f8faf9;
+      background: var(--app-surface-2);
       overflow: hidden;
     }
     .preview-frame {
@@ -153,7 +153,7 @@ type PreviewKind = 'pdf' | 'image' | 'text' | 'unsupported';
       width: 100%;
       height: min(56vh, 520px);
       border: 0;
-      background: #fff;
+      background: var(--app-surface);
     }
     .preview-image-wrap {
       display: grid;
@@ -161,13 +161,13 @@ type PreviewKind = 'pdf' | 'image' | 'text' | 'unsupported';
       max-height: min(56vh, 520px);
       overflow: auto;
       padding: 0.75rem;
-      background: #eef4f2;
+      background: var(--app-surface-3);
     }
     .preview-image-wrap img {
       max-width: 100%;
       height: auto;
       border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--app-ink) 8%, transparent);
     }
     .preview-text {
       margin: 0;
@@ -179,8 +179,8 @@ type PreviewKind = 'pdf' | 'image' | 'text' | 'unsupported';
       font-family: ui-monospace, Consolas, monospace;
       font-size: 0.85rem;
       line-height: 1.5;
-      color: #1e293b;
-      background: #fff;
+      color: var(--app-ink);
+      background: var(--app-surface);
     }
     .preview-state {
       display: grid;
@@ -189,19 +189,19 @@ type PreviewKind = 'pdf' | 'image' | 'text' | 'unsupported';
       min-height: 22rem;
       padding: 1.5rem;
       text-align: center;
-      color: #475569;
+      color: var(--app-text-soft);
     }
     .preview-state mat-icon {
       font-size: 2.25rem;
       width: 2.25rem;
       height: 2.25rem;
-      color: #0f766e;
+      color: var(--app-accent);
     }
     .preview-state.error {
-      color: #b91c1c;
+      color: var(--app-danger);
     }
     .preview-state.error mat-icon {
-      color: #b91c1c;
+      color: var(--app-danger);
     }
     .preview-state p {
       margin: 0;

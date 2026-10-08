@@ -4,8 +4,8 @@
   margin-top: 0.75rem;
   padding: 0.7rem 0.8rem;
   border-radius: 10px;
-  border: 1px solid rgb(15 23 42 / 0.08);
-  background: rgb(248 250 252 / 0.85);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 8%, transparent);
+  background: color-mix(in srgb, var(--app-surface-2) 85%, transparent);
 }
 
 .entity-attachments__head {
@@ -19,13 +19,13 @@
   margin: 0;
   font-size: 0.88rem;
   font-weight: 700;
-  color: rgb(15 23 42 / 0.85);
+  color: color-mix(in srgb, var(--app-ink) 85%, transparent);
 }
 
 .entity-attachments__sub {
   margin: 0.1rem 0 0;
   font-size: 0.74rem;
-  color: rgb(15 23 42 / 0.55);
+  color: color-mix(in srgb, var(--app-ink) 55%, transparent);
 }
 
 .entity-attachments__upload {
@@ -34,9 +34,9 @@
   gap: 0.3rem;
   padding: 0.35rem 0.7rem;
   border-radius: 8px;
-  border: 1px solid rgb(15 118 110 / 0.35);
-  background: #fff;
-  color: #0f766e;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 35%, transparent);
+  background: var(--app-surface);
+  color: var(--app-accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -64,14 +64,14 @@
 
 .entity-attachments__error {
   margin: 0;
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.8rem;
 }
 
 .entity-attachments__empty,
 .entity-attachments__loading {
   margin: 0;
-  color: rgb(15 23 42 / 0.5);
+  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
   font-size: 0.8rem;
 }
 
@@ -96,8 +96,8 @@
   gap: 0.5rem;
   padding: 0.45rem 0.5rem;
   border-radius: 8px;
-  background: #fff;
-  border: 1px solid rgb(15 23 42 / 0.06);
+  background: var(--app-surface);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 6%, transparent);
 }
 
 .entity-attachments__meta {
@@ -108,7 +108,7 @@
   flex: 1;
 
   > mat-icon {
-    color: #0f766e;
+    color: var(--app-accent);
     margin-top: 0.1rem;
     font-size: 18px;
     width: 18px;
@@ -131,7 +131,7 @@
 .entity-attachments__info,
 .entity-attachments__note {
   font-size: 0.72rem;
-  color: rgb(15 23 42 / 0.55);
+  color: color-mix(in srgb, var(--app-ink) 55%, transparent);
 }
 
 .entity-attachments__note {

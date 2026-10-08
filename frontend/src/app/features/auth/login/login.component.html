@@ -42,6 +42,13 @@
             </button>
           </mat-form-field>
 
+          @if (notice() && !error()) {
+            <div class="notice-banner" role="status">
+              <mat-icon>info</mat-icon>
+              <span>{{ notice() }}</span>
+            </div>
+          }
+
           @if (error()) {
             <div class="error-banner" role="alert">{{ error() }}</div>
           }
@@ -53,9 +60,17 @@
             จดจำฉันไว้ (ค้างหลังปิดแท็บ)
           </mat-checkbox>
 
-          <button mat-flat-button color="primary" class="submit" type="submit" [disabled]="loading()">
+          <button
+            mat-flat-button
+            color="primary"
+            class="submit"
+            type="submit"
+            [disabled]="loading() || locked()"
+          >
             @if (loading()) {
               <mat-spinner diameter="20"></mat-spinner>
+            } @else if (locked()) {
+              ลองใหม่ได้ใน {{ lockSeconds() }} วินาที
             } @else {
               เข้าสู่ระบบ
             }
@@ -67,7 +82,7 @@
             <span class="dev-login__label">เข้าสู่ระบบด่วน (dev):</span>
             <div class="dev-login__buttons">
               @for (account of devAccounts; track account.key) {
-                <button type="button" class="dev-login__btn" (click)="loginAs(account)" [disabled]="loading()">
+                <button type="button" class="dev-login__btn" (click)="loginAs(account)" [disabled]="loading() || locked()">
                   {{ account.label }}
                   <kbd>Ctrl+Shift+{{ account.key }}</kbd>
                 </button>

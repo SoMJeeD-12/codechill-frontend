@@ -21,13 +21,13 @@
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .filters {
@@ -62,7 +62,7 @@
 }
 
 a {
-  color: #0f766e;
+  color: var(--app-accent);
   text-decoration: none;
   font-weight: 600;
 
@@ -76,7 +76,7 @@ button.name-link {
   padding: 0;
   border: 0;
   background: none;
-  color: #0f766e;
+  color: var(--app-accent);
   font: inherit;
   font-weight: 600;
   text-align: left;
@@ -94,7 +94,7 @@ button.name-link {
 
 .empty {
   padding: 1.25rem;
-  color: #5b6762;
+  color: var(--app-muted);
   text-align: center;
 }
 

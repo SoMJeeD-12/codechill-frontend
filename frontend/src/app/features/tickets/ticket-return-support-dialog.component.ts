@@ -215,14 +215,14 @@ const NOTE_MAX = 2000;
   styles: `
     .ref {
       margin: 0 0 0.85rem;
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.85rem;
     }
     .muted {
-      color: #64748b;
+      color: var(--app-muted);
     }
     .round {
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--app-line);
       border-radius: 10px;
       padding: 0.85rem 1rem;
 
@@ -238,20 +238,20 @@ const NOTE_MAX = 2000;
       border-radius: 999px;
       font-size: 0.78rem;
       font-weight: 600;
-      background: #f1f5f9;
-      color: #475569;
+      background: var(--app-surface-3);
+      color: var(--app-text-soft);
 
       &[data-result='SUCCESS'] {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--app-success-soft);
+        color: var(--app-success);
       }
       &[data-result='PARTIAL'] {
-        background: #fef3c7;
-        color: #92400e;
+        background: var(--app-warn-soft);
+        color: var(--app-warn-ink);
       }
       &[data-result='FAILED'] {
-        background: #fee2e2;
-        color: #991b1b;
+        background: var(--app-danger-soft);
+        color: var(--app-danger-ink);
       }
     }
     dl {
@@ -262,11 +262,11 @@ const NOTE_MAX = 2000;
       font-size: 0.9rem;
     }
     dt {
-      color: #64748b;
+      color: var(--app-muted);
     }
     dd {
       margin: 0;
-      color: #1e293b;
+      color: var(--app-ink);
       min-width: 0;
     }
     .clip {
@@ -289,7 +289,7 @@ const NOTE_MAX = 2000;
       padding: 0;
       border: 0;
       background: none;
-      color: #0f766e;
+      color: var(--app-accent);
       font: inherit;
       font-size: 0.82rem;
       font-weight: 600;
@@ -303,8 +303,8 @@ const NOTE_MAX = 2000;
       margin: 0.75rem 0 0;
       padding: 0.6rem 0.85rem;
       border-radius: 10px;
-      background: #fffbeb;
-      border: 1px solid #fde68a;
+      background: var(--app-warn-soft);
+      border: 1px solid var(--app-warn-line);
       display: grid;
       gap: 0.3rem;
 
@@ -312,7 +312,7 @@ const NOTE_MAX = 2000;
         display: flex;
         align-items: center;
         gap: 0.4rem;
-        color: #92400e;
+        color: var(--app-warn-ink);
         font-size: 0.86rem;
       }
     }
@@ -320,7 +320,7 @@ const NOTE_MAX = 2000;
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      color: #92400e;
+      color: var(--app-warn-ink);
     }
     mat-icon {
       width: 18px;
@@ -344,18 +344,18 @@ const NOTE_MAX = 2000;
       margin: 0.75rem 0 0;
       padding: 0.55rem 0.75rem;
       border-radius: 8px;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #991b1b;
+      background: var(--app-danger-soft);
+      border: 1px solid var(--app-danger-line);
+      color: var(--app-danger-ink);
       font-size: 0.88rem;
     }
     .reject-btn {
-      color: #b45309;
-      border-color: #f59e0b;
+      color: var(--app-warn);
+      border-color: var(--app-warn);
     }
     .reject-confirm:not(:disabled) {
-      background: #d97706;
-      color: #fff;
+      background: var(--app-warn);
+      color: var(--app-on-solid);
     }
     .open-link mat-icon {
       margin-right: 0.25rem;

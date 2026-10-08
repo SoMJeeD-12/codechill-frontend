@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { skip, startWith, tap } from 'rxjs/operators';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import {
@@ -38,7 +38,9 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { MaService } from '../../core/services/ma.service';
+import { apiErrorMessage } from '../../core/http/api-error';
 import { NavAttentionService } from '../../core/services/nav-attention.service';
+import { NotificationInboxService } from '../../core/services/notification-inbox.service';
 import { ProjectService } from '../../core/services/project.service';
 import {
   WarrantyCreateInput,
@@ -98,7 +100,9 @@ export class WarrantiesPageComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly attention = inject(NavAttentionService);
+  private readonly notificationInbox = inject(NotificationInboxService);
 
   /** badge เมนู = total ของ /warranties/expiring?days=30 */
   readonly nearBadge = computed(() => this.attention.badge('warranties'));
@@ -151,10 +155,40 @@ export class WarrantiesPageComponent implements OnInit {
       if (q.get('view') === 'near' && this.view() !== 'near') {
         this.list.setFilter('view', 'near');
       }
+      this.showFromQuery(q.get('open'));
     });
   }
 
+  /** ?open=:id — มาจากกระดิ่งแจ้งเตือน (refType WARRANTY) · ไม่มีหน้า :id จึงค้นเลขที่ใบให้เห็นแถวนั้น */
+  private showFromQuery(raw: string | null): boolean {
+    const id = Number(raw);
+    if (!raw || !Number.isInteger(id) || id <= 0) {
+      return false;
+    }
+    this.notificationInbox.markReadByRef('WARRANTY', id);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { open: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.api.fetchDetail(id).subscribe({
+      next: (w) => {
+        this.list.patchFilters({ view: 'all' });
+        this.searchControl.setValue(w.warrantyNo ?? '');
+      },
+      error: (err: unknown) => {
+        this.snack.open(apiErrorMessage(err, 'ไม่พบใบรับประกัน'), 'ปิด', { duration: 3500 });
+        this.list.start();
+      },
+    });
+    return true;
+  }
+
   ngOnInit(): void {
+    if (this.showFromQuery(this.route.snapshot.queryParamMap.get('open'))) {
+      return;
+    }
     // เข้ามาจากการ์ด "ประกัน / MA ใกล้หมด" บนหน้าแรก
     if (this.route.snapshot.queryParamMap.get('expiring')) {
       this.list.patchFilters({ view: 'near' });
@@ -228,6 +262,7 @@ export class WarrantiesPageComponent implements OnInit {
   }
 
   openDocuments(row: Warranty): void {
+    this.notificationInbox.markReadByRef('WARRANTY', row.id);
     openWarrantyDocuments(this.dialog, row, () => this.reload());
   }
 

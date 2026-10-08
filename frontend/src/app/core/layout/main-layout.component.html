@@ -181,6 +181,19 @@
         </button>
       }
 
+      <button
+        mat-icon-button
+        type="button"
+        class="theme-toggle"
+        [matTooltip]="theme.isDark() ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"
+        matTooltipPosition="below"
+        [attr.aria-label]="theme.isDark() ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"
+        [attr.aria-pressed]="theme.isDark()"
+        (click)="theme.toggle()"
+      >
+        <mat-icon>{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+
       <app-notification-bell />
 
       <button mat-button [matMenuTriggerFor]="userMenu" class="user-chip">

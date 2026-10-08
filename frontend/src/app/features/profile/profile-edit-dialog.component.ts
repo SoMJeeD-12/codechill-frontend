@@ -11,12 +11,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 
 export interface ProfileEditDialogData {
+  username: string;
   fullName: string;
   nickname: string | null;
   avatarUrl: string | null;
 }
 
 const NICKNAME_MAX = 50;
+const FULL_NAME_MAX = 255;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 /** เลือกได้ใหญ่กว่า 2 MB — ย่อบนเครื่องก่อนส่ง เพราะ BE รับไม่เกิน 2 MB */
@@ -122,6 +124,20 @@ async function shrinkImage(file: File, maxBytes: number): Promise<File> {
       </div>
 
       <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="readonly-field">
+          <span class="readonly-field__label">ชื่อผู้ใช้</span>
+          <span class="readonly-field__value">{{ data.username }}</span>
+          <span class="readonly-field__hint">ใช้เข้าสู่ระบบ — แก้ไขไม่ได้</span>
+        </div>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
+          <mat-label>ชื่อ-นามสกุล</mat-label>
+          <input matInput formControlName="fullName" required [maxlength]="fullNameMax" autocomplete="name" />
+          @if (form.controls.fullName.touched && form.controls.fullName.invalid) {
+            <mat-error>กรุณากรอกชื่อ-นามสกุล</mat-error>
+          } @else {
+            <mat-hint align="end">{{ form.controls.fullName.value.length }} / {{ fullNameMax }}</mat-hint>
+          }
+        </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
           <mat-label>ชื่อเล่น</mat-label>
           <input matInput formControlName="nickname" [maxlength]="nicknameMax" autocomplete="nickname" />
@@ -144,10 +160,15 @@ async function shrinkImage(file: File, maxBytes: number): Promise<File> {
     .avatar-row { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
     .avatar-preview { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
     .avatar-actions { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; align-items: center; }
-    .hint { flex-basis: 100%; margin: 0; font-size: 0.8rem; color: #5b6762; }
-    .danger { color: #b91c1c; }
+    .hint { flex-basis: 100%; margin: 0; font-size: 0.8rem; color: var(--app-muted); }
+    .danger { color: var(--app-danger); }
     .full { width: 100%; }
-    .error { margin: 0.75rem 0 0; color: #b91c1c; font-size: 0.9rem; }
+    form { display: grid; gap: 0.9rem; }
+    .readonly-field { display: grid; gap: 0.1rem; padding: 0.55rem 0.8rem; border-radius: 10px; background: var(--app-surface-2); border: 1px solid var(--app-line); }
+    .readonly-field__label { font-size: 0.76rem; color: var(--app-muted); }
+    .readonly-field__value { font-weight: 600; color: var(--app-ink); }
+    .readonly-field__hint { font-size: 0.74rem; color: var(--app-subtle); }
+    .error { margin: 0.75rem 0 0; color: var(--app-danger); font-size: 0.9rem; }
   `,
 })
 export class ProfileEditDialogComponent implements OnDestroy {
@@ -158,7 +179,12 @@ export class ProfileEditDialogComponent implements OnDestroy {
 
   readonly acceptTypes = AVATAR_TYPES.join(',');
   readonly nicknameMax = NICKNAME_MAX;
+  readonly fullNameMax = FULL_NAME_MAX;
   readonly form = inject(FormBuilder).nonNullable.group({
+    fullName: [
+      this.data.fullName ?? '',
+      [Validators.required, Validators.maxLength(FULL_NAME_MAX), Validators.pattern(/\S/)],
+    ],
     nickname: [this.data.nickname ?? '', [Validators.maxLength(NICKNAME_MAX)]],
   });
   readonly file = signal<File | null>(null);
@@ -169,7 +195,7 @@ export class ProfileEditDialogComponent implements OnDestroy {
   readonly error = signal<string | null>(null);
 
   dirty(): boolean {
-    return !!this.file() || this.removeAvatar() || this.nicknameChanged();
+    return !!this.file() || this.removeAvatar() || this.nicknameChanged() || this.fullNameChanged();
   }
 
   onFile(event: Event): void {
@@ -217,12 +243,23 @@ export class ProfileEditDialogComponent implements OnDestroy {
   }
 
   save(): void {
-    if (!this.dirty() || this.saving() || this.form.invalid) {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    if (!this.dirty() || this.saving()) {
       return;
     }
     const steps: Observable<void>[] = [];
+    const patch: { fullName?: string; nickname?: string | null } = {};
+    if (this.fullNameChanged()) {
+      patch.fullName = this.fullNameValue();
+    }
     if (this.nicknameChanged()) {
-      steps.push(this.auth.updateMyNickname(this.nicknameValue() || null));
+      patch.nickname = this.nicknameValue() || null;
+    }
+    if (Object.keys(patch).length) {
+      steps.push(this.auth.updateMyProfile(patch));
     }
     const file = this.file();
     if (file) {
@@ -245,6 +282,14 @@ export class ProfileEditDialogComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.setPreview(null);
+  }
+
+  private fullNameValue(): string {
+    return this.form.controls.fullName.value.trim();
+  }
+
+  private fullNameChanged(): boolean {
+    return this.fullNameValue() !== (this.data.fullName ?? '').trim();
   }
 
   private nicknameValue(): string {

@@ -16,13 +16,13 @@
 .date-readonly { cursor: pointer; }
 
 .option-muted {
-  color: #64748b;
+  color: var(--app-muted);
   font-size: 0.85em;
 }
 
 .error {
   margin: 0.25rem 0 0;
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.9rem;
 }
 
@@ -30,15 +30,15 @@
   margin: 0.15rem 0 0;
   padding: 0.65rem 0.75rem;
   border-radius: 8px;
-  background: #ecfdf5;
-  color: #0f766e;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
   font-size: 0.85rem;
   line-height: 1.4;
 }
 
 .hint.warn {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--app-warn-soft);
+  color: var(--app-warn);
 }
 
 @media (max-width: 560px) {

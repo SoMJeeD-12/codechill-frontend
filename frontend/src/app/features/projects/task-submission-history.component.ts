@@ -70,15 +70,15 @@ const STATUS_LABELS: Record<string, string> = {
       gap: 0.5rem;
     }
     .round {
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--app-line);
       border-left-width: 3px;
       border-radius: 8px;
       padding: 0.5rem 0.75rem;
       &[data-status='REJECTED'] {
-        border-left-color: #dc2626;
+        border-left-color: var(--app-danger);
       }
       &[data-status='APPROVED'] {
-        border-left-color: #16a34a;
+        border-left-color: var(--app-success);
       }
     }
     .round__head {
@@ -87,11 +87,11 @@ const STATUS_LABELS: Record<string, string> = {
       gap: 0.25rem 0.75rem;
       align-items: baseline;
       font-size: 0.82rem;
-      color: #64748b;
+      color: var(--app-muted);
     }
     .round__status {
       font-weight: 600;
-      color: #334155;
+      color: var(--app-text-soft);
     }
     .round__report,
     .round__review p {
@@ -102,11 +102,11 @@ const STATUS_LABELS: Record<string, string> = {
     .round__review {
       margin-top: 0.4rem;
       padding: 0.4rem 0.6rem;
-      background: #fff7ed;
+      background: var(--app-warn-soft);
       border-radius: 6px;
       strong {
         font-size: 0.8rem;
-        color: #9a3412;
+        color: var(--app-warn-ink);
       }
       button {
         margin-top: 0.35rem;
@@ -114,7 +114,7 @@ const STATUS_LABELS: Record<string, string> = {
     }
     .empty {
       margin: 0;
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.85rem;
     }
   `,

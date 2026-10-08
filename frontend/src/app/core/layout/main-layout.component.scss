@@ -29,8 +29,8 @@
   place-items: center;
   font-weight: 700;
   letter-spacing: 0.02em;
-  background: linear-gradient(145deg, #0f766e, #134e4a);
-  color: #ecfdf5;
+  background: linear-gradient(145deg, var(--app-hero-from), var(--app-hero-to));
+  color: var(--app-hero-ink);
 }
 
 .brand-text {
@@ -56,14 +56,14 @@
   margin: 1rem;
   padding: 1rem;
   border-radius: 10px;
-  background: rgba(15, 118, 110, 0.06);
-  color: #5b6762;
+  background: var(--app-accent-soft);
+  color: var(--app-muted);
   text-align: center;
   font-size: 0.85rem;
   line-height: 1.45;
 
   mat-icon {
-    color: #0f766e;
+    color: var(--app-accent);
     margin-bottom: 0.35rem;
   }
 
@@ -110,12 +110,12 @@ button.nav-folder__toggle.mat-mdc-list-item {
   height: 1.15rem;
   padding: 0 0.35rem;
   border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
+  background: var(--app-danger);
+  color: var(--app-on-solid);
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 0 0 2px #fff;
+  box-shadow: 0 0 0 2px var(--app-sidebar);
 }
 
 .nav-branch {
@@ -153,14 +153,14 @@ button.nav-folder__toggle.mat-mdc-list-item {
 
   &:hover {
     opacity: 1;
-    background: rgba(15, 118, 110, 0.08);
+    background: var(--app-accent-soft);
   }
 }
 
 .nav-branch__children {
   padding: 0.1rem 0 0.35rem 0.55rem;
   margin-left: 0.85rem;
-  border-left: 2px solid rgba(15, 118, 110, 0.18);
+  border-left: 2px solid color-mix(in srgb, var(--app-accent) 18%, transparent);
 }
 
 button.nav-folder__toggle {
@@ -204,7 +204,7 @@ a.nav-child.mat-mdc-list-item {
   top: 0;
   z-index: 2;
   flex: 0 0 auto;
-  background: rgba(255, 252, 248, 0.92);
+  background: var(--app-topbar);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--app-border);
   color: var(--app-ink);
@@ -245,7 +245,16 @@ a.nav-child.mat-mdc-list-item {
 
 .quick-action--ghost {
   color: var(--app-accent) !important;
-  border-color: rgba(15, 118, 110, 0.4) !important;
+  border-color: color-mix(in srgb, var(--app-accent) 40%, transparent) !important;
+}
+
+.theme-toggle {
+  margin-right: 0.25rem;
+  color: var(--app-muted);
+
+  &:hover {
+    color: var(--app-accent);
+  }
 }
 
 .user-chip {

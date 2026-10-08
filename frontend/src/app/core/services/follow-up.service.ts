@@ -19,10 +19,9 @@ import {
   FollowUpWritableStatus,
 } from '../models/follow-up.model';
 
-/** CreateFollowUpDto — ส่ง projectId หรือ customerId อย่างใดอย่างหนึ่ง */
+/** CreateFollowUpDto — ต้องมี projectId · ไม่ส่ง customerId (backend ใช้เจ้าของโปรเจกต์) */
 export interface FollowUpCreateInput {
-  projectId?: number;
-  customerId?: number;
+  projectId: number;
   title: string;
   dueDate: string;
   detail?: string | null;
@@ -37,7 +36,8 @@ export interface FollowUpUpdateInput {
   status?: FollowUpWritableStatus;
   assignedUserId?: number | null;
   resultNote?: string | null;
-  projectId?: number | null;
+  /** ย้ายไปโปรเจกต์อื่นของลูกค้ารายเดิมได้ · ห้ามส่ง null (ถอดโปรเจกต์ไม่ได้) */
+  projectId?: number;
 }
 
 export interface FollowUpCompleteInput {
@@ -160,17 +160,17 @@ export class FollowUpService {
   }
 
   create(input: FollowUpCreateInput): Observable<FollowUp> {
-    const hasProject = input.projectId != null && input.projectId > 0;
-    const hasCustomer = input.customerId != null && input.customerId > 0;
-    if (!input.title.trim() || !input.dueDate || (!hasProject && !hasCustomer)) {
-      return throwError(() => new Error('กรุณากรอกหัวข้อ โปรเจกต์หรือลูกค้า และวันครบกำหนด'));
+    if (!(input.projectId > 0)) {
+      return throwError(() => new Error('กรุณาเลือกโปรเจคที่ต้องติดตาม'));
+    }
+    if (!input.title.trim() || !input.dueDate) {
+      return throwError(() => new Error('กรุณากรอกหัวข้อและวันครบกำหนด'));
     }
     return this.http
       .post<FollowUp>(
         this.base,
         pruneUndefined({
-          projectId: hasProject ? input.projectId : undefined,
-          customerId: hasProject ? undefined : input.customerId,
+          projectId: input.projectId,
           title: input.title.trim(),
           dueDate: input.dueDate,
           detail: input.detail?.trim() || undefined,

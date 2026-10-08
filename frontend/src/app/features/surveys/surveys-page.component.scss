@@ -15,34 +15,34 @@
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
-.subtitle { margin: 0.35rem 0 0; color: #5b6762; }
+.subtitle { margin: 0.35rem 0 0; color: var(--app-muted); }
 
 .full-table { width: 100%; }
 
 .muted {
   margin-top: 0.2rem;
   font-size: 0.85rem;
-  color: #5b6762;
+  color: var(--app-muted);
   font-weight: 400;
 }
 
 a {
-  color: #0f766e;
+  color: var(--app-accent);
   text-decoration: none;
 }
 
-.status[data-status='ACTIVE'] { color: #0f766e; font-weight: 600; }
-.status[data-status='DRAFT'] { color: #b45309; font-weight: 600; }
-.status[data-status='CLOSED'] { color: #5b6762; }
+.status[data-status='ACTIVE'] { color: var(--app-accent); font-weight: 600; }
+.status[data-status='DRAFT'] { color: var(--app-warn); font-weight: 600; }
+.status[data-status='CLOSED'] { color: var(--app-muted); }
 
 .empty {
   padding: 1.25rem;
   text-align: center;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 @media (max-width: 800px) {

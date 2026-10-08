@@ -135,16 +135,16 @@ export function printWarranty(
       margin: 0;
     }
     .muted {
-      color: #5b6762;
+      color: var(--app-muted);
       font-size: 0.85rem;
     }
     .status[data-status='ACTIVE'] {
-      color: #0f766e;
+      color: var(--app-accent);
       font-weight: 600;
     }
     .status[data-status='VOID'],
     .status[data-status='EXPIRED'] {
-      color: #b91c1c;
+      color: var(--app-danger);
       font-weight: 600;
     }
   `,

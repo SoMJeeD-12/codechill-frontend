@@ -20,9 +20,13 @@
   --color-line: var(--app-line);
   --color-line-soft: var(--app-line-soft);
   --color-bg: var(--app-bg);
-  --color-warn: #c2410c;
-  --color-warn-soft: #fff7ed;
-  --color-warn-line: #fed7aa;
+  --color-surface-2: var(--app-surface-2);
+  --color-faint: var(--app-faint);
+  --color-control-line: var(--app-control-line);
+  --color-warn: var(--app-warn);
+  --color-warn-soft: var(--app-warn-soft);
+  --color-warn-line: var(--app-warn-line);
+  --color-warn-ink: var(--app-warn-ink);
   --font-sans: 'Sarabun', 'Segoe UI', sans-serif;
   --radius-card: var(--app-radius-card);
   --radius-control: var(--app-radius-control);
@@ -68,11 +72,11 @@
 
   /* ——— แผงรายการ (แทน data-card ด้วย Tailwind ให้เห็นชัด) ——— */
   .app-panel {
-    @apply overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_rgba(28,43,40,0.06)];
+    @apply overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_20px_var(--app-shadow)];
   }
 
   .app-panel-toolbar {
-    @apply flex flex-col gap-3 border-b border-line-soft bg-gradient-to-br from-brand-soft via-[#f4faf8] to-surface px-4 py-4;
+    @apply flex flex-col gap-3 border-b border-line-soft bg-gradient-to-br from-brand-soft via-surface-2 to-surface px-4 py-4;
   }
 
   .app-panel-toolbar-row {
@@ -90,16 +94,16 @@
 
   /* ค้นหา — กว้างพอใช้ ไม่ยืดเต็มแผง */
   .app-search {
-    @apply flex h-11 w-full max-w-md min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#cfe0db] bg-white/90 px-3.5 shadow-[inset_0_1px_2px_rgba(28,43,40,0.04)] transition-[border-color,box-shadow] sm:max-w-lg lg:max-w-xl;
+    @apply flex h-11 w-full max-w-md min-w-0 flex-1 items-center gap-2 rounded-xl border border-control-line bg-surface px-3.5 shadow-[inset_0_1px_2px_var(--app-shadow)] transition-[border-color,box-shadow] sm:max-w-lg lg:max-w-xl;
   }
 
   .app-search:focus-within {
-    @apply border-brand shadow-[0_0_0_3px_rgba(15,118,110,0.15)];
+    @apply border-brand shadow-[0_0_0_3px_color-mix(in_srgb,var(--app-accent)_15%,transparent)];
   }
 
   .app-search .mat-icon,
   .app-search mat-icon {
-    @apply !h-5 !w-5 !text-[20px] text-[#6b7f79];
+    @apply !h-5 !w-5 !text-[20px] text-muted;
   }
 
   .app-search input {
@@ -107,7 +111,7 @@
   }
 
   .app-search input::placeholder {
-    @apply text-[#8a9792];
+    @apply text-faint;
   }
 
   .app-link {
@@ -168,7 +172,7 @@
   }
 
   .app-warn-banner {
-    @apply mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-warn-line bg-warn-soft px-3.5 py-2.5 text-sm leading-relaxed text-[#9a3412];
+    @apply mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-warn-line bg-warn-soft px-3.5 py-2.5 text-sm leading-relaxed text-warn-ink;
   }
 
   .app-status-active {
@@ -184,7 +188,7 @@
   }
 
   .app-section-label {
-    @apply mb-3 mt-7 flex items-center gap-2 text-base font-semibold text-[#34524c];
+    @apply mb-3 mt-7 flex items-center gap-2 text-base font-semibold text-[var(--app-text-soft)];
   }
 
   .app-section-label:first-child {

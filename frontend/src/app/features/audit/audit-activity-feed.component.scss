@@ -6,7 +6,7 @@
   display: grid;
   gap: 0.5rem;
   padding: 1rem 1.25rem 0.75rem;
-  border-bottom: 1px solid var(--app-line-soft, #eef2f0);
+  border-bottom: 1px solid var(--app-line-soft, var(--app-surface-3));
 }
 
 .filters-row {
@@ -25,7 +25,7 @@
 
   .refresh-btn {
     margin-left: auto;
-    border: 1px solid #cfe0db;
+    border: 1px solid var(--app-control-line);
     border-radius: var(--app-radius-control);
     width: 44px;
     height: 44px;
@@ -55,13 +55,13 @@
   align-items: center;
   gap: 0 1rem;
   margin-left: -0.5rem;
-  color: #3f534e;
+  color: var(--app-text-soft);
   font-size: 0.88rem;
 }
 
 .feed-total {
   margin-left: auto;
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.82rem;
 }
 
@@ -69,14 +69,14 @@
   margin: 1rem 1.25rem 0;
   padding: 0.6rem 0.85rem;
   border-radius: 8px;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--app-danger-soft);
+  color: var(--app-danger-ink);
 }
 
 .feed-empty {
   padding: 2rem 1.25rem;
   text-align: center;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .feed-day {
@@ -89,29 +89,29 @@
   z-index: 1;
   margin: 0;
   padding: 0.9rem 0 0.45rem;
-  background: var(--app-surface, #fff);
+  background: var(--app-surface, var(--app-surface));
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .feed-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid #e7efec;
+  border: 1px solid var(--app-line);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .feed-item + .feed-item {
-  border-top: 1px solid #eef2f0;
+  border-top: 1px solid var(--app-surface-3);
 }
 
 .feed-item.is-open {
-  background: #f7fbfa;
+  background: var(--app-surface-2);
 }
 
 .feed-row {
@@ -125,7 +125,7 @@
     cursor: pointer;
 
     &:hover {
-      background: rgba(15, 118, 110, 0.04);
+      background: color-mix(in srgb, var(--app-accent) 4%, transparent);
     }
 
     &:focus-visible {
@@ -142,14 +142,14 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  color: #fff;
+  color: var(--app-on-solid);
   font-size: 0.85rem;
   font-weight: 600;
   flex: 0 0 auto;
 
   &--system {
-    background: #e2e8f0 !important;
-    color: #64748b;
+    background: var(--app-line) !important;
+    color: var(--app-muted);
 
     mat-icon {
       width: 18px;
@@ -165,7 +165,7 @@
 
 .feed-sentence {
   margin: 0;
-  color: #1e293b;
+  color: var(--app-ink);
   font-size: 0.92rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -173,11 +173,11 @@
 
 .actor {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--app-ink);
   margin-right: 0.15rem;
 
   &--system {
-    color: #94a3b8;
+    color: var(--app-subtle);
     font-weight: 500;
   }
 }
@@ -192,8 +192,8 @@
   gap: 0.15rem;
   padding: 0.05rem 0.5rem;
   border-radius: 999px;
-  background: #f1f5f4;
-  color: #5b6762;
+  background: var(--app-surface-3);
+  color: var(--app-muted);
   font-size: 0.74rem;
   font-weight: 500;
   text-decoration: none;
@@ -205,8 +205,8 @@
   }
 
   &--link {
-    background: var(--app-accent-soft, #e6f4f1);
-    color: var(--app-accent-dark, #0f5f58);
+    background: var(--app-accent-soft, var(--app-accent-soft));
+    color: var(--app-accent-dark, var(--app-accent-dark));
 
     &:hover {
       text-decoration: underline;
@@ -215,14 +215,14 @@
 }
 
 .feed-time {
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .feed-chevron {
-  color: #94a3b8;
+  color: var(--app-subtle);
   width: 24px;
   height: 24px;
 }
@@ -234,8 +234,8 @@
 .changes-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
   border-radius: 8px;
   overflow: hidden;
   font-size: 0.86rem;
@@ -245,21 +245,21 @@
     padding: 0.45rem 0.7rem;
     text-align: left;
     vertical-align: top;
-    border-bottom: 1px solid #eef2f0;
+    border-bottom: 1px solid var(--app-surface-3);
     white-space: pre-wrap;
     word-break: break-word;
   }
 
   th {
-    background: #f8faf9;
-    color: #5b6762;
+    background: var(--app-surface-2);
+    color: var(--app-muted);
     font-weight: 600;
   }
 
   th:first-child,
   td:first-child {
     width: 24%;
-    color: #334155;
+    color: var(--app-text-soft);
   }
 
   tbody tr:last-child td {
@@ -267,17 +267,17 @@
   }
 
   .val-from {
-    color: #64748b;
+    color: var(--app-muted);
   }
 
   .val-to {
-    color: #0f172a;
+    color: var(--app-ink);
   }
 }
 
 .feed-ip {
   margin: 0.4rem 0 0;
-  color: #94a3b8;
+  color: var(--app-subtle);
   font-size: 0.75rem;
 }
 
@@ -290,13 +290,13 @@
 }
 
 .feed-count {
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.8rem;
 }
 
 .feed-loading-more,
 .feed-done {
-  color: #475b55;
+  color: var(--app-text-soft);
   font-size: 0.85rem;
   font-weight: 500;
 }

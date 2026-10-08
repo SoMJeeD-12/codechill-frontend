@@ -148,14 +148,14 @@ export interface DeliveryPreviewDialogData {
         margin: 0.7rem 0 0;
         font-size: 0.75rem;
         font-weight: 750;
-        color: #0f766e;
+        color: var(--app-accent);
       }
       h4:first-child {
         margin-top: 0;
       }
       p {
         margin: 0.25rem 0 0;
-        color: #1c2b28;
+        color: var(--app-ink);
         font-size: 0.98rem;
         line-height: 1.5;
         white-space: pre-wrap;
@@ -172,7 +172,7 @@ export interface DeliveryPreviewDialogData {
       }
       .meta {
         margin: 0.25rem 0 0;
-        color: #5b6762;
+        color: var(--app-muted);
         font-size: 0.88rem;
       }
     }
@@ -183,8 +183,8 @@ export interface DeliveryPreviewDialogData {
       margin: 0;
       padding: 0.85rem 0.95rem;
       border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgb(15 23 42 / 0.06);
+      background: var(--app-surface-2);
+      border: 1px solid color-mix(in srgb, var(--app-ink) 6%, transparent);
       div {
         min-width: 0;
       }
@@ -194,7 +194,7 @@ export interface DeliveryPreviewDialogData {
       dt {
         margin: 0;
         font-size: 0.75rem;
-        color: #64748b;
+        color: var(--app-muted);
       }
       dd {
         margin: 0.15rem 0 0;
@@ -212,7 +212,7 @@ export interface DeliveryPreviewDialogData {
       align-items: center;
       gap: 0.35rem 0.5rem;
       mat-icon {
-        color: #0f766e;
+        color: var(--app-accent);
         width: 1.15rem;
         height: 1.15rem;
         font-size: 1.15rem;
@@ -224,7 +224,7 @@ export interface DeliveryPreviewDialogData {
     }
     .file-miss {
       margin: 0.2rem 0 0;
-      color: #64748b;
+      color: var(--app-muted);
       font-size: 0.82rem;
     }
     @media (max-width: 560px) {

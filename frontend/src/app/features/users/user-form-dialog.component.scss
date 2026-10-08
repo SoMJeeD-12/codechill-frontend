@@ -18,19 +18,19 @@
 .hint,
 .notice {
   margin: 0 0 0.75rem;
-  color: #5b6762;
+  color: var(--app-muted);
   font-size: 0.85rem;
 }
 
 .notice {
-  color: #c2410c;
+  color: var(--app-warn);
 }
 
 .notice.warn {
   padding: 0.65rem 0.75rem;
   border-radius: 8px;
-  background: rgb(194 65 12 / 0.08);
-  border: 1px solid rgb(194 65 12 / 0.25);
+  background: color-mix(in srgb, var(--app-warn) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-warn) 25%, transparent);
   line-height: 1.4;
 }
 
@@ -41,14 +41,14 @@
   padding: 0.15rem 0;
 
   small {
-    color: rgb(15 23 42 / 0.55);
+    color: color-mix(in srgb, var(--app-ink) 55%, transparent);
     font-size: 0.78rem;
     white-space: normal;
   }
 }
 
 .error {
-  color: #991b1b;
+  color: var(--app-danger-ink);
 }
 
 @media (max-width: 560px) {

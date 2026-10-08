@@ -8,13 +8,13 @@
   text-align: left;
 
   &:hover {
-    color: #0f766e;
+    color: var(--app-accent);
     text-decoration: underline;
   }
 }
 
 .is-overdue {
-  color: #c2410c;
+  color: var(--app-warn);
   font-weight: 600;
 }
 
@@ -22,8 +22,8 @@
   display: inline-block;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #c2410c;
-  background: #fff7ed;
+  color: var(--app-warn);
+  background: var(--app-warn-soft);
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
 }

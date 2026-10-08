@@ -1,35 +1,19 @@
 <h2 mat-dialog-title>{{ isEdit ? 'แก้ไขงานติดตาม' : 'สร้างงานติดตาม' }}</h2>
 <mat-dialog-content>
   <form [formGroup]="form" class="form" id="follow-up-form" (ngSubmit)="save()">
-    <!--
-      ตอนสร้างเลือกลูกค้าก่อน แล้วเลือกโปรเจกต์ของลูกค้านั้น — ส่งแค่ projectId ระบบใช้ลูกค้าของโปรเจกต์ให้เอง
-      ตัวเลือก "ไม่ระบุโปรเจกต์" เหลือไว้เฉพาะตอนแก้ไขงานเก่าที่ยังไม่ได้ผูกโปรเจกต์
-    -->
-    @if (isEdit) {
-      <mat-checkbox
-        [checked]="withoutProject()"
-        (change)="setWithoutProject($event.checked)"
-        [disabled]="projectLocked"
-      >
-        ติดตามลูกค้าโดยไม่ระบุโปรเจกต์
-      </mat-checkbox>
+    @if (legacyNoProject) {
+      <p class="hint warn">งานนี้ยังไม่ได้ผูกโปรเจกต์ — เลือกโปรเจกต์ของลูกค้ารายเดิมก่อนบันทึก</p>
+    }
+    @if (noCustomerProjects()) {
+      <p class="hint warn">ลูกค้ารายนี้ยังไม่มีโปรเจกต์ — ต้องสร้างโปรเจกต์ให้ลูกค้าก่อน จึงจะสร้างงานติดตามได้</p>
     }
 
-    @if (!withoutProject()) {
-      <app-entity-picker
-        class="full"
-        label="ลูกค้า"
-        placeholder="พิมพ์ชื่อลูกค้า"
-        [openOnFocus]="true"
-        [searchFn]="searchCustomers"
-        [selected]="projectCustomer()"
-        [disabled]="customerLocked"
-        (selectionChange)="onProjectCustomerPicked($event)"
-      />
-      <mat-form-field appearance="outline" class="full">
+    <div class="row">
+      <mat-form-field appearance="outline">
         <mat-label>โปรเจกต์</mat-label>
         <input
           matInput
+          required
           [formControl]="projectSearchControl"
           [matAutocomplete]="projectAuto"
           [readonly]="projectLocked"
@@ -41,7 +25,9 @@
           [displayWith]="displayProject"
           (optionSelected)="onProjectSelected($event)"
         >
-          @if (projectQueryReady()) {
+          @if (projectSearching()) {
+            <mat-option disabled>กำลังค้นหา…</mat-option>
+          } @else if (projectQueryReady()) {
             @for (p of projectSuggestions(); track p.id) {
               <mat-option [value]="p" [disabled]="!!blockedFor(p.id)">
                 {{ p.code ? p.code + ' · ' : '' }}{{ p.name }}
@@ -55,24 +41,28 @@
               </mat-option>
             } @empty {
               <mat-option disabled>
-                {{ customerProjects().length ? 'ไม่พบโปรเจกต์' : 'ลูกค้ารายนี้ยังไม่มีโปรเจกต์' }}
+                {{ scopeCustomerId != null ? 'ไม่พบโปรเจกต์ของลูกค้ารายนี้' : 'ไม่พบโปรเจกต์' }}
               </mat-option>
             }
           }
         </mat-autocomplete>
+        @if (scopeCustomerId != null && !noCustomerProjects()) {
+          <mat-hint>แสดงเฉพาะโปรเจกต์ของลูกค้ารายนี้</mat-hint>
+        }
+        <mat-error>กรุณาเลือกโปรเจกต์ที่ต้องติดตาม</mat-error>
       </mat-form-field>
-    } @else {
-      <app-entity-picker
-        class="full"
-        label="ลูกค้า"
-        placeholder="พิมพ์ชื่อลูกค้า"
-        [openOnFocus]="true"
-        [searchFn]="searchCustomers"
-        [selected]="customerOption()"
-        [disabled]="form.controls.customerId.disabled"
-        (selectionChange)="onCustomerPicked($event)"
-      />
-    }
+      <mat-form-field appearance="outline">
+        <mat-label>ลูกค้า</mat-label>
+        <input
+          matInput
+          readonly
+          tabindex="-1"
+          [value]="customerDisplay()"
+          placeholder="แสดงอัตโนมัติเมื่อเลือกโปรเจกต์"
+        />
+        <mat-hint>ใช้ลูกค้าเจ้าของโปรเจกต์</mat-hint>
+      </mat-form-field>
+    </div>
 
     <mat-form-field appearance="outline" class="full">
       <mat-label>หัวข้อ</mat-label>
@@ -135,7 +125,7 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
   <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-  <button mat-flat-button color="primary" type="submit" form="follow-up-form" [disabled]="saving()">
+  <button mat-flat-button color="primary" type="submit" form="follow-up-form" [disabled]="!canSave()">
     บันทึก
   </button>
 </mat-dialog-actions>

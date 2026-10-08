@@ -10,6 +10,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script>
+    (function () {
+      var mode = 'light';
+      try {
+        var saved = localStorage.getItem('cpams.theme');
+        mode = saved === 'light' || saved === 'dark' ? saved
+          : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (e) {}
+      if (mode === 'dark') document.documentElement.classList.add('theme-dark');
+      document.documentElement.style.colorScheme = mode;
+    })();
+  </script>
 </head>
 <body class="mat-typography">
   <app-root></app-root>

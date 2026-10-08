@@ -29,8 +29,8 @@
 }
 
 .kanban-col {
-  background: #f3f7f5;
-  border: 1px solid #d8e5e1;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-line);
   border-radius: 12px;
   min-height: 280px;
   display: flex;
@@ -44,7 +44,7 @@
   align-items: baseline;
   gap: 0.35rem;
   padding: 0.7rem 0.75rem 0.45rem;
-  border-bottom: 1px solid #e2ebe7;
+  border-bottom: 1px solid var(--app-line);
 }
 
 .kanban-col__title {
@@ -57,7 +57,7 @@
     margin: 0;
     font-size: 0.88rem;
     font-weight: 700;
-    color: #1c2b28;
+    color: var(--app-ink);
   }
 }
 
@@ -65,15 +65,15 @@
   font-size: 0.78rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #5b6762;
-  background: #fff;
-  border: 1px solid #d8e5e1;
+  color: var(--app-muted);
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
 }
 
 .kanban-col__overdue {
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
@@ -91,25 +91,25 @@
 .kanban-empty {
   margin: 0.75rem 0;
   text-align: center;
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.82rem;
 }
 
 .kanban-card {
-  background: #fff;
-  border: 1px solid #d8e5e1;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
   border-radius: 10px;
   padding: 0.65rem 0.7rem;
   cursor: grab;
-  box-shadow: 0 1px 0 rgba(28, 43, 40, 0.04);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--app-shadow-ink) 4%, transparent);
   transition: box-shadow 0.12s ease, border-color 0.12s ease;
 
   &:hover {
-    border-color: #b7cfc7;
+    border-color: var(--app-control-line);
   }
 
   &.cdk-drag-preview {
-    box-shadow: 0 8px 24px rgba(28, 43, 40, 0.16);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--app-shadow-ink) 16%, transparent);
     cursor: grabbing;
   }
 
@@ -128,8 +128,8 @@
 }
 
 .kanban-card__drag {
-  background: #dceee8;
-  border: 1px dashed #0f766e;
+  background: var(--app-line);
+  border: 1px dashed var(--app-accent);
   border-radius: 10px;
   min-height: 64px;
 }
@@ -138,7 +138,7 @@
   margin: 0 0 0.35rem;
   font-size: 0.9rem;
   font-weight: 650;
-  color: #1c2b28;
+  color: var(--app-ink);
   line-height: 1.35;
   word-break: break-word;
 }
@@ -152,7 +152,7 @@
   font-size: 0.78rem;
 
   a {
-    color: #0f766e;
+    color: var(--app-accent);
     font-weight: 600;
     text-decoration: none;
 
@@ -168,13 +168,13 @@
   border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 700;
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--app-line);
+  color: var(--app-text-soft);
 
   &[data-status='CLOSED'],
   &[data-status='CANCELLED'] {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--app-danger-soft);
+    color: var(--app-danger);
   }
 }
 
@@ -184,14 +184,14 @@
   gap: 0.5rem;
   margin-bottom: 0.4rem;
   font-size: 0.78rem;
-  color: #5b6762;
+  color: var(--app-muted);
 
   .due {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 
     &.is-overdue {
-      color: #b91c1c;
+      color: var(--app-danger);
       font-weight: 700;
     }
   }
@@ -229,8 +229,8 @@
   display: inline-block;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--app-danger-soft);
+  color: var(--app-danger);
   font-size: 0.7rem;
   font-weight: 700;
 }

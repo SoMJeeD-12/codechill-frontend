@@ -57,6 +57,14 @@
         </div>
         <dl class="info-list">
           <div>
+            <dt>ชื่อผู้ใช้</dt>
+            <dd>{{ me.username }}</dd>
+          </div>
+          <div>
+            <dt>ชื่อ-นามสกุล</dt>
+            <dd>{{ me.fullName || '—' }}</dd>
+          </div>
+          <div>
             <dt>อีเมล</dt>
             <dd>{{ me.email || '—' }}</dd>
           </div>

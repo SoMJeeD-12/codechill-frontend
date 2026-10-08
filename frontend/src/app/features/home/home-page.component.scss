@@ -19,7 +19,7 @@
   margin: 1.8rem 0 0.85rem;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #34524c;
+  color: var(--app-text-soft);
 }
 
 .section-count {
@@ -30,8 +30,8 @@
   height: 1.5rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  background: #e7f3f0;
-  color: #0f766e;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -41,7 +41,7 @@
   align-items: center;
   gap: 0.7rem;
   padding: 1.5rem 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 /* ——— การ์ดต้องทำวันนี้ ——— */
@@ -65,8 +65,8 @@
   padding: 1.1rem 1.2rem 0.9rem;
   border: 1px solid var(--app-line);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 4px 16px rgba(28, 43, 40, 0.04);
+  background: var(--app-surface);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--app-shadow-ink) 4%, transparent);
   text-align: left;
   font: inherit;
   cursor: pointer;
@@ -77,11 +77,11 @@
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(28, 43, 40, 0.08);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--app-shadow-ink) 8%, transparent);
   }
 
   &:focus-visible {
-    outline: 3px solid rgba(15, 118, 110, 0.4);
+    outline: 3px solid color-mix(in srgb, var(--app-accent) 40%, transparent);
     outline-offset: 2px;
   }
 }
@@ -91,7 +91,7 @@
   width: 28px;
   height: 28px;
   font-size: 28px;
-  color: #6b7f79;
+  color: var(--app-muted);
 }
 
 .todo-card__count {
@@ -101,7 +101,7 @@
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: #1c2b28;
+  color: var(--app-ink);
 }
 
 .todo-card__label {
@@ -109,13 +109,13 @@
   margin-top: 0.5rem;
   font-size: 0.98rem;
   font-weight: 600;
-  color: #1c2b28;
+  color: var(--app-ink);
 }
 
 .todo-card__hint {
   grid-area: hint;
   font-size: 0.79rem;
-  color: #7b8a85;
+  color: var(--app-muted);
 }
 
 .todo-card__go {
@@ -126,7 +126,7 @@
   margin-top: 0.7rem;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #0f766e;
+  color: var(--app-accent);
 
   mat-icon {
     width: 16px;
@@ -139,20 +139,20 @@
 .todo-card[data-tone='urgent'] {
   .todo-card__icon,
   .todo-card__count {
-    color: #b91c1c;
+    color: var(--app-danger);
   }
 }
 
 .todo-card[data-tone='warn'] {
   .todo-card__icon,
   .todo-card__count {
-    color: #c2410c;
+    color: var(--app-warn);
   }
 }
 
 .todo-card[data-tone='calm'] {
   .todo-card__count {
-    color: #8a9792;
+    color: var(--app-muted);
   }
 }
 
@@ -169,8 +169,8 @@
   flex-direction: column;
   border: 1px solid var(--app-line);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 4px 16px rgba(28, 43, 40, 0.04);
+  background: var(--app-surface);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--app-shadow-ink) 4%, transparent);
   overflow: hidden;
 }
 
@@ -179,11 +179,11 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.9rem 1.05rem;
-  background: linear-gradient(180deg, #f7fbf9 0%, #ffffff 88%);
+  background: var(--app-surface-2);
   border-bottom: 1px solid var(--app-line-soft);
 
   mat-icon {
-    color: #0f766e;
+    color: var(--app-accent);
     width: 20px;
     height: 20px;
     font-size: 20px;
@@ -205,8 +205,8 @@
   height: 1.5rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  background: #e7f3f0;
-  color: #0f766e;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -218,7 +218,7 @@
   padding: 0;
 
   li + li {
-    border-top: 1px solid #eef3f1;
+    border-top: 1px solid var(--app-surface-3);
   }
 
   a {
@@ -228,7 +228,7 @@
     color: inherit;
 
     &:hover {
-      background: #f8fbfa;
+      background: var(--app-surface-2);
     }
   }
 
@@ -246,14 +246,14 @@
 .item-action {
   flex: 0 0 auto;
   margin-right: 0.5rem;
-  color: #0f766e;
+  color: var(--app-accent);
 }
 
 .item-title {
   display: block;
   font-weight: 600;
   font-size: 0.92rem;
-  color: #1c2b28;
+  color: var(--app-ink);
 }
 
 .item-meta {
@@ -263,41 +263,41 @@
   gap: 0.4rem;
   margin-top: 0.25rem;
   font-size: 0.76rem;
-  color: #7b8a85;
+  color: var(--app-muted);
 }
 
 .item-project,
 .item-status,
 .item-due {
-  color: #7b8a85;
+  color: var(--app-muted);
 }
 
 .item-status {
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: #f1f5f4;
+  background: var(--app-surface-3);
 }
 
 .flag-overdue {
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--app-danger-soft);
+  color: var(--app-danger);
   font-weight: 700;
 }
 
 .mywork-empty {
   padding: 1.5rem 1.05rem;
-  color: #8a9792;
+  color: var(--app-subtle);
   font-size: 0.86rem;
   text-align: center;
 }
 
 .mywork-card__more {
   padding: 0.65rem 1.05rem;
-  border-top: 1px solid #eef3f1;
-  background: #fbfdfc;
-  color: #0f766e;
+  border-top: 1px solid var(--app-surface-3);
+  background: var(--app-surface);
+  color: var(--app-accent);
   font-size: 0.83rem;
   font-weight: 600;
   text-decoration: none;

@@ -165,6 +165,7 @@ export class NotificationInboxService {
       const target = notificationNavTarget(row, {
         canAdminQueue: this.auth.canAccessTicketAdminQueue(),
         canSupportQueue: this.auth.canAccessTicketSupportQueue(),
+        canMyTasks: this.auth.hasPermission('tasks-me', 'view'),
       });
       if (target) {
         void this.router.navigate(target.commands, {

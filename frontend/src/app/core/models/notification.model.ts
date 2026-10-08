@@ -14,7 +14,9 @@ export type NotificationEventType =
   | 'TICKET_SENT_TO_ADMIN'
   | 'TICKET_AWAITING_REVIEW'
   | 'TICKET_RETURNED_TO_SUPPORT'
-  | 'TICKET_REVIEW_REJECTED';
+  | 'TICKET_REVIEW_REJECTED'
+  /** เลิกใช้แล้ว (7 ต.ค.) — แถวเก่ายังอ่านได้ */
+  | 'DAILY_DIGEST';
 
 /** รายการแจ้งเตือน — ของพนักงานในระบบเท่านั้น (BR-11) */
 export interface AppNotification {
@@ -79,6 +81,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   TICKET_AWAITING_REVIEW: 'รอตรวจผลแก้',
   TICKET_RETURNED_TO_SUPPORT: 'แอดมินส่งกลับซัพพอร์ต',
   TICKET_REVIEW_REJECTED: 'ใบถูกตีกลับให้แก้ต่อ',
+  DAILY_DIGEST: 'สรุปงานประจำวัน',
 };
 
 export function notificationEventLabel(eventType: string): string {
@@ -99,26 +102,37 @@ export function isNotificationUnread(n: Pick<AppNotification, 'status'>): boolea
 }
 
 /**
- * ลิงก์หน้ารายละเอียดที่รู้จักใน FE — ไม่รู้จักคืน null (ห้ามเดา path)
+ * หน้าที่เปิดรายการตาม refType/refId — ไม่รู้จักคืน null (ห้ามเดา path)
  * มีหน้า :id จริง: TICKET / CUSTOMER / MA_CONTRACT / PROJECT
+ * ไม่มีหน้า :id: TASK / FOLLOW_UP / WARRANTY → หน้ารายการ + query ให้เปิดรายการนั้นเอง
  */
-export function notificationRefLink(
+export function notificationRefTarget(
   refType: string | null | undefined,
-  refId: number | null | undefined
-): string[] | null {
+  refId: number | null | undefined,
+  access: { canMyTasks?: boolean } = {}
+): NotificationNavTarget | null {
   if (!refType || refId == null || !Number.isFinite(refId) || refId <= 0) {
     return null;
   }
-  const key = refType.trim().toUpperCase();
-  switch (key) {
+  const id = String(refId);
+  switch (refType.trim().toUpperCase()) {
     case 'TICKET':
-      return ['/app/tickets', String(refId)];
+      return { commands: ['/app/tickets', id] };
     case 'CUSTOMER':
-      return ['/app/customers', String(refId)];
+      return { commands: ['/app/customers', id] };
     case 'MA_CONTRACT':
-      return ['/app/ma', String(refId)];
+      return { commands: ['/app/ma', id] };
     case 'PROJECT':
-      return ['/app/projects', String(refId)];
+      return { commands: ['/app/projects', id] };
+    case 'TASK':
+      return {
+        commands: [access.canMyTasks ? '/app/tasks/me' : '/app/tasks'],
+        queryParams: { task: id },
+      };
+    case 'FOLLOW_UP':
+      return { commands: ['/app/follow-ups'], queryParams: { open: id } };
+    case 'WARRANTY':
+      return { commands: ['/app/warranties'], queryParams: { open: id } };
     default:
       return null;
   }
@@ -129,7 +143,7 @@ export function notificationRefLink(
  */
 export function notificationNavTarget(
   n: Pick<AppNotification, 'eventType' | 'refType' | 'refId'>,
-  access: { canAdminQueue: boolean; canSupportQueue: boolean }
+  access: { canAdminQueue: boolean; canSupportQueue: boolean; canMyTasks?: boolean }
 ): NotificationNavTarget | null {
   const event = String(n.eventType ?? '').toUpperCase();
   const refType = String(n.refType ?? '').trim().toUpperCase();
@@ -154,10 +168,5 @@ export function notificationNavTarget(
     };
   }
 
-  if (refType === 'TICKET' && refId != null && Number.isFinite(refId) && refId > 0) {
-    return { commands: ['/app/tickets', String(refId)] };
-  }
-
-  const fallback = notificationRefLink(n.refType, n.refId);
-  return fallback ? { commands: fallback } : null;
+  return notificationRefTarget(refType, refId, access);
 }

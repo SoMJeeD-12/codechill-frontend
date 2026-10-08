@@ -99,6 +99,7 @@ export class ProfilePageComponent implements OnInit {
       .open(ProfileEditDialogComponent, {
         ...FORM_DIALOG_COMPACT,
         data: {
+          username: me.username,
           fullName: me.fullName,
           nickname: me.nickname,
           avatarUrl: me.avatarUrl,

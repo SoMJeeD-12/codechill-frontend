@@ -21,13 +21,13 @@
   font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
 .subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .header-actions {
@@ -44,28 +44,28 @@
 }
 
 .kpi {
-  background: #fff;
-  border: 1px solid #d8e5e1;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
   border-radius: 14px;
   padding: 1rem 1.1rem;
 
   strong {
     display: block;
     font-size: 1.6rem;
-    color: #1c2b28;
+    color: var(--app-ink);
   }
 
   span {
-    color: #5b6762;
+    color: var(--app-muted);
     font-size: 0.85rem;
   }
 
   &.urgent strong {
-    color: #b91c1c;
+    color: var(--app-danger);
   }
 
   &.warn strong {
-    color: #c2410c;
+    color: var(--app-warn);
   }
 }
 
@@ -83,7 +83,7 @@
 
 .panel-hint {
   margin: 0.25rem 0 0;
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.82rem;
 }
 
@@ -107,26 +107,26 @@
   border-radius: 8px;
 
   &:hover {
-    background: #f3faf8;
+    background: var(--app-surface-2);
   }
 }
 
 .status-name {
   font-size: 0.88rem;
-  color: #334155;
+  color: var(--app-text-soft);
 }
 
 .track {
   height: 8px;
   border-radius: 999px;
-  background: #e8efec;
+  background: var(--app-line);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
   border-radius: inherit;
-  background: #0f766e;
+  background: var(--app-accent);
 }
 
 .count {
@@ -135,7 +135,7 @@
 }
 
 .overdue-n {
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
@@ -144,7 +144,7 @@
 .linkish {
   border: 0;
   background: transparent;
-  color: #0f766e;
+  color: var(--app-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -157,7 +157,7 @@
 }
 
 .urgent-text {
-  color: #b91c1c;
+  color: var(--app-danger);
   font-weight: 700;
 }
 
@@ -166,14 +166,14 @@
   margin-left: 0.4rem;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--app-danger-soft);
+  color: var(--app-danger);
   font-size: 0.72rem;
   font-weight: 700;
 }
 
 .muted {
-  color: #6b7f79;
+  color: var(--app-muted);
   font-size: 0.8rem;
 }
 
@@ -191,7 +191,7 @@
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 .ui-filter.wide {

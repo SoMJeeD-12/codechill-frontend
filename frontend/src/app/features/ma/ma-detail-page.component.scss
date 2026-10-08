@@ -2,19 +2,19 @@
   margin: 0 0 1rem;
   padding: 0.95rem 1.05rem 0.85rem;
   border-radius: 1rem;
-  border: 1px solid #d7e4df;
-  background: linear-gradient(135deg, rgb(240 253 250 / 0.9), #fff 42%);
+  border: 1px solid var(--app-line);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--app-accent-soft) 90%, transparent), var(--app-surface) 42%);
 
   h2 {
     margin: 0;
     font-size: 0.78rem;
     font-weight: 750;
-    color: #0f766e;
+    color: var(--app-accent);
   }
 
   p {
     margin: 0.45rem 0 0;
-    color: #1c2b28;
+    color: var(--app-ink);
     font-size: 1.02rem;
     line-height: 1.55;
     white-space: pre-wrap;
@@ -23,11 +23,11 @@
 
   &.is-empty {
     border-style: dashed;
-    background: #f7faf9;
+    background: var(--app-surface-2);
   }
 }
 
 .reported-detail__empty {
-  color: #3d4f49;
+  color: var(--app-text-soft);
   font-weight: 650;
 }

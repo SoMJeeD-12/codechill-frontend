@@ -80,8 +80,8 @@ export function openProjectDescription(dialog: MatDialog, data: ProjectDescripti
       width: 2.6rem;
       height: 2.6rem;
       border-radius: 0.8rem;
-      background: #e6f4f1;
-      color: #0f766e;
+      background: var(--app-accent-soft);
+      color: var(--app-accent);
     }
     .head__text {
       flex: 1;
@@ -91,25 +91,25 @@ export function openProjectDescription(dialog: MatDialog, data: ProjectDescripti
       font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 0.03em;
-      color: #0f766e;
+      color: var(--app-accent);
     }
     h2 {
       margin: 0.1rem 0 0;
       font-size: 1.3rem;
       font-weight: 700;
       line-height: 1.3;
-      color: #1c2b28;
+      color: var(--app-ink);
       overflow-wrap: anywhere;
     }
     .meta {
       margin: 0.2rem 0 0;
       font-size: 0.85rem;
-      color: #6b7f79;
+      color: var(--app-muted);
     }
     .head__close {
       flex: none;
       margin: -0.35rem -0.5rem 0 0;
-      color: #6b7f79;
+      color: var(--app-muted);
     }
     .badges {
       display: flex;
@@ -120,9 +120,9 @@ export function openProjectDescription(dialog: MatDialog, data: ProjectDescripti
     .body {
       padding: 1rem 1.15rem;
       border-radius: 0.85rem;
-      border: 1px solid #e1ebe7;
-      background: #f7fbf9;
-      color: #243330;
+      border: 1px solid var(--app-line);
+      background: var(--app-surface-2);
+      color: var(--app-ink);
       font-size: 0.95rem;
       line-height: 1.75;
       white-space: pre-wrap;

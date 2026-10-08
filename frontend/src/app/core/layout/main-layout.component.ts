@@ -22,6 +22,7 @@ import { MENU_ITEMS, MainMenuGroupKey, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
 import { NavAttentionService } from '../services/nav-attention.service';
+import { ThemeService } from '../services/theme.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { NotificationBellComponent } from './notification-bell.component';
 import { InboxToastHostComponent } from '../../shared/toasts/inbox-toast-host.component';
@@ -69,6 +70,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   /** จุดแดงเมนู — อ่าน counts() ใน template ให้ reactive */
   readonly attention = inject(NavAttentionService);
+  readonly theme = inject(ThemeService);
   readonly user = this.auth.currentUser;
   /** เมนูที่มี children ที่กำลังขยาย */
   readonly expandedMenus = signal<Set<string>>(new Set());

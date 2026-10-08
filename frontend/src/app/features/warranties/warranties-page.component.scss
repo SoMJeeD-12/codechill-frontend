@@ -15,11 +15,11 @@
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0f766e;
+  color: var(--app-accent);
   font-weight: 600;
 }
 
-.subtitle { margin: 0.35rem 0 0; color: #5b6762; }
+.subtitle { margin: 0.35rem 0 0; color: var(--app-muted); }
 
 .header-actions {
   display: flex;
@@ -33,7 +33,7 @@
 .project-link {
   display: block;
   font-weight: 600;
-  color: #0f766e;
+  color: var(--app-accent);
   text-decoration: none;
   line-height: 1.3;
 }
@@ -41,29 +41,29 @@
 .customer-sub {
   margin-top: 0.15rem;
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--app-muted);
   line-height: 1.3;
 }
 
 a {
-  color: #0f766e;
+  color: var(--app-accent);
   text-decoration: none;
   font-weight: 600;
 }
 
 .days.near {
-  color: #c2410c;
+  color: var(--app-warn);
   font-weight: 700;
 }
 
-.status[data-status='ACTIVE'] { color: #0f766e; font-weight: 600; }
+.status[data-status='ACTIVE'] { color: var(--app-accent); font-weight: 600; }
 .status[data-status='EXPIRED'],
-.status[data-status='VOID'] { color: #5b6762; }
+.status[data-status='VOID'] { color: var(--app-muted); }
 
 .empty {
   padding: 1.25rem;
   text-align: center;
-  color: #5b6762;
+  color: var(--app-muted);
 }
 
 @media (max-width: 800px) {

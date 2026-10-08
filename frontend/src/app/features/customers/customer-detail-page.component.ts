@@ -989,12 +989,12 @@ export class CustomerDetailPageComponent implements OnInit {
       margin: 0;
       padding: 0.85rem 0.95rem;
       border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgb(15 23 42 / 0.06);
+      background: var(--app-surface-2);
+      border: 1px solid color-mix(in srgb, var(--app-ink) 6%, transparent);
       dt {
         margin: 0;
         font-size: 0.75rem;
-        color: #64748b;
+        color: var(--app-muted);
       }
       dd {
         margin: 0.15rem 0 0;

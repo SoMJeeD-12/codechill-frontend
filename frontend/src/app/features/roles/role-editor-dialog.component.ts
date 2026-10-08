@@ -34,11 +34,9 @@ const PERMISSION_LABELS: Record<string, string> = {
   'ticket.resolve': 'บันทึกรอบแก้',
   'ticket.reopen': 'เปิดใบกลับ',
   'ticket.close': 'ปิดใบ',
-  'ticket.delete': 'ลบใบ',
   'project.view': 'ดูโปรเจกต์',
   'project.create': 'สร้างโปรเจกต์',
   'project.update': 'แก้ไขโปรเจกต์',
-  'project.delete': 'ลบโปรเจกต์',
   'task.view': 'งานโปรเจกต์',
   'task.create': 'เพิ่มงานย่อย',
   'task.update': 'แก้งานย่อย',
@@ -67,7 +65,6 @@ const PERMISSION_LABELS: Record<string, string> = {
   'warranty.view': 'การรับประกัน',
   'warranty.create': 'ออกประกัน',
   'warranty.update': 'แก้ไขประกัน',
-  'warranty.delete': 'ลบประกัน',
   'document.view': 'ดูเอกสาร',
   'document.create': 'อัปโหลดเอกสาร',
   'document.update': 'แก้ไขเอกสาร',
@@ -92,7 +89,6 @@ const PERMISSION_LABELS: Record<string, string> = {
   'delivery.create': 'บันทึกส่งมอบ',
   'delivery.update': 'แก้ไขส่งมอบ',
   'delivery.accept': 'ตรวจรับส่งมอบ',
-  'delivery.delete': 'ลบส่งมอบ',
 };
 
 /** คำอธิบาย 1 บรรทัด — เปิดเมนู/ปุ่มอะไร */
@@ -105,15 +101,13 @@ const PERMISSION_HINTS: Record<string, string> = {
   'ticket.resolve': 'บันทึกรอบแก้ / ปิดรอบแก้ไข',
   'ticket.reopen': 'เปิดปัญหาเดิมกลับมา',
   'ticket.close': 'ปิดใบแจ้งปัญหา',
-  'ticket.delete': 'ลบใบ — ยังไม่มีผลในระบบ',
   'project.view': 'เมนูโปรเจกต์',
   'project.create': 'สร้างโปรเจกต์',
   'project.update': 'แก้ไขโปรเจกต์',
-  'project.delete': 'ลบโปรเจกต์ — ยังไม่มีผลในระบบ',
   'task.view': 'เมนูงานโปรเจกต์',
   'task.create': 'เพิ่มงานย่อยในโปรเจกต์',
   'task.update': 'แก้งานย่อย · ส่งตรวจ',
-  'task.assign': 'มอบหมายงานย่อย',
+  'task.assign': 'ระบุ/เปลี่ยนผู้รับผิดชอบตอนสร้างหรือแก้งานย่อย',
   'task.review': 'เมนูงานตรวจ',
   'task.delete': 'ลบงานย่อย',
   'customer.view': 'เมนูลูกค้า · มุมมอง 360°',
@@ -134,11 +128,9 @@ const PERMISSION_HINTS: Record<string, string> = {
   'ma.create': 'สร้างสัญญา MA ที่โปรเจกต์',
   'ma.update': 'แก้ไขสัญญา MA ที่โปรเจกต์',
   'ma.renew': 'ต่ออายุสัญญา MA',
-  'ma.delete': 'ลบสัญญา MA — ยังไม่มีผลในระบบ',
   'warranty.view': 'เมนูการรับประกัน',
   'warranty.create': 'ออกประกัน',
   'warranty.update': 'แก้ไขประกัน',
-  'warranty.delete': 'ลบประกัน — ยังไม่มีผลในระบบ',
   'document.view': 'ดูเอกสาร',
   'document.create': 'อัปโหลดเอกสาร',
   'document.update': 'แก้ไขเอกสาร',
@@ -163,7 +155,6 @@ const PERMISSION_HINTS: Record<string, string> = {
   'delivery.create': 'บันทึกการส่งมอบ',
   'delivery.update': 'แก้ไขการส่งมอบ',
   'delivery.accept': 'ตรวจรับการส่งมอบ',
-  'delivery.delete': 'ลบการส่งมอบ',
 };
 
 type UiGroupId =
@@ -179,7 +170,6 @@ interface UiGroupDef {
   label: string;
   codes: string[];
   collapsedByDefault?: boolean;
-  unused?: boolean;
 }
 
 const UI_GROUPS: UiGroupDef[] = [
@@ -262,17 +252,13 @@ const UI_GROUPS: UiGroupDef[] = [
   },
   {
     id: 'other',
-    label: 'อื่น ๆ / ยังไม่ใช้',
+    label: 'การลบข้อมูล · ผู้ใช้ · บทบาท',
     codes: [
-      'ticket.delete',
-      'project.delete',
       'task.delete',
       'customer.delete',
       'followup.delete',
       'communication.delete',
       'ma.delete',
-      'warranty.delete',
-      'delivery.delete',
       'survey.delete',
       'user.view',
       'user.create',
@@ -282,7 +268,6 @@ const UI_GROUPS: UiGroupDef[] = [
       'audit_log.view',
     ],
     collapsedByDefault: true,
-    unused: true,
   },
 ];
 
@@ -410,7 +395,6 @@ interface UiPermissionRow {
 interface UiSection {
   id: UiGroupId;
   label: string;
-  unused: boolean;
   collapsedByDefault: boolean;
   rows: UiPermissionRow[];
 }
@@ -508,7 +492,6 @@ export class RoleEditorDialogComponent {
         sections.push({
           id: def.id,
           label: def.label,
-          unused: !!def.unused,
           collapsedByDefault: !!def.collapsedByDefault,
           rows,
         });

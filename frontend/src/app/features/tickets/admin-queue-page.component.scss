@@ -1,6 +1,6 @@
 .app-subtitle {
   margin: 0.35rem 0 0;
-  color: #5b6762;
+  color: var(--app-muted);
   max-width: 42rem;
   line-height: 1.45;
   font-size: 0.9rem;
@@ -10,7 +10,7 @@
   display: block;
   margin-top: 0.15rem;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--app-muted);
   line-height: 1.3;
 }
 
@@ -24,7 +24,7 @@
 }
 
 .assignee-empty {
-  color: #94a3b8;
+  color: var(--app-subtle);
 }
 
 /* td ต้องคง display: table-cell — ถ้าเป็น flex เซลล์จะหลุดจากกริดตาราง */
@@ -67,5 +67,5 @@
 
 .muted {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--app-subtle);
 }

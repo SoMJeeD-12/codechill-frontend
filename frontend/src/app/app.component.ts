@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from './core/services/auth.service';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -25,10 +26,12 @@ import { AuthService } from './core/services/auth.service';
       min-height: 100vh;
       display: grid;
       place-items: center;
-      background: #f7f3ec;
+      background: var(--app-bg);
     }
   `,
 })
 export class AppComponent {
   readonly auth = inject(AuthService);
+  /** สร้างตั้งแต่เริ่มแอป — ผูกโหมดสว่าง/มืดกับ <html> */
+  private readonly theme = inject(ThemeService);
 }

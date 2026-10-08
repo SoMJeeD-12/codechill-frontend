@@ -2,11 +2,13 @@
 @use '@angular/material' as mat;
 @use './styles/list-panel';
 
+/* theme-type: color-scheme — สีของ Material สลับตาม color-scheme ของ <html> (ThemeService ตั้งให้) */
 html {
+  color-scheme: light;
   @include mat.theme(
     (
       color: (
-        theme-type: light,
+        theme-type: color-scheme,
         primary: mat.$cyan-palette,
         tertiary: mat.$azure-palette,
       ),
@@ -16,23 +18,170 @@ html {
   );
 }
 
+html.theme-dark {
+  color-scheme: dark;
+}
+
 :root {
-  /* โทเคนเดียวทั้งแอป — Tailwind @theme อ้างค่าเหล่านี้ */
+  /*
+   * โทเคนสีเดียวทั้งแอป — Tailwind @theme อ้างค่าเหล่านี้
+   * component ห้ามเขียนสีตายตัว ให้ใช้ var(--app-*) เท่านั้น (โหมดมืดสลับค่าที่ html.theme-dark)
+   */
   --app-bg: #f6f4ef;
+  --app-sidebar: #ffffff;
+  --app-sidebar-text: #1c2b28;
+  --app-topbar: rgba(255, 252, 248, 0.92);
+
+  /* พื้นการ์ด/กล่อง · พื้นที่ยกขึ้น (หัวตาราง หัวกล่อง แถว hover) · พื้นรองเข้มกว่า (ป้ายเทา แถบ) */
+  --app-surface: #ffffff;
+  --app-surface-2: #f8faf9;
+  --app-surface-3: #f1f5f4;
+  --app-hover: var(--app-surface-2);
+
+  /* ตัวอักษร: หลัก · รองเข้ม · รอง · จาง/placeholder */
   --app-ink: #1c2b28;
+  --app-text-soft: #3f534e;
   --app-muted: #5f6d68;
+  --app-subtle: #8a9792;
+  --app-faint: var(--app-subtle);
+  /* ตัวอักษรบนพื้นสีทึบ (ปุ่ม/ป้ายสีหลัก แดง ฯลฯ) */
+  --app-on-solid: #ffffff;
+
+  /* เส้นแบ่ง · ขอบ · ขอบช่องกรอก */
+  --app-line: #dde8e4;
+  --app-line-soft: #e8efec;
   --app-border: rgba(28, 43, 40, 0.08);
+  --app-control-line: #cfe0db;
+
   --app-accent: #0f766e;
   --app-accent-dark: #115e59;
   --app-accent-soft: #ecfdf5;
-  --app-surface: #ffffff;
-  --app-line: #dde8e4;
-  --app-line-soft: #e8efec;
+  --app-accent-line: #99f6e4;
+
+  --app-danger: #b91c1c;
+  --app-danger-ink: #991b1b;
+  --app-danger-soft: #fef2f2;
+  --app-danger-line: #fecaca;
+
+  --app-warn: #c2410c;
+  --app-warn-ink: #9a3412;
+  --app-warn-soft: #fff7ed;
+  --app-warn-line: #fed7aa;
+
+  --app-success: #166534;
+  --app-success-soft: #dcfce7;
+  --app-success-line: #bbf7d0;
+
+  --app-info: #1d4ed8;
+  --app-info-soft: #eff6ff;
+  --app-info-line: #bfdbfe;
+
+  --app-violet: #4338ca;
+  --app-violet-soft: #eef2ff;
+  --app-violet-line: #c7d2fe;
+
+  /* แบนเนอร์สีหลักทึบ (เช่น สรุปความคืบหน้าโปรเจกต์) */
+  --app-hero-from: #0f766e;
+  --app-hero-to: #115e59;
+  --app-hero-ink: #ecfdf5;
+  --app-hero-fill: #99f6e4;
+
+  /* เงา — โหมดมืดไม่ใช้เงา ใช้ขอบแทน */
+  --app-shadow-ink: #1c2b28;
+  --app-shadow: rgba(28, 43, 40, 0.06);
+  --app-scrollbar: rgba(28, 43, 40, 0.22);
+  --app-scrollbar-hover: rgba(28, 43, 40, 0.38);
+
   --app-radius-card: 16px;
   --app-radius-control: 12px;
-  --app-sidebar: #ffffff;
-  --app-sidebar-text: #1c2b28;
   /* Hybrid Tailwind: layout ใช้ utilities · Material คงตาราง/ฟอร์ม/dialog */
+}
+
+html.theme-dark {
+  --app-bg: #0f1514;
+  --app-sidebar: #121a19;
+  --app-sidebar-text: #e3ebe8;
+  --app-topbar: rgba(18, 26, 25, 0.92);
+
+  --app-surface: #172120;
+  --app-surface-2: #1d2927;
+  --app-surface-3: #22302e;
+
+  --app-ink: #e3ebe8;
+  --app-text-soft: #c3d1cc;
+  --app-muted: #9fb1ab;
+  --app-subtle: #758781;
+  --app-on-solid: #0f1514;
+
+  --app-line: rgba(255, 255, 255, 0.08);
+  --app-line-soft: rgba(255, 255, 255, 0.06);
+  --app-border: rgba(255, 255, 255, 0.1);
+  --app-control-line: rgba(255, 255, 255, 0.16);
+
+  --app-accent: #2bb3a3;
+  --app-accent-dark: #5fc9bb;
+  --app-accent-soft: rgba(43, 179, 163, 0.14);
+  --app-accent-line: rgba(43, 179, 163, 0.35);
+
+  --app-danger: #f08a8a;
+  --app-danger-ink: #f5a8a8;
+  --app-danger-soft: rgba(240, 138, 138, 0.14);
+  --app-danger-line: rgba(240, 138, 138, 0.35);
+
+  --app-warn: #f2b766;
+  --app-warn-ink: #f5c98a;
+  --app-warn-soft: rgba(242, 183, 102, 0.14);
+  --app-warn-line: rgba(242, 183, 102, 0.35);
+
+  --app-success: #6fcf97;
+  --app-success-soft: rgba(111, 207, 151, 0.14);
+  --app-success-line: rgba(111, 207, 151, 0.35);
+
+  --app-info: #8ab4f8;
+  --app-info-soft: rgba(138, 180, 248, 0.14);
+  --app-info-line: rgba(138, 180, 248, 0.35);
+
+  --app-violet: #b4a7f5;
+  --app-violet-soft: rgba(180, 167, 245, 0.14);
+  --app-violet-line: rgba(180, 167, 245, 0.35);
+
+  --app-hero-from: #17524b;
+  --app-hero-to: #123d39;
+  --app-hero-ink: #e3ebe8;
+  --app-hero-fill: #5fc9bb;
+
+  --app-shadow-ink: transparent;
+  --app-shadow: transparent;
+  --app-scrollbar: rgba(255, 255, 255, 0.2);
+  --app-scrollbar-hover: rgba(255, 255, 255, 0.35);
+
+  /* Angular Material (M3 system tokens) — dialog / menu / select / datepicker / snackbar / ปุ่ม */
+  --mat-sys-primary: var(--app-accent);
+  --mat-sys-on-primary: #0f1514;
+  --mat-sys-primary-container: var(--app-accent-soft);
+  --mat-sys-on-primary-container: var(--app-accent-dark);
+  --mat-sys-secondary-container: var(--app-accent-soft);
+  --mat-sys-on-secondary-container: var(--app-ink);
+  --mat-sys-background: var(--app-bg);
+  --mat-sys-on-background: var(--app-ink);
+  --mat-sys-surface: var(--app-surface);
+  --mat-sys-surface-bright: var(--app-surface-3);
+  --mat-sys-surface-dim: var(--app-bg);
+  --mat-sys-surface-container-lowest: var(--app-bg);
+  --mat-sys-surface-container-low: var(--app-surface);
+  --mat-sys-surface-container: var(--app-surface);
+  --mat-sys-surface-container-high: var(--app-surface-2);
+  --mat-sys-surface-container-highest: var(--app-surface-3);
+  --mat-sys-surface-variant: var(--app-surface-2);
+  --mat-sys-on-surface: var(--app-ink);
+  --mat-sys-on-surface-variant: var(--app-muted);
+  --mat-sys-outline: rgba(255, 255, 255, 0.22);
+  --mat-sys-outline-variant: var(--app-line);
+  --mat-sys-error: var(--app-danger);
+  --mat-sys-on-error: #0f1514;
+  --mat-sys-inverse-surface: var(--app-ink);
+  --mat-sys-inverse-on-surface: var(--app-surface);
+  --mat-sys-inverse-primary: var(--app-accent-dark);
 }
 
 html,
@@ -56,7 +205,7 @@ body {
 /* สกอลล์บาร์บาง ๆ ไม่รกตา */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(28, 43, 40, 0.28) transparent;
+  scrollbar-color: var(--app-scrollbar) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -69,14 +218,14 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(28, 43, 40, 0.22);
+  background: var(--app-scrollbar);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(28, 43, 40, 0.38);
+  background: var(--app-scrollbar-hover);
   background-clip: content-box;
 }
 
@@ -95,7 +244,7 @@ button.back.mat-mdc-outlined-button {
   margin-bottom: 0.65rem;
   font-weight: 600;
   --mdc-outlined-button-label-text-color: var(--app-accent);
-  --mdc-outlined-button-outline-color: rgba(15, 118, 110, 0.4);
+  --mdc-outlined-button-outline-color: color-mix(in srgb, var(--app-accent) 40%, transparent);
   --mat-outlined-button-state-layer-color: var(--app-accent);
 
   &:hover {
@@ -109,10 +258,10 @@ button.back.mat-mdc-outlined-button {
 
 /* รายการลบในเมนูจัดการ */
 .mat-mdc-menu-item.menu-danger {
-  color: #b91c1c;
+  color: var(--app-danger);
 
   .mat-icon {
-    color: #b91c1c;
+    color: var(--app-danger);
   }
 }
 
@@ -218,8 +367,8 @@ button.back.mat-mdc-outlined-button {
 }
 
 .role-editor-dialog .mat-mdc-dialog-actions.role-editor__footer {
-  border-top: 1px solid #e2e8f0;
-  background: #fff;
+  border-top: 1px solid var(--app-line);
+  background: var(--app-surface);
 }
 
 /* การ์ดสรุป / แผงรายละเอียด — เบา ไม่เงาหนา */
@@ -302,4 +451,61 @@ button.back.mat-mdc-outlined-button {
   --mdc-snackbar-supporting-text-color: #134e4a;
   --mat-snack-bar-button-color: #0f766e;
   border-color: #99f6e4;
+}
+
+html.theme-dark {
+  /* โหมดมืดไม่ใช้เงา — การ์ด/กล่องใช้ขอบบาง ๆ แทน */
+  .mat-mdc-card,
+  .app-panel,
+  .app-meta-card,
+  .app-section-card,
+  .app-panel-card,
+  .data-card {
+    box-shadow: none !important;
+    border-color: var(--app-border);
+  }
+
+  .mat-mdc-dialog-surface,
+  .mat-mdc-menu-panel,
+  .mat-mdc-select-panel,
+  .mat-mdc-autocomplete-panel,
+  .mat-datepicker-content {
+    box-shadow: none;
+    border: 1px solid var(--app-border);
+  }
+
+  /* ปุ่มหลักสีทึบ — ไม่มีเงาเรืองแสง */
+  .mat-mdc-unelevated-button.mat-primary,
+  .primary-action {
+    box-shadow: none !important;
+  }
+
+  .mat-mdc-snack-bar-container.app-toast {
+    box-shadow: none;
+  }
+
+  .mat-mdc-snack-bar-container.app-toast--success {
+    --mdc-snackbar-container-color: #12302b;
+    --mdc-snackbar-supporting-text-color: #99f6e4;
+    --mat-snack-bar-button-color: #5eead4;
+    border-color: rgba(45, 212, 191, 0.35);
+
+    .mdc-snackbar__label::before {
+      color: #5eead4;
+    }
+  }
+
+  .mat-mdc-snack-bar-container.app-toast--error {
+    --mdc-snackbar-container-color: #3a1717;
+    --mdc-snackbar-supporting-text-color: #fecaca;
+    --mat-snack-bar-button-color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.35);
+  }
+
+  .mat-mdc-snack-bar-container.app-toast--info {
+    --mdc-snackbar-container-color: #12302b;
+    --mdc-snackbar-supporting-text-color: #ccfbf1;
+    --mat-snack-bar-button-color: #5eead4;
+    border-color: rgba(45, 212, 191, 0.3);
+  }
 }
