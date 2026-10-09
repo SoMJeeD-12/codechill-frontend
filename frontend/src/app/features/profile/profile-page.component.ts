@@ -30,6 +30,7 @@ const MODULE_LABELS: Record<string, string> = {
   warranty: 'การรับประกัน',
   ma: 'สัญญาบำรุงรักษา',
   follow_up: 'ติดตามลูกค้า',
+  followup: 'ติดตามลูกค้า',
   survey: 'แบบประเมิน',
   document: 'เอกสาร',
   file: 'ไฟล์',
@@ -45,7 +46,15 @@ const ACTION_LABELS: Record<string, string> = {
   edit: 'แก้ไข',
   update: 'แก้ไข',
   delete: 'ลบ',
-  resolve: 'ปิดงาน',
+  resolve: 'บันทึกรอบแก้',
+  close: 'ปิดงาน',
+  complete: 'ปิดงาน',
+  reopen: 'เปิดกลับ',
+  review: 'ตรวจงาน',
+  send: 'ส่ง',
+  upload: 'อัปโหลด',
+  download: 'ดาวน์โหลด',
+  reset_password: 'รีเซ็ตรหัสผ่าน',
   assign: 'มอบหมาย',
   support_queue: 'คิวซัพพอร์ต',
   manage: 'จัดการ',
@@ -65,7 +74,12 @@ const ACTION_ORDER = [
   'update',
   'delete',
   'resolve',
+  'review',
+  'close',
+  'complete',
+  'reopen',
   'assign',
+  'support_queue',
   'accept',
   'reject',
   'manage',
@@ -133,17 +147,20 @@ export class ProfilePageComponent implements OnInit {
           const ib = ACTION_ORDER.indexOf(b);
           return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
         });
+        const labels = [...new Set(sorted.map((a) => ACTION_LABELS[a] ?? a))];
         return {
           module,
           label: MODULE_LABELS[module] ?? module,
-          actions: sorted.map((a) => ACTION_LABELS[a] ?? a),
-          count: sorted.length,
+          actions: labels,
+          count: labels.length,
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label, 'th'));
   });
 
-  readonly permissionCount = computed(() => this.auth.session()?.permissions.length ?? 0);
+  readonly permissionCount = computed(() =>
+    this.permissionGroups().reduce((sum, g) => sum + g.count, 0)
+  );
   readonly moduleCount = computed(() => this.permissionGroups().length);
 
   ngOnInit(): void {

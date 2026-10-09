@@ -89,10 +89,10 @@ interface MiniChart {
 const METRICS: MetricDef[] = [
   {
     key: 'projectsDelivered',
-    label: 'โปรเจคที่ส่งมอบ',
+    label: 'โปรเจกต์ที่ส่งมอบ',
     icon: 'inventory',
     color: '#4f6bd8',
-    hint: 'โปรเจคที่คุณเป็นผู้จัดการและส่งมอบในช่วงนี้',
+    hint: 'โปรเจกต์ที่คุณเป็นผู้จัดการและส่งมอบในช่วงนี้',
   },
   { key: 'tasksCompleted', label: 'งานที่ทำเสร็จ', icon: 'task_alt', color: '#0e8fb3' },
   {

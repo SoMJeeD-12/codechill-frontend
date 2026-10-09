@@ -213,10 +213,6 @@ export class ReportService {
     if (openTickets && openTickets.length > 0) {
       alerts.push(`ปัญหาค้างในคิว ${openTickets.length} ใบ`);
     }
-    if (alerts.length === 0) {
-      alerts.push('ไม่มีจุดเตือนเร่งด่วนในขณะนี้');
-    }
-
     const contractValue: ReportRow[] = byType
       ? [
           {

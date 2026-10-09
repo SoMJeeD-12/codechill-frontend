@@ -55,6 +55,9 @@ export interface Ticket {
   assignedUserId: number | null;
   warrantyId: number | null;
   maContractId: number | null;
+  /** เลขที่ใบรับประกัน / สัญญา MA จาก BE — แสดงแทน #id */
+  warrantyNo?: string | null;
+  maContractNo?: string | null;
   resolutionCount: number;
   firstResponseAt: string | null;
   resolvedAt: string | null;
@@ -230,6 +233,33 @@ export const TICKET_REOPEN_NOTE_PREFIX = '[เปิดกลับมาอี�
 
 /** บรรทัดที่ BE ต่อท้าย description ตอนแอดมินตีกลับผลแก้ */
 export const TICKET_REVIEW_REJECT_PREFIX = '[ตรวจไม่ผ่าน]';
+
+/** ป้ายบรรทัดที่ระบบต่อท้าย description — ผู้ใช้ห้ามแก้ */
+const TICKET_SYSTEM_LINE_PREFIXES = [
+  TICKET_REOPEN_NOTE_PREFIX,
+  TICKET_REVIEW_REJECT_PREFIX,
+  '[ตรวจผ่าน]',
+  '[ปิดงาน]',
+];
+
+/** แยกข้อความที่ผู้ใช้พิมพ์ออกจากบรรทัดที่ระบบต่อท้าย — ใช้ในฟอร์มแก้ใบ */
+export function splitTicketSystemLines(raw: string | null | undefined): {
+  base: string;
+  systemLines: string[];
+} {
+  const text = (raw ?? '').replace(/\r\n/g, '\n');
+  const baseParts: string[] = [];
+  const systemLines: string[] = [];
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (TICKET_SYSTEM_LINE_PREFIXES.some((p) => trimmed.startsWith(p))) {
+      systemLines.push(trimmed);
+    } else {
+      baseParts.push(line);
+    }
+  }
+  return { base: baseParts.join('\n').replace(/\n{3,}/g, '\n\n').trim(), systemLines };
+}
 
 export interface TicketAppendedNote {
   kind: 'reopen' | 'reject';

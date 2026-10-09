@@ -1,5 +1,5 @@
-import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -8,6 +8,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
+  MyTasksCounts,
+  MyTasksTab,
   PROJECT_STATUS_LABELS,
   ProjectStatus,
   TASK_PRIORITY_LABELS,
@@ -28,15 +30,12 @@ import {
   ListLoadingBarComponent,
   ListSkeletonComponent,
 } from '../../shared/components/list-loading.component';
-import { createClientPager } from '../../shared/utils/client-pager';
 import { createServerList } from '../../shared/utils/server-list';
 import { TaskEditDialogComponent } from '../projects/task-edit-dialog.component';
 import { TaskReviewDialogComponent } from '../projects/task-review-dialog.component';
 import { TaskSubmitReportDialogComponent } from '../projects/task-submit-report-dialog.component';
 import { FORM_DIALOG, FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
-import { createTableSort } from '../../shared/utils/table-sort';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { tap } from 'rxjs/operators';
 
 export type TasksPageMode =
   | 'all'
@@ -46,16 +45,26 @@ export type TasksPageMode =
   | 'review'
   | 'overdue';
 
-/** มุมมองย่อยในหน้างานของฉัน — ไม่กรอง REVIEW เพราะ /tasks/me ไม่คืนงานที่ส่งตรวจแล้ว */
-export type MyTasksView = 'all' | 'todo' | 'doing' | 'done' | 'overdue';
+/** แท็บในหน้างานของฉัน — กรองที่ BE ด้วย GET /tasks/me?tab= */
+export type MyTasksView = 'all' | 'todo' | 'doing' | 'review' | 'done' | 'overdue';
 
 const MY_VIEW_FROM_QUERY: Record<string, MyTasksView> = {
   todo: 'todo',
   unassigned: 'todo',
   doing: 'doing',
+  review: 'review',
   done: 'done',
   overdue: 'overdue',
   all: 'all',
+};
+
+const MY_VIEW_TAB: Record<MyTasksView, MyTasksTab> = {
+  all: 'ALL',
+  todo: 'TODO',
+  doing: 'IN_PROGRESS',
+  review: 'REVIEW',
+  done: 'DONE',
+  overdue: 'OVERDUE',
 };
 
 type TaskSortKey =
@@ -103,18 +112,12 @@ export class TasksPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly snack = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly fb = inject(FormBuilder);
 
-  readonly mode = signal<TasksPageMode>('all');
-  readonly myView = signal<MyTasksView>('all');
-  readonly loading = signal(true);
+  /** งานของฉัน = GET /tasks/me · หน้าอื่น = GET /tasks — ทั้งคู่แบ่งหน้าฝั่ง server */
+  readonly isMine = this.route.snapshot.data['taskMode'] === 'me';
+  readonly mode = signal<TasksPageMode>(this.isMine ? 'me' : 'all');
   readonly savingId = signal<number | null>(null);
-  readonly tasks = signal<TaskItem[]>([]);
   readonly filterProjectId = signal<number | null>(null);
-  readonly search = signal('');
-
-  /** /tasks/me ยังโหลดทั้งก้อน — หน้าอื่นใช้ GET /tasks แบ่งหน้าฝั่ง server */
-  readonly serverMode = this.route.snapshot.data['taskMode'] !== 'me';
 
   /** status '' = ทุกสถานะ · projectId 0 = ทุกโปรเจกต์ */
   readonly list = createServerList<TaskItem, { status: string; projectId: number }>({
@@ -122,6 +125,7 @@ export class TasksPageComponent implements OnInit {
     filters: { status: '', projectId: 0 },
     sortBy: 'dueDate',
     sortOrder: 'ASC',
+    syncUrl: !this.isMine,
     fetch: ({ filters, ...req }) =>
       this.projectsApi.listTasksPage({
         ...req,
@@ -130,7 +134,27 @@ export class TasksPageComponent implements OnInit {
       }),
   });
 
-  readonly searchControl = this.serverMode ? this.list.searchControl : this.fb.nonNullable.control('');
+  /** ตัวเลขบนแท็บ — data.counts จาก BE (กรองตามคำค้นแล้ว) */
+  readonly myCounts = signal<MyTasksCounts | null>(null);
+
+  readonly myList = createServerList<TaskItem, { view: string }>({
+    namespace: 'tasks-me',
+    filters: { view: (this.route.snapshot.data['myView'] as MyTasksView | undefined) ?? 'all' },
+    sortBy: 'dueDate',
+    sortOrder: 'ASC',
+    syncUrl: this.isMine,
+    fetch: ({ filters, ...req }) =>
+      this.projectsApi
+        .listMyTasksPage({ ...req, tab: MY_VIEW_TAB[MY_VIEW_FROM_QUERY[filters.view] ?? 'all'] })
+        .pipe(tap((page) => page.counts && this.myCounts.set(page.counts))),
+  });
+
+  readonly table = this.isMine ? this.myList : this.list;
+  readonly myView = computed<MyTasksView>(
+    () => MY_VIEW_FROM_QUERY[this.myList.filters().view] ?? 'all'
+  );
+
+  readonly searchControl = this.table.searchControl;
 
   readonly summary = signal<TaskSummary | null>(null);
   readonly statusChips = computed(() => {
@@ -141,8 +165,6 @@ export class TasksPageComponent implements OnInit {
       count: s ? (s.byStatus[status] ?? 0) : null,
     }));
   });
-
-  private readonly assignerTried = new Set<number>();
 
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
@@ -160,70 +182,18 @@ export class TasksPageComponent implements OnInit {
 
   readonly meta = computed(() => PAGE_META[this.mode()]);
 
-  readonly myViewCounts = computed(() => {
-    const rows = this.tasks();
-    return {
-      all: rows.length,
-      todo: rows.filter((t) => t.status === 'TODO').length,
-      doing: rows.filter((t) => t.status === 'DOING' || t.status === 'WAITING').length,
-      done: rows.filter((t) => t.status === 'DONE').length,
-      overdue: rows.filter((t) => !!t.isOverdue).length,
-    };
-  });
+  readonly myTabs: { view: MyTasksView; label: string; alert?: boolean }[] = [
+    { view: 'all', label: 'ทั้งหมด' },
+    { view: 'todo', label: 'ต้องทำ', alert: true },
+    { view: 'doing', label: 'กำลังดำเนินการ' },
+    { view: 'review', label: 'รอตรวจ' },
+    { view: 'done', label: 'เสร็จแล้ว' },
+    { view: 'overdue', label: 'เกินกำหนด', alert: true },
+  ];
 
-  readonly tableSort = createTableSort<
-    'title' | 'projectCode' | 'project' | 'assignee' | 'assigner' | 'status' | 'priority' | 'dueDate' | 'startDate'
-  >('dueDate');
-
-  readonly displayedTasks = computed(() => {
-    let rows = this.tasks();
-    if (this.mode() === 'me') {
-      switch (this.myView()) {
-        case 'todo':
-          rows = rows.filter((t) => t.status === 'TODO');
-          break;
-        case 'doing':
-          rows = rows.filter((t) => t.status === 'DOING' || t.status === 'WAITING');
-          break;
-        case 'done':
-          rows = rows.filter((t) => t.status === 'DONE');
-          break;
-        case 'overdue':
-          rows = rows.filter((t) => !!t.isOverdue);
-          break;
-        default:
-          break;
-      }
-    }
-    const priorityRank: Record<TaskPriority, number> = {
-      URGENT: 0,
-      HIGH: 1,
-      NORMAL: 2,
-      LOW: 3,
-    };
-    return this.tableSort.apply(rows, (row, key) => {
-      switch (key) {
-        case 'title':
-          return row.title;
-        case 'projectCode':
-          return row.project?.code || null;
-        case 'project':
-          return this.projectName(row);
-        case 'assignee':
-          return this.assigneeName(row);
-        case 'assigner':
-          return this.assignerName(row);
-        case 'status':
-          return this.statusLabel(row.status);
-        case 'priority':
-          return priorityRank[row.priority];
-        case 'dueDate':
-          return row.dueDate ? new Date(row.dueDate).getTime() : null;
-        case 'startDate':
-          return row.startDate ? new Date(row.startDate).getTime() : null;
-      }
-    });
-  });
+  myTabCount(view: MyTasksView): number | null {
+    return this.myCounts()?.[MY_VIEW_TAB[view]] ?? null;
+  }
 
   readonly columns = computed(() => {
     if (this.mode() === 'review') {
@@ -235,73 +205,16 @@ export class TasksPageComponent implements OnInit {
     return ['title', 'projectCode', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   });
 
-  readonly pager = createClientPager(this.displayedTasks);
-
-  constructor() {
-    effect(() => {
-      const rows = this.list.items();
-      if (this.serverMode && rows.length) {
-        untracked(() => {
-          for (const row of rows) {
-            if (row.assignedBy) {
-              this.usersApi.upsertLocal(row.assignedBy);
-            }
-            if (row.assignedUser) {
-              this.usersApi.upsertLocal(row.assignedUser);
-            }
-          }
-          this.enrichMissingAssigners(rows);
-        });
-      }
-    });
-  }
-
   ngOnInit(): void {
-    if (this.serverMode) {
-      this.syncQueryFilters(this.route.snapshot.queryParamMap);
-      this.usersApi
-        .loadForPicker(this.auth.currentUser(), { capability: 'TASK' })
-        .subscribe({ error: () => undefined });
-      this.list.start();
+    this.syncQueryFilters(this.route.snapshot.queryParamMap);
+    this.usersApi
+      .loadForPicker(this.auth.currentUser(), { capability: 'TASK' })
+      .subscribe({ error: () => undefined });
+    this.table.start();
+    if (!this.isMine) {
       this.loadSummary();
-      this.openTaskFromQuery(this.route.snapshot.queryParamMap.get('task'));
-      return;
     }
-
-    this.searchControl.valueChanges.subscribe((v) => {
-      this.search.set(v);
-      this.reload();
-    });
-
-    this.route.data.subscribe((data) => {
-      const raw = (data['taskMode'] as string) || 'all';
-      const mode: TasksPageMode =
-        raw === 'board' ? 'all' : (raw as TasksPageMode);
-      this.mode.set(mode);
-      this.syncQueryFilters(this.route.snapshot.queryParamMap);
-      if (mode === 'me') {
-        const fromData = data['myView'] as MyTasksView | undefined;
-        const fromQuery = this.route.snapshot.queryParamMap.get('view');
-        this.applyViewFromQuery(fromQuery ?? fromData ?? null);
-      } else {
-        this.myView.set('all');
-      }
-      this.usersApi
-        .loadForPicker(this.auth.currentUser(), {
-          capability: mode === 'review' ? 'TASK_REVIEW' : 'TASK',
-        })
-        .subscribe({ error: () => undefined });
-      this.reload();
-    });
-
-    this.route.queryParamMap.subscribe((params) => {
-      this.syncQueryFilters(params);
-      if (this.mode() === 'me') {
-        this.applyViewFromQuery(params.get('view'));
-        this.pager.reset();
-      }
-      this.openTaskFromQuery(params.get('task'));
-    });
+    this.openTaskFromQuery(this.route.snapshot.queryParamMap.get('task'));
   }
 
   /** ?task=:id — มาจากกระดิ่งแจ้งเตือน (refType TASK) · เปิดกล่องงานแล้วล้าง query */
@@ -332,13 +245,7 @@ export class TasksPageComponent implements OnInit {
   }
 
   setMyView(view: MyTasksView): void {
-    this.myView.set(view);
-    this.pager.reset();
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: view === 'all' ? {} : { view },
-      replaceUrl: true,
-    });
+    this.myList.setFilter('view', view);
   }
 
   setStatusFilter(status: TaskStatus | ''): void {
@@ -351,218 +258,33 @@ export class TasksPageComponent implements OnInit {
       .subscribe({ next: (s) => this.summary.set(s), error: () => this.summary.set(null) });
   }
 
-  /** คอลัมน์ที่ GET /tasks เรียงให้ได้ */
+  /** คอลัมน์ที่ server เรียงให้ได้ */
   canSort(key: TaskSortKey): boolean {
-    return !this.serverMode || SERVER_SORT_KEYS.has(key);
+    return SERVER_SORT_KEYS.has(key);
   }
 
   toggleSort(key: TaskSortKey): void {
-    if (this.serverMode) {
-      if (SERVER_SORT_KEYS.has(key)) {
-        this.list.toggleSort(key);
-      }
-      return;
+    if (SERVER_SORT_KEYS.has(key)) {
+      this.table.toggleSort(key);
     }
-    this.tableSort.toggleSort(key);
-    this.pager.reset();
   }
 
   sortIcon(key: TaskSortKey): string {
-    if (this.serverMode) {
-      return SERVER_SORT_KEYS.has(key) ? this.list.sortIcon(key) : '';
-    }
-    return this.tableSort.sortIcon(key);
-  }
-
-  private applyViewFromQuery(raw: string | null): void {
-    if (!raw) {
-      this.myView.set('all');
-      return;
-    }
-    if (
-      raw === 'todo' ||
-      raw === 'doing' ||
-      raw === 'done' ||
-      raw === 'overdue' ||
-      raw === 'all'
-    ) {
-      this.myView.set(raw);
-      return;
-    }
-    this.myView.set(MY_VIEW_FROM_QUERY[raw] ?? 'all');
+    return SERVER_SORT_KEYS.has(key) ? this.table.sortIcon(key) : '';
   }
 
   reload(): void {
-    if (this.serverMode) {
-      this.list.reload({ invalidate: true });
+    this.table.reload({ invalidate: true });
+    if (!this.isMine) {
       this.loadSummary();
-      return;
-    }
-    const mode = this.mode();
-    this.loading.set(true);
-    const q = this.search().trim() || undefined;
-    const projectId = this.filterProjectId() ?? undefined;
-
-    let req;
-    if (mode === 'me') {
-      // GET /api/tasks/me — ห้ามส่ง userId จาก client
-      req = this.projectsApi.listMyTasks({
-        limit: 100,
-        search: q,
-      });
-    } else if (mode === 'overdue') {
-      req = this.projectsApi.listOverdueTasks({ limit: 100, projectId });
-    } else if (mode === 'unassigned') {
-      req = this.projectsApi.listAllTasks({
-        limit: 100,
-        projectId,
-        search: q,
-        assignedUserId: null,
-      });
-    } else if (mode === 'doing') {
-      req = this.projectsApi.listAllTasks({
-        limit: 100,
-        projectId,
-        search: q,
-        status: 'DOING',
-      });
-    } else if (mode === 'review') {
-      // ผู้ตรวจ / SUPER_ADMIN — ห้ามใช้ /tasks/me
-      req = this.projectsApi.listAllTasks({
-        page: 1,
-        limit: 20,
-        projectId,
-        search: q,
-        status: 'REVIEW',
-      });
-    } else {
-      req = this.projectsApi.listAllTasks({
-        limit: 100,
-        projectId,
-        search: q,
-      });
-    }
-
-    req.subscribe({
-      next: (rows) => {
-        for (const row of rows) {
-          if (row.assignedBy) {
-            this.usersApi.upsertLocal(row.assignedBy);
-          }
-          if (row.assignedUser) {
-            this.usersApi.upsertLocal(row.assignedUser);
-          }
-        }
-        this.tasks.set(rows);
-        this.pager.reset();
-        this.loading.set(false);
-        this.enrichMissingAssigners(rows);
-      },
-      error: (err: Error) => {
-        this.tasks.set([]);
-        this.loading.set(false);
-        this.snack.open(err.message || 'โหลดงานไม่สำเร็จ', 'ปิด', { duration: 4000 });
-      },
-    });
-  }
-
-  /**
-   * รายการงานมักส่งแค่ assignedByUserId หรือไม่ส่งชื่อ
-   * — ดึง GET /tasks/:id แล้วถ้ายังไม่มีชื่อ ค่อย GET /users/:id
-   */
-  private enrichMissingAssigners(rows: TaskItem[]): void {
-    const missing = rows
-      .filter((t) => !t.assignedBy?.fullName?.trim() && !this.assignerTried.has(t.id))
-      .slice(0, 15);
-    if (!missing.length) {
-      return;
-    }
-    for (const t of missing) {
-      this.assignerTried.add(t.id);
-    }
-
-    forkJoin(
-      missing.map((t) => this.projectsApi.getTask(t.id).pipe(catchError(() => of(null))))
-    ).subscribe((details) => {
-      const byId = new Map<number, TaskItem>();
-      for (const detail of details) {
-        if (detail) {
-          byId.set(detail.id, detail);
-          if (detail.assignedBy) {
-            this.usersApi.upsertLocal(detail.assignedBy);
-          }
-        }
-      }
-
-      this.patchTasks((current) =>
-        current.map((t) => {
-          const detail = byId.get(t.id);
-          if (!detail) {
-            return t;
-          }
-          return {
-            ...t,
-            assignedByUserId: detail.assignedByUserId ?? t.assignedByUserId,
-            assignedBy: detail.assignedBy ?? t.assignedBy,
-          };
-        })
-      );
-
-      const stillMissingIds = [
-        ...new Set(
-          (this.serverMode ? this.list.items() : this.tasks())
-            .filter((t) => t.assignedByUserId && !t.assignedBy?.fullName?.trim())
-            .map((t) => t.assignedByUserId as number)
-            .filter((id) => !this.usersApi.getById(id)?.fullName)
-        ),
-      ].slice(0, 15);
-
-      if (!stillMissingIds.length) {
-        return;
-      }
-
-      forkJoin(
-        stillMissingIds.map((id) => this.usersApi.get(id).pipe(catchError(() => of(null))))
-      ).subscribe((users) => {
-        for (const user of users) {
-          if (user) {
-            this.usersApi.upsertLocal(user);
-          }
-        }
-        // trigger recompute ของ assignerName ผ่านอ้างอิงแคช — อัปเดต signal เบา ๆ
-        this.patchTasks((list) =>
-          list.map((t) => {
-            const id = t.assignedByUserId;
-            if (!id || t.assignedBy?.fullName?.trim()) {
-              return t;
-            }
-            const cached = this.usersApi.getById(id);
-            if (!cached?.fullName) {
-              return t;
-            }
-            return {
-              ...t,
-              assignedBy: {
-                id: cached.id,
-                username: cached.username,
-                fullName: cached.fullName,
-              },
-            };
-          })
-        );
-      });
-    });
-  }
-
-  private patchTasks(fn: (rows: TaskItem[]) => TaskItem[]): void {
-    if (this.serverMode) {
-      this.list.patchItems(fn);
-    } else {
-      this.tasks.update(fn);
     }
   }
 
   statusLabel(status: TaskStatus): string {
+    // งานของฉันที่ส่งตรวจแล้ว = งานอยู่ที่ผู้ตรวจ
+    if (this.isMine && status === 'REVIEW') {
+      return 'รอตรวจ';
+    }
     return this.statusLabels[status];
   }
 
@@ -570,31 +292,16 @@ export class TasksPageComponent implements OnInit {
     return this.priorityLabels[priority];
   }
 
+  /** อ่านจากแถวที่ API คืนมาเท่านั้น — ห้ามแสดง #id */
   assigneeName(task: TaskItem): string {
-    if (task.assignedUser?.fullName) {
-      return task.assignedUser.fullName;
-    }
-    if (!task.assignedUserId) {
-      return 'ยังไม่มอบหมาย';
-    }
-    return this.usersApi.getById(task.assignedUserId)?.fullName ?? `#${task.assignedUserId}`;
+    return task.assignedUser?.fullName?.trim() || '—';
   }
 
   assignerName(task: TaskItem): string {
-    if (task.assignedBy?.fullName) {
-      return task.assignedBy.fullName;
-    }
-    if (task.assignedByUserId) {
-      const cached = this.usersApi.getById(task.assignedByUserId);
-      if (cached?.fullName) {
-        return cached.fullName;
-      }
-      return `#${task.assignedByUserId}`;
-    }
-    return 'ไม่ระบุ';
+    return task.assignedBy?.fullName?.trim() || '—';
   }
 
-  /** ผู้รับผิดชอบงานนี้คือตัวเองหรือไม่ — ห้ามอนุมัติงานตัวเอง */
+  /** ผู้รับผิดชอบงานนี้คือตัวเองหรือไม่ — ใช้กับปุ่มเริ่มงาน/ส่งตรวจ (สิทธิ์ตรวจใช้ auth.blocksSelfReview) */
   isOwnAssignment(task: TaskItem): boolean {
     const uid = this.auth.currentUser()?.id;
     return uid != null && task.assignedUserId === uid;
@@ -619,7 +326,7 @@ export class TasksPageComponent implements OnInit {
    */
   taskRowActions(task: TaskItem): RowAction[] {
     if (this.mode() === 'review') {
-      if (!this.canReviewTasks() || this.isOwnAssignment(task)) {
+      if (!this.canReviewTasks() || this.auth.blocksSelfReview(task)) {
         return [];
       }
       return [{ label: 'ตรวจงาน', primary: true, icon: 'fact_check', run: () => this.openReview(task) }];
@@ -641,12 +348,18 @@ export class TasksPageComponent implements OnInit {
           ? this.openSubmitReport(task)
           : this.changeStatus(task, action.status, action.kind),
     }));
+    const editable = this.canEditTask(task);
     actions.push({
-      label: this.canUpdateTask() ? 'แก้ไข' : 'รายละเอียด',
-      icon: this.canUpdateTask() ? 'edit' : 'visibility',
+      label: editable ? 'แก้ไข' : 'รายละเอียด',
+      icon: editable ? 'edit' : 'visibility',
       run: () => this.openTask(task),
     });
     return actions;
+  }
+
+  /** งานของฉันที่ส่งตรวจแล้วอยู่ที่ผู้ตรวจ — ดูได้อย่างเดียว */
+  private canEditTask(task: TaskItem): boolean {
+    return this.canUpdateTask() && !(this.isMine && task.status === 'REVIEW');
   }
 
   statusActions(task: TaskItem): { label: string; status: TaskStatus; kind: 'status' | 'submit' | 'review' }[] {
@@ -778,7 +491,7 @@ export class TasksPageComponent implements OnInit {
       this.snack.open('ไม่มีสิทธิ์ตรวจงาน', 'ปิด', { duration: 3000 });
       return;
     }
-    if (this.isOwnAssignment(task)) {
+    if (this.auth.blocksSelfReview(task)) {
       this.snack.open('ผู้รับผิดชอบห้ามตรวจงานตัวเอง', 'ปิด', { duration: 3500 });
       return;
     }
@@ -801,7 +514,7 @@ export class TasksPageComponent implements OnInit {
     const workflow =
       this.mode() === 'me'
         ? 'assignee'
-        : this.canReviewTasks() && task.status === 'REVIEW' && !this.isOwnAssignment(task)
+        : this.canReviewTasks() && task.status === 'REVIEW' && !this.auth.blocksSelfReview(task)
           ? 'reviewer'
           : 'assignee';
     if (workflow === 'reviewer') {
@@ -813,7 +526,7 @@ export class TasksPageComponent implements OnInit {
       data: {
         projectId: task.projectId,
         task,
-        readOnly: !this.canUpdateTask(),
+        readOnly: !this.canEditTask(task),
         workflow,
       },
     });

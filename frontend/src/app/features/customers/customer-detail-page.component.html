@@ -61,30 +61,6 @@
         <strong>เลขผู้เสียภาษี</strong>
         <span>{{ c.taxId || '—' }}</span>
       </mat-card>
-      <mat-card
-        class="app-meta-card"
-        [class.is-clickable]="!!c.address"
-        [attr.role]="c.address ? 'button' : null"
-        [attr.tabindex]="c.address ? 0 : null"
-        [attr.title]="c.address ? 'คลิกเพื่อดูรายละเอียด' : null"
-        (click)="openFieldDetail('ที่อยู่', c.address)"
-        (keydown.enter)="openFieldDetail('ที่อยู่', c.address)"
-      >
-        <strong>ที่อยู่</strong>
-        <span>{{ c.address || '—' }}</span>
-      </mat-card>
-      <mat-card
-        class="app-meta-card"
-        [class.is-clickable]="!!c.note"
-        [attr.role]="c.note ? 'button' : null"
-        [attr.tabindex]="c.note ? 0 : null"
-        [attr.title]="c.note ? 'คลิกเพื่อดูรายละเอียด' : null"
-        (click)="openFieldDetail('หมายเหตุ', c.note)"
-        (keydown.enter)="openFieldDetail('หมายเหตุ', c.note)"
-      >
-        <strong>หมายเหตุ</strong>
-        <span>{{ c.note || '—' }}</span>
-      </mat-card>
       <mat-card class="app-meta-card">
         <strong>ผู้ติดต่อ</strong>
         <span>{{ contacts().length }} คน</span>
@@ -416,7 +392,7 @@
                 </ng-container>
                 <ng-container matColumnDef="targetEndDate">
                   <th mat-header-cell *matHeaderCellDef>กำหนดส่ง</th>
-                  <td mat-cell *matCellDef="let row">{{ row.targetEndDate || '—' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.targetEndDate | thaiDate: 'date' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
@@ -497,7 +473,7 @@
                 </ng-container>
                 <ng-container matColumnDef="endDate">
                   <th mat-header-cell *matHeaderCellDef>สิ้นสุด</th>
-                  <td mat-cell *matCellDef="let row">{{ row.endDate || '—' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.endDate | thaiDate: 'date' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
@@ -545,7 +521,7 @@
                 <ng-container matColumnDef="id">
                   <th mat-header-cell *matHeaderCellDef>สัญญา</th>
                   <td mat-cell *matCellDef="let row">
-                    <a [routerLink]="['/app/ma', row.id]">#{{ row.id }}</a>
+                    <a [routerLink]="['/app/ma', row.id]">{{ row.contractNo || 'ดูสัญญา' }}</a>
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="plan">
@@ -609,7 +585,7 @@
                   <input
                     type="search"
                     [formControl]="ticketSearchControl"
-                    placeholder="ค้นหารหัส / หัวข้อ / โปรเจค / สถานะ"
+                    placeholder="ค้นหารหัส / หัวข้อ / โปรเจกต์ / สถานะ"
                     aria-label="ค้นหาปัญหา"
                   />
                 </label>
@@ -618,10 +594,10 @@
                     <mat-icon matPrefix>folder</mat-icon>
                     <mat-select
                       [value]="ticketProjectEffective()"
-                      aria-label="กรองตามโปรเจค"
+                      aria-label="กรองตามโปรเจกต์"
                       (selectionChange)="setTicketProjectFilter($event.value)"
                     >
-                      <mat-option [value]="ticketAllProjects">ทุกโปรเจค ({{ tickets().length }})</mat-option>
+                      <mat-option [value]="ticketAllProjects">ทุกโปรเจกต์ ({{ tickets().length }})</mat-option>
                       @for (opt of ticketProjectOptions(); track opt.key) {
                         <mat-option [value]="opt.key">
                           <span [class.cell-muted]="opt.muted">{{ opt.label }}</span> ({{ opt.count }})
@@ -643,12 +619,12 @@
                   <td mat-cell *matCellDef="let row" [attr.title]="row.title">{{ row.title }}</td>
                 </ng-container>
                 <ng-container matColumnDef="project">
-                  <th mat-header-cell *matHeaderCellDef>โปรเจค</th>
+                  <th mat-header-cell *matHeaderCellDef>โปรเจกต์</th>
                   <td mat-cell *matCellDef="let row" [attr.title]="row.project?.name || null">
                     @if (row.project; as project) {
                       <a class="ticket-project-link" [routerLink]="['/app/projects', project.id]">{{ project.name }}</a>
                     } @else {
-                      <span class="cell-muted">ไม่ระบุโปรเจค</span>
+                      <span class="cell-muted">ไม่ระบุโปรเจกต์</span>
                     }
                   </td>
                 </ng-container>
@@ -738,7 +714,7 @@
                 </ng-container>
                 <ng-container matColumnDef="dueDate">
                   <th mat-header-cell *matHeaderCellDef>ครบกำหนด</th>
-                  <td mat-cell *matCellDef="let row">{{ row.dueDate || '—' }}</td>
+                  <td mat-cell *matCellDef="let row">{{ row.dueDate | thaiDate: 'date' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>

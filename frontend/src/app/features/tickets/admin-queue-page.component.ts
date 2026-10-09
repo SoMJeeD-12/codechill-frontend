@@ -38,7 +38,7 @@ import {
 
 const ADMIN_TABS: { id: AdminQueueTab; label: string; alert?: boolean }[] = [
   { id: 'AWAITING_CLAIM', label: 'รอรับ', alert: true },
-  { id: 'CLAIMED', label: 'ของฉัน', alert: true },
+  { id: 'CLAIMED', label: 'รับแล้ว', alert: true },
   { id: 'AWAITING_REVIEW', label: 'รอตรวจ', alert: true },
   { id: 'WITH_SUPPORT', label: 'ส่งซัพพอร์ตแล้ว' },
 ];

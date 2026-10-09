@@ -142,7 +142,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'ticket-workflow',
     label: 'คิวซัพพอร์ต',
-    description: 'ใบปัญหาที่ต้องส่งหัวหน้า หรือรอบอกลูกค้า',
+    description: 'ใบปัญหาที่ต้องส่งให้แอดมิน หรือรอบอกลูกค้า',
     icon: 'support_agent',
     route: '/app/tickets/support-queue',
     group: 'main',
@@ -207,7 +207,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     code: 'ma-plans',
-    label: 'สัญญา MA',
+    label: 'แผน MA',
     description: 'แพ็กเกจดูแลรักษาระบบ',
     icon: 'playlist_add_check',
     route: '/app/ma/plans',

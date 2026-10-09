@@ -131,6 +131,13 @@ export class TicketDetailPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('ticket.assign');
   });
+  /** PATCH /tickets/:id/close — สถานะที่ปิดได้ให้ BE ตัดสิน (ปฏิเสธจะได้ข้อความกลับมา) */
+  readonly canCloseTicket = computed(() => {
+    this.auth.session();
+    const t = this.ticket();
+    return !!t && t.status !== 'CLOSED' && this.auth.hasPermissionCode('ticket.close');
+  });
+  readonly closing = signal(false);
 
   /** ผู้รับผิดชอบใบนี้เท่านั้นที่กดเริ่มได้ (BE ตรวจอีกชั้น) */
   readonly canStartTicket = computed(() => {
@@ -326,7 +333,7 @@ export class TicketDetailPageComponent implements OnInit {
       }
       return {
         tone: 'warn' as const,
-        title: 'ปัญหาเดิมกลับมาแล้ว — รอหัวหน้ามอบหมาย',
+        title: 'ปัญหาเดิมกลับมาแล้ว — รอแอดมินมอบหมาย',
         detail: `ใบนี้อยู่สถานะรอรับงานรอบใหม่ (งานครั้งที่ ${this.nextRound()})`,
         actions: [],
       };
@@ -794,6 +801,37 @@ export class TicketDetailPageComponent implements OnInit {
       });
   }
 
+  closeTicket(): void {
+    const ticket = this.ticket();
+    if (!ticket || !this.canCloseTicket()) {
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ปิดใบแจ้งปัญหา',
+      message: 'ปิดใบนี้แล้วใบจะออกจากคิวงาน — ถ้าปัญหากลับมาเปิดใบเดิมกลับมาได้',
+      subject: `${ticket.ticketNo || 'ใบ #' + ticket.id} · ${ticket.title}`,
+      confirmLabel: 'ปิดงาน',
+      danger: false,
+      icon: 'task_alt',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.closing.set(true);
+      this.ticketsApi.close(ticket.id).subscribe({
+        next: () => {
+          this.closing.set(false);
+          this.snack.open('ปิดใบแจ้งปัญหาแล้ว', 'ปิด', { duration: 3000 });
+          this.loadTicket();
+        },
+        error: (err: Error) => {
+          this.closing.set(false);
+          this.snack.open(err.message, 'ปิด', { duration: 5000 });
+        },
+      });
+    });
+  }
+
   /** ASSIGNED → PATCH /tickets/:id/start (ผู้รับผิดชอบเท่านั้น) */
   startAssignedWork(): void {
     if (!this.canStartTicket()) {
@@ -947,7 +985,7 @@ export interface TicketResolutionFormData {
         <div class="row">
           <mat-form-field appearance="outline">
             <mat-label>เวลาที่ใช้ (ชม.)</mat-label>
-            <input matInput type="number" step="0.5" formControlName="hoursSpent" />
+            <input matInput type="number" step="0.5" min="0" formControlName="hoursSpent" placeholder="ยังไม่กรอก" />
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>ผลลัพธ์</mat-label>
@@ -1140,7 +1178,8 @@ export class TicketResolutionFormDialogComponent {
   readonly form = this.fb.nonNullable.group({
     rootCause: [''],
     detail: ['', Validators.required],
-    hoursSpent: [1, Validators.min(0)],
+    /** ว่าง = ยังไม่ได้กรอก (ไม่ใช่ 1 ชม.) */
+    hoursSpent: [null as number | null, Validators.min(0)],
     result: ['SUCCESS' as ResolutionResult],
     resolvedByUserId: [
       {
@@ -1203,7 +1242,10 @@ export class TicketResolutionFormDialogComponent {
           this.ticketsApi.addResolution(this.data.ticketId, {
             rootCause: raw.rootCause.trim() || null,
             detail: raw.detail,
-            hoursSpent: Number(raw.hoursSpent) || 0,
+            hoursSpent:
+              raw.hoursSpent == null || String(raw.hoursSpent).trim() === ''
+                ? null
+                : Number(raw.hoursSpent),
             result: raw.result,
             resolvedByUserId,
             resolvedAt: new Date().toISOString(),

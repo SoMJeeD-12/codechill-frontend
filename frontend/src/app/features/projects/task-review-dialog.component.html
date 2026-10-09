@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>ตรวจงาน</h2>
+<h2 mat-dialog-title>ตรวจรับงาน</h2>
 
 <mat-dialog-content>
   @if (loading() && !task()) {
@@ -201,7 +201,7 @@
             </button>
           </div>
         </section>
-      } @else if (isOwnAssignment()) {
+      } @else if (blockedSelfReview()) {
         <p class="hint">คุณเป็นผู้รับผิดชอบงานนี้ — ห้ามอนุมัติหรือส่งกลับงานของตัวเอง</p>
       }
     </article>

@@ -84,15 +84,11 @@ export class TaskReviewDialogComponent implements OnInit {
     return this.auth.canAccessTaskReviewQueue();
   });
 
-  readonly isOwnAssignment = computed(() => {
-    const t = this.task();
-    const uid = this.auth.currentUser()?.id;
-    return !!(t && uid != null && t.assignedUserId === uid);
-  });
+  readonly blockedSelfReview = computed(() => this.auth.blocksSelfReview(this.task()));
 
-  /** ผู้ตรวจเห็นปุ่มอนุมัติ/ส่งกลับ — ห้ามอนุมัติงานตัวเอง */
+  /** ผู้ตรวจเห็นปุ่มอนุมัติ/ส่งกลับ — USER ห้ามอนุมัติงานตัวเอง (ADMIN ขึ้นไปได้) */
   readonly canDecide = computed(
-    () => this.canReview() && !this.isOwnAssignment() && this.task()?.status === 'REVIEW'
+    () => this.canReview() && !this.blockedSelfReview() && this.task()?.status === 'REVIEW'
   );
 
   /** รายงาน PENDING ล่าสุด — ใช้ตรวจงาน */
@@ -155,7 +151,7 @@ export class TaskReviewDialogComponent implements OnInit {
       return task.assignedUser.fullName;
     }
     if (task.assignedUserId) {
-      return this.usersApi.getById(task.assignedUserId)?.fullName ?? `#${task.assignedUserId}`;
+      return this.usersApi.getById(task.assignedUserId)?.fullName ?? '—';
     }
     return 'ยังไม่มอบหมาย';
   }
@@ -165,7 +161,7 @@ export class TaskReviewDialogComponent implements OnInit {
       return task.assignedBy.fullName;
     }
     if (task.assignedByUserId) {
-      return this.usersApi.getById(task.assignedByUserId)?.fullName ?? `#${task.assignedByUserId}`;
+      return this.usersApi.getById(task.assignedByUserId)?.fullName ?? '—';
     }
     return 'ไม่ระบุ';
   }

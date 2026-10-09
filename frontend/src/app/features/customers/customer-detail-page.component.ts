@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
@@ -118,7 +118,7 @@ interface TicketProjectOption {
   templateUrl: './customer-detail-page.component.html',
   styleUrl: './customer-detail-page.component.scss',
 })
-export class CustomerDetailPageComponent implements OnInit {
+export class CustomerDetailPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
@@ -315,7 +315,7 @@ export class CustomerDetailPageComponent implements OnInit {
     }
     return list.filter((m) =>
       [
-        String(m.id),
+        m.contractNo,
         m.plan?.name,
         String(m.planId),
         maCoverageLabel(m),
@@ -346,13 +346,13 @@ export class CustomerDetailPageComponent implements OnInit {
     }
     const options = [...groups.values()].sort((a, b) => a.label.localeCompare(b.label, 'th'));
     if (unassigned) {
-      options.push({ key: TICKET_NO_PROJECT, label: 'ไม่ระบุโปรเจค', count: unassigned, muted: true });
+      options.push({ key: TICKET_NO_PROJECT, label: 'ไม่ระบุโปรเจกต์', count: unassigned, muted: true });
     }
     return options;
   });
   readonly ticketAllProjects = TICKET_ALL_PROJECTS;
   readonly ticketProjectFilter = signal<string>(TICKET_ALL_PROJECTS);
-  /** ตัวกรองที่ใช้จริง — ค่าที่ไม่มีในรายการ (เช่น ?projectId= ของโปรเจกต์ที่ไม่มีใบ) ถือเป็นทุกโปรเจค */
+  /** ตัวกรองที่ใช้จริง — ค่าที่ไม่มีในรายการ (เช่น ?projectId= ของโปรเจกต์ที่ไม่มีใบ) ถือเป็นทุกโปรเจกต์ */
   readonly ticketProjectEffective = computed(() => {
     const key = this.ticketProjectFilter();
     return this.ticketProjectOptions().some((o) => o.key === key) ? key : TICKET_ALL_PROJECTS;
@@ -496,6 +496,7 @@ export class CustomerDetailPageComponent implements OnInit {
     this.api.fetchCustomer(id).subscribe({
       next: (customer) => {
         this.customer.set(customer);
+        this.quickActions.setContextCustomer({ id: customer.id, label: customer.name });
         this.notFound.set(false);
         this.refreshChildren();
         this.ready = true;
@@ -507,6 +508,10 @@ export class CustomerDetailPageComponent implements OnInit {
       next: (overview) => this.overview.set(overview),
       error: () => this.overview.set(null),
     });
+  }
+
+  ngOnDestroy(): void {
+    this.quickActions.clearContextCustomer(this.customerId);
   }
 
   constructor() {
@@ -549,7 +554,11 @@ export class CustomerDetailPageComponent implements OnInit {
   }
 
   oneTimeCompletenessLabel(lv: CustomerLifetimeValue): string {
-    return formatCompleteness(lv.oneTimeCompleteness);
+    const c = lv.oneTimeCompleteness;
+    if (!formatCompleteness(c) || c.withData >= c.total) {
+      return '';
+    }
+    return `งานคิดเงินครั้งเดียวยังไม่ได้กรอกราคา ${c.total - c.withData} จาก ${c.total} ใบ`;
   }
 
   lastContactedAt(c: Customer): string | null {

@@ -195,7 +195,7 @@ export class TaskEditDialogComponent implements OnInit {
       return this.data.workflow;
     }
     const task = this.currentTask();
-    if (task?.status === 'REVIEW' && this.canReview() && !this.isOwnAssignment(task)) {
+    if (task?.status === 'REVIEW' && this.canReview() && !this.auth.blocksSelfReview(task)) {
       return 'reviewer';
     }
     return 'assignee';
@@ -429,14 +429,6 @@ export class TaskEditDialogComponent implements OnInit {
     this.ref.updateSize('1100px');
   }
 
-  isOwnAssignment(task: TaskItem | null = this.currentTask()): boolean {
-    if (!task) {
-      return false;
-    }
-    const uid = this.auth.currentUser()?.id;
-    return uid != null && task.assignedUserId === uid;
-  }
-
   projectLabel(task: TaskItem): string {
     if (task.project) {
       return `${task.project.code ? task.project.code + ' · ' : ''}${task.project.name}`;
@@ -449,7 +441,7 @@ export class TaskEditDialogComponent implements OnInit {
       return task.assignedBy.fullName;
     }
     if (task.assignedByUserId) {
-      return this.usersApi.getById(task.assignedByUserId)?.fullName ?? `#${task.assignedByUserId}`;
+      return this.usersApi.getById(task.assignedByUserId)?.fullName ?? '—';
     }
     return 'ไม่ระบุ';
   }
@@ -459,7 +451,7 @@ export class TaskEditDialogComponent implements OnInit {
       return task.assignedUser.fullName;
     }
     if (task.assignedUserId) {
-      return this.usersApi.getById(task.assignedUserId)?.fullName ?? `#${task.assignedUserId}`;
+      return this.usersApi.getById(task.assignedUserId)?.fullName ?? '—';
     }
     return 'ยังไม่มอบหมาย';
   }
@@ -470,8 +462,8 @@ export class TaskEditDialogComponent implements OnInit {
     }
     const st = this.status();
     if (this.workflow() === 'reviewer') {
-      // ผู้ตรวจ — ไม่มีส่งตรวจ · ห้ามอนุมัติงานตัวเอง
-      if (st !== 'REVIEW' || !this.canReview() || this.isOwnAssignment()) {
+      // ผู้ตรวจ — ไม่มีส่งตรวจ · USER ห้ามอนุมัติงานตัวเอง
+      if (st !== 'REVIEW' || !this.canReview() || this.auth.blocksSelfReview(this.currentTask())) {
         return [];
       }
       return [

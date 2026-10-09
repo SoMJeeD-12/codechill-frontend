@@ -52,7 +52,7 @@
     </div>
 
     <div class="app-panel-body">
-      <table mat-table [dataSource]="items()" class="data-table notifications-table">
+      <table mat-table [dataSource]="items()" class="data-table data-table--compact notifications-table">
         <ng-container matColumnDef="title">
           <th mat-header-cell *matHeaderCellDef>รายการ</th>
           <td mat-cell *matCellDef="let row" class="notif-title-cell">

@@ -14,8 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { EMPTY, merge, of } from 'rxjs';
-import { catchError, debounceTime, switchMap } from 'rxjs/operators';
+import { EMPTY, Observable, merge, of } from 'rxjs';
+import { catchError, debounceTime, map, shareReplay, switchMap } from 'rxjs/operators';
 import {
   BILLING_TYPE_LABELS,
   BillingType,
@@ -24,6 +24,7 @@ import {
   TICKET_PRIORITY_LABELS,
   Ticket,
   TicketPriority,
+  splitTicketSystemLines,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -52,9 +53,9 @@ import {
 } from '../../shared/components/entity-picker.component';
 import {
   customerSearchFn,
-  projectPickerOptionOrNull,
-  projectSearchFn,
+  projectPickerOption,
 } from '../../shared/components/entity-search';
+import { Project } from '../../core/models/project.model';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -69,6 +70,28 @@ const ALL_BILLING_TYPES: BillingType[] = [
   'ONE_TIME',
   'FREE',
 ];
+
+/** กรอกค่าใช้จ่ายเพิ่มได้เฉพาะคิดครั้งคราว / ของเสริม */
+function chargeableBilling(type: BillingType | null | undefined): boolean {
+  return type === 'ONE_TIME' || type === 'ADDON';
+}
+
+/** extraCharge ของ API เป็น string ทศนิยม — ว่าง = null (ยังไม่กรอก) */
+function moneyToApiString(raw: unknown): string | null {
+  const amount =
+    typeof raw === 'number' ? raw : parseMoneyValue(raw == null ? null : String(raw));
+  return amount != null && Number.isFinite(amount) ? amount.toFixed(2) : null;
+}
+
+/** ป้ายโปรเจกต์ในฟอร์มนี้แสดงแค่ชื่อ — ตัด "รหัส · " ที่หน้าอื่นส่งมา */
+function nameOnlyOption(opt: PickerOption | null | undefined): PickerOption | null {
+  if (!opt) {
+    return null;
+  }
+  const prefix = opt.code ? `${opt.code} · ` : '';
+  const label = prefix && opt.label.startsWith(prefix) ? opt.label.slice(prefix.length) : opt.label;
+  return { ...opt, label, code: null };
+}
 
 export interface TicketFormDialogData {
   /** ใบเดิม = โหมดแก้ไข */
@@ -167,8 +190,8 @@ export class TicketFormDialogComponent {
 
   readonly customer = signal<PickerOption | null>(null);
   readonly project = signal<PickerOption | null>(null);
-  /** true เมื่อลูกค้าถูกเติมจากโปรเจกต์ — ห้ามแก้มือ */
-  readonly customerFromProject = signal(false);
+  /** โปรเจกต์ของลูกค้าที่เลือก — โหลดครั้งเดียวต่อลูกค้า */
+  private customerProjects$: Observable<Project[]> | null = null;
 
   readonly billingSelection = signal<BillingType | null>(null);
   /** สรุปจาก GET /tickets/billing-suggestion — null = ซ่อนแถบ */
@@ -177,9 +200,13 @@ export class TicketFormDialogComponent {
   private billingPickedByUser = false;
   private suggestionRequest = 0;
 
+  /** บรรทัดที่ระบบต่อท้าย ([ตรวจผ่าน] / [ตรวจไม่ผ่าน] / [ปิดงาน] ฯลฯ) — โชว์อ่านอย่างเดียว ส่งกลับตามเดิม */
+  private readonly descriptionParts = splitTicketSystemLines(this.ticket?.description);
+  readonly systemDescriptionLines = this.descriptionParts.systemLines;
+
   readonly form = this.fb.group({
     title: [this.ticket?.title ?? '', Validators.required],
-    description: [this.ticket?.description ?? '', Validators.required],
+    description: [this.descriptionParts.base, Validators.required],
     priority: [(this.ticket?.priority ?? 'NORMAL') as TicketPriority],
     reportedChannel: [(this.ticket?.reportedChannel ?? 'PHONE') as ReportedChannel],
     category: [
@@ -215,14 +242,22 @@ export class TicketFormDialogComponent {
   constructor() {
     this.billingSelection.set((this.ticket?.billingType ?? 'ONE_TIME') as BillingType);
 
-    const presetProject = this.data?.project ?? this.projectOptionFrom(this.ticket);
+    const presetProject = nameOnlyOption(this.data?.project) ?? this.projectOptionFrom(this.ticket);
     const presetCustomer = this.data?.customer ?? this.customerOptionFrom(this.ticket);
     if (presetProject) {
       this.project.set(presetProject);
     }
     if (presetCustomer) {
       this.customer.set(presetCustomer);
-      this.customerFromProject.set(!!presetProject);
+    } else if (presetProject) {
+      this.projectsApi.fetchProject(presetProject.id).subscribe({
+        next: (p) => {
+          if (p.customer && !this.customer()) {
+            this.customer.set({ id: p.customer.id, label: p.customer.name });
+          }
+        },
+        error: () => undefined,
+      });
     }
 
     this.form.controls.billingType.valueChanges
@@ -441,57 +476,54 @@ export class TicketFormDialogComponent {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
-  readonly searchProjects = projectSearchFn(this.projectsApi);
   readonly searchCustomers = customerSearchFn(this.customersApi);
+
+  /** ค้นเฉพาะโปรเจกต์ของลูกค้าที่เลือก — แสดงแค่ชื่อ */
+  readonly searchProjects = (query: string): Observable<PickerOption[]> => {
+    const customerId = this.customer()?.id;
+    if (customerId == null) {
+      return of([]);
+    }
+    this.customerProjects$ ??= this.projectsApi
+      .listProjectsByCustomer(customerId)
+      .pipe(shareReplay(1));
+    const q = query.trim().toLowerCase();
+    return this.customerProjects$.pipe(
+      map((list) =>
+        list
+          .filter((p) => !q || p.name.toLowerCase().includes(q))
+          .map((p) => ({ ...projectPickerOption(p), label: p.name, code: null }))
+      ),
+      catchError((err: Error) => {
+        this.customerProjects$ = null;
+        throw err;
+      })
+    );
+  };
 
   onProjectPicked(option: PickerOption | null): void {
     this.project.set(option);
     this.error.set(null);
     this.billingPickedByUser = false;
-
-    if (!option) {
-      if (this.customerFromProject()) {
-        this.customer.set(null);
-        this.customerFromProject.set(false);
-      }
-      this.clearBillingSuggestion();
-      this.oldTicket.set(null);
-      this.loadClosedTickets();
-      return;
-    }
-
     this.oldTicket.set(null);
     this.loadClosedTickets();
-    this.projectsApi.fetchProject(option.id).subscribe({
-      next: (project) => {
-        if (project.customer) {
-          this.customer.set({
-            id: project.customer.id,
-            label: project.customer.name,
-            meta: 'เติมจากโปรเจกต์ที่เลือก',
-          });
-          this.customerFromProject.set(true);
-        }
-      },
-      error: () => undefined,
-    });
-
-    this.loadBillingSuggestion(option.id);
+    if (option) {
+      this.loadBillingSuggestion(option.id);
+    } else {
+      this.clearBillingSuggestion();
+    }
   }
 
   onCustomerPicked(option: PickerOption | null): void {
+    if (option?.id === this.customer()?.id) {
+      return;
+    }
     this.customer.set(option);
-    this.customerFromProject.set(false);
-    this.error.set(null);
-    this.oldTicket.set(null);
-    this.loadClosedTickets();
-  }
-
-  clearCustomerLock(): void {
-    this.customer.set(null);
-    this.customerFromProject.set(false);
+    this.customerProjects$ = null;
     this.project.set(null);
+    this.billingPickedByUser = false;
     this.clearBillingSuggestion();
+    this.error.set(null);
     this.oldTicket.set(null);
     this.loadClosedTickets();
   }
@@ -553,7 +585,7 @@ export class TicketFormDialogComponent {
     }
     const customerId = this.customer()?.id ?? null;
     if (customerId == null) {
-      this.error.set('เลือกโปรเจกต์ หรือเลือกลูกค้าก่อนเปิดใบ');
+      this.error.set('เลือกลูกค้าก่อนเปิดใบ');
       return;
     }
     if (this.form.invalid) {
@@ -573,11 +605,18 @@ export class TicketFormDialogComponent {
     this.error.set(null);
 
     if (this.isEdit && this.ticket) {
+      const description = [(raw.description ?? '').trim(), ...this.systemDescriptionLines]
+        .filter(Boolean)
+        .join('\n');
+      const billingType = raw.billingType as BillingType;
       const update: TicketUpdateInput = {
         title: raw.title ?? '',
-        description: (raw.description ?? '').trim() || null,
+        description: description || null,
+        ...(chargeableBilling(billingType)
+          ? { extraCharge: moneyToApiString(raw.extraCharge) }
+          : {}),
         priority: (raw.priority as TicketPriority) ?? 'NORMAL',
-        billingType: raw.billingType as BillingType,
+        billingType,
         reportedChannel: (raw.reportedChannel as ReportedChannel) ?? 'PHONE',
         reportedAt: combineDateAndTime(raw.reportedDate, raw.reportedTime),
         projectId: this.project()?.id ?? null,
@@ -679,7 +718,8 @@ export class TicketFormDialogComponent {
   }
 
   private projectOptionFrom(ticket: Ticket | null): PickerOption | null {
-    return projectPickerOptionOrNull(ticket?.project);
+    const p = ticket?.project;
+    return p ? { ...projectPickerOption(p), label: p.name, code: null } : null;
   }
 
   private customerOptionFrom(ticket: Ticket | null): PickerOption | null {

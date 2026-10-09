@@ -642,8 +642,46 @@
   }
 }
 
-.row-action--more.is-compact {
+.row-action--more.is-compact,
+.row-action--more.row-action--all {
   display: none;
+}
+
+/*
+ * มือถือ — ปุ่มในแถวเหลือ ⋯ ปุ่มเดียว · ไม่ปักคอลัมน์แรก/ท้าย
+ * ตาราง auto layout แจกพื้นที่เหลือของ min-width ให้คอลัมน์หลัก (cell-fill) จนกว้างเกินจอ
+ * และ max-width ใช้กับเซลล์ตารางไม่ได้ — ถ้ายังปักไว้จะบังคอลัมน์อื่นตลอดแม้เลื่อน
+ */
+@media (max-width: 768px) {
+  .data-table {
+    .mat-mdc-header-cell:first-of-type,
+    .mat-mdc-cell:first-of-type,
+    .col-sticky-start {
+      position: static !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .row-actions .row-action:not(.row-action--all) {
+    display: none !important;
+  }
+
+  .row-actions .row-action--more.row-action--all {
+    display: inline-flex;
+  }
+
+  .data-table {
+    .mat-mdc-header-cell:last-of-type,
+    .mat-mdc-cell:last-of-type,
+    .col-sticky-end {
+      position: static !important;
+      box-shadow: none !important;
+      width: 1% !important;
+      min-width: 0 !important;
+    }
+  }
 }
 
 /*
@@ -702,75 +740,29 @@
   }
 }
 
+/*
+ * พื้นที่ ≤ 1024px — ไม่ซ่อนคอลัมน์หลัก (วันที่ · ผู้รับผิดชอบ · ช่องทาง · หัวข้อ ฯลฯ)
+ * ให้ตารางคงความกว้างขั้นต่ำแล้วเลื่อนแนวนอนในกล่อง (คอลัมน์ sticky ยังติดขอบ)
+ */
+.app-panel-body,
+.table-wrap {
+  overflow-x: auto;
+}
+
 @container table-host (max-width: 1024px) {
-  .data-table:not(.data-table--own-cols) {
-    .mat-column-isOverdue,
-    .mat-column-reportedAt,
-    .mat-column-targetEndDate,
-    .mat-column-createdAt,
-    .mat-column-updatedAt,
-    .mat-column-occurredAt,
-    .mat-column-sentAt,
-    .mat-column-answeredAt,
-    .mat-column-deliveredAt,
-    .mat-column-period,
-    .mat-column-fee,
-    .mat-column-price,
-    .mat-column-manager,
-    .mat-column-assignee,
-    .mat-column-owner,
-    .mat-column-handler,
-    .mat-column-contact,
-    .mat-column-email,
-    .mat-column-phone,
-    .mat-column-username,
-    .mat-column-roles,
-    .mat-column-users,
-    .mat-column-questions,
-    .mat-column-responses,
-    .mat-column-avg,
-    .mat-column-score,
-    .mat-column-count,
-    .mat-column-category,
-    .mat-column-file,
-    .mat-column-fileName,
-    .mat-column-actor,
-    .mat-column-table,
-    .mat-column-record,
-    .mat-column-channel,
-    .mat-column-subject,
-    .mat-column-maLink,
-    .mat-column-delivery,
-    .mat-column-deliveryNo,
-    .mat-column-plan,
-    .mat-column-effective {
-      display: none !important;
-    }
+  .data-table:not(.data-table--compact) {
+    min-width: 56rem !important;
+    max-width: none;
   }
 }
 
 @container table-host (max-width: 768px) {
   .data-table {
-    min-width: 0;
-
     .mat-mdc-header-cell,
     .mat-mdc-cell {
       padding-left: 0.55rem !important;
       padding-right: 0.55rem !important;
       font-size: 0.84rem;
-    }
-
-    &:not(.data-table--own-cols) {
-      .mat-column-priority,
-      .mat-column-customer,
-      .mat-column-project,
-      .mat-column-dueDate,
-      .mat-column-contractNo,
-      .mat-column-isPrimary,
-      .mat-column-open,
-      .mat-column-overdue {
-        display: none !important;
-      }
     }
 
     .cell-clip,
@@ -796,35 +788,13 @@
   }
 }
 
-/* ซ่อนคอลัมน์รองแบบใส่ class เอง — วัดพื้นที่ตาราง (table-host) ไม่ใช่หน้าต่าง */
-@container table-host (max-width: 1280px) {
-  .col-hide-xl,
-  .data-table :is(.mat-mdc-header-cell, .mat-mdc-cell).col-project-code {
-    display: none !important;
-  }
-}
-
-@container table-host (max-width: 1024px) {
-  .col-hide-lg {
-    display: none !important;
-  }
-}
-
+/*
+ * col-hide-xl / col-hide-lg / col-hide-{px} ไม่ซ่อนคอลัมน์แล้ว — ตารางแคบใช้เลื่อนแนวนอน (min-width ด้านบน)
+ * ซ่อนเฉพาะ col-hide-md บนพื้นที่ระดับมือถือ
+ */
 @container table-host (max-width: 768px) {
   .col-hide-md {
     display: none !important;
-  }
-}
-
-/*
- * เกณฑ์รายตาราง: col-hide-{px} = ซ่อนเมื่อพื้นที่ตาราง ≤ px
- * เลือกค่าจาก "ผลรวมความกว้างคอลัมน์ที่ยังแสดง + คอลัมน์หลักขั้นต่ำ ~11rem" ของตารางนั้น
- */
-@each $w in (600, 680, 760, 840, 920, 1000, 1080, 1160, 1240, 1320, 1400) {
-  @container table-host (max-width: #{$w}px) {
-    .col-hide-#{$w} {
-      display: none !important;
-    }
   }
 }
 

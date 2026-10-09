@@ -313,7 +313,10 @@ export class ProjectFormDialogComponent {
   readonly data = inject<{ project: Project | null; customerId?: number }>(MAT_DIALOG_DATA);
 
   readonly users = this.usersApi.assignableTask;
-  readonly statuses = PROJECT_STATUSES;
+  /** POST /projects รับแค่ DRAFT / IN_PROGRESS — แก้ไขยังเลือกได้ครบ */
+  readonly statuses: ProjectStatus[] = this.data.project
+    ? PROJECT_STATUSES
+    : ['DRAFT', 'IN_PROGRESS'];
   readonly statusLabels = PROJECT_STATUS_LABELS;
   readonly priorities = PROJECT_PRIORITIES;
   readonly priorityLabels = PRIORITY_LABELS;

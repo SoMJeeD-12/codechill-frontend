@@ -50,8 +50,11 @@ export interface UpcomingContractItem {
   contractId: number;
   customerId: number;
   customerName?: string | null;
+  projectName?: string | null;
   contractNo?: string | null;
-  price: string;
+  /** มูลค่าตามสัญญา (string ทศนิยม) */
+  contractValue?: string | null;
+  price?: string | null;
   startDate: string;
   endDate: string;
   daysUntilExpiry?: number;
@@ -106,8 +109,8 @@ export interface CustomerLifetimeValue {
 }
 
 export function formatCompleteness(c: DataCompleteness | null | undefined): string {
-  if (!c) {
+  if (!c || !c.total) {
     return '';
   }
-  return `กรอกครบ ${c.completeness}% (${c.withData}/${c.total})`;
+  return `มีข้อมูลแล้ว ${c.withData} จาก ${c.total} รายการ`;
 }

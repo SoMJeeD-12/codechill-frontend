@@ -145,6 +145,9 @@ export class FollowUpService {
 
   /** อ่าน isOverdue จาก API เป็นหลัก */
   isOverdue(f: FollowUp): boolean {
+    if (f.status === 'DONE' || f.status === 'CANCELLED') {
+      return false;
+    }
     return !!f.isOverdue;
   }
 
@@ -161,7 +164,7 @@ export class FollowUpService {
 
   create(input: FollowUpCreateInput): Observable<FollowUp> {
     if (!(input.projectId > 0)) {
-      return throwError(() => new Error('กรุณาเลือกโปรเจคที่ต้องติดตาม'));
+      return throwError(() => new Error('กรุณาเลือกโปรเจกต์ที่ต้องติดตาม'));
     }
     if (!input.title.trim() || !input.dueDate) {
       return throwError(() => new Error('กรุณากรอกหัวข้อและวันครบกำหนด'));

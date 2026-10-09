@@ -83,7 +83,7 @@ export class NavAttentionService {
   readonly adminTabCounts = this.adminTabsSignal.asReadonly();
   readonly supportTabCounts = this.supportTabsSignal.asReadonly();
 
-  /** เมนูคิวแอดมิน = รอรับ + รอตรวจ · คิวซัพพอร์ต = รอส่งหัวหน้า + แอดมินส่งกลับมา */
+  /** เมนูคิวแอดมิน = รอรับ + รอตรวจ · คิวซัพพอร์ต = รอส่งให้แอดมิน + แอดมินส่งกลับมา */
   readonly counts = computed<Partial<Record<MenuCode, number>>>(() => {
     const admin = this.adminTabsSignal();
     const support = this.supportTabsSignal();

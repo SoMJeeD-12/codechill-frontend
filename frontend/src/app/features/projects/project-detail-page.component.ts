@@ -413,8 +413,8 @@ export class ProjectDetailPageComponent implements OnInit {
         id: 'final',
         ok: finalAccepted,
         label: finalAccepted
-          ? 'ยอมรับรอบสุดท้ายแล้ว'
-          : 'ยังไม่มียอมรับการส่งมอบรอบสุดท้าย',
+          ? 'ลูกค้ายอมรับการส่งมอบรอบสุดท้ายแล้ว'
+          : 'ลูกค้ายังไม่ได้ยอมรับการส่งมอบรอบสุดท้าย',
       },
     ];
     if (this.canViewWarranties()) {

@@ -82,6 +82,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   'user.view': 'ผู้ใช้',
   'user.create': 'สร้างผู้ใช้',
   'user.update': 'แก้ไขผู้ใช้',
+  'user.reset_password': 'รีเซ็ตรหัสผ่าน',
   'role.view': 'บทบาท',
   'role.manage': 'จัดการบทบาท',
   'audit_log.view': 'ประวัติการใช้งาน',
@@ -93,7 +94,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 
 /** คำอธิบาย 1 บรรทัด — เปิดเมนู/ปุ่มอะไร */
 const PERMISSION_HINTS: Record<string, string> = {
-  'ticket.support_queue': 'เมนูคิวซัพพอร์ต · ส่งหัวหน้า · บอกลูกค้า',
+  'ticket.support_queue': 'เมนูคิวซัพพอร์ต · ส่งให้แอดมิน · บอกลูกค้า',
   'ticket.assign': 'เมนูคิวแอดมิน · รับคิว · มอบหมาย · ส่งกลับซัพพอร์ต',
   'ticket.view': 'เมนูปัญหา · ใบของฉัน (ใบที่มอบให้ตัวเอง)',
   'ticket.create': 'ปุ่มเปิดใบแจ้งปัญหา',
@@ -148,6 +149,7 @@ const PERMISSION_HINTS: Record<string, string> = {
   'user.view': 'เมนูผู้ใช้',
   'user.create': 'สร้างผู้ใช้',
   'user.update': 'แก้ไขผู้ใช้',
+  'user.reset_password': 'ตั้งรหัสผ่านชั่วคราวให้ผู้ใช้อื่น',
   'role.view': 'เมนูบทบาท',
   'role.manage': 'จัดการบทบาท — สงวน Super Admin',
   'audit_log.view': 'เมนูประวัติการใช้งาน',

@@ -34,11 +34,17 @@
             }
           }
         </p>
+        @if (t.billingType === 'WARRANTY' && t.warrantyId) {
+          <p class="ma-link">
+            ใช้ใบรับประกัน
+            <a class="app-link" routerLink="/app/warranties" [queryParams]="{ open: t.warrantyId }">{{ t.warrantyNo || 'ดูใบรับประกัน' }}</a>
+          </p>
+        }
         @if (t.billingType === 'MA_QUOTA') {
           @if (t.maContractId) {
             <p class="ma-link">
               ผูกสัญญา MA
-              <a class="app-link" [routerLink]="['/app/ma', t.maContractId]">#{{ t.maContractId }}</a>
+              <a class="app-link" [routerLink]="['/app/ma', t.maContractId]">{{ t.maContractNo || 'ดูสัญญา' }}</a>
             </p>
           } @else {
             <p class="app-warn-banner">
@@ -102,6 +108,12 @@
             (click)="sendToSupport()"
           >
             ส่งให้ซัพพอร์ต
+          </button>
+        }
+        @if (canCloseTicket()) {
+          <button mat-stroked-button type="button" [disabled]="closing()" (click)="closeTicket()">
+            <mat-icon>task_alt</mat-icon>
+            ปิดงาน
           </button>
         }
       </div>

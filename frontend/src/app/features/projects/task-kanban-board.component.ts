@@ -318,7 +318,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
     if (!this.canReviewTasks() || task.status !== 'REVIEW') {
       return false;
     }
-    return !this.isOwnAssignment(task);
+    return !this.auth.blocksSelfReview(task);
   }
 
   openSubmit(task: TaskItem, event?: Event): void {
@@ -344,7 +344,7 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
       this.snack.open('ไม่มีสิทธิ์ตรวจงาน', 'ปิด', { duration: 3000 });
       return;
     }
-    if (this.isOwnAssignment(task)) {
+    if (this.auth.blocksSelfReview(task)) {
       this.snack.open('ผู้รับผิดชอบห้ามตรวจงานตัวเอง', 'ปิด', { duration: 3500 });
       return;
     }

@@ -16,7 +16,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { filter } from 'rxjs/operators';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs/operators';
 import { MenuItem } from '../models/permission.model';
 import { MENU_ITEMS, MainMenuGroupKey, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
@@ -38,6 +40,8 @@ interface NavGroupNode {
 }
 
 type NavNode = { type: 'item'; item: MenuItem } | NavGroupNode;
+
+const HANDSET_QUERY = '(max-width: 768px)';
 
 function navGroupStorageKey(userId: number): string {
   return `cpams.navGroups.${userId}`;
@@ -72,6 +76,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   readonly attention = inject(NavAttentionService);
   readonly theme = inject(ThemeService);
   readonly user = this.auth.currentUser;
+
+  /** ≤768px — เมนูซ้อนทับ (over) ปิดเป็นค่าเริ่มต้น เปิดจากปุ่มแฮมเบอร์เกอร์ */
+  readonly isHandset = toSignal(
+    inject(BreakpointObserver)
+      .observe(HANDSET_QUERY)
+      .pipe(map((r) => r.matches)),
+    { initialValue: window.matchMedia(HANDSET_QUERY).matches }
+  );
+  readonly navOpen = signal(!this.isHandset());
+
   /** เมนูที่มี children ที่กำลังขยาย */
   readonly expandedMenus = signal<Set<string>>(new Set());
 
@@ -119,6 +133,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly groupOpenState = signal<Partial<Record<MainMenuGroupKey, boolean>>>({});
 
   constructor() {
+    effect(() => {
+      const handset = this.isHandset();
+      untracked(() => this.navOpen.set(!handset));
+    });
     effect(() => {
       const userId = this.user()?.id ?? null;
       untracked(() => {
@@ -241,7 +259,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     window.setTimeout(() => this.attention.start(), 1200);
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe((e) => this.syncExpandedFromUrl(e.urlAfterRedirects));
+      .subscribe((e) => {
+        this.syncExpandedFromUrl(e.urlAfterRedirects);
+        if (this.isHandset()) {
+          this.navOpen.set(false);
+        }
+      });
   }
 
   ngOnDestroy(): void {

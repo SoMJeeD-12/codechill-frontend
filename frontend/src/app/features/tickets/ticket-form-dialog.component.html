@@ -43,41 +43,29 @@
           <div class="who-grid">
             <div class="who-grid__main">
               <app-entity-picker
-                label="โปรเจกต์"
-                placeholder="พิมพ์รหัสหรือชื่อโปรเจกต์"
+                label="ลูกค้า"
+                placeholder="พิมพ์ชื่อลูกค้า"
                 [openOnFocus]="true"
-                [searchFn]="searchProjects"
-                [selected]="project()"
-                (selectionChange)="onProjectPicked($event)"
+                [searchFn]="searchCustomers"
+                [selected]="customer()"
+                [disabled]="isEdit"
+                (selectionChange)="onCustomerPicked($event)"
               />
+              @if (isEdit) {
+                <p class="field-note">ย้ายใบไปลูกค้าอื่นไม่ได้ — ถ้าเปิดผิดลูกค้าให้ปิดใบนี้แล้วเปิดใบใหม่</p>
+              }
             </div>
 
             <div class="who-grid__side">
-              @if (customer(); as picked) {
-                <div class="picked-customer" [class.is-auto]="customerFromProject()">
-                  <mat-icon>business</mat-icon>
-                  <div class="picked-customer__text">
-                    <strong>{{ picked.label }}</strong>
-                    @if (picked.meta) {
-                      <small>{{ picked.meta }}</small>
-                    }
-                  </div>
-                  <button
-                    mat-icon-button
-                    type="button"
-                    aria-label="เปลี่ยนลูกค้า"
-                    (click)="clearCustomerLock()"
-                  >
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              } @else {
+              @for (c of [customer()]; track c?.id) {
                 <app-entity-picker
-                  label="หรือเลือกลูกค้าอย่างเดียว"
-                  placeholder="พิมพ์ชื่อลูกค้า"
+                  label="โปรเจกต์"
+                  [placeholder]="c ? 'พิมพ์ชื่อโปรเจกต์' : 'เลือกลูกค้าก่อน'"
+                  [disabled]="!c"
                   [openOnFocus]="true"
-                  [searchFn]="searchCustomers"
-                  (selectionChange)="onCustomerPicked($event)"
+                  [searchFn]="searchProjects"
+                  [selected]="project()"
+                  (selectionChange)="onProjectPicked($event)"
                 />
               }
             </div>
@@ -89,8 +77,8 @@
           <section class="block">
             <h3 class="block-title">2 · เลือกใบเดิมที่ปัญหากลับมา</h3>
             @let t = oldTicket();
-            @if (!project() && !customer()) {
-              <p class="old-empty">เลือกโปรเจกต์หรือลูกค้าก่อน แล้วระบบจะแสดงใบที่ปิดแล้ว</p>
+            @if (!customer()) {
+              <p class="old-empty">เลือกลูกค้าก่อน แล้วระบบจะแสดงใบที่ปิดแล้ว</p>
             } @else if (t) {
               <div class="old-picked">
                 <div class="old-picked__main">
@@ -166,6 +154,14 @@
               <mat-error>กรอกรายละเอียด</mat-error>
             }
           </mat-form-field>
+          @if (systemDescriptionLines.length) {
+            <div class="system-lines" aria-label="ข้อความที่ระบบบันทึกไว้">
+              <small>ข้อความที่ระบบบันทึกไว้ — แก้ไม่ได้</small>
+              @for (line of systemDescriptionLines; track $index) {
+                <p>{{ line }}</p>
+              }
+            </div>
+          }
         </section>
         }
       </div>
@@ -183,10 +179,10 @@
                     {{ billingLabels[t.billingType] }}
                   </span>
                   @if (t.billingType === 'WARRANTY' && t.warrantyId) {
-                    <small>ใบรับประกัน #{{ t.warrantyId }}</small>
+                    <small>ใบรับประกัน {{ t.warrantyNo || '—' }}</small>
                   }
                   @if (t.billingType === 'MA_QUOTA' && t.maContractId) {
-                    <small>สัญญา MA #{{ t.maContractId }}</small>
+                    <small>สัญญา MA {{ t.maContractNo || '—' }}</small>
                   }
                 </dd>
                 @if (billingSuggestion(); as s) {
@@ -331,9 +327,9 @@
             </aside>
           }
 
-          @if (billingSelection() === 'ONE_TIME') {
+          @if (billingSelection() === 'ONE_TIME' || billingSelection() === 'ADDON') {
             <mat-form-field appearance="outline" class="full">
-              <mat-label>ค่าบริการเป็นครั้ง (บาท)</mat-label>
+              <mat-label>{{ billingSelection() === 'ADDON' ? 'ค่าของเสริม (บาท)' : 'ค่าบริการเป็นครั้ง (บาท)' }}</mat-label>
               <input matInput appMoneyInput formControlName="extraCharge" inputmode="decimal" />
             </mat-form-field>
           }

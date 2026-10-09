@@ -2,7 +2,7 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">คิวซัพพอร์ต</h1>
-      <p class="app-subtitle">ใบปัญหาที่ต้องส่งหัวหน้า หรือรอบอกลูกค้า</p>
+      <p class="app-subtitle">ใบปัญหาที่ต้องส่งให้แอดมิน หรือรอบอกลูกค้า</p>
     </div>
     <div class="app-header-actions">
       @if (canOpenAdminQueue()) {
@@ -26,7 +26,7 @@
           [attr.aria-selected]="tab() === 'AWAITING_SEND'"
           (click)="setTab('AWAITING_SEND')"
         >
-          รอส่งหัวหน้า
+          รอส่งให้แอดมิน
           <span class="ui-chip__count" [class.ui-chip__count--alert]="tabCount('AWAITING_SEND') > 0">{{ tabCount('AWAITING_SEND') }}</span>
         </button>
         <button
@@ -153,7 +153,7 @@
                   [disabled]="actingId() === row.id"
                   (click)="sendToHead(row)"
                 >
-                  ส่งหัวหน้า
+                  ส่งให้แอดมิน
                 </button>
               } @else {
                 <button

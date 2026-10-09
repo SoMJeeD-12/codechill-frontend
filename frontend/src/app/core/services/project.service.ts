@@ -10,6 +10,8 @@ import { Paginated, asList, asPage, pruneUndefined, toHttpParams, upsertById } f
 import {
   Delivery,
   DeliveryAcceptance,
+  MyTasksCounts,
+  MyTasksTab,
   Project,
   ProjectProgress,
   ProjectPriority,
@@ -165,6 +167,8 @@ type ApiTask = Omit<
   assigned_by_user_id?: number | null;
   assignerUserId?: number | null;
   assignerId?: number | null;
+  /** ผู้มอบหมายจาก BE — null = งานที่ไม่เคยถูกมอบหมาย */
+  assignedByUser?: UserSummary | null;
   assignedBy?: UserSummary | null;
   assigner?: UserSummary | null;
   createdByUserId?: number | null;
@@ -659,6 +663,37 @@ export class ProjectService {
       );
   }
 
+  /** GET /tasks/me?tab=&search=&page=&limit= — total ของแท็บที่เลือก + counts ทุกแท็บ */
+  listMyTasksPage(params: {
+    tab?: MyTasksTab;
+    page: number;
+    limit: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }): Observable<{ items: TaskItem[]; total: number; counts: MyTasksCounts | null }> {
+    return this.http
+      .get<{ items: ApiTask[]; total?: number; counts?: MyTasksCounts }>(`${this.tasksBase}/me`, {
+        params: toHttpParams({
+          ...params,
+          search: params.search?.trim() || undefined,
+          sortOrder: params.sortBy ? params.sortOrder : undefined,
+        }),
+      })
+      .pipe(
+        map((body) => {
+          const page = asPage<ApiTask>(body);
+          return {
+            items: page.items.map((t) => this.normalizeTask(t, t.projectId)),
+            total: page.total,
+            counts: body?.counts ?? null,
+          };
+        }),
+        tap((page) => this.mergeTasks(page.items)),
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
   /** PATCH /tasks/{id}/order */
   updateTaskOrder(taskId: number, sortOrder: number): Observable<TaskItem> {
     return this.http.patch<ApiTask>(`${this.tasksBase}/${taskId}/order`, { sortOrder }).pipe(
@@ -958,12 +993,14 @@ export class ProjectService {
 
   private normalizeTask(row: ApiTask, projectId: number): TaskItem {
     const assignedBy =
-      row.assignedBy ??
-      row.assigner ??
-      row.createdBy ??
-      row.createdByUser ??
-      row.created_by ??
-      null;
+      'assignedByUser' in row
+        ? (row.assignedByUser ?? null)
+        : (row.assignedBy ??
+          row.assigner ??
+          row.createdBy ??
+          row.createdByUser ??
+          row.created_by ??
+          null);
     const assignedByUserId =
       row.assignedByUserId ??
       row.assignedById ??

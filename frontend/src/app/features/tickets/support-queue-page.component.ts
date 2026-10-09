@@ -264,7 +264,7 @@ export class SupportQueuePageComponent implements OnInit {
       },
       error: (err: Error) => {
         this.actingId.set(null);
-        this.toast.error(err, 'ส่งหัวหน้าไม่สำเร็จ');
+        this.toast.error(err, 'ส่งให้แอดมินไม่สำเร็จ');
       },
     });
   }

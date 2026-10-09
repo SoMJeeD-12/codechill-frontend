@@ -49,6 +49,8 @@ export interface TicketUpdateInput {
   reportedByContactId?: number | null;
   receivedByUserId?: number | null;
   dueAt?: string | null;
+  /** string ทศนิยม — ใช้กับ ONE_TIME / ADDON · null = ล้างค่า */
+  extraCharge?: string | null;
 }
 
 /** CreateResolutionDto */
@@ -542,6 +544,7 @@ export class TicketService {
           reportedByContactId: input.reportedByContactId,
           receivedByUserId: input.receivedByUserId,
           dueAt: input.dueAt,
+          extraCharge: input.extraCharge,
         })
       )
       .pipe(
@@ -754,6 +757,8 @@ export class TicketService {
       assignedUserId: row.assignedUserId ?? row.assignedUser?.id ?? null,
       warrantyId: row.warrantyId ?? null,
       maContractId: row.maContractId ?? null,
+      warrantyNo: row.warrantyNo ?? null,
+      maContractNo: row.maContractNo ?? null,
       firstResponseAt: row.firstResponseAt ?? null,
       resolvedAt: row.resolvedAt ?? null,
       closedAt: row.closedAt ?? null,

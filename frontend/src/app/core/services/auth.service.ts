@@ -117,6 +117,15 @@ export class AuthService {
     return type === 'SUPER_ADMIN' || type === 'ADMIN';
   });
 
+  /**
+   * ตรงกับ BE assertCanReview — ADMIN ขึ้นไปตรวจงานตัวเองได้ · USER ห้ามตรวจงานที่ตัวเองรับผิดชอบ
+   * สิทธิ์อื่น (ผู้มอบหมาย/ผู้จัดการโปรเจกต์) ให้ BE ตัดสิน — 403 แสดงข้อความจาก BE
+   */
+  blocksSelfReview(task: { assignedUserId: number | null } | null | undefined): boolean {
+    const me = this.currentUser();
+    return !!task && !!me && !this.isAdminLevel() && task.assignedUserId === me.id;
+  }
+
   get accessToken(): string | null {
     return this.sessionSignal()?.accessToken ?? null;
   }
@@ -621,13 +630,13 @@ export class AuthService {
           return tokens;
         } catch (retryErr) {
           if (this.isUnauthorized(retryErr)) {
-            this.failAuth(silent, retryErr);
+            this.failAuth(silent, retryErr, boot);
           }
           throw retryErr;
         }
       }
 
-      this.failAuth(silent, err);
+      this.failAuth(silent, err, boot);
       throw err;
     } finally {
       if (ownedLock) {
@@ -661,14 +670,17 @@ export class AuthService {
     this.notifyPeerWaiters(tokens);
   }
 
-  private failAuth(silent: boolean, err?: unknown): void {
+  private failAuth(silent: boolean, err?: unknown, boot = false): void {
     this.clearSession(false);
     // หน้าต่างนับถอยหลังเปิดอยู่ — คำขอที่ค้างได้ 401 ตามมา ไม่ต้องพาไปล็อกอินก่อนนับเสร็จ
     if (this.kickDialogOpen) {
       return;
     }
-    // ถูกเตะจากเครื่องอื่น / ออกจากระบบแล้ว — BE ส่งเหตุผลมากับ 401 ของ refresh ให้หน้าล็อกอินแสดง
-    if (!this.loggingOut && this.isUnauthorized(err)) {
+    // token เก่าจากการเปิดเว็บครั้งก่อน (ตอนบูต) ไม่ต้องแจ้งบนหน้าล็อกอิน — ผู้ใช้เพิ่งเปิดเว็บ ไม่ได้ถูกเตะระหว่างใช้งาน
+    if (boot) {
+      this.signedOutNotice.set(null);
+    } else if (!this.loggingOut && this.isUnauthorized(err)) {
+      // ถูกเตะจากเครื่องอื่น / ออกจากระบบแล้ว — BE ส่งเหตุผลมากับ 401 ของ refresh ให้หน้าล็อกอินแสดง
       const message = apiErrorMessage(err, 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
       this.signedOutNotice.set(message);
       if (!silent && message.includes('เครื่องอื่น')) {

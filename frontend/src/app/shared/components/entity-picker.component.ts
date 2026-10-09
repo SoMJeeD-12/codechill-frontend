@@ -109,7 +109,7 @@ export const searchWithClientFallback = searchViaBackend;
       />
       @if (loading()) {
         <mat-spinner matSuffix diameter="18" />
-      } @else if (selected()) {
+      } @else if (selected() && !disabled()) {
         <button
           matSuffix
           mat-icon-button

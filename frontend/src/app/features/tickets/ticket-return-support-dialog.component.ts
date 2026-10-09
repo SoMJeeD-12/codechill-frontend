@@ -60,7 +60,7 @@ const NOTE_MAX = 2000;
   ],
   template: `
     <h2 mat-dialog-title>
-      {{ mode() === 'reject' ? 'ไม่ผ่าน · ส่งกลับให้ผู้แก้' : 'ตรวจผ่าน · ส่งซัพพอร์ต' }}
+      {{ mode() === 'reject' ? 'ตรวจรับงานแก้ · ไม่ผ่าน ส่งกลับให้ผู้แก้' : 'ตรวจรับงานแก้ · ผ่าน ส่งซัพพอร์ต' }}
     </h2>
     <mat-dialog-content>
       <p class="ref">{{ data.ticketNo }} · {{ data.title }}</p>

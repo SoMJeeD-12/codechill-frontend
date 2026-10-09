@@ -1,5 +1,11 @@
 <mat-sidenav-container class="layout-shell">
-  <mat-sidenav class="layout-sidenav" mode="side" [opened]="true" fixedInViewport>
+  <mat-sidenav
+    class="layout-sidenav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="navOpen()"
+    (openedChange)="navOpen.set($event)"
+    fixedInViewport
+  >
     <div class="brand">
       <div class="brand-mark">CP</div>
       <div class="brand-text">
@@ -147,6 +153,18 @@
 
   <mat-sidenav-content class="layout-content">
     <mat-toolbar class="topbar">
+      @if (isHandset()) {
+        <button
+          mat-icon-button
+          type="button"
+          class="nav-toggle"
+          aria-label="เปิดเมนู"
+          [attr.aria-expanded]="navOpen()"
+          (click)="navOpen.set(!navOpen())"
+        >
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
       <span class="topbar-title">CPAMS</span>
       <span class="spacer"></span>
 

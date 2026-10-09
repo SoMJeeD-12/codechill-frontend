@@ -14,13 +14,17 @@
 
 /*
  * table-layout: fixed ไม่นับ min-width ของเซลล์ — หัวข้อ (width: auto) ได้ "ที่เหลือ" เท่านั้น
- * จึงต้องให้ตารางกว้างอย่างน้อย = คอลัมน์คงที่ที่เหลือแสดงในจอแคบ + หัวข้อ 12rem
- * (ลูกค้า/วันรับแจ้งซ่อนตาม col-hide-lg / col-hide-xl จาก container query กลาง)
+ * ตารางจึงต้องกว้างอย่างน้อย = ผลรวมคอลัมน์คงที่ (เลขใบ 8.5 + ความเร่งด่วน 7.5 + สถานะ 8
+ * + ลูกค้า 10 + วันรับแจ้ง 13.25 + ปุ่ม 11) + หัวข้อ 16rem — แคบกว่านั้นเลื่อนแนวนอน
+ * ต้องชนะ min-width กลางของ .data-table ใน _list-panel.scss
  */
-.tickets-table {
+.tickets-table.tickets-table {
   width: 100%;
-  min-width: 40rem;
+  min-width: calc(58.25rem + 16rem) !important;
   table-layout: fixed;
+}
+
+.tickets-table {
 
   /* คอลัมน์สั้น — กว้างตามเนื้อหา */
   .mat-column-ticketNo.mat-mdc-header-cell,
@@ -65,7 +69,6 @@
   .mat-column-title.mat-mdc-header-cell,
   .mat-column-title.mat-mdc-cell {
     width: auto;
-    min-width: 12rem;
     overflow: hidden;
   }
 
@@ -160,7 +163,18 @@
     display: none;
   }
 
-  .tickets-table .mat-column-actions {
-    width: 3.5rem;
+  .tickets-table.tickets-table {
+    min-width: calc(50.75rem + 16rem) !important;
+  }
+
+  .tickets-table {
+    .mat-column-actions.mat-mdc-header-cell,
+    .mat-column-actions.mat-mdc-cell,
+    .mat-mdc-header-cell.col-sticky-end,
+    .mat-mdc-cell.col-sticky-end {
+      width: 3.5rem !important;
+      min-width: 3.5rem !important;
+      max-width: 3.5rem !important;
+    }
   }
 }

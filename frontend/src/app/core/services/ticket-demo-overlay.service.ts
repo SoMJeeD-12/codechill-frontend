@@ -168,12 +168,26 @@ export class TicketDemoOverlayService {
     if (this.isReviewRejected(ticket)) {
       return 'ตรวจไม่ผ่าน · แก้ต่อ';
     }
-    const fromTicket = latestTicketResolution(ticket)?.result;
-    const result =
-      fromTicket === 'PARTIAL' || fromTicket === 'FAILED'
-        ? fromTicket
-        : this.snapshot(ticket.id).incompleteResult ?? 'PARTIAL';
+    const result = this.incompleteResultOf(ticket);
+    if (!result) {
+      return null;
+    }
     return result === 'FAILED' ? 'ยังไม่สำเร็จ' : 'แก้ไขบางส่วน';
+  }
+
+  /**
+   * ผลรอบล่าสุดที่ยังไม่จบ — ยังไม่มีรอบแก้ไข = null (ห้ามเดาเป็น PARTIAL)
+   * มี resolutions ใน payload (หน้ารายละเอียด) ให้เชื่อของ API ก่อน overlay
+   */
+  private incompleteResultOf(ticket: Ticket): 'PARTIAL' | 'FAILED' | null {
+    if (Array.isArray(ticket.resolutions)) {
+      const last = latestTicketResolution(ticket)?.result;
+      return last === 'PARTIAL' || last === 'FAILED' ? last : null;
+    }
+    if ((ticket.resolutionCount ?? 0) === 0) {
+      return null;
+    }
+    return this.snapshot(ticket.id).incompleteResult ?? null;
   }
 
   /** ค่า data-status สำหรับสีป้าย (PARTIAL / FAILED แยกจาก RESOLVED) */
@@ -181,12 +195,7 @@ export class TicketDemoOverlayService {
     if (!this.isStillInProgress(ticket)) {
       return this.effectiveStatus(ticket);
     }
-    const fromTicket = latestTicketResolution(ticket)?.result;
-    const result =
-      fromTicket === 'PARTIAL' || fromTicket === 'FAILED'
-        ? fromTicket
-        : this.snapshot(ticket.id).incompleteResult ?? 'PARTIAL';
-    return result;
+    return this.incompleteResultOf(ticket) ?? this.effectiveStatus(ticket);
   }
 
   /**

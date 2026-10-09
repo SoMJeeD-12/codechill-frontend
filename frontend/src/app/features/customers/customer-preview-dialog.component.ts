@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -29,7 +29,6 @@ export interface CustomerPreviewDialogData {
   selector: 'app-customer-preview-dialog',
   standalone: true,
   imports: [
-    RouterLink,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
@@ -116,15 +115,10 @@ export interface CustomerPreviewDialogData {
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>ปิด</button>
       @if (customer(); as c) {
-        <a
-          mat-stroked-button
-          color="primary"
-          [routerLink]="['/app/customer-360', c.id]"
-          (click)="ref.close()"
-        >
+        <button mat-stroked-button color="primary" type="button" (click)="open360(c.id)">
           <mat-icon>travel_explore</mat-icon>
           ดูมุมมอง 360°
-        </a>
+        </button>
       }
     </mat-dialog-actions>
   `,
@@ -212,7 +206,7 @@ export interface CustomerPreviewDialogData {
       color: var(--app-muted);
       font-size: 0.9rem;
     }
-    mat-dialog-actions a mat-icon {
+    mat-dialog-actions button mat-icon {
       margin-right: 0.25rem;
       font-size: 1.1rem;
       width: 1.1rem;
@@ -228,6 +222,7 @@ export interface CustomerPreviewDialogData {
 })
 export class CustomerPreviewDialogComponent {
   readonly ref = inject(MatDialogRef<CustomerPreviewDialogComponent>);
+  private readonly router = inject(Router);
   private readonly api = inject(CustomerService);
   readonly data = inject<CustomerPreviewDialogData>(MAT_DIALOG_DATA);
 
@@ -260,6 +255,13 @@ export class CustomerPreviewDialogComponent {
         this.loading.set(false);
       },
     });
+  }
+
+  open360(customerId: number): void {
+    this.ref.afterClosed().subscribe(() => {
+      void this.router.navigate(['/app/customer-360', customerId]);
+    });
+    this.ref.close();
   }
 
   statusLabel(status: Customer['status']): string {

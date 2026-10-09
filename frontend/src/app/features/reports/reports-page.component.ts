@@ -41,15 +41,7 @@ export class ReportsPageComponent implements OnInit {
     return (Number(r.excludedCancelledValue) || 0) > 0 || (r.excludedCancelledCount ?? 0) > 0;
   }
 
-  completeness(label: string | null | undefined): string {
-    return label?.trim() || '';
-  }
-
   formatCompletenessLabel(c: DataCompleteness | null | undefined): string {
     return formatCompleteness(c);
-  }
-
-  serviceCostCompleteness(r: ExecutiveReport): string {
-    return formatCompleteness(r.serviceCost?.completeness);
   }
 }

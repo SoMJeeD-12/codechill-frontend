@@ -135,9 +135,19 @@ export const THAI_MONTHS_SHORT = [
   'ธ.ค.',
 ];
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** "YYYY-MM-DD" (DATEONLY) ไม่มีเวลา — ห้ามผ่าน new Date() ตรง ๆ (จะกลายเป็น 07.00 น.) */
+function isDateOnlyString(value: Date | string | null | undefined): value is string {
+  return typeof value === 'string' && DATE_ONLY.test(value.trim());
+}
+
 function asValidDate(value: Date | string | null | undefined): Date | null {
   if (value == null || value === '') {
     return null;
+  }
+  if (isDateOnlyString(value)) {
+    return parseDateOnly(value.trim());
   }
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -145,6 +155,9 @@ function asValidDate(value: Date | string | null | undefined): Date | null {
 
 /** เวลาแบบไทย เช่น 15.30 น. */
 export function formatThaiTime(value: Date | string | null | undefined): string {
+  if (isDateOnlyString(value)) {
+    return '';
+  }
   const d = asValidDate(value);
   if (!d) {
     return '';
@@ -156,6 +169,9 @@ export function formatThaiTime(value: Date | string | null | undefined): string 
 
 /** วันเวลาแบบไทย เช่น 9 ก.ย. 2026 15.30 น. */
 export function formatThaiDateTime(value: Date | string | null | undefined): string {
+  if (isDateOnlyString(value)) {
+    return formatThaiDate(value);
+  }
   const d = asValidDate(value);
   if (!d) {
     return '';

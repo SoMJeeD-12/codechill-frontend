@@ -40,16 +40,18 @@
       }
     </div>
 
-    @if (r.alerts.length) {
-      <div class="alerts">
+    <div class="alerts">
+      @if (r.alerts.length) {
         <h2><mat-icon>priority_high</mat-icon> จุดที่ควรจับตา ({{ r.alerts.length }})</h2>
         <ul>
           @for (a of r.alerts; track a) {
             <li>{{ a }}</li>
           }
         </ul>
-      </div>
-    }
+      } @else {
+        <h2><mat-icon>check_circle</mat-icon> ไม่มีจุดเตือนเร่งด่วนในขณะนี้</h2>
+      }
+    </div>
 
     <h2 class="group-title">การเงินตามสัญญา</h2>
     <div class="cards">
@@ -72,9 +74,6 @@
               <small class="muted">{{ row.note }}</small>
             }
           </div>
-        }
-        @if (completeness(r.oneTimeCompletenessLabel); as oneTimeLabel) {
-          <p class="foot">ค่าบริการรายครั้ง: {{ oneTimeLabel }}</p>
         }
         @if (hasExcluded(r)) {
           <p class="foot">
@@ -119,11 +118,16 @@
               <li>
                 <div class="rows__main">
                   <a class="app-link" [routerLink]="['/app/ma', item.contractId]">
-                    {{ item.contractNo || ('#' + item.contractId) }}
+                    {{ item.contractNo || 'ดูสัญญา' }}
                   </a>
-                  <small class="muted">{{ item.customerName || ('ลูกค้า #' + item.customerId) }}</small>
+                  <small class="muted">
+                    {{ item.customerName || '—' }}
+                    @if (item.projectName) {
+                      · {{ item.projectName }}
+                    }
+                  </small>
                 </div>
-                <strong>{{ item.price | baht }}</strong>
+                <strong>{{ (item.contractValue ?? item.price) | baht }}</strong>
                 <span class="muted">ถึง {{ item.endDate | thaiDate: 'date' }}</span>
               </li>
             } @empty {
@@ -168,9 +172,6 @@
             </div>
             <div class="track"><div class="fill fill--ops" [style.width.%]="barWidth(row.value, r.operations)"></div></div>
           </div>
-        }
-        @if (serviceCostCompleteness(r); as scLabel) {
-          <p class="foot">ชั่วโมงบริการ: {{ scLabel }}</p>
         }
       </article>
 

@@ -176,6 +176,10 @@ export interface TaskProjectRef {
 
 export type TaskStatusCounts = Record<TaskStatus, number>;
 
+/** GET /tasks/me?tab= — ไม่ส่ง tab = OPEN (TODO+DOING+WAITING) */
+export type MyTasksTab = 'OPEN' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'OVERDUE' | 'ALL';
+export type MyTasksCounts = Record<MyTasksTab, number>;
+
 export interface TaskAssigneeSummary {
   assignedUserId: number | null;
   fullName: string | null;

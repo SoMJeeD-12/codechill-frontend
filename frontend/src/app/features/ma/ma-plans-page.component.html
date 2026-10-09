@@ -1,7 +1,7 @@
 <section class="app-page">
   <header class="app-page-header">
     <div>
-      <h1 class="app-page-title">สัญญา MA</h1>
+      <h1 class="app-page-title">แผน MA</h1>
       <p class="app-subtitle">แพ็กเกจดูแลรักษาระบบ — สร้างสัญญาจริงที่แท็บสัญญา MA ในโปรเจกต์</p>
     </div>
   </header>
@@ -116,6 +116,12 @@
                 <button mat-menu-item type="button" (click)="activate(row)">
                   <mat-icon>check_circle</mat-icon>
                   <span>เปิดใช้งาน</span>
+                </button>
+              }
+              @if (canDelete()) {
+                <button mat-menu-item type="button" class="menu-danger" (click)="remove(row)">
+                  <mat-icon>delete</mat-icon>
+                  <span>ลบแผน</span>
                 </button>
               }
             </mat-menu>

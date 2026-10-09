@@ -70,6 +70,33 @@ export interface RowAction {
           }
         </mat-menu>
       }
+      @if (allActions().length) {
+        <button
+          mat-icon-button
+          type="button"
+          class="row-action row-action--more row-action--all"
+          [matMenuTriggerFor]="allMenu"
+          aria-label="การกระทำ"
+        >
+          <mat-icon>more_horiz</mat-icon>
+        </button>
+        <mat-menu #allMenu="matMenu">
+          @for (action of allActions(); track action.label) {
+            <button
+              mat-menu-item
+              type="button"
+              [disabled]="!!action.disabled"
+              [class.menu-danger]="action.danger"
+              (click)="action.run()"
+            >
+              @if (action.icon) {
+                <mat-icon>{{ action.icon }}</mat-icon>
+              }
+              <span>{{ action.label }}</span>
+            </button>
+          }
+        </mat-menu>
+      }
     </div>
   `,
 })
@@ -94,4 +121,10 @@ export class RowActionsComponent {
   );
 
   readonly menuActions = computed(() => this.rest());
+
+  /** จอมือถือ — ทุกคำสั่งรวมในปุ่ม ⋯ ปุ่มเดียว (สลับด้วย CSS ใน _list-panel.scss) */
+  readonly allActions = computed(() => {
+    const main = this.primary();
+    return main ? [main, ...this.rest()] : this.rest();
+  });
 }

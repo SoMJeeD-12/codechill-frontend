@@ -20,7 +20,7 @@
           กระดานงาน
         </a>
       }
-      <button mat-stroked-button type="button" (click)="reload()" [disabled]="serverMode ? list.loading() : loading()">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="table.loading()">
         <mat-icon>refresh</mat-icon>
         รีเฟรช
       </button>
@@ -31,34 +31,22 @@
       <div class="app-panel-toolbar">
         @if (mode() === 'me') {
           <div class="ui-chips" role="tablist" aria-label="มุมมองงานโปรเจกต์">
-            <button type="button" class="ui-chip" [class.is-active]="myView() === 'all'" (click)="setMyView('all')">
-              งานทั้งหมด
-              <span class="ui-chip__count">{{ myViewCounts().all }}</span>
-            </button>
-            <button type="button" class="ui-chip" [class.is-active]="myView() === 'todo'" (click)="setMyView('todo')">
-              งานที่ต้องทำ
-              <span class="ui-chip__count" [class.ui-chip__count--alert]="myViewCounts().todo > 0">{{ myViewCounts().todo }}</span>
-            </button>
-            <button type="button" class="ui-chip" [class.is-active]="myView() === 'doing'" (click)="setMyView('doing')">
-              กำลังดำเนินการ
-              <span class="ui-chip__count">{{ myViewCounts().doing }}</span>
-            </button>
-            <button type="button" class="ui-chip" [class.is-active]="myView() === 'done'" (click)="setMyView('done')">
-              เสร็จแล้ว
-              <span class="ui-chip__count">{{ myViewCounts().done }}</span>
-            </button>
-            <button
-              type="button"
-              class="ui-chip"
-              [class.is-active]="myView() === 'overdue'"
-              (click)="setMyView('overdue')"
-            >
-              เกินกำหนด
-              <span class="ui-chip__count" [class.ui-chip__count--alert]="myViewCounts().overdue > 0">{{ myViewCounts().overdue }}</span>
-            </button>
+            @for (tab of myTabs; track tab.view) {
+              @let count = myTabCount(tab.view);
+              <button
+                type="button"
+                class="ui-chip"
+                [class.is-active]="myView() === tab.view"
+                (click)="setMyView(tab.view)"
+              >
+                {{ tab.label }}
+                @if (count !== null) {
+                  <span class="ui-chip__count" [class.ui-chip__count--alert]="tab.alert && count > 0">{{ count }}</span>
+                }
+              </button>
+            }
           </div>
-        }
-        @if (serverMode) {
+        } @else {
           <div class="ui-chips" role="tablist" aria-label="กรองตามสถานะงาน">
             <button
               type="button"
@@ -98,16 +86,14 @@
           </label>
         </div>
       </div>
-      @if (serverMode) {
-        <app-list-loading-bar [active]="list.refreshing()" />
-      }
+      <app-list-loading-bar [active]="table.refreshing()" />
       <div class="app-panel-body">
-        @if (serverMode ? list.initialLoading() : loading()) {
+        @if (table.initialLoading()) {
           <app-list-skeleton [cols]="7" />
         } @else {
           <table
             mat-table
-            [dataSource]="serverMode ? list.items() : pager.paged()"
+            [dataSource]="table.items()"
             class="data-table data-table--tasks"
             [class.is-review]="mode() === 'review'"
           >
@@ -258,30 +244,17 @@
             <tr mat-header-row *matHeaderRowDef="columns()"></tr>
             <tr mat-row *matRowDef="let row; columns: columns()"></tr>
           </table>
-          @if (serverMode) {
-            <app-table-paginator
-              [length]="list.total()"
-              [pageIndex]="list.pageIndex()"
-              [pageSize]="list.pageSize()"
-              [pageSizeOptions]="list.pageSizeOptions"
-              (page)="list.onPage($event)"
-            />
-            @if (list.error(); as err) {
-              <p class="data-empty">{{ err }}</p>
-            } @else if (list.items().length === 0) {
-              <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
-            }
-          } @else {
-            <app-table-paginator
-              [length]="pager.length()"
-              [pageIndex]="pager.pageIndex()"
-              [pageSize]="pager.pageSize()"
-              [pageSizeOptions]="pager.pageSizeOptions"
-              (page)="pager.onPage($event)"
-            />
-            @if (displayedTasks().length === 0) {
-              <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
-            }
+          <app-table-paginator
+            [length]="table.total()"
+            [pageIndex]="table.pageIndex()"
+            [pageSize]="table.pageSize()"
+            [pageSizeOptions]="table.pageSizeOptions"
+            (page)="table.onPage($event)"
+          />
+          @if (table.error(); as err) {
+            <p class="data-empty">{{ err }}</p>
+          } @else if (table.items().length === 0) {
+            <p class="data-empty">ไม่พบงานในมุมมองนี้</p>
           }
         }
       </div>

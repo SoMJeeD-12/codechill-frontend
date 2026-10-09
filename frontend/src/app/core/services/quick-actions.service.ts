@@ -27,6 +27,19 @@ export class QuickActionsService {
   private readonly communicationLoggedCount = signal(0);
   readonly communicationLogged = this.communicationLoggedCount.asReadonly();
 
+  /** ลูกค้าของหน้าที่เปิดอยู่ (เช่น 360°) — ปุ่มลัดบนแถบบนเลือกลูกค้ารายนี้ไว้ให้ */
+  private readonly contextCustomer = signal<PickerOption | null>(null);
+
+  setContextCustomer(customer: PickerOption | null): void {
+    this.contextCustomer.set(customer);
+  }
+
+  clearContextCustomer(customerId: number): void {
+    if (this.contextCustomer()?.id === customerId) {
+      this.contextCustomer.set(null);
+    }
+  }
+
   canOpenTicket(): boolean {
     return this.auth.hasPermissionCode('ticket.create');
   }
@@ -51,7 +64,10 @@ export class QuickActionsService {
           .open(m.TicketFormDialogComponent, {
             ...FORM_DIALOG_WIDE,
             autoFocus: 'first-tabbable',
-            data: { customer: preset?.customer ?? null, project: preset?.project ?? null },
+            data: {
+              customer: preset?.customer ?? (preset?.project ? null : this.contextCustomer()),
+              project: preset?.project ?? null,
+            },
           })
           .afterClosed()
       ),
@@ -74,7 +90,7 @@ export class QuickActionsService {
           .open(m.QuickLogDialogComponent, {
             ...FORM_DIALOG,
             autoFocus: 'first-tabbable',
-            data: { customer: preset?.customer ?? null },
+            data: { customer: preset?.customer ?? this.contextCustomer() },
           })
           .afterClosed()
       ),

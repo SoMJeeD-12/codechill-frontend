@@ -308,6 +308,12 @@ export class FollowUpsPageComponent implements OnInit {
   }
 
   daysLeftLabel(f: FollowUp): string {
+    if (f.status === 'DONE') {
+      return 'เสร็จแล้ว';
+    }
+    if (f.status === 'CANCELLED') {
+      return '—';
+    }
     const days = this.api.daysUntilDue(f);
     if (days === null) {
       return '—';

@@ -107,32 +107,22 @@
   color: color-mix(in srgb, var(--app-ink) 55%, transparent);
 }
 
-.picked-customer {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.4rem 0.3rem 0.4rem 0.55rem;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--app-accent) 18%, transparent);
-}
+.system-lines {
+  margin: -0.25rem 0 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: var(--app-surface-2);
+  border: 1px dashed var(--app-border);
+  font-size: 0.8rem;
 
-.picked-customer.is-auto {
-  background: color-mix(in srgb, var(--app-info) 8%, transparent);
-  border-color: color-mix(in srgb, var(--app-info) 18%, transparent);
-}
+  small {
+    color: var(--app-muted);
+  }
 
-.picked-customer__text {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  line-height: 1.25;
-  min-width: 0;
-}
-
-.picked-customer__text small {
-  color: color-mix(in srgb, var(--app-ink) 58%, transparent);
-  font-size: 0.74rem;
+  p {
+    margin: 0.2rem 0 0;
+    white-space: pre-wrap;
+  }
 }
 
 .ma-quota {

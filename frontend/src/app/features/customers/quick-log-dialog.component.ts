@@ -12,8 +12,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable, concat, of } from 'rxjs';
+import { catchError, map, switchMap, toArray } from 'rxjs/operators';
+import { apiErrorMessage } from '../../core/http/api-error';
+import {
+  DOCUMENT_ACCEPT,
+  DOCUMENT_MAX_BYTES,
+  formatDocumentFileSize,
+} from '../../core/models/document.model';
+import { UserSummary } from '../../core/models/user.model';
+import { AttachmentService } from '../../core/services/attachment.service';
+import { UserService } from '../../core/services/user.service';
 import {
   CHANNEL_LABELS,
   CommunicationChannel,
@@ -129,6 +138,62 @@ export interface QuickLogDialogData {
           <mat-label>สรุปการคุย</mat-label>
           <textarea matInput rows="3" formControlName="content"></textarea>
         </mat-form-field>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>ผู้รับเรื่อง</mat-label>
+          <mat-select formControlName="handledByUserId">
+            @for (u of handlers(); track u.id) {
+              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        @if (canUploadFiles) {
+          <div class="files">
+            <div class="files__head">
+              <div>
+                <strong>ไฟล์แนบ</strong>
+                <span class="files__hint">เช่น รูปแชต ใบเสนอราคา (ไม่บังคับ)</span>
+              </div>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="saving()"
+                (click)="fileInput.click()"
+              >
+                <mat-icon>attach_file</mat-icon>
+                เลือกไฟล์
+              </button>
+              <input
+                #fileInput
+                type="file"
+                multiple
+                hidden
+                [accept]="fileAccept"
+                (change)="onFilesPicked($event)"
+              />
+            </div>
+            @if (files().length) {
+              <ul class="files__list">
+                @for (f of files(); track $index) {
+                  <li>
+                    <mat-icon>description</mat-icon>
+                    <span class="files__name" [title]="f.name">{{ f.name }}</span>
+                    <span class="files__size">{{ fileSize(f.size) }}</span>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="saving()"
+                      aria-label="เอาไฟล์ออก"
+                      (click)="removeFile($index)"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
 
         @if (error(); as e) {
           <p class="dlg-error">{{ e }}</p>
@@ -182,6 +247,46 @@ export interface QuickLogDialogData {
     .locked-customer small {
       color: color-mix(in srgb, var(--app-ink) 60%, transparent);
     }
+    .files {
+      display: grid;
+      gap: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+    .files__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      div {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    .files__hint,
+    .files__size {
+      color: var(--app-muted);
+      font-size: 0.8rem;
+    }
+    .files__list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.25rem;
+      li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+    }
+    .files__name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .dlg-error {
       margin: 0.25rem 0 0;
       color: var(--app-danger);
@@ -198,6 +303,8 @@ export class QuickLogDialogComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(CustomerService);
   private readonly auth = inject(AuthService);
+  private readonly usersApi = inject(UserService);
+  private readonly attachmentsApi = inject(AttachmentService);
   private readonly snack = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<QuickLogDialogComponent, boolean>);
   private readonly data = inject<QuickLogDialogData | null>(MAT_DIALOG_DATA, {
@@ -219,12 +326,62 @@ export class QuickLogDialogComponent {
     content: ['', Validators.required],
     occurredDate: [new Date() as Date | null, Validators.required],
     occurredTime: [nowTimeString(), Validators.required],
+    handledByUserId: [this.auth.currentUser()?.id ?? (null as number | null)],
   });
+
+  readonly canUploadFiles = this.auth.hasPermissionCode('file.upload');
+  readonly fileAccept = DOCUMENT_ACCEPT;
+  readonly files = signal<File[]>([]);
+  readonly handlers = signal<UserSummary[]>(this.selfAsHandler());
 
   constructor() {
     if (this.customerId != null) {
       this.loadContacts(this.customerId);
     }
+    this.usersApi
+      .listAssignableAll()
+      .pipe(catchError(() => of([] as UserSummary[])))
+      .subscribe((rows) => {
+        const self = this.selfAsHandler();
+        const merged = [...rows];
+        for (const s of self) {
+          if (!merged.some((u) => u.id === s.id)) {
+            merged.unshift(s);
+          }
+        }
+        this.handlers.set(merged);
+      });
+  }
+
+  private selfAsHandler(): UserSummary[] {
+    const me = this.auth.currentUser();
+    return me ? [{ id: me.id, username: me.username, fullName: me.fullName }] : [];
+  }
+
+  onFilesPicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const picked = Array.from(input.files ?? []);
+    input.value = '';
+    const tooBig = picked.filter((f) => f.size > DOCUMENT_MAX_BYTES);
+    if (tooBig.length) {
+      this.snack.open(
+        `ไฟล์ใหญ่เกิน 20 MB: ${tooBig.map((f) => f.name).join(', ')}`,
+        'ปิด',
+        { duration: 4500 }
+      );
+    }
+    const ok = picked.filter((f) => f.size <= DOCUMENT_MAX_BYTES);
+    if (ok.length) {
+      this.files.update((list) => [...list, ...ok]);
+    }
+  }
+
+  removeFile(index: number): void {
+    this.files.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  fileSize(bytes: number): string {
+    return formatDocumentFileSize(bytes);
   }
 
   readonly searchCustomers = customerSearchFn(this.api);
@@ -273,12 +430,23 @@ export class QuickLogDialogComponent {
         contactId: raw.contactId ?? undefined,
         subject: raw.subject.trim() || undefined,
         content: raw.content.trim() || undefined,
-        handledByUserId: this.auth.currentUser()?.id,
+        handledByUserId: raw.handledByUserId ?? undefined,
       })
+      .pipe(
+        switchMap((log) =>
+          this.uploadFiles(log.id).pipe(map((failed) => ({ log, failed })))
+        )
+      )
       .subscribe({
-        next: () => {
+        next: ({ failed }) => {
           this.saving.set(false);
-          this.snack.open('บันทึกการติดต่อแล้ว', 'ปิด', { duration: 2500 });
+          this.snack.open(
+            failed.length
+              ? `บันทึกการติดต่อแล้ว แต่แนบไฟล์ไม่สำเร็จ: ${failed.join(', ')}`
+              : 'บันทึกการติดต่อแล้ว',
+            'ปิด',
+            { duration: failed.length ? 6000 : 2500 }
+          );
           this.ref.close(true);
         },
         error: (err: Error) => {
@@ -286,5 +454,24 @@ export class QuickLogDialogComponent {
           this.error.set(err.message);
         },
       });
+  }
+
+  /** อัปโหลดทีละไฟล์ — คืนชื่อไฟล์ (เหตุผล) ที่ไม่ผ่าน · บันทึกการติดต่อที่สร้างแล้วไม่ล้ม */
+  private uploadFiles(logId: number): Observable<string[]> {
+    const files = this.files();
+    if (!files.length) {
+      return of([]);
+    }
+    return concat(
+      ...files.map((file) =>
+        this.attachmentsApi.upload({ file, refType: 'COMMUNICATION_LOG', refId: logId }).pipe(
+          map((): string | null => null),
+          catchError((err: unknown) => of(`${file.name} (${apiErrorMessage(err)})`))
+        )
+      )
+    ).pipe(
+      toArray(),
+      map((outcomes) => outcomes.filter((f): f is string => f != null))
+    );
   }
 }

@@ -31,6 +31,7 @@ import {
   MaPlanUpdateInput,
   MaService,
 } from '../../core/services/ma.service';
+import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createClientPager } from '../../shared/utils/client-pager';
 import { FORM_DIALOG } from '../../shared/utils/form-dialog';
@@ -152,9 +153,21 @@ export class MaPlansPageComponent implements OnInit {
     if (!this.canDelete()) {
       return;
     }
-    if (!confirm(`ลบแผน "${plan.name}" ?\nถ้าแผนถูกใช้ในสัญญาแล้ว ระบบจะไม่อนุญาต — ให้ปิดใช้งานแทน`)) {
-      return;
-    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบแผน MA',
+      message: 'ลบได้เฉพาะแผนที่ยังไม่มีสัญญาใช้ — ถ้ามีสัญญาใช้อยู่แล้วให้ปิดใช้งานแทน',
+      subject: plan.name,
+      confirmLabel: 'ลบแผน',
+      danger: true,
+      icon: 'delete',
+    }).subscribe((ok) => {
+      if (ok) {
+        this.deletePlan(plan);
+      }
+    });
+  }
+
+  private deletePlan(plan: MaPlan): void {
     this.api.deletePlan(plan.id).subscribe({
       next: () => {
         this.snack.open('ลบแผนแล้ว', 'ปิด', { duration: 2500 });
