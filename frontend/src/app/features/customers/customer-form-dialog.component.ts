@@ -21,12 +21,14 @@ import { CustomerInput, CustomerService } from '../../core/services/customer.ser
 import { UserService } from '../../core/services/user.service';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
 import { PhoneInputDirective } from '../../shared/directives/phone-input.directive';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 
 @Component({
   selector: 'app-customer-form-dialog',
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    UserOptionComponent,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,

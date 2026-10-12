@@ -56,6 +56,7 @@ import {
   projectPickerOption,
 } from '../../shared/components/entity-search';
 import { Project } from '../../core/models/project.model';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
@@ -112,6 +113,7 @@ export interface TicketFormDialogData {
   selector: 'app-ticket-form-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

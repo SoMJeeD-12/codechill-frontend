@@ -40,6 +40,7 @@ import {
 } from '../../shared/components/entity-picker.component';
 import { customerSearchFn } from '../../shared/components/entity-search';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 
 export interface QuickLogDialogData {
   /** ล็อกลูกค้าไว้ล่วงหน้า (เปิดจากหน้าลูกค้า) — ไม่ส่งมา = ให้ค้นหาเอง */
@@ -55,6 +56,7 @@ export interface QuickLogDialogData {
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    UserOptionComponent,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -142,7 +144,7 @@ export interface QuickLogDialogData {
           <mat-label>ผู้รับเรื่อง</mat-label>
           <mat-select formControlName="handledByUserId">
             @for (u of handlers(); track u.id) {
-              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+              <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
             }
           </mat-select>
         </mat-form-field>

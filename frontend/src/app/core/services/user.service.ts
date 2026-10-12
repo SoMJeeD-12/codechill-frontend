@@ -109,6 +109,17 @@ export class UserService {
       );
   }
 
+  private profilesRequested = false;
+
+  /** โหลดโปรไฟล์ (ตำแหน่ง/บทบาท/รูป) ครั้งเดียวต่อ session — ใช้กับตัวเลือกคนในดรอปดาวน์ */
+  ensureProfiles(): void {
+    if (this.profilesRequested) {
+      return;
+    }
+    this.profilesRequested = true;
+    this.loadProfilesQuietly().subscribe();
+  }
+
   /** GET /users แบบแบ่งหน้าฝั่ง server */
   listPage(
     params: Omit<UserListParams, 'sortOrder'> & {
@@ -217,6 +228,7 @@ export class UserService {
   }
 
   clearCache(): void {
+    this.profilesRequested = false;
     this.usersSignal.set([]);
     this.assignableMap.set({ TASK: [], TICKET: [], TASK_REVIEW: [] });
   }

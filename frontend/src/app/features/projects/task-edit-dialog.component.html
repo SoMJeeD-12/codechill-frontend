@@ -296,7 +296,7 @@
         <mat-select formControlName="assignedUserId">
           <mat-option [value]="null">— ยังไม่มอบหมาย</mat-option>
           @for (u of users(); track u.id) {
-            <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+            <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
           }
         </mat-select>
         @if (!canAssign()) {

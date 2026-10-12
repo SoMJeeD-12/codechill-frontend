@@ -43,6 +43,7 @@ import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 import { downloadAuthorizedBlob, downloadAuthorizedBlobAs } from '../../shared/utils/download-blob';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { TaskSubmitReportDialogComponent } from './task-submit-report-dialog.component';
@@ -76,6 +77,7 @@ export interface TaskDialogData {
   selector: 'app-task-edit-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

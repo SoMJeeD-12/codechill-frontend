@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,13 +26,28 @@ import { TaskKanbanBoardComponent } from '../projects/task-kanban-board.componen
               งานตรวจ
             </a>
           }
+          <button mat-stroked-button type="button" class="board-refresh" (click)="board()?.reload()">
+            <mat-icon>refresh</mat-icon>
+            รีเฟรช
+          </button>
         </div>
       </header>
-      <app-task-kanban-board [showProjectFilter]="true" [initialProjectId]="projectId" />
+      <app-task-kanban-board
+        [showProjectFilter]="true"
+        [initialProjectId]="projectId"
+        [refreshInHeader]="true"
+      />
     </section>
+  `,
+  styles: `
+    .board-refresh { display: none; }
+    @media (max-width: 640px) {
+      .board-refresh { display: inline-flex; }
+    }
   `,
 })
 export class TaskBoardPageComponent {
+  readonly board = viewChild(TaskKanbanBoardComponent);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
 

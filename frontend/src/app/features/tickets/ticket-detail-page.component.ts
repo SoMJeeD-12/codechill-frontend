@@ -49,6 +49,7 @@ import { navigateBack } from '../../core/utils/navigation.util';
 import { formatThaiDateTime } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
 import {
   TicketReturnSupportDialogComponent,
@@ -56,6 +57,9 @@ import {
   TicketReviewDialogResult,
 } from './ticket-return-support-dialog.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
+import type { PageEvent } from '@angular/material/paginator';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   ListLoadingBarComponent,
   ListSkeletonComponent,
@@ -973,6 +977,7 @@ export interface TicketResolutionFormData {
   selector: 'app-ticket-resolution-form-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -1017,7 +1022,7 @@ export interface TicketResolutionFormData {
           <mat-label>ผู้แก้ไขรอบนี้</mat-label>
           <mat-select formControlName="resolvedByUserId">
             @for (u of users(); track u.id) {
-              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+              <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -1027,7 +1032,7 @@ export interface TicketResolutionFormData {
             <mat-select formControlName="handoffUserId">
               <mat-option [value]="null">— ไม่เปลี่ยนผู้รับผิดชอบ —</mat-option>
               @for (u of users(); track u.id) {
-                <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -1503,7 +1508,7 @@ function readStoredPageSize(): number | null {
 @Component({
   selector: 'app-ticket-assign-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, UserAvatarComponent],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, TablePaginatorComponent, UserAvatarComponent],
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
@@ -1570,34 +1575,16 @@ function readStoredPageSize(): number | null {
           <li class="assign-empty">ไม่พบรายชื่อที่ค้นหา</li>
         }
       </ul>
-      <div class="assign-pager">
-        <label class="assign-size">
-          แสดง
-          <select [value]="pageSize()" (change)="setPageSize($any($event.target).value)" aria-label="จำนวนคนต่อหน้า">
-            @for (n of pageSizeOptions; track n) {
-              <option [value]="n" [selected]="n === pageSize()">{{ n }}</option>
-            }
-          </select>
-          คน/หน้า
-        </label>
-        @if (pageCount() > 1) {
-          <nav class="assign-nav" aria-label="เปลี่ยนหน้ารายชื่อ">
-            <button mat-icon-button type="button" aria-label="หน้าก่อน" [disabled]="currentPage() === 0" (click)="page.set(currentPage() - 1)">
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-            <span>หน้า {{ currentPage() + 1 }} / {{ pageCount() }}</span>
-            <button
-              mat-icon-button
-              type="button"
-              aria-label="หน้าถัดไป"
-              [disabled]="currentPage() >= pageCount() - 1"
-              (click)="page.set(currentPage() + 1)"
-            >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </nav>
-        }
-      </div>
+      @if (!isHandset()) {
+      <app-table-paginator
+        class="assign-pager"
+        [length]="visibleUsers().length"
+        [pageIndex]="currentPage()"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="pageSizeOptions"
+        (page)="onPage($event)"
+      />
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
@@ -1652,35 +1639,7 @@ function readStoredPageSize(): number | null {
       padding: 0.15rem;
       list-style: none;
     }
-    .assign-pager {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.35rem 0.75rem;
-      min-height: 40px;
-      margin-top: 0.5rem;
-      color: var(--app-muted);
-      font-size: 0.82rem;
-      font-variant-numeric: tabular-nums;
-    }
-    .assign-size {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      select {
-        height: 32px;
-        padding: 0 0.4rem;
-        border: 1px solid var(--app-control-line);
-        border-radius: 8px;
-        background: var(--app-surface);
-        color: var(--app-ink);
-        font: inherit;
-        font-size: 16px;
-        cursor: pointer;
-      }
-    }
-    .assign-nav { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .assign-pager { margin-top: 0.35rem; }
     .assign-item {
       display: flex;
       align-items: center;
@@ -1785,14 +1744,31 @@ export class TicketAssignDialogComponent {
   );
   readonly currentPage = computed(() => Math.min(this.page(), this.pageCount() - 1));
 
+  readonly isHandset = toSignal(
+    inject(BreakpointObserver)
+      .observe('(max-width: 640px)')
+      .pipe(map((state) => state.matches)),
+    { initialValue: false }
+  );
+
   readonly pagedUsers = computed(() => {
+    if (this.isHandset()) {
+      return this.visibleUsers();
+    }
     const size = this.pageSize();
     const page = this.currentPage();
     return this.visibleUsers().slice(page * size, (page + 1) * size);
   });
 
-  setPageSize(value: string): void {
-    const n = Number(value);
+  onPage(event: PageEvent): void {
+    if (event.pageSize !== this.pageSize()) {
+      this.setPageSize(event.pageSize);
+      return;
+    }
+    this.page.set(event.pageIndex);
+  }
+
+  setPageSize(n: number): void {
     if (!Number.isInteger(n) || n < 1) {
       return;
     }
@@ -1874,6 +1850,7 @@ export interface TicketProblemReturnedDialogData {
   selector: 'app-ticket-problem-returned-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -1946,7 +1923,7 @@ export interface TicketProblemReturnedDialogData {
             <mat-label>ผู้รับผิดชอบรอบนี้</mat-label>
             <mat-select formControlName="assignedUserId">
               @for (u of data.users; track u.id) {
-                <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
               }
             </mat-select>
           </mat-form-field>

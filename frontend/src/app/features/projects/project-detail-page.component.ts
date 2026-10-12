@@ -111,6 +111,7 @@ import { navigateBack } from '../../core/utils/navigation.util';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { DeliveryPreviewDialogComponent } from './delivery-preview-dialog.component';
 import { FilePickerComponent } from '../../shared/components/file-picker.component';
@@ -2099,6 +2100,7 @@ export interface DeliveryFormDialogData {
   selector: 'app-delivery-form-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -2137,7 +2139,7 @@ export interface DeliveryFormDialogData {
           <mat-select formControlName="deliveredByUserId">
             <mat-option [value]="null">—</mat-option>
             @for (u of data.users; track u.id) {
-              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+              <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
             }
           </mat-select>
         </mat-form-field>

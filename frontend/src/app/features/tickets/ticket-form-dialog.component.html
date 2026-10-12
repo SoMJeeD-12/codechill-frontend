@@ -233,7 +233,7 @@
                 <mat-select [formControl]="reopenAssignee">
                   <mat-option [value]="null">ไม่เลือก — ส่งเข้าคิวแอดมิน「รอรับ」</mat-option>
                   @for (u of assignableUsers(); track u.id) {
-                    <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+                    <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
                   }
                 </mat-select>
               </mat-form-field>

@@ -28,6 +28,7 @@ import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { projectPickerOption } from '../../shared/components/entity-search';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 
 /** preset เมื่อสร้างจากหน้าโปรเจกต์/ลูกค้า */
 export type FollowUpFormPreset = {
@@ -62,6 +63,7 @@ function projectPicked(control: AbstractControl): ValidationErrors | null {
   selector: 'app-follow-up-form-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

@@ -92,6 +92,8 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   @Input() initialAssigneeId: number | null = null;
   /** ตั้งค่าเริ่มต้นตัวกรองโปรเจกต์บนบอร์ดทั้งบริษัท (เช่น จาก ?projectId=) */
   @Input() initialProjectId: number | null = null;
+  /** หน้าแม่มีปุ่มรีเฟรชที่หัวหน้าแล้ว — มือถือไม่ต้องโชว์ปุ่มรีเฟรชในแถบตัวกรองซ้ำ */
+  @Input() refreshInHeader = false;
 
   readonly statuses = TASK_STATUSES;
   /** ซ่อนคอลัมน์「เสร็จ」เป็นค่าเริ่มต้น — หัวหน้าดูเฉพาะงานที่ยังค้าง */
@@ -123,6 +125,11 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
   readonly projectFilter = signal<number | 'ALL'>('ALL');
   readonly assigneeFilter = signal<number | 'ALL' | 'UNASSIGNED'>('ALL');
   readonly priorityFilter = signal<TaskPriority | 'ALL'>('ALL');
+  /** มือถือ — ช่องผู้รับผิดชอบ/ความสำคัญพับไว้หลังปุ่ม「ตัวกรอง」 */
+  readonly filtersOpen = signal(false);
+  readonly activeFilterCount = computed(
+    () => (this.assigneeFilter() !== 'ALL' ? 1 : 0) + (this.priorityFilter() !== 'ALL' ? 1 : 0)
+  );
 
   /** กันคลิกเปิดรายละเอียดหลังลาก */
   private dragActive = false;
@@ -190,6 +197,12 @@ export class TaskKanbanBoardComponent implements OnInit, OnChanges {
     for (const status of this.visibleStatuses()) {
       this.loadColumn(status, 1, false);
     }
+  }
+
+  scrollToColumn(status: string): void {
+    document
+      .getElementById(`kanban-col-${status}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
   }
 
   toggleDone(): void {

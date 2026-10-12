@@ -336,6 +336,14 @@ button.back.mat-mdc-outlined-button {
     border-radius: 0 !important;
   }
 
+  /* host ของ component dialog คั่นระหว่าง surface กับหัว/เนื้อหา/ปุ่ม — ต้องเป็น flex ต่อ ปุ่มจึงลงไปติดขอบล่าง */
+  .app-form-dialog .mat-mdc-dialog-surface > * {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
   .cdk-overlay-pane.mat-mdc-dialog-panel:not(.app-form-dialog, .role-editor-dialog) {
     max-width: calc(100vw - 1.5rem) !important;
   }

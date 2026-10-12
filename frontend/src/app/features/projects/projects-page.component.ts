@@ -59,6 +59,7 @@ import {
   ListSkeletonComponent,
 } from '../../shared/components/list-loading.component';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { UserOptionComponent } from '../../shared/components/user-option.component';
 import { PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from '../../shared/components/entity-picker.component';
 import { FORM_DIALOG_WIDE } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
@@ -295,6 +296,7 @@ const NEW_CUSTOMER_TOKEN = '__NEW_CUSTOMER__';
   selector: 'app-project-form-dialog',
   standalone: true,
   imports: [
+    UserOptionComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

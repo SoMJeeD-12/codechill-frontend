@@ -253,3 +253,146 @@
 .project-picker {
   min-width: 260px;
 }
+
+.kanban-jump,
+.filters-mobile-bar {
+  display: none;
+}
+
+/* ——— มือถือ — ตัวกรองรองพับไว้ · คอลัมน์กว้างเกือบเต็มจอ ปัดทีละคอลัมน์ ——— */
+@media (max-width: 640px) {
+  .kanban-filters .app-panel-toolbar {
+    padding: 0.65rem 0.7rem;
+  }
+
+  .filters-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+
+    > * {
+      min-width: 0;
+      width: 100%;
+    }
+
+    > .project-picker,
+    > .filters-mobile-bar,
+    > button.mat-mdc-unelevated-button {
+      grid-column: 1 / -1;
+    }
+
+    > button.mat-mdc-unelevated-button {
+      height: 40px;
+      margin: 0;
+    }
+
+    > .filter-extra {
+      display: none;
+    }
+
+    &.is-open > .filter-extra {
+      display: block;
+    }
+
+    > .desktop-only {
+      display: none;
+    }
+  }
+
+  .project-picker {
+    min-width: 0;
+  }
+
+  .project-picker ::ng-deep .mat-mdc-form-field,
+  .ui-filter.wide,
+  .ui-filter {
+    width: 100%;
+  }
+
+  .filters-mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+
+    > button.mat-mdc-outlined-button {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 36px;
+      margin: 0;
+      padding: 0 0.6rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
+
+      &.is-active {
+        --mdc-outlined-button-outline-color: var(--app-accent);
+        background: var(--app-accent-soft);
+        color: var(--app-accent);
+      }
+    }
+
+    .filters-refresh {
+      flex: 0 0 auto;
+      color: var(--app-muted);
+    }
+  }
+
+  .filters-toggle__count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    margin-left: 0.3rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--app-accent);
+    color: var(--app-surface);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .kanban-jump {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    .ui-chip {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+  }
+
+  .kanban-board {
+    grid-template-columns: repeat(var(--kanban-cols, 5), 84%);
+    gap: 0.6rem;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.1rem;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .kanban-col {
+    min-width: 0;
+    min-height: 220px;
+    scroll-snap-align: start;
+  }
+
+  .kanban-card__actions button {
+    flex: 1 1 0;
+    min-height: 34px;
+  }
+}
