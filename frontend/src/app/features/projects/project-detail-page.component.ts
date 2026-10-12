@@ -342,6 +342,24 @@ export class ProjectDetailPageComponent implements OnInit {
     this.auth.session();
     return this.auth.hasPermissionCode('task.view');
   });
+  readonly openTaskCount = computed(() => {
+    const progress = this.project()?.progress;
+    if (!progress) {
+      return 0;
+    }
+    return Math.max(0, (progress.totalTasks ?? 0) - (progress.doneTasks ?? 0));
+  });
+  readonly overdueTaskCount = computed(() => this.project()?.progress?.overdueTasks ?? 0);
+  readonly openTaskHint = computed(() => {
+    const open = this.openTaskCount();
+    if (!open) {
+      return null;
+    }
+    const overdue = this.overdueTaskCount();
+    return overdue
+      ? `ยังมีงานไม่เสร็จ ${open} งาน (เกินกำหนด ${overdue})`
+      : `ยังมีงานไม่เสร็จ ${open} งาน`;
+  });
   readonly canCreateTask = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('task.create');

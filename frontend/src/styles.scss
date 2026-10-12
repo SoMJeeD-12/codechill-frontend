@@ -400,32 +400,6 @@ button.back.mat-mdc-outlined-button {
   max-height: 92vh !important;
 }
 
-@media (max-width: 640px) {
-  .cdk-overlay-pane.role-editor-dialog {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-  }
-
-  .role-editor-dialog .mat-mdc-dialog-surface {
-    max-height: 100vh;
-    border-radius: 0;
-  }
-
-  .role-editor-dialog .mat-mdc-dialog-title {
-    padding: 0.85rem 1rem 0.35rem;
-  }
-
-  .role-editor-dialog .mat-mdc-dialog-content {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  .role-editor-dialog .mat-mdc-dialog-actions.role-editor__footer {
-    padding: 0.65rem 1rem 0.85rem;
-  }
-}
-
 .role-editor-dialog .mat-mdc-dialog-surface {
   width: 100%;
   max-width: 100%;
@@ -448,6 +422,32 @@ button.back.mat-mdc-outlined-button {
 .role-editor-dialog .mat-mdc-dialog-actions.role-editor__footer {
   border-top: 1px solid var(--app-line);
   background: var(--app-surface);
+}
+
+@media (max-width: 640px) {
+  .cdk-overlay-pane.role-editor-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh;
+    max-height: 100dvh !important;
+  }
+
+  .role-editor-dialog .mat-mdc-dialog-surface {
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .role-editor-dialog .mat-mdc-dialog-title {
+    padding: 0.85rem 1rem 0.35rem;
+  }
+
+  .role-editor-dialog .mat-mdc-dialog-content {
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  .role-editor-dialog .mat-mdc-dialog-actions.role-editor__footer {
+    padding: 0.6rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* การ์ดสรุป / แผงรายละเอียด — เบา ไม่เงาหนา */

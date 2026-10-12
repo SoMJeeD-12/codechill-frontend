@@ -18,13 +18,6 @@
   </header>
 
   @if (report(); as r) {
-    @if (r.disclaimer) {
-      <p class="note-box">
-        <mat-icon>info</mat-icon>
-        <span>{{ r.disclaimer }}</span>
-      </p>
-    }
-
     <div class="kpi-grid">
       @for (k of r.kpis; track k.label) {
         <div class="kpi">
@@ -197,9 +190,6 @@
       @if (r.serviceCost; as sc) {
         <article class="card card--wide">
           <h3><mat-icon>schedule</mat-icon> ต้นทุนบริการ (ชั่วโมง)</h3>
-          @if (sc.disclaimer && sc.disclaimer !== r.disclaimer) {
-            <p class="note-box note-box--sm"><mat-icon>info</mat-icon><span>{{ sc.disclaimer }}</span></p>
-          }
           <p class="total">
             <span>รวม</span>
             <strong>{{ sc.totalHours }} ชม.</strong>

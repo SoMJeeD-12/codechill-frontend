@@ -28,9 +28,22 @@
       </div>
       <div class="app-header-actions">
         @if (canViewTasks()) {
-          <a mat-stroked-button routerLink="/app/tasks" [queryParams]="{ projectId: p.id }">
+          <a
+            mat-stroked-button
+            routerLink="/app/tasks"
+            [queryParams]="{ projectId: p.id }"
+            class="hdr-tasks"
+            [class.has-open]="openTaskCount() > 0"
+            [attr.title]="openTaskHint()"
+            [attr.aria-label]="openTaskHint() ? 'ดูงานของโปรเจกต์ — ' + openTaskHint() : null"
+          >
             <mat-icon>list_alt</mat-icon>
             ดูงานของโปรเจกต์
+            @if (openTaskCount() > 0) {
+              <span class="hdr-tasks__badge" aria-hidden="true">
+                {{ openTaskCount() > 99 ? '99+' : openTaskCount() }}
+              </span>
+            }
           </a>
         }
         @if (canUpdateTask() || canCreateTask()) {

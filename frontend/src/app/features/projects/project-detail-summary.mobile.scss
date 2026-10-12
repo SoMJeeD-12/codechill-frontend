@@ -2,6 +2,33 @@
   display: none !important;
 }
 
+.hdr-tasks {
+  position: relative;
+  overflow: visible !important;
+}
+
+.hdr-tasks__badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 2px solid var(--app-surface);
+  background: var(--app-danger);
+  color: var(--app-on-solid);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
 @media (max-width: 640px) {
   .app-header-actions {
     display: flex;

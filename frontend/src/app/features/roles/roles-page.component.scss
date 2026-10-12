@@ -63,18 +63,21 @@
 
 @media (max-width: 900px) {
   :host ::ng-deep .app-panel-toolbar-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.65rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-  :host ::ng-deep .app-search {
-    width: 100%;
+  :host ::ng-deep .app-panel-toolbar-row .app-search {
+    flex: 1 1 auto;
+    width: auto;
     max-width: none;
   }
 
-  :host ::ng-deep .ui-add-btn {
-    width: 100%;
+  :host ::ng-deep .app-panel-toolbar-row .ui-add-btn {
+    flex: 0 0 auto;
+    width: auto;
+    height: 2.75rem;
     justify-content: center;
   }
 }

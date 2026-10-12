@@ -305,8 +305,19 @@ a.nav-child.mat-mdc-list-item {
   }
 
   .quick-action {
+    justify-content: center;
     min-width: 38px !important;
     padding: 0 0.6rem !important;
+  }
+
+  .quick-action:not(:has(.quick-action__text)) {
+    width: 42px;
+    min-width: 42px !important;
+    padding: 0 !important;
+
+    mat-icon {
+      margin: 0 !important;
+    }
   }
 }
 
