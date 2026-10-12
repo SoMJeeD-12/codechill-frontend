@@ -104,7 +104,9 @@
               (click)="toggle(log)"
               (keydown.enter)="toggle(log)"
             >
-              @if (log.user) {
+              @if (log.user && avatarUrl(log); as url) {
+                <app-user-avatar class="avatar avatar--photo" [url]="url" [name]="log.user.fullName" [size]="36" />
+              } @else if (log.user) {
                 <span class="avatar" [style.background]="avatarTone(log)" aria-hidden="true">
                   {{ initials(log) }}
                 </span>

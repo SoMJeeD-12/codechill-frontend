@@ -7,10 +7,11 @@
   overflow: visible !important;
 }
 
-.hdr-tasks__badge {
+.hdr-tasks .hdr-tasks__badge {
   position: absolute;
-  top: -7px;
-  right: -7px;
+  top: -8px;
+  right: -8px;
+  margin: 0 !important;
   z-index: 1;
   display: inline-flex;
   align-items: center;
@@ -27,6 +28,51 @@
   font-weight: 700;
   line-height: 1;
   pointer-events: none;
+}
+
+@media (min-width: 769px) {
+  .data-table--project-tickets {
+    table-layout: fixed !important;
+
+    .mat-column-ticketNo,
+    .mat-column-status,
+    .mat-column-priority,
+    .mat-column-reportedAt,
+    .mat-column-actions {
+      white-space: nowrap;
+    }
+
+    .mat-column-ticketNo {
+      width: 7.5rem;
+    }
+
+    .mat-column-status {
+      width: 7.5rem;
+    }
+
+    .mat-column-priority {
+      width: 7.5rem;
+    }
+
+    .mat-column-reportedAt {
+      width: 11rem;
+    }
+
+    .mat-column-actions {
+      width: 7.5rem;
+    }
+
+    td.mat-column-title {
+      overflow: hidden;
+
+      .row-link {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
 }
 
 @media (max-width: 640px) {

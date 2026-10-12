@@ -17,6 +17,7 @@ import { AuditService } from '../../core/services/audit.service';
 import { AuthService } from '../../core/services/auth.service';
 import { UserService } from '../../core/services/user.service';
 import { InfiniteScrollDirective } from '../../shared/directives/infinite-scroll.directive';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { CursorFeed } from '../../shared/utils/cursor-feed';
 
 const PAGE_SIZE = 30;
@@ -77,6 +78,7 @@ interface FeedGroup {
     MatSelectModule,
     MatTooltipModule,
     InfiniteScrollDirective,
+    UserAvatarComponent,
   ],
   providers: [{ provide: MAT_DATE_FORMATS, useValue: THAI_CE_NUMERIC_DATE_FORMATS }],
   templateUrl: './audit-activity-feed.component.html',
@@ -151,6 +153,7 @@ export class AuditActivityFeedComponent implements OnInit {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.feed.destroy());
+    this.usersApi.ensureProfiles();
   }
 
   ngOnInit(): void {
@@ -227,6 +230,24 @@ export class AuditActivityFeedComponent implements OnInit {
       return;
     }
     this.expandedId.update((id) => (id === log.id ? null : log.id));
+  }
+
+  private readonly avatarUrls = computed(() => {
+    const map = new Map<number, string>();
+    for (const u of this.usersApi.users()) {
+      if (u.avatarUrl) {
+        map.set(u.id, u.avatarUrl);
+      }
+    }
+    const me = this.auth.currentUser();
+    if (me?.avatarUrl) {
+      map.set(me.id, me.avatarUrl);
+    }
+    return map;
+  });
+
+  avatarUrl(log: AuditLog): string | null {
+    return log.user ? (this.avatarUrls().get(log.user.id) ?? null) : null;
   }
 
   isMe(log: AuditLog): boolean {

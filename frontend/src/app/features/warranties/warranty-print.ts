@@ -66,7 +66,7 @@ th{width:32%;color:#5b6762;font-weight:600}
 </style></head><body>
 ${watermark ? `<div class="watermark"><span>${escapeHtml(watermark)}</span></div>` : ''}
 <div class="content">
-<p class="muted">CPAMS · ใบรับประกันหลังส่งมอบ</p>
+<p class="muted">Code Chill · ใบรับประกันหลังส่งมอบ</p>
 <h1>ใบรับประกัน ${escapeHtml(code)}</h1>
 <p class="muted">สร้างเอกสาร ${escapeHtml(formatThaiDateTime(payload.generatedAt) || payload.generatedAt)}</p>
 

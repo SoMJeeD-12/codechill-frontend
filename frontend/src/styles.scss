@@ -46,6 +46,8 @@ html.theme-dark {
   --app-faint: var(--app-subtle);
   /* ตัวอักษรบนพื้นสีทึบ (ปุ่ม/ป้ายสีหลัก แดง ฯลฯ) */
   --app-on-solid: #ffffff;
+  /* พื้นกล่องโลโก้ — ขาวทั้งสองธีม เพราะโลโก้มีสีเทาเข้ม */
+  --app-logo-tile: #ffffff;
 
   /* เส้นแบ่ง · ขอบ · ขอบช่องกรอก */
   --app-line: #dde8e4;
@@ -112,6 +114,7 @@ html.theme-dark {
   --app-muted: #9fb1ab;
   --app-subtle: #758781;
   --app-on-solid: #0f1514;
+  --app-logo-tile: #f4f7f6;
 
   --app-line: rgba(255, 255, 255, 0.08);
   --app-line-soft: rgba(255, 255, 255, 0.06);

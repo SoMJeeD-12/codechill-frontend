@@ -74,7 +74,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:to
 </style></head><body>
 ${watermark ? `<div class="watermark"><span>${escapeHtml(watermark)}</span></div>` : ''}
 <div class="content">
-<p class="muted">CPAMS · สัญญาบำรุงรักษาระบบ (MA)</p>
+<p class="muted">Code Chill · สัญญาบำรุงรักษาระบบ (MA)</p>
 <h1>${escapeHtml(title)}</h1>
 <p class="muted">สถานะ: ${escapeHtml(MA_STATUS_LABELS[contract.status] ?? contract.status)} · สร้างเอกสาร ${escapeHtml(formatThaiDateTime(payload.generatedAt) || payload.generatedAt)}</p>
 

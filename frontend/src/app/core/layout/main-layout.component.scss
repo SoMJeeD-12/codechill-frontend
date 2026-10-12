@@ -27,10 +27,18 @@
   border-radius: 10px;
   display: grid;
   place-items: center;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  background: linear-gradient(145deg, var(--app-hero-from), var(--app-hero-to));
-  color: var(--app-hero-ink);
+  flex: 0 0 auto;
+  padding: 6px;
+  box-sizing: border-box;
+  background: var(--app-logo-tile);
+  border: 1px solid var(--app-border);
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 }
 
 .brand-text {

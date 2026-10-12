@@ -111,7 +111,7 @@ import { navigateBack } from '../../core/utils/navigation.util';
 import { BahtPipe } from '../../shared/pipes/baht.pipe';
 import { ThaiTimeInputDirective } from '../../shared/directives/thai-time-input.directive';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
-import { UserOptionComponent } from '../../shared/components/user-option.component';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { TaskEditDialogComponent } from './task-edit-dialog.component';
 import { DeliveryPreviewDialogComponent } from './delivery-preview-dialog.component';
 import { FilePickerComponent } from '../../shared/components/file-picker.component';
@@ -1839,13 +1839,16 @@ export class ProjectDetailPageComponent implements OnInit {
       }
       return;
     }
+    const me = this.auth.currentUser();
     const ref = this.dialog.open(DeliveryFormDialogComponent, {
       ...FORM_DIALOG,
       data: {
         projectId: this.projectId,
         users: this.users(),
         contacts: this.contacts(),
-        defaultDeliveredByUserId: this.auth.currentUser()?.id ?? null,
+        deliveredBy: me
+          ? { id: me.id, fullName: me.fullName, avatarUrl: me.avatarUrl ?? null }
+          : null,
       },
     });
     ref.afterClosed().subscribe((saved) => {
@@ -2111,14 +2114,14 @@ export interface DeliveryFormDialogData {
   projectId: number;
   users: User[];
   contacts: Contact[];
-  defaultDeliveredByUserId: number | null;
+  deliveredBy: { id: number; fullName: string; avatarUrl: string | null } | null;
 }
 
 @Component({
   selector: 'app-delivery-form-dialog',
   standalone: true,
   imports: [
-    UserOptionComponent,
+    UserAvatarComponent,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -2143,7 +2146,13 @@ export interface DeliveryFormDialogData {
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>วันที่ส่ง</mat-label>
-          <input matInput [matDatepicker]="deliveryPicker" formControlName="deliveredDate" />
+          <input
+            matInput
+            [matDatepicker]="deliveryPicker"
+            formControlName="deliveredDate"
+            readonly
+            (click)="deliveryPicker.open()"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="deliveryPicker"></mat-datepicker-toggle>
           <mat-datepicker #deliveryPicker></mat-datepicker>
         </mat-form-field>
@@ -2152,14 +2161,12 @@ export interface DeliveryFormDialogData {
           <input matInput appThaiTimeInput formControlName="deliveredTime" />
           <span matTextSuffix>น.</span>
         </mat-form-field>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="delivered-by">
           <mat-label>ผู้ส่งมอบ</mat-label>
-          <mat-select formControlName="deliveredByUserId">
-            <mat-option [value]="null">—</mat-option>
-            @for (u of data.users; track u.id) {
-              <mat-option [value]="u.id"><app-user-option [userId]="u.id" [name]="u.fullName" /></mat-option>
-            }
-          </mat-select>
+          <span matPrefix class="delivered-by__avatar">
+            <app-user-avatar [url]="data.deliveredBy?.avatarUrl" [name]="data.deliveredBy?.fullName" [size]="24" />
+          </span>
+          <input matInput readonly tabindex="-1" [value]="data.deliveredBy?.fullName || '—'" />
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>ผู้รับมอบ (ฝั่งลูกค้า)</mat-label>
@@ -2198,6 +2205,14 @@ export interface DeliveryFormDialogData {
     mat-form-field {
       width: 100%;
     }
+    .delivered-by__avatar {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 0.35rem 0 0.75rem;
+    }
+    .delivered-by input {
+      cursor: default;
+    }
     textarea {
       resize: none;
       min-height: 2.4rem;
@@ -2223,7 +2238,6 @@ export class DeliveryFormDialogComponent {
     description: [''],
     deliveredDate: [new Date() as Date | null, Validators.required],
     deliveredTime: [nowTimeString(), Validators.required],
-    deliveredByUserId: [this.data.defaultDeliveredByUserId as number | null],
     acceptedByContactId: [null as number | null],
     note: [''],
   });
@@ -2241,7 +2255,7 @@ export class DeliveryFormDialogComponent {
         version: (raw.version ?? '').trim() || null,
         description: (raw.description ?? '').trim() || null,
         deliveredAt: combineDateAndTime(raw.deliveredDate, raw.deliveredTime),
-        deliveredByUserId: raw.deliveredByUserId,
+        deliveredByUserId: this.data.deliveredBy?.id ?? null,
         acceptedByContactId: raw.acceptedByContactId,
         note: (raw.note ?? '').trim() || null,
       })

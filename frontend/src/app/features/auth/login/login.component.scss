@@ -18,13 +18,49 @@
 }
 
 .login-intro {
-  .eyebrow {
-    margin: 0 0 0.5rem;
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--app-accent);
-    font-weight: 600;
+  .org {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+  }
+
+  .org__logo {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 52px;
+    height: 52px;
+    padding: 7px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    background: var(--app-logo-tile);
+    border: 1px solid var(--app-border);
+
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  }
+
+  .org__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+
+    strong {
+      font-size: 1.05rem;
+      color: var(--app-ink);
+    }
+
+    span {
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: var(--app-accent);
+      font-weight: 600;
+    }
   }
 
   h1 {
