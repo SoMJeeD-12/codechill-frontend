@@ -3,10 +3,65 @@
   display: grid;
   place-items: center;
   padding: 1.5rem;
-  background:
-    radial-gradient(ellipse 80% 60% at 10% 20%, color-mix(in srgb, var(--app-accent) 18%, transparent), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 90% 80%, color-mix(in srgb, var(--app-warn) 12%, transparent), transparent 50%),
-    var(--app-surface-2);
+  position: relative;
+  isolation: isolate;
+  background: var(--app-surface-2);
+
+  /* แสงพื้นหลัง — fixed เต็มจอ เลื่อน background-position แทนการย้ายกล่อง จึงไม่เกิดแถบเลื่อน */
+  &::before,
+  &::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    background-size: 160% 160%;
+    will-change: background-position;
+  }
+
+  &::before {
+    background-image:
+      radial-gradient(ellipse 45% 40% at 50% 50%, color-mix(in srgb, var(--app-accent) 22%, transparent), transparent 70%);
+    animation: login-drift-a 22s ease-in-out infinite alternate;
+  }
+
+  &::after {
+    background-image:
+      radial-gradient(ellipse 40% 35% at 50% 50%, color-mix(in srgb, var(--app-warn) 14%, transparent), transparent 70%);
+    animation: login-drift-b 28s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes login-drift-a {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 60% 30%;
+  }
+  100% {
+    background-position: 20% 90%;
+  }
+}
+
+@keyframes login-drift-b {
+  0% {
+    background-position: 100% 100%;
+  }
+  50% {
+    background-position: 40% 70%;
+  }
+  100% {
+    background-position: 90% 10%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page::before,
+  .login-page::after {
+    animation: none;
+  }
 }
 
 .login-panel {
