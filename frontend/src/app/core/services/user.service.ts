@@ -4,6 +4,7 @@ import { Observable, catchError, of, throwError } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../http/api-error';
+import { optionalResourceOptions } from '../http/http-context';
 import {
   Paginated,
   asList,
@@ -84,6 +85,27 @@ export class UserService {
         map(asList),
         tap((list) => this.usersSignal.set(list)),
         catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+      );
+  }
+
+  /**
+   * GET /users (ACTIVE) แบบเงียบ — เติมตำแหน่ง/บทบาท/รูป ให้รายชื่อจาก /assignable ที่คืนแค่ชื่อ
+   * ไม่มีสิทธิ์ดูผู้ใช้ = คืน [] ไม่เด้ง error · ไม่แทนที่แคชรายการทั้งหมด (upsert ทีละคน)
+   */
+  loadProfilesQuietly(): Observable<User[]> {
+    return this.http
+      .get<User[] | { items: User[] }>(this.base, {
+        params: toHttpParams({ status: 'ACTIVE', limit: 100 }),
+        ...optionalResourceOptions(),
+      })
+      .pipe(
+        map(asList),
+        tap((list) => {
+          for (const user of list) {
+            this.upsertLocal(user);
+          }
+        }),
+        catchError(() => of([] as User[]))
       );
   }
 

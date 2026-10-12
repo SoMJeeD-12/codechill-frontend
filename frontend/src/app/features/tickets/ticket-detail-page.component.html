@@ -137,6 +137,15 @@
           ></span>
         }
       }
+      @if (stepperCaption(); as cap) {
+        <p class="ticket-stepper__caption">
+          <span class="ticket-stepper__count">ขั้นที่ {{ cap.index }}/{{ cap.total }}</span>
+          <strong>{{ cap.label }}</strong>
+          @if (cap.next) {
+            <span class="ticket-stepper__next">ถัดไป: {{ cap.next }}</span>
+          }
+        </p>
+      }
     </nav>
 
     <div class="app-meta-grid">

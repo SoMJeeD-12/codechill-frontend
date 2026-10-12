@@ -1,0 +1,179 @@
+.hdr-manage__more {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .app-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 0.5rem;
+    width: 100%;
+
+    > a,
+    > button {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 40px;
+      padding: 0 0.7rem;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    > .hdr-manage {
+      flex: 0 0 40px;
+      width: 40px;
+      min-width: 40px;
+      padding: 0;
+    }
+  }
+
+  .hdr-manage__label,
+  .hdr-manage__chevron {
+    display: none !important;
+  }
+
+  .hdr-manage__more {
+    display: inline-block !important;
+    margin: 0 !important;
+  }
+
+  /* สถานะ + รายละเอียด — รวมเป็นการ์ดเดียว */
+  .project-summary__top {
+    gap: 0 !important;
+    border: 1px solid var(--app-line);
+    border-radius: 0.85rem;
+    background: var(--app-surface);
+
+    > .summary-card {
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    > .summary-card:first-child {
+      border-radius: 0.85rem 0.85rem 0 0;
+    }
+
+    > .summary-card--desc {
+      border-top: 1px dashed var(--app-line);
+      background: transparent;
+    }
+  }
+
+  .project-summary,
+  .project-summary__top,
+  .project-summary__spotlight {
+    gap: 0.6rem;
+  }
+
+  .summary-card {
+    gap: 0.6rem 1.25rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.85rem;
+  }
+
+  .summary-card .project-status-badge,
+  .summary-card .priority-badge {
+    padding: 0.22rem 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  .summary-hero {
+    padding: 0.85rem 0.95rem 0.9rem;
+    border-radius: 0.85rem;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--app-shadow-ink) 16%, transparent);
+  }
+
+  .summary-hero__top {
+    align-items: center;
+  }
+
+  .summary-hero__value {
+    font-size: 1.65rem;
+  }
+
+  .summary-hero__track {
+    margin-top: 0.7rem;
+    height: 0.45rem;
+  }
+
+  .summary-key-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .summary-key {
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.65rem 0.7rem;
+    border-radius: 0.85rem;
+    box-shadow: none;
+
+    mat-icon {
+      width: 1.15rem;
+      height: 1.15rem;
+      font-size: 1.15rem;
+      margin-top: 0;
+    }
+
+    > div {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .summary-kicker {
+      font-size: 0.66rem;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    strong {
+      margin-top: 0.1rem;
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  /* ข้อมูลรอง — รวมเป็นการ์ดเดียว แถวละรายการ ป้ายซ้าย ค่าขวา */
+  .project-summary__facts {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0 0.85rem;
+    border: 1px solid var(--app-line);
+    border-radius: 0.85rem;
+    background: var(--app-surface);
+  }
+
+  .summary-fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--app-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    .summary-kicker {
+      flex: 0 0 auto;
+      letter-spacing: 0;
+    }
+
+    strong {
+      margin-top: 0;
+      min-width: 0;
+      font-size: 0.88rem;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+  }
+}

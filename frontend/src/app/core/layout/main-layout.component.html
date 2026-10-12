@@ -168,7 +168,36 @@
       <span class="topbar-title">CPAMS</span>
       <span class="spacer"></span>
 
+      <!-- มือถือ — ปุ่มลัดรวมเป็น + ปุ่มเดียว -->
+      @if (isHandset() && (canCreateTicket() || canLogCommunication())) {
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          class="quick-action"
+          aria-label="สร้างรายการใหม่"
+          [matMenuTriggerFor]="quickMenu"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+        <mat-menu #quickMenu="matMenu" xPosition="before">
+          @if (canCreateTicket()) {
+            <button mat-menu-item type="button" (click)="openTicketForm()">
+              <mat-icon>bug_report</mat-icon>
+              <span>เปิดใบแจ้งปัญหา</span>
+            </button>
+          }
+          @if (canLogCommunication()) {
+            <button mat-menu-item type="button" (click)="openCommunicationLog()">
+              <mat-icon>call</mat-icon>
+              <span>บันทึกการติดต่อ</span>
+            </button>
+          }
+        </mat-menu>
+      }
+
       <!-- ปุ่มลัด — ทำงานครั้งเดียวจบ ไม่ต้องเปลี่ยนเมนู -->
+      @if (!isHandset()) {
       <button
         *appHasPermission="'ticket.create'"
         mat-flat-button
@@ -198,7 +227,9 @@
           <span class="quick-action__text">บันทึกการติดต่อ</span>
         </button>
       }
+      }
 
+      @if (!isHandset()) {
       <button
         mat-icon-button
         type="button"
@@ -211,6 +242,7 @@
       >
         <mat-icon>{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
+      }
 
       <app-notification-bell />
 
@@ -220,13 +252,21 @@
           <strong>{{ user()?.fullName }}</strong>
           <small>{{ roleSummary() }}</small>
         </span>
-        <mat-icon>expand_more</mat-icon>
+        @if (!isHandset()) {
+          <mat-icon>expand_more</mat-icon>
+        }
       </button>
       <mat-menu #userMenu="matMenu">
         <a mat-menu-item routerLink="/app/profile">
           <mat-icon>person</mat-icon>
           <span>โปรไฟล์ของฉัน</span>
         </a>
+        @if (isHandset()) {
+          <button mat-menu-item type="button" (click)="theme.toggle()">
+            <mat-icon>{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+            <span>{{ theme.isDark() ? 'โหมดสว่าง' : 'โหมดมืด' }}</span>
+          </button>
+        }
         <button mat-menu-item type="button" (click)="logout()">
           <mat-icon>logout</mat-icon>
           <span>ออกจากระบบ</span>

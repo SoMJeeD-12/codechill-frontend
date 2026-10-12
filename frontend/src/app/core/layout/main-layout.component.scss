@@ -312,11 +312,17 @@ a.nav-child.mat-mdc-list-item {
 
 @media (max-width: 768px) {
   .topbar-title {
-    display: none;
+    font-weight: 700;
+    color: var(--app-accent-dark);
   }
 
   .user-meta {
     display: none;
+  }
+
+  .user-chip {
+    min-width: 0 !important;
+    padding: 0.25rem !important;
   }
 
   .page-area {

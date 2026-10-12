@@ -151,6 +151,101 @@
   background: var(--app-accent);
 }
 
+.ticket-stepper__caption {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .ticket-stepper {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+    padding: 0.7rem 0.85rem 0.6rem;
+    overflow: visible;
+  }
+
+  .ticket-stepper__item {
+    flex: 0 0 auto;
+  }
+
+  .ticket-stepper__label {
+    display: none;
+  }
+
+  .ticket-stepper__rail {
+    flex: 1 1 0;
+    min-width: 0.4rem;
+    margin: 0 0.2rem;
+  }
+
+  .ticket-stepper__caption {
+    flex: 0 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.5rem;
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--app-muted);
+
+    strong {
+      color: var(--app-accent);
+      font-size: 0.88rem;
+    }
+  }
+
+  .ticket-stepper__count {
+    font-size: 0.72rem;
+  }
+
+  .ticket-stepper__next {
+    margin-left: auto;
+    font-size: 0.74rem;
+  }
+
+  .app-page-header > .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+
+    > button {
+      flex: 1 1 40%;
+      min-width: 0;
+      height: 40px;
+      margin: 0;
+      padding: 0 0.6rem;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    > button.mat-mdc-unelevated-button {
+      order: -1;
+      flex-basis: 100%;
+    }
+  }
+
+  :host .app-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  :host .app-meta-card {
+    padding: 0.6rem 0.75rem;
+    border-radius: 12px;
+
+    > strong {
+      margin-bottom: 0.15rem;
+      font-size: 0.68rem;
+    }
+
+    > span {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      font-size: 0.86rem;
+    }
+  }
+}
+
 .ma-link {
   margin: 0.25rem 0 0;
   font-size: 0.9rem;

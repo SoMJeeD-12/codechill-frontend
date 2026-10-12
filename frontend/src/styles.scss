@@ -314,6 +314,77 @@ button.back.mat-mdc-outlined-button {
   margin: 0;
 }
 
+/*
+ * มือถือ — ฟอร์มกรอกเต็มจอแบบ sheet · ช่องกรอกเตี้ยลง · ปุ่มล่างติดขอบ
+ * ฟอร์มแต่ละตัวตั้ง min-width ไว้สำหรับเดสก์ท็อป ต้องปลดไม่ให้ล้นแนวนอน
+ */
+@media (max-width: 640px) {
+  .cdk-overlay-pane.app-form-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh;
+    max-height: 100dvh !important;
+  }
+
+  .app-form-dialog .mat-mdc-dialog-container {
+    height: 100%;
+  }
+
+  .app-form-dialog .mat-mdc-dialog-surface {
+    height: 100%;
+    max-height: 100dvh;
+    border-radius: 0 !important;
+  }
+
+  .cdk-overlay-pane.mat-mdc-dialog-panel:not(.app-form-dialog, .role-editor-dialog) {
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+
+  .mat-mdc-dialog-content :is(form, .form, .wide-form) {
+    min-width: 0 !important;
+  }
+
+  .mat-mdc-dialog-surface {
+    --mat-form-field-container-height: 46px;
+    --mat-form-field-container-vertical-padding: 11px;
+  }
+
+  .mat-mdc-dialog-surface .mat-mdc-form-field-subscript-wrapper:not(:has(.mat-mdc-form-field-error, .mat-mdc-form-field-hint)) {
+    display: none;
+  }
+
+  .mat-mdc-dialog-surface .mat-mdc-form-field {
+    margin-bottom: 0.65rem;
+  }
+
+  .app-form-dialog .mat-mdc-dialog-title {
+    padding: 0.9rem 1rem 0.4rem;
+    font-size: 1.15rem;
+    line-height: 1.35;
+  }
+
+  .app-form-dialog .mat-mdc-dialog-title::before {
+    display: none;
+  }
+
+  .app-form-dialog .mat-mdc-dialog-content {
+    padding: 0.6rem 1rem 0.75rem;
+  }
+
+  .app-form-dialog .mat-mdc-dialog-actions {
+    gap: 0.5rem;
+    padding: 0.6rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--app-line);
+    background: var(--app-surface);
+
+    > .mat-mdc-button-base {
+      flex: 1 1 0;
+      height: 44px;
+      margin: 0 !important;
+    }
+  }
+}
+
 /* บทบาท — กว้างยืดหยุ่น อ่านง่ายในหนึ่งจอ */
 .cdk-overlay-pane.role-editor-dialog {
   width: min(960px, 96vw) !important;

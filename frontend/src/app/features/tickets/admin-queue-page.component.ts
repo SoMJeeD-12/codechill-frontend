@@ -29,7 +29,7 @@ import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/utils/client-pager';
 import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { createTableSort } from '../../shared/utils/table-sort';
 import { NavAttentionService } from '../../core/services/nav-attention.service';
-import { TicketAssignDialogComponent } from './ticket-detail-page.component';
+import { TicketAssignDialogComponent, toAssignDialogUser } from './ticket-detail-page.component';
 import {
   TicketReturnSupportDialogComponent,
   TicketReturnSupportDialogData,
@@ -307,9 +307,11 @@ export class AdminQueuePageComponent implements OnInit {
     const ref = this.dialog.open(TicketAssignDialogComponent, {
       ...FORM_DIALOG_COMPACT,
       data: {
-        users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
+        users: users.map(toAssignDialogUser),
         defaultUserId: null,
         title: `มอบหมาย「${row.title}」`,
+        currentAssigneeId: row.assignedUserId ?? null,
+        meId: this.auth.currentUser()?.id ?? null,
       },
     });
 

@@ -627,6 +627,8 @@
 }
 
 .row-action--more.mat-mdc-icon-button {
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -670,6 +672,8 @@
 
   .row-actions .row-action--more.row-action--all {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .data-table {
@@ -717,6 +721,7 @@
  * คอลัมน์ที่ใช้ตัดสินใจ (สถานะ · เหลือ · โควตา · SLA · ระดับบัญชี) ไม่อยู่ในรายการนี้ — ซ่อนท้ายสุด
  */
 @container table-host (max-width: 1280px) {
+  @media (min-width: 641px) {
   .data-table:not(.data-table--own-cols) {
     .mat-column-description,
     .mat-column-startDate,
@@ -737,6 +742,7 @@
     .mat-column-version {
       display: none !important;
     }
+  }
   }
 }
 
@@ -783,8 +789,22 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* แท็บ/ตัวกรองแถวเดียว ปัดซ้าย-ขวา — ไม่ซ้อนลงหลายบรรทัด */
   .ui-chips {
     max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 0.1rem;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .ui-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 }
 
@@ -793,8 +813,120 @@
  * ซ่อนเฉพาะ col-hide-md บนพื้นที่ระดับมือถือ
  */
 @container table-host (max-width: 768px) {
-  .col-hide-md {
-    display: none !important;
+  @media (min-width: 641px) {
+    .col-hide-md {
+      display: none !important;
+    }
+  }
+}
+
+/*
+ * มือถือ ≤640px — ทุก .data-table แสดงเป็นการ์ด (ยกเว้น .data-table--compact)
+ * คอลัมน์แรก = หัวการ์ด · คอลัมน์ปุ่ม = มุมขวาล่าง · ที่เหลือ = บรรทัด "หัวคอลัมน์ : ค่า"
+ * ชื่อบรรทัดมาจาก data-label ที่ TableCardLabelsService ใส่ให้ (อ่านจากหัวคอลัมน์)
+ * ต้อง media query เดียวกับ CARD_QUERY ใน table-card-labels.service.ts
+ */
+@media (max-width: 640px) {
+  table.data-table.data-table:not(.data-table--compact) {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+    background: transparent !important;
+
+    thead {
+      display: none;
+    }
+
+    tbody,
+    tfoot {
+      display: grid;
+      gap: 0.6rem;
+      padding: 0.75rem;
+    }
+
+    tr.mat-mdc-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+      gap: 0.3rem;
+      height: auto !important;
+      padding: 0.75rem 0.85rem;
+      border: 1px solid var(--app-line);
+      border-radius: 12px;
+      background: var(--app-surface);
+    }
+
+    tr.mat-mdc-row:hover {
+      background: var(--app-surface);
+    }
+
+    td.mat-mdc-cell {
+      display: flex !important;
+      align-items: center;
+      gap: 0.5rem;
+      grid-column: 1 / -1;
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      height: auto !important;
+      max-height: none !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+      position: static !important;
+      box-shadow: none !important;
+      text-align: left !important;
+      font-size: 0.8rem;
+      overflow: hidden;
+    }
+
+    td.mat-mdc-cell::before {
+      content: attr(data-label);
+      flex: 0 0 6.5rem;
+      color: var(--app-muted);
+      font-size: 0.74rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    td.mat-mdc-cell:not([data-label])::before,
+    td.mat-mdc-cell[data-label='']::before {
+      display: none;
+    }
+
+    /* คอลัมน์แรก = หัวการ์ด */
+    td.mat-mdc-cell:first-of-type {
+      font-size: 0.92rem;
+      font-weight: 600;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    /* คอลัมน์ปุ่ม = มุมขวาล่าง (order ดันไปท้ายการ์ดแม้คอลัมน์ไม่ได้อยู่ท้ายตาราง) */
+    td.mat-mdc-cell:is(.mat-column-actions, .actions, .row-actions, .col-sticky-end):not(:first-of-type) {
+      order: 99;
+      justify-self: end;
+      justify-content: flex-end;
+      margin-top: 0.35rem;
+      overflow: visible;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    .cell-fill,
+    a.cell-fill {
+      width: auto;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
   }
 }
 

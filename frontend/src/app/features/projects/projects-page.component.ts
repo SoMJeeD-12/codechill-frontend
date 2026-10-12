@@ -1,4 +1,6 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -118,6 +120,13 @@ export class ProjectsPageComponent implements OnInit {
         status: filters.status === 'ALL' ? undefined : filters.status,
       }),
   });
+  /** มือถือ — แสดงเป็นการ์ดแทนตาราง */
+  readonly isHandset = toSignal(
+    inject(BreakpointObserver)
+      .observe('(max-width: 640px)')
+      .pipe(map((r) => r.matches)),
+    { initialValue: false }
+  );
   readonly statusFilter = computed(() => this.list.filters().status);
   readonly searchControl = this.list.searchControl;
   readonly statusLabels = PROJECT_STATUS_LABELS;

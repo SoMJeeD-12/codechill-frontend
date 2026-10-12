@@ -58,10 +58,13 @@
           <button
             mat-stroked-button
             type="button"
+            class="hdr-manage"
+            aria-label="จัดการโปรเจกต์"
             [matMenuTriggerFor]="projectManageMenu"
           >
-            จัดการ
-            <mat-icon iconPositionEnd>expand_more</mat-icon>
+            <span class="hdr-manage__label">จัดการ</span>
+            <mat-icon class="hdr-manage__more">more_vert</mat-icon>
+            <mat-icon iconPositionEnd class="hdr-manage__chevron">expand_more</mat-icon>
           </button>
           <mat-menu #projectManageMenu="matMenu">
             @if (canUpdateProject()) {

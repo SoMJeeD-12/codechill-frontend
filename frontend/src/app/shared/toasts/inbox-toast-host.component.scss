@@ -113,7 +113,46 @@
     top: auto;
     bottom: 1rem;
     right: 0.75rem;
-    left: 0.75rem;
-    width: auto;
+    left: auto;
+    width: min(260px, 72vw);
+  }
+
+  .inbox-toast-stack {
+    gap: 0.4rem;
+  }
+
+  .inbox-toast {
+    padding: 0.45rem 0.15rem 0.45rem 0;
+    border-radius: 10px;
+    border-left-width: 3px;
+  }
+
+  .inbox-toast__body {
+    gap: 0.1rem;
+    padding: 0 0.2rem 0 0.6rem;
+  }
+
+  .inbox-toast__title {
+    font-size: 0.78rem;
+  }
+
+  .inbox-toast__msg {
+    display: none;
+  }
+
+  .inbox-toast__when {
+    margin-top: 0;
+    font-size: 0.66rem;
+  }
+
+  .inbox-toast__close {
+    width: 28px !important;
+    height: 28px !important;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
   }
 }

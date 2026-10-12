@@ -273,3 +273,51 @@ app-notification-bell .notif-bell,
   width: 100%;
   font-weight: 600 !important;
 }
+
+/* มือถือ — กล่องเล็กชิดขวาใต้กระดิ่ง · แต่ละรายการเหลือหัวข้อ + เวลา */
+@media (max-width: 768px) {
+  .notif-menu-panel.mat-mdc-menu-panel {
+    max-width: min(300px, 82vw) !important;
+    min-width: 0 !important;
+  }
+
+  .notif-panel {
+    width: min(300px, 82vw);
+    max-height: min(55vh, 360px);
+  }
+
+  .notif-panel__head {
+    padding: 0.6rem 0.75rem 0.45rem;
+
+    strong {
+      font-size: 0.85rem;
+    }
+  }
+
+  .notif-row {
+    gap: 0.45rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .notif-row__dot {
+    width: 7px;
+    height: 7px;
+    margin-top: 0.35rem;
+  }
+
+  .notif-row__title {
+    font-size: 0.8rem;
+  }
+
+  .notif-row__msg {
+    display: none;
+  }
+
+  .notif-row__meta {
+    font-size: 0.68rem;
+  }
+
+  .notif-panel__foot {
+    padding: 0.1rem 0.3rem;
+  }
+}

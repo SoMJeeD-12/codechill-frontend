@@ -24,6 +24,7 @@ import { MENU_ITEMS, MainMenuGroupKey, mainMenuOrder } from '../nav/menu-items';
 import { AuthService } from '../services/auth.service';
 import { QuickActionsService } from '../services/quick-actions.service';
 import { NavAttentionService } from '../services/nav-attention.service';
+import { TableCardLabelsService } from '../services/table-card-labels.service';
 import { ThemeService } from '../services/theme.service';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { NotificationBellComponent } from './notification-bell.component';
@@ -95,6 +96,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     return this.quickActions.canLogCommunication();
   });
 
+  readonly canCreateTicket = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.create');
+  });
+
   readonly roleSummary = computed(() => {
     const me = this.user();
     if (!me) {
@@ -133,6 +139,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly groupOpenState = signal<Partial<Record<MainMenuGroupKey, boolean>>>({});
 
   constructor() {
+    inject(TableCardLabelsService).start();
     effect(() => {
       const handset = this.isHandset();
       untracked(() => this.navOpen.set(!handset));

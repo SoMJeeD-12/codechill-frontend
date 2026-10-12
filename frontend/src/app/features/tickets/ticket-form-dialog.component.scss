@@ -441,10 +441,19 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
+
+  mat-icon {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+  }
 
   span {
     display: grid;
     gap: 0.1rem;
+    min-width: 0;
   }
 
   strong {

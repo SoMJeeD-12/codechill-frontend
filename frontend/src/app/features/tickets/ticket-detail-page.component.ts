@@ -48,6 +48,7 @@ import { apiErrorMessage } from '../../core/http/api-error';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { formatThaiDateTime } from '../../core/utils/date.util';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { StatusBarComponent } from '../../shared/components/status-bar.component';
 import {
   TicketReturnSupportDialogComponent,
@@ -274,6 +275,20 @@ export class TicketDetailPageComponent implements OnInit {
       label: this.statusLabels[status],
       state: i < idx ? 'done' : i === idx ? 'current' : 'todo',
     }));
+  });
+
+  readonly stepperCaption = computed(() => {
+    const steps = this.stepperSteps();
+    const idx = steps.findIndex((s) => s.state === 'current');
+    if (idx < 0) {
+      return null;
+    }
+    return {
+      index: idx + 1,
+      total: steps.length,
+      label: steps[idx].label,
+      next: steps[idx + 1]?.label ?? null,
+    };
   });
 
   readonly timelineEvents = computed(() => ticketTimelineFromHistory(this.ticket()?.history));
@@ -905,9 +920,11 @@ export class TicketDetailPageComponent implements OnInit {
         const ref = this.dialog.open(TicketAssignDialogComponent, {
           ...FORM_DIALOG_COMPACT,
           data: {
-            users: users.map((u) => ({ id: u.id, fullName: u.fullName })),
+            users: users.map(toAssignDialogUser),
             defaultUserId: defaultId,
             title: opts?.preferCurrent ? 'รับงานรอบใหม่' : 'เลือกผู้รับผิดชอบ',
+            currentAssigneeId: current?.assignedUserId ?? null,
+            meId: me?.id ?? null,
           },
         });
         ref.afterClosed().subscribe((userId: number | null | undefined) => {
@@ -1429,63 +1446,414 @@ interface UploadSummary {
 
 /* ——— Assign / pickup dialog ——— */
 
+export interface TicketAssignDialogUser {
+  id: number;
+  fullName: string;
+  nickname?: string | null;
+  position?: string | null;
+  roleName?: string | null;
+  avatarUrl?: string | null;
+}
+
 export interface TicketAssignDialogData {
-  users: { id: number; fullName: string }[];
+  users: TicketAssignDialogUser[];
   defaultUserId: number | null;
   title: string;
+  /** ผู้รับผิดชอบปัจจุบันของใบ — โชว์ป้าย「ดูแลอยู่」 */
+  currentAssigneeId?: number | null;
+  /** ผู้ใช้ที่ล็อกอิน — โชว์ป้าย「ฉัน」และเรียงขึ้นก่อน */
+  meId?: number | null;
+  /** จำนวนการ์ดต่อหน้า — ไม่ระบุ = ASSIGN_PAGE_SIZE */
+  pageSize?: number;
+}
+
+/** แปลง User → แถวในกล่องเลือกผู้รับผิดชอบ (ใช้ฟิลด์ที่มีอยู่แล้วเท่านั้น) */
+export function toAssignDialogUser(u: {
+  id: number;
+  fullName: string;
+  nickname?: string | null;
+  position?: string | null;
+  avatarUrl?: string | null;
+  roles?: { name: string }[] | null;
+}): TicketAssignDialogUser {
+  return {
+    id: u.id,
+    fullName: u.fullName,
+    nickname: u.nickname ?? null,
+    position: u.position ?? null,
+    roleName: u.roles?.[0]?.name ?? null,
+    avatarUrl: u.avatarUrl ?? null,
+  };
+}
+
+/** จำนวนการ์ดผู้รับผิดชอบต่อหน้า (ค่าเริ่มต้น) — ส่ง data.pageSize เพื่อกำหนดเฉพาะจุด */
+export const ASSIGN_PAGE_SIZE = 6;
+export const ASSIGN_PAGE_SIZE_OPTIONS = [6, 12, 24];
+const ASSIGN_PAGE_SIZE_KEY = 'cpams.assignDialog.pageSize';
+
+function readStoredPageSize(): number | null {
+  try {
+    const n = Number(localStorage.getItem(ASSIGN_PAGE_SIZE_KEY));
+    return Number.isInteger(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
 }
 
 @Component({
   selector: 'app-ticket-assign-dialog',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatButtonModule,
-  ],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, UserAvatarComponent],
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
-      <form [formGroup]="form" id="ticket-assign-form" (ngSubmit)="confirm()">
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>ผู้รับผิดชอบ</mat-label>
-          <mat-select formControlName="assignedUserId">
-            @for (u of data.users; track u.id) {
-              <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
+      <p class="assign-lead">
+        เลือก 1 คนที่จะรับผิดชอบใบนี้
+        <span class="assign-count">
+          @if (query().trim()) {
+            พบ {{ visibleUsers().length }} จาก {{ users().length }} คน
+          } @else {
+            ทั้งหมด {{ users().length }} คน
+          }
+        </span>
+      </p>
+      <label class="assign-search">
+        <mat-icon>search</mat-icon>
+        <input
+          type="search"
+          placeholder="ค้นหาชื่อ / ชื่อเล่น / ตำแหน่ง"
+          aria-label="ค้นหาผู้รับผิดชอบ"
+          [value]="query()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </label>
+      <ul class="assign-list" role="radiogroup" aria-label="ผู้รับผิดชอบ">
+        @for (u of pagedUsers(); track u.id) {
+          <li>
+            <button
+              type="button"
+              class="assign-item"
+              role="radio"
+              [attr.aria-checked]="selectedId() === u.id"
+              [class.is-selected]="selectedId() === u.id"
+              (click)="selectedId.set(u.id)"
+              (dblclick)="selectedId.set(u.id); confirm()"
+            >
+              <app-user-avatar class="assign-avatar" [url]="u.avatarUrl" [name]="u.fullName" [size]="38" />
+              <span class="assign-body">
+                <span class="assign-name">
+                  {{ u.fullName }}
+                  @if (u.nickname) {
+                    <small>({{ u.nickname }})</small>
+                  }
+                </span>
+                @if (roleLine(u); as line) {
+                  <span class="assign-meta">{{ line }}</span>
+                } @else if (profilesLoading()) {
+                  <span class="assign-meta">กำลังโหลดตำแหน่ง…</span>
+                }
+              </span>
+              <span class="assign-tags">
+                @if (u.id === data.meId) {
+                  <span class="assign-tag assign-tag--me">ฉัน</span>
+                }
+                @if (u.id === data.currentAssigneeId) {
+                  <span class="assign-tag">ดูแลอยู่</span>
+                }
+              </span>
+              <mat-icon class="assign-check" aria-hidden="true">
+                {{ selectedId() === u.id ? 'radio_button_checked' : 'radio_button_unchecked' }}
+              </mat-icon>
+            </button>
+          </li>
+        } @empty {
+          <li class="assign-empty">ไม่พบรายชื่อที่ค้นหา</li>
+        }
+      </ul>
+      <div class="assign-pager">
+        <label class="assign-size">
+          แสดง
+          <select [value]="pageSize()" (change)="setPageSize($any($event.target).value)" aria-label="จำนวนคนต่อหน้า">
+            @for (n of pageSizeOptions; track n) {
+              <option [value]="n" [selected]="n === pageSize()">{{ n }}</option>
             }
-          </mat-select>
-        </mat-form-field>
-      </form>
+          </select>
+          คน/หน้า
+        </label>
+        @if (pageCount() > 1) {
+          <nav class="assign-nav" aria-label="เปลี่ยนหน้ารายชื่อ">
+            <button mat-icon-button type="button" aria-label="หน้าก่อน" [disabled]="currentPage() === 0" (click)="page.set(currentPage() - 1)">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <span>หน้า {{ currentPage() + 1 }} / {{ pageCount() }}</span>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="หน้าถัดไป"
+              [disabled]="currentPage() >= pageCount() - 1"
+              (click)="page.set(currentPage() + 1)"
+            >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </nav>
+        }
+      </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>ยกเลิก</button>
-      <button mat-flat-button color="primary" type="submit" form="ticket-assign-form">ยืนยัน</button>
+      <button mat-flat-button color="primary" type="button" [disabled]="!selectedId()" (click)="confirm()">
+        @if (selectedUser(); as su) {
+          มอบให้ {{ su.nickname || su.fullName }}
+        } @else {
+          ยืนยัน
+        }
+      </button>
     </mat-dialog-actions>
   `,
   styles: `
-    .full {
+    :host { display: block; }
+    .assign-lead {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.25rem 0.75rem;
+      margin: 0 0 0.6rem;
+      color: var(--app-muted);
+      font-size: 0.85rem;
+    }
+    .assign-count { font-size: 0.78rem; color: var(--app-subtle); }
+    .assign-search {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.6rem;
+      padding: 0 0.7rem;
+      height: 40px;
+      border: 1px solid var(--app-control-line);
+      border-radius: 10px;
+      background: var(--app-surface);
+      mat-icon { color: var(--app-muted); width: 20px; height: 20px; font-size: 20px; }
+      input {
+        flex: 1 1 auto;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--app-ink);
+        font: inherit;
+        font-size: 16px;
+      }
+    }
+    .assign-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+      gap: 0.5rem;
+      margin: 0;
+      padding: 0.15rem;
+      list-style: none;
+    }
+    .assign-pager {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem 0.75rem;
+      min-height: 40px;
+      margin-top: 0.5rem;
+      color: var(--app-muted);
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .assign-size {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      select {
+        height: 32px;
+        padding: 0 0.4rem;
+        border: 1px solid var(--app-control-line);
+        border-radius: 8px;
+        background: var(--app-surface);
+        color: var(--app-ink);
+        font: inherit;
+        font-size: 16px;
+        cursor: pointer;
+      }
+    }
+    .assign-nav { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .assign-item {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
       width: 100%;
-      margin-top: 0.35rem;
+      padding: 0.6rem 0.7rem;
+      border: 1px solid var(--app-line);
+      border-radius: 12px;
+      background: var(--app-surface);
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.12s ease, background 0.12s ease;
+      &:hover { border-color: var(--app-accent-line); }
+      &:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 1px; }
+      &.is-selected {
+        border-color: var(--app-accent);
+        background: var(--app-accent-soft);
+        box-shadow: 0 0 0 1px var(--app-accent);
+      }
+    }
+    .assign-item.is-selected .assign-avatar {
+      box-shadow: 0 0 0 2px var(--app-surface), 0 0 0 4px var(--app-accent);
+    }
+    .assign-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+    .assign-name {
+      color: var(--app-ink);
+      font-size: 0.9rem;
+      font-weight: 650;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+      small { color: var(--app-muted); font-weight: 500; }
+    }
+    .assign-meta {
+      color: var(--app-muted);
+      font-size: 0.76rem;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .assign-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex: 0 0 auto; }
+    .assign-tag {
+      padding: 0.05rem 0.45rem;
+      border-radius: 999px;
+      background: var(--app-info-soft);
+      color: var(--app-info);
+      font-size: 0.68rem;
+      font-weight: 700;
+      white-space: nowrap;
+      &--me { background: var(--app-surface-3); color: var(--app-text-soft); }
+    }
+    .assign-check { flex: 0 0 auto; color: var(--app-control-line); }
+    .assign-item.is-selected .assign-check { color: var(--app-accent); }
+    .assign-empty { padding: 1rem; color: var(--app-muted); font-size: 0.85rem; text-align: center; }
+    @media (max-width: 640px) {
+      .assign-list { grid-template-columns: 1fr; }
     }
   `,
 })
 export class TicketAssignDialogComponent {
-  private readonly fb = inject(FormBuilder);
   private readonly ref = inject(MatDialogRef<TicketAssignDialogComponent, number | null>);
+  private readonly usersApi = inject(UserService);
   readonly data = inject<TicketAssignDialogData>(MAT_DIALOG_DATA);
+  readonly pageSize = signal(
+    Math.max(1, Math.floor(readStoredPageSize() ?? this.data.pageSize ?? ASSIGN_PAGE_SIZE))
+  );
+  readonly pageSizeOptions = [...new Set([...ASSIGN_PAGE_SIZE_OPTIONS, this.pageSize()])].sort(
+    (a, b) => a - b
+  );
+  readonly page = signal(0);
 
-  readonly form = this.fb.nonNullable.group({
-    assignedUserId: [this.data.defaultUserId ?? 0, Validators.min(1)],
+  readonly users = signal<TicketAssignDialogUser[]>(this.data.users);
+  readonly profilesLoading = signal(false);
+  readonly selectedId = signal<number | null>(
+    this.data.users.some((u) => u.id === this.data.defaultUserId) ? this.data.defaultUserId : null
+  );
+  readonly query = signal('');
+
+  private readonly sortedUsers = computed(() => {
+    const rank = (u: TicketAssignDialogUser) =>
+      u.id === this.data.currentAssigneeId ? 0 : u.id === this.data.meId ? 1 : 2;
+    return [...this.users()].sort(
+      (a, b) => rank(a) - rank(b) || a.fullName.localeCompare(b.fullName, 'th')
+    );
   });
 
-  confirm(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+  readonly visibleUsers = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const all = this.sortedUsers();
+    if (!q) {
+      return all;
+    }
+    return all.filter((u) =>
+      [u.fullName, u.nickname, u.position, u.roleName].some((v) => v?.toLowerCase().includes(q))
+    );
+  });
+
+  readonly pageCount = computed(() =>
+    Math.max(1, Math.ceil(this.visibleUsers().length / this.pageSize()))
+  );
+  readonly currentPage = computed(() => Math.min(this.page(), this.pageCount() - 1));
+
+  readonly pagedUsers = computed(() => {
+    const size = this.pageSize();
+    const page = this.currentPage();
+    return this.visibleUsers().slice(page * size, (page + 1) * size);
+  });
+
+  setPageSize(value: string): void {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1) {
       return;
     }
-    this.ref.close(Number(this.form.getRawValue().assignedUserId));
+    this.pageSize.set(n);
+    this.page.set(0);
+    try {
+      localStorage.setItem(ASSIGN_PAGE_SIZE_KEY, String(n));
+    } catch {
+      /* โหมดส่วนตัว / storage เต็ม — ใช้ค่าในหน้าต่างนี้ต่อได้ */
+    }
+  }
+
+  readonly selectedUser = computed(
+    () => this.users().find((u) => u.id === this.selectedId()) ?? null
+  );
+
+  onSearch(value: string): void {
+    this.query.set(value);
+    this.page.set(0);
+  }
+
+  constructor() {
+    const missing = this.data.users.some((u) => !u.position && !u.roleName && !u.avatarUrl);
+    if (!missing) {
+      return;
+    }
+    this.profilesLoading.set(true);
+    this.usersApi.loadProfilesQuietly().subscribe((profiles) => {
+      this.profilesLoading.set(false);
+      if (!profiles.length) {
+        return;
+      }
+      const byId = new Map(profiles.map((p) => [p.id, toAssignDialogUser(p)]));
+      this.users.update((list) =>
+        list.map((u) => {
+          const p = byId.get(u.id);
+          return p
+            ? {
+                ...u,
+                nickname: u.nickname || p.nickname,
+                position: u.position || p.position,
+                roleName: u.roleName || p.roleName,
+                avatarUrl: u.avatarUrl || p.avatarUrl,
+              }
+            : u;
+        })
+      );
+    });
+  }
+
+  roleLine(u: TicketAssignDialogUser): string {
+    const parts = [u.position, u.roleName].filter((v): v is string => !!v?.trim());
+    return parts.filter((v, i) => parts.indexOf(v) === i).join(' · ');
+  }
+
+  confirm(): void {
+    const id = this.selectedId();
+    if (!id) {
+      return;
+    }
+    this.ref.close(id);
   }
 }
 

@@ -312,4 +312,120 @@
   .home-header .primary-action {
     width: 100%;
   }
+
+  /* มือถือ — การ์ดต้องทำวันนี้เรียง 2 คอลัมน์ ซ้าย-ขวา */
+  .todo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .todo-card {
+    min-width: 0;
+    padding: 0.85rem 0.85rem 0.75rem;
+    border-radius: 14px;
+    grid-template-rows: auto auto 1fr auto;
+    align-items: start;
+  }
+
+  .todo-card__icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  .todo-card__icon,
+  .todo-card__count {
+    align-self: center;
+  }
+
+  .todo-card__count {
+    font-size: 1.6rem;
+  }
+
+  .todo-card__label {
+    margin-top: 0.4rem;
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+
+  .todo-card__hint {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .todo-card__go {
+    margin-top: 0.5rem;
+    font-size: 0.76rem;
+  }
+
+  /* งานของฉัน — 2 คอลัมน์เหมือนการ์ดด้านบน */
+  .mywork-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .mywork-card {
+    min-width: 0;
+    border-radius: 14px;
+  }
+
+  /* ใบสุดท้ายที่เหลือเดี่ยวในแถว — ยืดเต็มความกว้าง */
+  .mywork-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .mywork-card__head {
+    gap: 0.35rem;
+    padding: 0.65rem 0.7rem;
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+
+    h3 {
+      min-width: 0;
+      font-size: 0.84rem;
+      line-height: 1.25;
+    }
+  }
+
+  .mywork-card__count {
+    min-width: 1.3rem;
+    height: 1.3rem;
+    font-size: 0.72rem;
+  }
+
+  .mywork-list a {
+    padding: 0.55rem 0.7rem;
+  }
+
+  .item-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: 0.82rem;
+    line-height: 1.3;
+  }
+
+  .item-meta {
+    gap: 0.25rem;
+    font-size: 0.7rem;
+  }
+
+  .mywork-empty {
+    padding: 1rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .mywork-card__more {
+    padding: 0.55rem 0.7rem;
+    font-size: 0.76rem;
+  }
 }

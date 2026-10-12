@@ -197,6 +197,26 @@ function today(): Date {
     }
     .next-date { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: flex-start; }
     .quick { display: flex; gap: 0.4rem; padding-top: 0.5rem; }
+    @media (max-width: 640px) {
+      .next-box {
+        gap: 0.55rem;
+        margin: 0 0 0.6rem;
+        padding: 0.7rem 0.75rem 0.65rem;
+      }
+      .next-date { gap: 0.45rem; }
+      .next-date mat-form-field { flex: 1 1 100%; width: 100%; margin-bottom: 0; }
+      .quick { width: 100%; padding-top: 0; }
+      .quick button {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 34px;
+        padding: 0 0.4rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+      }
+      .next-box > mat-form-field { margin-bottom: 0; }
+      .next-box mat-hint { font-size: 0.72rem; line-height: 1.35; }
+    }
     .error { color: var(--app-danger); margin: 0.25rem 0 0; }
     .no-project {
       display: flex;

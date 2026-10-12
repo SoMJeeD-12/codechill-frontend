@@ -58,6 +58,54 @@
     <div class="app-panel-body">
       @if (list.initialLoading()) {
         <app-list-skeleton [cols]="6" />
+      } @else if (isHandset()) {
+        <ul class="project-cards">
+          @for (row of list.items(); track row.id) {
+            <li class="project-card">
+              <a class="project-card__main" [routerLink]="['/app/projects', row.id]">
+                <span class="project-card__top">
+                  <strong class="project-card__name">{{ row.name }}</strong>
+                  <span class="status" [attr.data-status]="row.status">{{ statusLabel(row.status) }}</span>
+                </span>
+                <span class="project-card__sub">{{ row.code }} · {{ customerName(row) }}</span>
+                <span class="project-card__meta">
+                  @if (progressOf(row); as pct) {
+                    <span class="progress-cell">
+                      <span class="progress-track">
+                        <span class="progress-fill" [style.width.%]="pct"></span>
+                      </span>
+                      <span class="progress-value">{{ pct }}%</span>
+                    </span>
+                  }
+                  <span>ส่ง {{ row.targetEndDate | thaiDate: 'date' }}</span>
+                  <span>ผู้จัดการ {{ row.manager?.fullName || '—' }}</span>
+                </span>
+              </a>
+              <button
+                mat-icon-button
+                type="button"
+                class="project-card__more"
+                [matMenuTriggerFor]="manageMenu"
+                [matMenuTriggerData]="{ row }"
+                aria-label="จัดการโปรเจกต์"
+              >
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </li>
+          }
+        </ul>
+        <app-table-paginator
+          [length]="list.total()"
+          [pageIndex]="list.pageIndex()"
+          [pageSize]="list.pageSize()"
+          [pageSizeOptions]="list.pageSizeOptions"
+          (page)="list.onPage($event)"
+        />
+        @if (list.error(); as err) {
+          <p class="data-empty">{{ err }}</p>
+        } @else if (list.items().length === 0 && !list.loading()) {
+          <p class="data-empty">ไม่พบโปรเจกต์ตามคำค้นหา/ตัวกรอง</p>
+        }
       } @else {
       <table mat-table [dataSource]="list.items()" class="data-table data-table--own-cols">
         <ng-container matColumnDef="code">
@@ -157,28 +205,11 @@
               mat-icon-button
               type="button"
               [matMenuTriggerFor]="manageMenu"
+              [matMenuTriggerData]="{ row }"
               aria-label="จัดการโปรเจกต์"
             >
               <mat-icon>more_vert</mat-icon>
             </button>
-            <mat-menu #manageMenu="matMenu">
-              <button mat-menu-item type="button" (click)="openDetail(row)">
-                <mat-icon>open_in_new</mat-icon>
-                <span>เปิดรายละเอียด</span>
-              </button>
-              @if (canUpdate()) {
-                <button mat-menu-item type="button" (click)="openEdit(row)">
-                  <mat-icon>edit</mat-icon>
-                  <span>แก้ไข</span>
-                </button>
-              }
-              @if (canCancel(row)) {
-                <button mat-menu-item type="button" class="menu-danger" (click)="cancelProject(row)">
-                  <mat-icon>block</mat-icon>
-                  <span>ยกเลิกโปรเจกต์</span>
-                </button>
-              }
-            </mat-menu>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
@@ -199,4 +230,25 @@
       }
     </div>
   </div>
+
+  <mat-menu #manageMenu="matMenu">
+    <ng-template matMenuContent let-row="row">
+      <button mat-menu-item type="button" (click)="openDetail(row)">
+        <mat-icon>open_in_new</mat-icon>
+        <span>เปิดรายละเอียด</span>
+      </button>
+      @if (canUpdate()) {
+        <button mat-menu-item type="button" (click)="openEdit(row)">
+          <mat-icon>edit</mat-icon>
+          <span>แก้ไข</span>
+        </button>
+      }
+      @if (canCancel(row)) {
+        <button mat-menu-item type="button" class="menu-danger" (click)="cancelProject(row)">
+          <mat-icon>block</mat-icon>
+          <span>ยกเลิกโปรเจกต์</span>
+        </button>
+      }
+    </ng-template>
+  </mat-menu>
 </section>

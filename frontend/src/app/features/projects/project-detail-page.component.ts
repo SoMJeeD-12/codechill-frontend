@@ -193,7 +193,7 @@ function warrantyFileRow(file: Attachment, warranty: Warranty): DocumentRow {
     TablePaginatorComponent,
   ],
   templateUrl: './project-detail-page.component.html',
-  styleUrl: './project-detail-page.component.scss',
+  styleUrls: ['./project-detail-page.component.scss', './project-detail-summary.mobile.scss'],
 })
 export class ProjectDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
