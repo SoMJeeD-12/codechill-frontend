@@ -14,6 +14,7 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
   TicketPriority,
+  isTicketReopened,
   ticketQueueDate,
 } from '../../core/models/ticket.model';
 import {
@@ -368,6 +369,8 @@ export class AdminQueuePageComponent implements OnInit {
         this.reload();
       });
   }
+
+  readonly isReopened = isTicketReopened;
 
   queueDate(row: Ticket): string | null {
     return ticketQueueDate(row) || null;

@@ -77,6 +77,8 @@ import {
   TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
   Ticket,
+  isTicketReopened,
+  ticketQueueDate,
 } from '../../core/models/ticket.model';
 import {
   WARRANTY_STATUS_LABELS,
@@ -328,6 +330,8 @@ export class ProjectDetailPageComponent implements OnInit {
     'actions',
   ];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
+  readonly isTicketReopened = isTicketReopened;
+  readonly ticketQueueDate = ticketQueueDate;
   readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod', 'actions'];
   readonly surveyColumns = ['survey', 'status', 'sentAt', 'answeredAt', 'actions'];

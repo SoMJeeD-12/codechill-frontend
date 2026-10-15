@@ -654,6 +654,11 @@
                     <th mat-header-cell *matHeaderCellDef>เลขใบ</th>
                     <td mat-cell *matCellDef="let row" class="col-code">
                       {{ row.ticketNo || '—' }}
+                      @if (isTicketReopened(row)) {
+                        <span class="reopen-tag" title="ปัญหาเดิมกลับมา — วันรับแจ้งเป็นวันของรอบล่าสุด">
+                          <mat-icon>history</mat-icon>ปัญหาเดิม
+                        </span>
+                      }
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="title">
@@ -682,7 +687,7 @@
                   </ng-container>
                   <ng-container matColumnDef="reportedAt">
                     <th mat-header-cell *matHeaderCellDef>รับแจ้ง</th>
-                    <td mat-cell *matCellDef="let row">{{ row.reportedAt | thaiDate }}</td>
+                    <td mat-cell *matCellDef="let row">{{ ticketQueueDate(row) | thaiDate }}</td>
                   </ng-container>
                   <ng-container matColumnDef="actions">
                     <th mat-header-cell *matHeaderCellDef></th>

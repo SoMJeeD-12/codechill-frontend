@@ -645,7 +645,11 @@ export class TicketService {
     );
   }
 
-  reopen(id: number, reason?: string | null): Observable<Ticket> {
+  /**
+   * PATCH /tickets/:id/reopen แล้วตั้งผู้รับเรื่องเป็นคนที่เปิดรอบนี้ (PATCH /tickets/:id receivedByUserId)
+   * แก้ผู้รับเรื่องไม่สำเร็จ (เช่น ไม่มีสิทธิ์ ticket.update) → คืนใบที่ reopen แล้วตามเดิม ไม่ขวางขั้นถัดไป
+   */
+  reopen(id: number, reason?: string | null, receiverUserId?: number | null): Observable<Ticket> {
     return this.http
       .patch<ApiTicket>(`${this.base}/${id}/reopen`, pruneUndefined({
         reason: reason?.trim() || undefined,
@@ -653,7 +657,17 @@ export class TicketService {
       .pipe(
         map((row) => this.normalizeTicket(row)),
         tap((row) => this.items.update((list) => upsertById(list, row))),
-        catchError((err) => throwError(() => new Error(apiErrorMessage(err))))
+        catchError((err) => throwError(() => new Error(apiErrorMessage(err)))),
+        switchMap((row) =>
+          receiverUserId != null && row.receivedByUserId !== receiverUserId
+            ? this.update(id, { receivedByUserId: receiverUserId }).pipe(
+                catchError((err: Error) => {
+                  console.warn('[reopen] ตั้งผู้รับเรื่องไม่สำเร็จ', err.message);
+                  return of(row);
+                })
+              )
+            : of(row)
+        )
       );
   }
 

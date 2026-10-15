@@ -2073,6 +2073,7 @@ export interface TicketProblemReturnedDialogData {
   `,
 })
 export class TicketProblemReturnedDialogComponent {
+  private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly ticketsApi = inject(TicketService);
   private readonly snack = inject(MatSnackBar);
@@ -2154,7 +2155,7 @@ export class TicketProblemReturnedDialogComponent {
     this.error.set(null);
 
     this.ticketsApi
-      .reopen(this.data.ticketId, reason)
+      .reopen(this.data.ticketId, reason, this.auth.currentUser()?.id ?? null)
       .pipe(
         switchMap(() => {
           if (!this.data.canAssign || !assigneeId) {

@@ -189,6 +189,7 @@ export class TicketFormDialogComponent {
   readonly closedTotal = signal(0);
   readonly closedLoading = signal(false);
   readonly oldTicket = signal<Ticket | null>(null);
+  readonly today = new Date();
   readonly closedSearch = this.fb.nonNullable.control('');
   readonly reopenSymptom = this.fb.nonNullable.control('', Validators.required);
   readonly reopenAssignee = this.fb.control<number | null>(null);
@@ -405,18 +406,9 @@ export class TicketFormDialogComponent {
 
     this.saving.set(true);
     this.error.set(null);
-    const meId = this.auth.currentUser()?.id ?? null;
     this.ticketsApi
-      .reopen(t.id, reason)
+      .reopen(t.id, reason, this.auth.currentUser()?.id ?? null)
       .pipe(
-        // คนรับเรื่องรอบนี้เป็นคนใหม่ → ผู้รับเรื่องของใบเป็นคนใหม่ · แก้ไม่ได้ก็ไม่ขวางการส่งต่อ
-        switchMap(() =>
-          meId != null && meId !== t.receivedByUserId
-            ? this.ticketsApi
-                .update(t.id, { receivedByUserId: meId })
-                .pipe(catchError(() => of(null)))
-            : of(null)
-        ),
         switchMap(() => {
           // ไม่เลือกผู้รับผิดชอบ = ส่งเข้าคิวแอดมิน「รอรับ」ให้แอดมินคนไหนก็รับได้
           const next = assigneeId

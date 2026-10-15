@@ -16,6 +16,8 @@ import {
   Ticket,
   TicketPriority,
   TicketStatus,
+  isTicketReopened,
+  ticketQueueDate,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerService } from '../../core/services/customer.service';
@@ -202,6 +204,9 @@ export class TicketsPageComponent implements OnInit {
       row.customer?.name ?? this.customersApi.getCustomer(row.customerId)?.name ?? '—'
     );
   }
+
+  readonly isReopened = isTicketReopened;
+  readonly rowDate = ticketQueueDate;
 
   ticketTitleTip(row: Ticket): string {
     const parts = [row.title];

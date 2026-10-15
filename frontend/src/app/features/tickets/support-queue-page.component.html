@@ -52,6 +52,11 @@
                 {{ row.title }}
               </a>
               <span class="cell-sub">{{ row.ticketNo || '#' + row.id }}</span>
+              @if (isReopened(row)) {
+                <span class="reopen-tag" title="ปัญหาเดิมกลับมา">
+                  <mat-icon>history</mat-icon>ปัญหาเดิม
+                </span>
+              }
             </td>
           </ng-container>
 

@@ -1214,6 +1214,30 @@
   }
 }
 
+/* ป้าย「ปัญหาเดิม」ใต้เลขใบ — ใบที่ปัญหาเดิมกลับมา (ใช้ทุกตารางใบปัญหา) */
+.reopen-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  width: fit-content;
+  margin-top: 0.2rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--app-info-soft);
+  color: var(--app-info);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+
+  .mat-icon,
+  mat-icon {
+    width: 0.85rem;
+    height: 0.85rem;
+    font-size: 0.85rem;
+  }
+}
+
 /* แถบขั้นถัดไป — ใช้ร่วมโปรเจกต์ / ใบปัญหา (โทนเดิม) */
 .next-hint {
   margin: 0 0 1rem;

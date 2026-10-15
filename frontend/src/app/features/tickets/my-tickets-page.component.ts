@@ -10,6 +10,8 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
   TicketStatus,
+  isTicketReopened,
+  ticketQueueDate,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
@@ -192,6 +194,12 @@ export class MyTicketsPageComponent implements OnInit {
     return active.includes(t.status);
   }
 
+  readonly isReopened = isTicketReopened;
+
+  queueDate(row: Ticket): string | null {
+    return ticketQueueDate(row) || null;
+  }
+
   private sortValue(row: Ticket, key: MineSortKey): string | number | null {
     switch (key) {
       case 'ticketNo':
@@ -203,7 +211,7 @@ export class MyTicketsPageComponent implements OnInit {
       case 'status':
         return row.status;
       case 'reportedAt':
-        return row.reportedAt;
+        return this.queueDate(row);
       default:
         return null;
     }

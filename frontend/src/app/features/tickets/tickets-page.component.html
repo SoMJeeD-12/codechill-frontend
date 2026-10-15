@@ -69,6 +69,11 @@
           </th>
             <td mat-cell *matCellDef="let row" class="col-sticky-start">
               {{ row.ticketNo || '—' }}
+              @if (isReopened(row)) {
+                <span class="reopen-tag" title="ปัญหาเดิมกลับมา — วันรับแจ้งเป็นวันของรอบล่าสุด">
+                  <mat-icon>history</mat-icon>ปัญหาเดิม
+                </span>
+              }
             </td>
         </ng-container>
 
@@ -139,7 +144,7 @@
             </button>
           </th>
           <td mat-cell *matCellDef="let row" class="col-hide-xl">
-            <span class="ticket-date">{{ row.reportedAt | thaiDate }}</span>
+            <span class="ticket-date">{{ rowDate(row) | thaiDate }}</span>
           </td>
         </ng-container>
 

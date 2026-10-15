@@ -15,6 +15,7 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
   TicketPriority,
+  isTicketReopened,
 } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { QuickActionsService } from '../../core/services/quick-actions.service';
@@ -220,6 +221,8 @@ export class SupportQueuePageComponent implements OnInit {
       });
     });
   }
+
+  readonly isReopened = isTicketReopened;
 
   /** ใบในคิวนี้แอดมินเพิ่งส่งกลับ — ใช้วันที่ของการแก้ล่าสุด (updatedAt) ไม่ใช้วันแจ้งครั้งแรก */
   queueDate(row: Ticket): string | null {

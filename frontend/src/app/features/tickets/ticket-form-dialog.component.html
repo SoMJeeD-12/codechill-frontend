@@ -215,6 +215,14 @@
           <!-- 4) อาการ + ผู้รับผิดชอบ -->
           <section class="block block--secondary">
             <h3 class="block-title">4 · อาการที่กลับมา</h3>
+            @if (oldTicket(); as t) {
+              <dl class="coverage">
+                <dt>{{ (t.resolutionCount || 0) > 1 ? 'ปิดงานรอบที่ ' + t.resolutionCount : 'ปิดงานรอบแรก' }}</dt>
+                <dd>{{ t.closedAt | thaiDate: 'date' }}</dd>
+                <dt>แก้รอบนี้</dt>
+                <dd>{{ today | thaiDate: 'date' }} (วันนี้)</dd>
+              </dl>
+            }
             <mat-form-field appearance="outline" class="full">
               <mat-label>อาการที่กลับมา</mat-label>
               <textarea

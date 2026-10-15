@@ -236,9 +236,12 @@ export const TICKET_REOPEN_NOTE_PREFIX = '[เปิดกลับมาอี�
  * BE ไม่มีฟิลด์วันที่ reopen ในรายการ → ใช้ updatedAt (การกระทำล่าสุดคือ reopen/ส่งเข้าคิว)
  */
 export function ticketQueueDate(t: Pick<Ticket, 'status' | 'description' | 'reportedAt' | 'updatedAt'>): string {
-  const reopened =
-    t.status === 'REOPENED' || !!t.description?.includes(TICKET_REOPEN_NOTE_PREFIX);
-  return (reopened && t.updatedAt) || t.reportedAt;
+  return (isTicketReopened(t) && t.updatedAt) || t.reportedAt;
+}
+
+/** ใบที่ปัญหาเดิมกลับมา — สถานะรอรับรอบใหม่ หรือ BE ต่อบรรทัด [เปิดกลับมาอีกครั้ง] ใน description แล้ว */
+export function isTicketReopened(t: Pick<Ticket, 'status' | 'description'>): boolean {
+  return t.status === 'REOPENED' || !!t.description?.includes(TICKET_REOPEN_NOTE_PREFIX);
 }
 
 /** บรรทัดที่ BE ต่อท้าย description ตอนแอดมินตีกลับผลแก้ */

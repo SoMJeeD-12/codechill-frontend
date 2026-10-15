@@ -61,6 +61,11 @@
               <a class="app-link" [routerLink]="['/app/tickets', row.id]">
                 {{ row.ticketNo || '#' + row.id }}
               </a>
+              @if (isReopened(row)) {
+                <span class="reopen-tag" title="ปัญหาเดิมกลับมา — วันรับเรื่องเป็นวันของรอบล่าสุด">
+                  <mat-icon>history</mat-icon>ปัญหาเดิม
+                </span>
+              }
             </td>
           </ng-container>
 
