@@ -2157,11 +2157,18 @@ export class TicketProblemReturnedDialogComponent {
     this.ticketsApi
       .reopen(this.data.ticketId, reason, this.auth.currentUser()?.id ?? null)
       .pipe(
-        switchMap(() => {
+        switchMap((reopened) => {
           if (!this.data.canAssign || !assigneeId) {
             return of({ assigned: false as const });
           }
-          return this.ticketsApi.assign(this.data.ticketId, assigneeId).pipe(
+          const id = this.data.ticketId;
+          const assign$ = reopened.claimedByAdminUserId
+            ? this.ticketsApi.assign(id, assigneeId)
+            : this.ticketsApi.sendToAdmin(id).pipe(
+                switchMap(() => this.ticketsApi.claim(id)),
+                switchMap(() => this.ticketsApi.assign(id, assigneeId))
+              );
+          return assign$.pipe(
             switchMap(() => of({ assigned: true as const })),
             catchError((err: Error) => {
               this.saving.set(false);

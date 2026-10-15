@@ -409,11 +409,17 @@ export class TicketFormDialogComponent {
     this.ticketsApi
       .reopen(t.id, reason, this.auth.currentUser()?.id ?? null)
       .pipe(
-        switchMap(() => {
+        switchMap((reopened) => {
           // ไม่เลือกผู้รับผิดชอบ = ส่งเข้าคิวแอดมิน「รอรับ」ให้แอดมินคนไหนก็รับได้
-          const next = assigneeId
-            ? this.ticketsApi.assign(t.id, assigneeId)
-            : this.ticketsApi.sendToAdmin(t.id);
+          // เลือกเอง = ผู้เปิดรับคิวเป็นแอดมินผู้รับคิวก่อน แล้วค่อยมอบหมาย
+          const next = !assigneeId
+            ? this.ticketsApi.sendToAdmin(t.id)
+            : reopened.claimedByAdminUserId
+              ? this.ticketsApi.assign(t.id, assigneeId)
+              : this.ticketsApi.sendToAdmin(t.id).pipe(
+                  switchMap(() => this.ticketsApi.claim(t.id)),
+                  switchMap(() => this.ticketsApi.assign(t.id, assigneeId))
+                );
           return next.pipe(
             switchMap(() => of(!!assigneeId)),
             catchError((err: Error) => {
