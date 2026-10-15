@@ -708,4 +708,84 @@ button.total-card.is-active,
   .total-card__hint {
     font-size: 0.7rem;
   }
+
+}
+
+.day-list {
+  display: none;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-card {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid $line;
+  border-radius: 10px;
+  background: var(--app-surface);
+
+  &--total {
+    background: var(--app-surface-2);
+    border-width: 1.5px;
+  }
+}
+
+.day-card__label {
+  margin: 0 0 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.day-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem 0.75rem;
+  margin: 0;
+}
+
+.day-card__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.15rem 0;
+
+  dt {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    font-size: 0.74rem;
+    color: var(--app-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.is-zero {
+    opacity: 0.45;
+  }
+
+  &.is-focus dd {
+    color: $accent;
+  }
+}
+
+@media (max-width: 640px) {
+  .table-wrap {
+    display: none;
+  }
+
+  .day-list {
+    display: grid;
+  }
 }

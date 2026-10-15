@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -62,7 +62,6 @@ export class SupportQueuePageComponent implements OnInit {
   private readonly usersApi = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly quickActions = inject(QuickActionsService);
-  private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ApiToastService);
   private readonly fb = inject(FormBuilder);
@@ -70,13 +69,12 @@ export class SupportQueuePageComponent implements OnInit {
 
   private loadedOnce = false;
 
-  readonly tab = signal<SupportQueueTab>('AWAITING_SEND');
+  /** ใบใหม่ส่งเข้าคิวแอดมินตั้งแต่ตอนเปิด — คิวซัพพอร์ตเหลือแค่ใบที่แอดมินส่งกลับมา */
+  private readonly tab: SupportQueueTab = 'RETURNED';
   readonly search = signal('');
   readonly searchControl = this.fb.nonNullable.control('');
   readonly items = signal<Ticket[]>([]);
   readonly total = signal(0);
-  readonly sendTotal = signal(0);
-  readonly returnedTotal = signal(0);
   readonly loading = signal(false);
   readonly actingId = signal<number | null>(null);
   readonly pageIndex = signal(0);
@@ -125,32 +123,11 @@ export class SupportQueuePageComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadedOnce = true;
-    this.route.queryParamMap.subscribe((params) => {
-      const tabParam = String(params.get('tab') ?? '').trim().toUpperCase();
-      if (
-        (tabParam === 'AWAITING_SEND' || tabParam === 'RETURNED') &&
-        this.tab() !== tabParam
-      ) {
-        this.tab.set(tabParam);
-        this.pageIndex.set(0);
-        this.reload();
-      }
-    });
-
     this.searchControl.valueChanges.pipe(debounceTime(300)).subscribe((v) => {
       this.search.set(v);
       this.pageIndex.set(0);
       this.reload();
     });
-    this.reload();
-  }
-
-  setTab(tab: SupportQueueTab): void {
-    if (this.tab() === tab) {
-      return;
-    }
-    this.tab.set(tab);
-    this.pageIndex.set(0);
     this.reload();
   }
 
@@ -174,7 +151,7 @@ export class SupportQueuePageComponent implements OnInit {
 
   reload(): void {
     this.loading.set(true);
-    const tab = this.tab();
+    const tab = this.tab;
     this.ticketsApi
       .listSupportQueue({
         tab,
@@ -186,15 +163,8 @@ export class SupportQueuePageComponent implements OnInit {
         next: (body) => {
           this.items.set(body.items);
           this.total.set(body.total);
-          if (tab === 'AWAITING_SEND') {
-            this.sendTotal.set(body.total);
-          } else {
-            this.returnedTotal.set(body.total);
-          }
           this.loading.set(false);
-          if (this.search().trim()) {
-            this.refreshOtherTabCount(tab);
-          } else {
+          if (!this.search().trim()) {
             this.attention.setSupportTabCount(tab, body.total);
           }
         },
@@ -205,38 +175,6 @@ export class SupportQueuePageComponent implements OnInit {
           this.toast.error(err, 'โหลดคิวซัพพอร์ตไม่สำเร็จ');
         },
       });
-  }
-
-  private refreshOtherTabCount(active: SupportQueueTab): void {
-    const other: SupportQueueTab =
-      active === 'AWAITING_SEND' ? 'RETURNED' : 'AWAITING_SEND';
-    this.ticketsApi
-      .listSupportQueue({
-        tab: other,
-        page: 1,
-        limit: 1,
-        search: this.search().trim() || undefined,
-      })
-      .subscribe({
-        next: (body) => {
-          if (other === 'AWAITING_SEND') {
-            this.sendTotal.set(body.total);
-          } else {
-            this.returnedTotal.set(body.total);
-          }
-        },
-        error: () => {
-          /* ignore */
-        },
-      });
-  }
-
-  /** ไม่มีคำค้น = เลขชุดเดียวกับเมนู sidebar · มีคำค้น = นับตามคำค้น */
-  tabCount(tab: SupportQueueTab): number {
-    if (!this.search().trim()) {
-      return this.attention.supportTabCounts()[tab] ?? 0;
-    }
-    return tab === 'AWAITING_SEND' ? this.sendTotal() : this.returnedTotal();
   }
 
   userName(id: number | null | undefined): string {
@@ -252,21 +190,6 @@ export class SupportQueuePageComponent implements OnInit {
 
   statusLabel(row: Ticket): string {
     return this.statusLabels[row.status] ?? row.status;
-  }
-
-  sendToHead(row: Ticket): void {
-    this.actingId.set(row.id);
-    this.ticketsApi.sendToAdmin(row.id).subscribe({
-      next: () => {
-        this.actingId.set(null);
-        this.toast.success('ส่งเข้าคิว「รอแอดมินรับเรื่อง」แล้ว');
-        this.reload();
-      },
-      error: (err: Error) => {
-        this.actingId.set(null);
-        this.toast.error(err, 'ส่งให้แอดมินไม่สำเร็จ');
-      },
-    });
   }
 
   markNotified(row: Ticket): void {
@@ -298,6 +221,11 @@ export class SupportQueuePageComponent implements OnInit {
     });
   }
 
+  /** ใบในคิวนี้แอดมินเพิ่งส่งกลับ — ใช้วันที่ของการแก้ล่าสุด (updatedAt) ไม่ใช้วันแจ้งครั้งแรก */
+  queueDate(row: Ticket): string | null {
+    return row.updatedAt || row.reportedAt || null;
+  }
+
   private sortValue(row: Ticket, key: SupportSortKey): string | number | null {
     switch (key) {
       case 'title':
@@ -311,7 +239,7 @@ export class SupportQueuePageComponent implements OnInit {
       case 'assignee':
         return this.userName(row.assignedUserId);
       case 'reportedAt':
-        return row.reportedAt;
+        return this.queueDate(row);
       default:
         return null;
     }

@@ -231,6 +231,16 @@ export function ticketWorkflowStatus(ticket: Ticket): TicketStatus {
  */
 export const TICKET_REOPEN_NOTE_PREFIX = '[เปิดกลับมาอีกครั้ง]';
 
+/**
+ * วันรับเรื่องที่แสดงในคิว — ใบที่ปัญหาเดิมกลับมา (reopen) ใช้วันของรอบล่าสุด ไม่ใช้วันแจ้งครั้งแรก
+ * BE ไม่มีฟิลด์วันที่ reopen ในรายการ → ใช้ updatedAt (การกระทำล่าสุดคือ reopen/ส่งเข้าคิว)
+ */
+export function ticketQueueDate(t: Pick<Ticket, 'status' | 'description' | 'reportedAt' | 'updatedAt'>): string {
+  const reopened =
+    t.status === 'REOPENED' || !!t.description?.includes(TICKET_REOPEN_NOTE_PREFIX);
+  return (reopened && t.updatedAt) || t.reportedAt;
+}
+
 /** บรรทัดที่ BE ต่อท้าย description ตอนแอดมินตีกลับผลแก้ */
 export const TICKET_REVIEW_REJECT_PREFIX = '[ตรวจไม่ผ่าน]';
 

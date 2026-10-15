@@ -83,7 +83,7 @@ export class NavAttentionService {
   readonly adminTabCounts = this.adminTabsSignal.asReadonly();
   readonly supportTabCounts = this.supportTabsSignal.asReadonly();
 
-  /** เมนูคิวแอดมิน = รอรับ + รอตรวจ · คิวซัพพอร์ต = รอส่งให้แอดมิน + แอดมินส่งกลับมา */
+  /** เมนูคิวแอดมิน = รอรับ + รอตรวจ · คิวซัพพอร์ต = แอดมินส่งกลับมา (ใบใหม่ส่งเข้าคิวแอดมินทันทีตอนเปิด) */
   readonly counts = computed<Partial<Record<MenuCode, number>>>(() => {
     const admin = this.adminTabsSignal();
     const support = this.supportTabsSignal();
@@ -92,7 +92,7 @@ export class NavAttentionService {
     if (adminSum > 0 && this.auth.canAccessTicketAdminQueue()) {
       next['ticket-admin-queue'] = adminSum;
     }
-    const supportSum = support.AWAITING_SEND + support.RETURNED;
+    const supportSum = support.RETURNED;
     if (supportSum > 0 && this.auth.canAccessTicketSupportQueue()) {
       next['ticket-workflow'] = supportSum;
     }

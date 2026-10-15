@@ -146,7 +146,8 @@
               </button>
             </th>
             <td mat-cell *matCellDef="let row">
-              {{ row.reportedAt ? (row.reportedAt | thaiDate: 'date') : '—' }}
+              @let rowDate = queueDate(row);
+              {{ rowDate ? (rowDate | thaiDate: 'date') : '—' }}
             </td>
           </ng-container>
 

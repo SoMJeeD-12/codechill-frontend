@@ -2,7 +2,7 @@
   <header class="app-page-header">
     <div>
       <h1 class="app-page-title">คิวซัพพอร์ต</h1>
-      <p class="app-subtitle">ใบปัญหาที่ต้องส่งให้แอดมิน หรือรอบอกลูกค้า</p>
+      <p class="app-subtitle">ใบที่แอดมินส่งกลับมา รอบอกลูกค้า</p>
     </div>
     <div class="app-header-actions">
       @if (canOpenAdminQueue()) {
@@ -17,30 +17,6 @@
 
   <div class="app-panel">
     <div class="app-panel-toolbar">
-      <div class="ui-chips" role="tablist" aria-label="มุมมองคิวซัพพอร์ต">
-        <button
-          type="button"
-          role="tab"
-          class="ui-chip"
-          [class.is-active]="tab() === 'AWAITING_SEND'"
-          [attr.aria-selected]="tab() === 'AWAITING_SEND'"
-          (click)="setTab('AWAITING_SEND')"
-        >
-          รอส่งให้แอดมิน
-          <span class="ui-chip__count" [class.ui-chip__count--alert]="tabCount('AWAITING_SEND') > 0">{{ tabCount('AWAITING_SEND') }}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="ui-chip"
-          [class.is-active]="tab() === 'RETURNED'"
-          [attr.aria-selected]="tab() === 'RETURNED'"
-          (click)="setTab('RETURNED')"
-        >
-          แอดมินส่งกลับมา
-          <span class="ui-chip__count" [class.ui-chip__count--alert]="tabCount('RETURNED') > 0">{{ tabCount('RETURNED') }}</span>
-        </button>
-      </div>
       <div class="app-panel-toolbar-row">
         <label class="app-search">
           <mat-icon>search</mat-icon>
@@ -138,34 +114,23 @@
               </button>
             </th>
             <td mat-cell *matCellDef="let row">
-              {{ row.reportedAt ? (row.reportedAt | thaiDate: 'date') : '—' }}
+              @let rowDate = queueDate(row);
+              {{ rowDate ? (rowDate | thaiDate: 'date') : '—' }}
             </td>
           </ng-container>
 
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef class="col-sticky-end"></th>
             <td mat-cell *matCellDef="let row" class="row-actions col-sticky-end">
-              @if (tab() === 'AWAITING_SEND') {
-                <button
-                  mat-stroked-button
-                  color="primary"
-                  type="button"
-                  [disabled]="actingId() === row.id"
-                  (click)="sendToHead(row)"
-                >
-                  ส่งให้แอดมิน
-                </button>
-              } @else {
-                <button
-                  mat-stroked-button
-                  color="primary"
-                  type="button"
-                  [disabled]="actingId() === row.id"
-                  (click)="markNotified(row)"
-                >
-                  บอกลูกค้าแล้ว
-                </button>
-              }
+              <button
+                mat-stroked-button
+                color="primary"
+                type="button"
+                [disabled]="actingId() === row.id"
+                (click)="markNotified(row)"
+              >
+                บอกลูกค้าแล้ว
+              </button>
             </td>
           </ng-container>
 

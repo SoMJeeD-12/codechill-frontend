@@ -14,6 +14,7 @@ import {
   TICKET_STATUS_LABELS,
   Ticket,
   TicketPriority,
+  ticketQueueDate,
 } from '../../core/models/ticket.model';
 import {
   AdminQueueTab,
@@ -368,6 +369,10 @@ export class AdminQueuePageComponent implements OnInit {
       });
   }
 
+  queueDate(row: Ticket): string | null {
+    return ticketQueueDate(row) || null;
+  }
+
   private sortValue(row: Ticket, key: AdminSortKey): string | number | null {
     switch (key) {
       case 'ticketNo':
@@ -383,7 +388,7 @@ export class AdminQueuePageComponent implements OnInit {
       case 'assignee':
         return this.userName(row.assignedUserId);
       case 'reportedAt':
-        return row.reportedAt;
+        return ticketQueueDate(row);
       default:
         return null;
     }

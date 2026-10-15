@@ -180,6 +180,11 @@ export class TicketFormDialogComponent {
     this.auth.session();
     return this.auth.hasPermissionCode('ticket.assign');
   });
+  /** ใบใหม่ส่งเข้าคิวแอดมินทันที — ซัพพอร์ตไม่ต้องกด「ส่งให้แอดมิน」ซ้ำ */
+  readonly canSendToAdmin = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('ticket.support_queue');
+  });
   readonly closedTickets = signal<Ticket[]>([]);
   readonly closedTotal = signal(0);
   readonly closedLoading = signal(false);
@@ -400,9 +405,18 @@ export class TicketFormDialogComponent {
 
     this.saving.set(true);
     this.error.set(null);
+    const meId = this.auth.currentUser()?.id ?? null;
     this.ticketsApi
       .reopen(t.id, reason)
       .pipe(
+        // คนรับเรื่องรอบนี้เป็นคนใหม่ → ผู้รับเรื่องของใบเป็นคนใหม่ · แก้ไม่ได้ก็ไม่ขวางการส่งต่อ
+        switchMap(() =>
+          meId != null && meId !== t.receivedByUserId
+            ? this.ticketsApi
+                .update(t.id, { receivedByUserId: meId })
+                .pipe(catchError(() => of(null)))
+            : of(null)
+        ),
         switchMap(() => {
           // ไม่เลือกผู้รับผิดชอบ = ส่งเข้าคิวแอดมิน「รอรับ」ให้แอดมินคนไหนก็รับได้
           const next = assigneeId
@@ -667,14 +681,30 @@ export class TicketFormDialogComponent {
           );
         }
         this.persistDemoExtraCharge(created.id, raw.billingType, raw.extraCharge);
-        this.saving.set(false);
         const no = created.ticketNo?.trim();
-        this.snack.open(
-          no ? `เปิดใบแจ้งปัญหาแล้ว · ${no}` : 'เปิดใบแจ้งปัญหาแล้ว',
-          'ปิด',
-          { duration: no ? 5000 : 2800 }
-        );
-        this.ref.close(true);
+        const opened = no ? `เปิดใบแจ้งปัญหาแล้ว · ${no}` : 'เปิดใบแจ้งปัญหาแล้ว';
+        if (!this.canSendToAdmin()) {
+          this.saving.set(false);
+          this.snack.open(opened, 'ปิด', { duration: no ? 5000 : 2800 });
+          this.ref.close(true);
+          return;
+        }
+        this.ticketsApi.sendToAdmin(created.id).subscribe({
+          next: () => {
+            this.saving.set(false);
+            this.snack.open(`${opened} — ส่งเข้าคิวแอดมิน「รอรับ」แล้ว`, 'ปิด', { duration: 5000 });
+            this.ref.close(true);
+          },
+          error: (err: Error) => {
+            this.saving.set(false);
+            this.snack.open(
+              `${opened} แต่ยังส่งให้แอดมินไม่สำเร็จ: ${err.message} — กดส่งได้จากคิวซัพพอร์ต`,
+              'ปิด',
+              { duration: 7000 }
+            );
+            this.ref.close(true);
+          },
+        });
       },
       error: (err: Error) => {
         this.saving.set(false);

@@ -389,6 +389,32 @@
                 </tfoot>
               </table>
             </div>
+            <ul class="day-list" aria-label="ตัวเลขรายช่วง">
+              @for (row of tablePager.paged(); track row.key) {
+                <li class="day-card">
+                  <p class="day-card__label">{{ row.label }}</p>
+                  <dl class="day-card__grid">
+                    @for (m of tableMetrics(); track m.key) {
+                      <div class="day-card__item" [class.is-zero]="!(row.point[m.key] ?? 0)" [class.is-focus]="isFocused(m.key)">
+                        <dt><span class="swatch" [style.background]="m.color"></span>{{ m.label }}</dt>
+                        <dd>{{ row.point[m.key] ?? 0 }}</dd>
+                      </div>
+                    }
+                  </dl>
+                </li>
+              }
+              <li class="day-card day-card--total">
+                <p class="day-card__label">รวมทั้งช่วง</p>
+                <dl class="day-card__grid">
+                  @for (m of tableMetrics(); track m.key) {
+                    <div class="day-card__item" [class.is-zero]="!d.totals[m.key]" [class.is-focus]="isFocused(m.key)">
+                      <dt><span class="swatch" [style.background]="m.color"></span>{{ m.label }}</dt>
+                      <dd>{{ d.totals[m.key] }}</dd>
+                    </div>
+                  }
+                </dl>
+              </li>
+            </ul>
             <app-table-paginator
               [length]="tablePager.length()"
               [pageIndex]="tablePager.pageIndex()"
