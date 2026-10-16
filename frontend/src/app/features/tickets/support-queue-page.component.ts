@@ -25,6 +25,7 @@ import {
 } from '../../core/services/ticket.service';
 import { UserService } from '../../core/services/user.service';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
+import { printCustomerNotice } from './ticket-customer-notice-print';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
 import { ApiToastService } from '../../shared/services/api-toast.service';
@@ -199,10 +200,15 @@ export class SupportQueuePageComponent implements OnInit {
       icon: 'campaign',
       message: 'ยืนยันว่าได้แจ้งลูกค้าเรื่องนี้แล้ว',
       subject: row.ticketNo ? `${row.ticketNo} · ${row.title}` : row.title,
-      note: 'บันทึกในระบบเท่านั้น ไม่ได้ส่งข้อความหาลูกค้าจากแอป',
+      note: 'บันทึกในระบบเท่านั้น ไม่ได้ส่งข้อความหาลูกค้าจากแอป พิมพ์ใบแจ้งได้ก่อน แล้วค่อยกดบอกลูกค้าแล้ว',
       confirmLabel: 'บอกลูกค้าแล้ว',
       cancelLabel: 'ยกเลิก',
       danger: false,
+      extraLabel: 'พิมพ์ใบแจ้งลูกค้า',
+      onExtra: () =>
+        printCustomerNotice(this.ticketsApi, row.id, (message) =>
+          this.toast.error(new Error(message), message)
+        ),
     }).subscribe((ok) => {
       if (!ok) {
         return;

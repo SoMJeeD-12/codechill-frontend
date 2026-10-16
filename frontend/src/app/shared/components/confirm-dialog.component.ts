@@ -28,6 +28,9 @@ export interface ConfirmDialogData {
   subject?: string;
   /** หมายเหตุตัวเล็กใต้ข้อความ */
   note?: string;
+  /** ปุ่มเสริม ไม่ปิดกล่อง — เช่น พิมพ์ใบแจ้งลูกค้า */
+  extraLabel?: string;
+  onExtra?: () => void;
 }
 
 @Component({
@@ -56,6 +59,11 @@ export interface ConfirmDialogData {
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
+      @if (data.extraLabel) {
+        <button mat-stroked-button type="button" (click)="data.onExtra?.()">
+          {{ data.extraLabel }}
+        </button>
+      }
       @if (!data.hideCancel) {
         <button mat-button type="button" mat-dialog-close>
           {{ data.cancelLabel || 'ยกเลิก' }}
@@ -157,7 +165,7 @@ export function openConfirmDialog(
 ): Observable<boolean> {
   return dialog
     .open(ConfirmDialogComponent, {
-      width: '400px',
+      width: data.extraLabel ? '480px' : '400px',
       data,
       autoFocus: 'dialog',
     })

@@ -2243,16 +2243,14 @@ export function printTicketConfirmationFromPayload(
     (r.resolvedByUserId != null ? `#${r.resolvedByUserId}` : '—');
   const hours =
     r.hoursSpent != null ? `${r.hoursSpent} ชั่วโมง` : '—';
-  const customerAddr = [
-    payload.customer.address,
-    payload.customer.phone ? `โทร ${payload.customer.phone}` : null,
-  ]
-    .filter(Boolean)
-    .join('<br>');
   const projectLabel = payload.project
     ? [payload.project.code, payload.project.name].filter(Boolean).join(' · ')
     : '—';
   const contact = payload.reportedByContact;
+  const ticketNo = payload.ticket.ticketNo?.trim() || `ใบ #${payload.ticket.id}`;
+  const resolvedAt = formatThaiDateTime(r.resolvedAt) || r.resolvedAt || '—';
+  const logoUrl =
+    typeof location !== 'undefined' ? `${location.origin}/logo.png` : 'logo.png';
   const signBlocks = (payload.signatureBlocks?.length
     ? payload.signatureBlocks
     : [
@@ -2262,46 +2260,132 @@ export function printTicketConfirmationFromPayload(
   )
     .map(
       (b) =>
-        `<div class="sign-block"><div class="sign-line"></div><p>${escapeHtml(b.label)}</p></div>`
+        `<div><div class="sign-space"></div><div class="sign-line">${escapeHtml(b.label)}</div><p>วันที่ ............................</p></div>`
     )
     .join('');
 
   win.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8" />
-<title>${escapeHtml(payload.documentTitle)} · ${escapeHtml(payload.ticket.ticketNo || '#' + payload.ticket.id)}</title>
+<title>${escapeHtml(payload.documentTitle)} · ${escapeHtml(ticketNo)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  body{font-family:Sarabun,Segoe UI,sans-serif;margin:1.5rem;color:#0f172a;line-height:1.5}
-  h1{font-size:1.25rem;margin:0 0 .35rem}
-  .meta{color:#475569;font-size:.9rem;margin:0 0 1rem}
-  dl{display:grid;grid-template-columns:8.5rem 1fr;gap:.35rem .75rem;margin:0 0 1.25rem}
-  dt{color:#64748b;font-size:.85rem} dd{margin:0;white-space:pre-wrap}
-  .sign{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:2rem;margin-top:2.75rem}
-  .sign-block{text-align:center;font-size:.88rem}
-  .sign-line{border-top:1px solid #94a3b8;margin:3.25rem 0 .5rem;height:0}
-  .sign-block p{margin:0;color:#334155}
-  @media print{button{display:none}}
+*{box-sizing:border-box}
+body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sans-serif}
+.sheet{position:relative;max-width:820px;margin:0 auto 2.5rem;background:#fff;padding:1.75rem 2rem 1.5rem;box-shadow:0 10px 28px rgba(28,43,40,.08)}
+.content{position:relative}
+.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.9rem;border-bottom:3px solid #0f766e}
+.brand{display:flex;align-items:center;gap:.7rem;min-width:0}
+.brand img{width:46px;height:46px;object-fit:contain}
+.brand strong{display:block;font-size:1.05rem}
+.brand span{display:block;color:#5b6762;font-size:.82rem}
+.docno{text-align:right}
+.docno span{display:block;color:#5b6762;font-size:.72rem}
+.docno strong{display:block;color:#0f766e;font-size:1.15rem}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:1rem 0 .85rem}
+.box{border:1px solid #d7e0dc;border-radius:10px;padding:.8rem .95rem;background:#f7fbf9}
+.box h3{margin:0 0 .45rem;color:#0f766e;font-size:.75rem;letter-spacing:.04em}
+.who{margin:0 0 .35rem;font-size:1.05rem;font-weight:700}
+.role{margin:0;color:#5b6762;font-size:.85rem}
+.kv{display:grid;grid-template-columns:6.4rem 1fr;gap:.18rem .45rem;margin:0;font-size:.88rem}
+.kv dt{color:#5b6762}
+.kv dd{margin:0}
+.cover{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:0 0 .9rem;padding:.8rem 1rem;border-radius:10px;background:#ecfdf5;border:1px solid #b7e4d8}
+.cover span{display:block;color:#5b6762;font-size:.75rem}
+.cover strong{font-size:1.02rem}
+.cover em{display:block;margin-top:.15rem;font-style:normal;color:#5b6762;font-size:.78rem}
+.len{flex:0 0 auto;text-align:right;font-weight:700;color:#0f766e;font-size:.95rem}
+.terms{width:100%;border-collapse:collapse}
+.terms th,.terms td{padding:.5rem .1rem;border-bottom:1px solid #e4ebe8;text-align:left;vertical-align:top;font-size:.9rem}
+.terms th{width:28%;color:#5b6762;font-weight:600}
+.terms td{white-space:pre-wrap}
+.scope{margin:.85rem 0 0;padding:.75rem .9rem;border-radius:10px;background:#f7fbf9;border:1px solid #e4ebe8}
+.scope h3{margin:0 0 .3rem;font-size:.75rem;color:#0f766e;letter-spacing:.04em}
+.scope p{margin:0;white-space:pre-wrap;font-size:.9rem}
+.note{margin:.7rem 0 0;color:#5b6762;font-size:.8rem}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:2.25rem;margin-top:2.1rem}
+.sign-space{height:2.8rem}
+.sign-line{border-top:1px solid #1c2b28;padding-top:.4rem;text-align:center;font-weight:600;font-size:.88rem}
+.sign p{margin:.3rem 0 0;text-align:center;color:#5b6762;font-size:.8rem}
+.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:1.4rem;padding-top:.55rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.72rem}
+.toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:flex-end;padding:.7rem 1rem;background:#e7eeeb}
+.print-btn{border:0;border-radius:999px;padding:.6rem 1.25rem;background:#0f766e;color:#fff;font:600 .95rem Sarabun,sans-serif;cursor:pointer}
+@page{size:A4;margin:12mm}
+@media print{
+  body{background:#fff}
+  .toolbar{display:none}
+  .sheet{max-width:none;margin:0;padding:0;box-shadow:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 </style></head><body>
-<button type="button" onclick="window.print()" style="margin-bottom:1rem">พิมพ์</button>
-<h1>${escapeHtml(payload.documentTitle)}</h1>
-<p class="meta">${escapeHtml(payload.ticket.ticketNo || 'ใบ #' + payload.ticket.id)} · งานครั้งที่ ${r.round}</p>
-<dl>
-  <dt>ลูกค้า</dt><dd><strong>${escapeHtml(payload.customer.name)}</strong>${payload.customer.code ? ' · ' + escapeHtml(payload.customer.code) : ''}${customerAddr ? '<br>' + customerAddr : ''}</dd>
-  <dt>โปรเจกต์</dt><dd>${escapeHtml(projectLabel)}</dd>
-  <dt>หัวข้อปัญหา</dt><dd>${escapeHtml(payload.ticket.title)}</dd>
-  ${
-    contact
-      ? `<dt>ผู้แจ้ง</dt><dd>${escapeHtml(contact.name)}${contact.phone ? ' · ' + escapeHtml(contact.phone) : ''}</dd>`
-      : ''
-  }
-  <dt>สาเหตุ</dt><dd>${escapeHtml(r.rootCause?.trim() || '—')}</dd>
-  <dt>วิธีแก้ไข</dt><dd>${escapeHtml(r.detail || '—')}</dd>
-  <dt>ผลลัพธ์</dt><dd>${escapeHtml(resultLabel)}</dd>
-  <dt>ผู้แก้ไข</dt><dd>${escapeHtml(resolver)}</dd>
-  <dt>เวลาที่ใช้</dt><dd>${escapeHtml(hours)}</dd>
-  <dt>แก้เสร็จเมื่อ</dt><dd>${escapeHtml(formatThaiDateTime(r.resolvedAt) || r.resolvedAt || '—')}</dd>
-</dl>
-<p>ข้าพเจ้าได้ตรวจสอบผลการแก้ไขแล้ว และยืนยันว่าปัญหาได้รับการแก้ไขตามรายละเอียดข้างต้น</p>
+<div class="toolbar"><button class="print-btn" type="button" onclick="window.print()">พิมพ์</button></div>
+<div class="sheet"><div class="content">
+<header class="head">
+  <div class="brand">
+    <img src="${escapeHtml(logoUrl)}" alt="Code Chill">
+    <div>
+      <strong>Code Chill</strong>
+      <span>${escapeHtml(payload.documentTitle)}</span>
+    </div>
+  </div>
+  <div class="docno">
+    <span>เลขที่ใบปัญหา</span>
+    <strong>${escapeHtml(ticketNo)}</strong>
+  </div>
+</header>
+
+<div class="party">
+  <section class="box">
+    <h3>ผู้ให้บริการ</h3>
+    <p class="who">Code Chill</p>
+    <p class="role">ผู้แก้ไข: ${escapeHtml(resolver)}</p>
+  </section>
+  <section class="box">
+    <h3>ลูกค้า</h3>
+    <p class="who">${escapeHtml(payload.customer.name)}</p>
+    <dl class="kv">
+      ${payload.customer.code ? `<dt>รหัส</dt><dd>${escapeHtml(payload.customer.code)}</dd>` : ''}
+      ${payload.customer.address ? `<dt>ที่อยู่</dt><dd>${escapeHtml(payload.customer.address)}</dd>` : ''}
+      <dt>โทร</dt><dd>${escapeHtml(payload.customer.phone || '—')}</dd>
+      ${
+        contact
+          ? `<dt>ผู้แจ้ง</dt><dd>${escapeHtml(contact.name)}${contact.phone ? ' · ' + escapeHtml(contact.phone) : ''}</dd>`
+          : ''
+      }
+    </dl>
+  </section>
+</div>
+
+<div class="cover">
+  <div>
+    <span>งานครั้งที่ ${r.round}</span>
+    <strong>${escapeHtml(payload.ticket.title)}</strong>
+    <em>แก้เสร็จเมื่อ ${escapeHtml(resolvedAt)}</em>
+  </div>
+  <div class="len">${escapeHtml(resultLabel)}</div>
+</div>
+
+<table class="terms">
+<tbody>
+<tr><th>โปรเจกต์</th><td>${escapeHtml(projectLabel)}</td></tr>
+<tr><th>สาเหตุ</th><td>${escapeHtml(r.rootCause?.trim() || '—')}</td></tr>
+<tr><th>วิธีแก้ไข</th><td>${escapeHtml(r.detail || '—')}</td></tr>
+<tr><th>เวลาที่ใช้</th><td>${escapeHtml(hours)}</td></tr>
+</tbody>
+</table>
+
+<section class="scope">
+  <h3>คำยืนยัน</h3>
+  <p>ข้าพเจ้าได้ตรวจสอบผลการแก้ไขแล้ว และยืนยันว่าปัญหาได้รับการแก้ไขตามรายละเอียดข้างต้น</p>
+</section>
+<p class="note">ช่องลงชื่อเว้นว่างสำหรับเซ็นบนกระดาษ</p>
+
 <div class="sign">${signBlocks}</div>
-<script>window.onload=function(){setTimeout(function(){window.print()},80)}</script>
+
+<footer class="foot">
+  <span>${escapeHtml(ticketNo)} · งานครั้งที่ ${r.round}</span>
+  <span>Code Chill · ${escapeHtml(payload.documentTitle)}</span>
+</footer>
+</div></div>
 </body></html>`);
   win.document.close();
 }
