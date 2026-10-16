@@ -5,9 +5,10 @@
         @if (showProjectFilter) {
           <app-entity-picker
             class="project-picker"
-            label="โปรเจกต์"
+            label=""
             placeholder="ทุกโปรเจกต์"
-            fieldClass="ui-filter wide"
+            prefixIcon="folder_open"
+            fieldClass="ui-filter ui-filter--icon wide"
             [openOnFocus]="true"
             [searchFn]="searchProjects"
             [selected]="projectFilterOption()"
@@ -50,13 +51,14 @@
           }
         </div>
 
-        <mat-form-field appearance="outline" class="ui-filter wide filter-extra">
-          <mat-label>ผู้รับผิดชอบ</mat-label>
+        <mat-form-field appearance="outline" class="ui-filter ui-filter--icon wide filter-extra">
+          <mat-icon matPrefix>person_outline</mat-icon>
           <mat-select
             [value]="assigneeFilter()"
+            aria-label="กรองตามผู้รับผิดชอบ"
             (selectionChange)="assigneeFilter.set($event.value); applyFilters()"
           >
-            <mat-option value="ALL">ทั้งหมด</mat-option>
+            <mat-option value="ALL">ทุกผู้รับผิดชอบ</mat-option>
             <mat-option value="UNASSIGNED">ยังไม่มอบหมาย</mat-option>
             @for (u of users(); track u.id) {
               <mat-option [value]="u.id">{{ u.fullName }}</mat-option>
@@ -64,13 +66,14 @@
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="ui-filter filter-extra">
-          <mat-label>ความสำคัญ</mat-label>
+        <mat-form-field appearance="outline" class="ui-filter ui-filter--icon filter-extra">
+          <mat-icon matPrefix>flag</mat-icon>
           <mat-select
             [value]="priorityFilter()"
+            aria-label="กรองตามความสำคัญ"
             (selectionChange)="priorityFilter.set($event.value); applyFilters()"
           >
-            <mat-option value="ALL">ทั้งหมด</mat-option>
+            <mat-option value="ALL">ทุกความสำคัญ</mat-option>
             @for (pr of priorities; track pr) {
               <mat-option [value]="pr">{{ priorityLabels[pr] }}</mat-option>
             }
