@@ -890,6 +890,7 @@ export class TicketService {
       downloadUrl:
         (typeof row?.downloadUrl === 'string' && row.downloadUrl.trim()) ||
         `/api/attachments/${id}/download`,
+      uploadedBy: null,
       createdAt: row?.createdAt ?? '',
     };
   }

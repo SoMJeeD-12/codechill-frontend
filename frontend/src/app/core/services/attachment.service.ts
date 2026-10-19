@@ -25,6 +25,7 @@ type ApiAttachment = {
   mimeType?: string | null;
   note?: string | null;
   downloadUrl?: string | null;
+  uploadedBy?: { id?: number; fullName?: string } | null;
   createdAt?: string;
   /** object key — ห้ามโชว์/ส่งต่อใน UI */
   fileUrl?: string | null;
@@ -113,6 +114,8 @@ export class AttachmentService {
     const downloadUrl =
       (typeof row?.downloadUrl === 'string' && row.downloadUrl.trim()) ||
       `/api/attachments/${id}/download`;
+    const uploaderName = row?.uploadedBy?.fullName?.trim() || '';
+    const uploaderId = Number(row?.uploadedBy?.id);
     return {
       id,
       refType,
@@ -122,6 +125,10 @@ export class AttachmentService {
       mimeType: row?.mimeType?.trim() || null,
       note: row?.note?.trim() || null,
       downloadUrl,
+      uploadedBy:
+        uploaderName && Number.isFinite(uploaderId)
+          ? { id: uploaderId, fullName: uploaderName }
+          : null,
       createdAt: row?.createdAt ?? '',
     };
   }

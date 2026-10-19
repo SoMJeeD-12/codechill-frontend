@@ -23,6 +23,7 @@ import {
   SurveySummary,
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
+import { printSurveyForm } from './survey-print';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { THAI_MONTHS_SHORT, toDateOnlyString } from '../../core/utils/date.util';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -178,6 +179,14 @@ export class SurveyDetailPageComponent implements OnInit {
       return '—';
     }
     return `${Number(avg).toFixed(2)} (จาก ${scoredCount} คำตอบ)`;
+  }
+
+  printForm(): void {
+    const id = this.survey()?.id;
+    if (!id) {
+      return;
+    }
+    printSurveyForm(this.api, this.snack, id);
   }
 
   statusLabel(status: Survey['status']): string {

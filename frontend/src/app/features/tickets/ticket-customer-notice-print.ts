@@ -6,6 +6,7 @@ import {
 } from '../../core/models/ticket.model';
 import { TicketService } from '../../core/services/ticket.service';
 import { formatThaiDateTime } from '../../core/utils/date.util';
+import { PRINT_LOGO_SRC } from '../../shared/print/print-logo';
 
 /** ใบอ่านให้ลูกค้า — ไม่ใช่ใบเซ็นรับ และไม่บันทึกว่าบอกลูกค้าแล้ว */
 export function printCustomerNotice(
@@ -67,7 +68,7 @@ function buildCustomerNoticeHtml(
     : '—';
   const advice = latestSupportAdvice(ticket);
   const contact = payload.reportedByContact;
-  const logoUrl = typeof location !== 'undefined' ? `${location.origin}/logo.png` : 'logo.png';
+  const logoUrl = PRINT_LOGO_SRC;
 
   return `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>ใบแจ้งลูกค้า ${escapeHtml(ticketNo)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">

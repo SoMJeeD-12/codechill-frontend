@@ -33,6 +33,7 @@ import {
   ListSkeletonComponent,
 } from '../../shared/components/list-loading.component';
 import { createServerList } from '../../shared/utils/server-list';
+import { printSurveyForm } from './survey-print';
 
 @Component({
   selector: 'app-surveys-page',
@@ -135,6 +136,10 @@ export class SurveysPageComponent implements OnInit {
       },
       error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 3500 }),
     });
+  }
+
+  printForm(row: Survey): void {
+    printSurveyForm(this.api, this.snack, row.id);
   }
 
   remove(row: Survey): void {

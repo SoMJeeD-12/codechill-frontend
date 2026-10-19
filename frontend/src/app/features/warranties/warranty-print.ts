@@ -1,4 +1,5 @@
 import { WarrantyPrintPayload } from '../../core/models/warranty.model';
+import { PRINT_LOGO_SRC } from '../../shared/print/print-logo';
 import { formatThaiDate, formatThaiDateTime, parseDateOnly } from '../../core/utils/date.util';
 
 /** ผู้ให้บริการบนใบรับประกัน — ใส่ที่อยู่/เลขภาษีเมื่อมีข้อมูลจริง */
@@ -45,8 +46,7 @@ export function buildWarrantyPrintHtml(payload: WarrantyPrintPayload): string {
       `#${maContract.id}`
     : null;
 
-  const logoUrl =
-    typeof location !== 'undefined' ? `${location.origin}/logo.png` : 'logo.png';
+  const logoUrl = PRINT_LOGO_SRC;
   const providerLines = [
     COMPANY_PRINT.address ? `<dd class="span">${escapeHtml(COMPANY_PRINT.address)}</dd>` : '',
     COMPANY_PRINT.taxId

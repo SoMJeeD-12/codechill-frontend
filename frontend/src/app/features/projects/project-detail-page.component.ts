@@ -130,6 +130,7 @@ import {
 } from '../warranties/warranty-documents-dialog.component';
 import { MaFormDialogComponent } from '../ma/ma-page.component';
 import { printMaContract } from '../ma/ma-contract-print';
+import { printSurveyForm } from '../surveys/survey-print';
 import { MaService } from '../../core/services/ma.service';
 import {
   ProjectSurveyDialogComponent,
@@ -164,7 +165,7 @@ function warrantyFileRow(file: Attachment, warranty: Warranty): DocumentRow {
     mimeType: file.mimeType,
     downloadUrl: file.downloadUrl,
     note: file.note,
-    uploadedBy: null,
+    uploadedBy: file.uploadedBy,
     createdAt: file.createdAt,
     warranty,
     attachment: file,
@@ -506,6 +507,10 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly canDeleteDocument = computed(() => {
     this.auth.session();
     return this.auth.hasPermissionCode('document.delete');
+  });
+  readonly canDeleteFile = computed(() => {
+    this.auth.session();
+    return this.auth.hasPermissionCode('file.delete');
   });
   readonly canUpdateProject = computed(() => {
     this.auth.session();
@@ -1494,6 +1499,16 @@ export class ProjectDetailPageComponent implements OnInit {
         run: () => void this.router.navigate(['/app/surveys', row.surveyId]),
       },
     ];
+    actions.push({
+      label: 'พิมพ์ให้ลูกค้า',
+      icon: 'print',
+      run: () =>
+        printSurveyForm(this.surveysApi, this.snack, row.surveyId, {
+          customerName: row.assignment.customerName,
+          projectName: row.assignment.projectName || this.project()?.name,
+          contactName: row.assignment.contactName,
+        }),
+    });
     if (this.canSendSurvey() && row.assignment.status === 'SENT') {
       actions.push({
         label: 'บันทึกคำตอบ',
@@ -1698,6 +1713,32 @@ export class ProjectDetailPageComponent implements OnInit {
     this.dialog.open(DocumentPreviewDialogComponent, {
       ...FORM_DIALOG_WIDE,
       data: { document: doc },
+    });
+  }
+
+  removeWarrantyFile(file: Attachment): void {
+    if (!this.canDeleteFile()) {
+      this.snack.open('ไม่มีสิทธิ์ลบไฟล์แนบ', 'ปิด', { duration: 3000 });
+      return;
+    }
+    openConfirmDialog(this.dialog, {
+      title: 'ลบไฟล์แนบ',
+      message: `ลบ「${file.fileName}」ออกจากใบประกันหรือไม่?`,
+      confirmLabel: 'ลบ',
+    }).subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.attachmentsApi.remove(file.id).subscribe({
+        next: () => {
+          this.snack.open('ลบไฟล์แล้ว', 'ปิด', { duration: 2500 });
+          this.loadWarrantyFiles();
+          if (this.loadedTabs.has('warranties')) {
+            this.loadWarranties();
+          }
+        },
+        error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+      });
     });
   }
 
@@ -1971,17 +2012,22 @@ export class ProjectDetailPageComponent implements OnInit {
     ];
     const { warranty, attachment } = row;
     if (warranty && attachment) {
-      actions.push(
-        {
-          label: 'ดาวน์โหลด',
-          icon: 'download',
-          run: () =>
-            this.attachmentsApi.download(attachment).subscribe({
-              error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
-            }),
-        },
-        { label: 'เปิดใบประกัน', icon: 'verified_user', run: () => this.openWarrantyDocuments(warranty) }
-      );
+      actions.push({
+        label: 'ดาวน์โหลด',
+        icon: 'download',
+        run: () =>
+          this.attachmentsApi.download(attachment).subscribe({
+            error: (err: Error) => this.snack.open(err.message, 'ปิด', { duration: 5000 }),
+          }),
+      });
+      if (this.canDeleteFile()) {
+        actions.push({
+          label: 'ลบ',
+          icon: 'delete',
+          danger: true,
+          run: () => this.removeWarrantyFile(attachment),
+        });
+      }
       return actions;
     }
     if (this.canUpdateDocument()) {

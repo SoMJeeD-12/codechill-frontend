@@ -345,10 +345,7 @@
   }
 
   ::ng-deep .mdc-label {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.15rem 0.75rem;
-    align-items: start;
+    display: block;
     width: 100%;
     min-width: 0;
     padding-top: 0.05rem;
@@ -377,24 +374,6 @@
   font-weight: 400;
   color: var(--app-muted);
   line-height: 1.35;
-}
-
-.perm-row__code {
-  font-size: 0.68rem;
-  color: var(--app-subtle);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  opacity: 0.55;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 9rem;
-  justify-self: end;
-  align-self: start;
-  padding-top: 0.15rem;
-
-  .perm-row:hover & {
-    opacity: 1;
-  }
 }
 
 .perm-flag {
@@ -516,16 +495,6 @@
   .menu-chips {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .perm-row ::ng-deep .mdc-label {
-    grid-template-columns: 1fr;
-  }
-
-  .perm-row__code {
-    max-width: 100%;
-    justify-self: start;
-    opacity: 0.75;
   }
 
   .role-editor__footer {

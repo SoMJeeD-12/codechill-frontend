@@ -2,6 +2,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MA_BILLING_CYCLE_LABELS, MA_STATUS_LABELS } from '../../core/models/ma.model';
 import { MaContractPrintPayload, MaService } from '../../core/services/ma.service';
 import { formatThaiDate, formatThaiDateTime } from '../../core/utils/date.util';
+import { PRINT_LOGO_SRC } from '../../shared/print/print-logo';
 import { formatMoneyDisplay } from '../../core/utils/money.util';
 
 /** ผู้ให้บริการบนสัญญา — ใส่ที่อยู่/เลขภาษีเมื่อมีข้อมูลจริง */
@@ -54,8 +55,7 @@ export function buildMaContractPrintHtml(payload: MaContractPrintPayload): strin
     .join('');
   const title = contractNo ? `สัญญา MA ${contractNo}` : `สัญญา MA · ${plan.name}`;
   const statusLabel = MA_STATUS_LABELS[contract.status] ?? contract.status;
-  const logoUrl =
-    typeof location !== 'undefined' ? `${location.origin}/logo.png` : 'logo.png';
+  const logoUrl = PRINT_LOGO_SRC;
   const providerLines = [
     COMPANY_PRINT.address ? `<dd class="span">${escapeHtml(COMPANY_PRINT.address)}</dd>` : '',
     COMPANY_PRINT.taxId

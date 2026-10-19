@@ -47,6 +47,7 @@ import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../core/http/api-error';
 import { navigateBack } from '../../core/utils/navigation.util';
 import { formatThaiDateTime } from '../../core/utils/date.util';
+import { PRINT_LOGO_SRC } from '../../shared/print/print-logo';
 import { openConfirmDialog } from '../../shared/components/confirm-dialog.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { UserOptionComponent } from '../../shared/components/user-option.component';
@@ -2249,8 +2250,7 @@ export function printTicketConfirmationFromPayload(
   const contact = payload.reportedByContact;
   const ticketNo = payload.ticket.ticketNo?.trim() || `ใบ #${payload.ticket.id}`;
   const resolvedAt = formatThaiDateTime(r.resolvedAt) || r.resolvedAt || '—';
-  const logoUrl =
-    typeof location !== 'undefined' ? `${location.origin}/logo.png` : 'logo.png';
+  const logoUrl = PRINT_LOGO_SRC;
   const signBlocks = (payload.signatureBlocks?.length
     ? payload.signatureBlocks
     : [

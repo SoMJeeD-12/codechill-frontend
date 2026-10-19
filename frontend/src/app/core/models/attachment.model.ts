@@ -23,6 +23,7 @@ export interface Attachment {
   note: string | null;
   /** เช่น /api/attachments/12/download */
   downloadUrl: string;
+  uploadedBy: { id: number; fullName: string } | null;
   createdAt: string;
 }
 

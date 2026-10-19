@@ -97,6 +97,10 @@
                 <mat-icon>open_in_new</mat-icon>
                 <span>เปิดรายละเอียด</span>
               </a>
+              <button mat-menu-item type="button" (click)="printForm(row)">
+                <mat-icon>print</mat-icon>
+                <span>พิมพ์แบบฟอร์ม</span>
+              </button>
               @if (row.status === 'DRAFT' && canUpdate()) {
                 <button mat-menu-item type="button" (click)="setStatus(row, 'ACTIVE')">
                   <mat-icon>play_circle</mat-icon>
