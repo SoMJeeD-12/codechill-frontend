@@ -117,15 +117,6 @@
                 </button>
               </td>
             </ng-container>
-            <ng-container matColumnDef="projectCode">
-              <th mat-header-cell *matHeaderCellDef class="col-project-code">
-                <button type="button" class="sort-header" [disabled]="!canSort('projectCode')" (click)="toggleSort('projectCode')">
-                  รหัสโปรเจกต์
-                  <mat-icon>{{ sortIcon('projectCode') }}</mat-icon>
-                </button>
-              </th>
-              <td mat-cell *matCellDef="let row" class="col-project-code">{{ projectCode(row) }}</td>
-            </ng-container>
             <ng-container matColumnDef="project">
               <th mat-header-cell *matHeaderCellDef>
                 <button type="button" class="sort-header" [disabled]="!canSort('project')" (click)="toggleSort('project')">

@@ -60,7 +60,7 @@ export class MyTicketsPageComponent implements OnInit {
   readonly tableSort = createTableSort<MineSortKey>('reportedAt', 'desc');
   readonly statusLabels = TICKET_STATUS_LABELS;
 
-  readonly columns = ['ticketNo', 'title', 'project', 'status', 'reportedAt', 'actions'];
+  readonly columns = ['title', 'project', 'status', 'reportedAt', 'actions'];
 
   readonly myUserId = computed(() => this.auth.currentUser()?.id ?? null);
 

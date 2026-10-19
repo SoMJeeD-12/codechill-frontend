@@ -50,33 +50,14 @@
         <p class="data-empty">กำลังโหลด…</p>
       } @else {
         <table mat-table [dataSource]="displayedItems()" class="data-table">
-          <ng-container matColumnDef="ticketNo">
-            <th mat-header-cell *matHeaderCellDef class="col-sticky-start">
-              <button type="button" class="sort-header" (click)="toggleSort('ticketNo')">
-                เลขใบ
-                <mat-icon>{{ sortIcon('ticketNo') }}</mat-icon>
-              </button>
-            </th>
-            <td mat-cell *matCellDef="let row" class="col-sticky-start">
-              <a class="app-link" [routerLink]="['/app/tickets', row.id]">
-                {{ row.ticketNo || '#' + row.id }}
-              </a>
-              @if (isReopened(row)) {
-                <span class="reopen-tag" title="ปัญหาเดิมกลับมา — วันรับเรื่องเป็นวันของรอบล่าสุด">
-                  <mat-icon>history</mat-icon>ปัญหาเดิม
-                </span>
-              }
-            </td>
-          </ng-container>
-
           <ng-container matColumnDef="title">
-            <th mat-header-cell *matHeaderCellDef>
+            <th mat-header-cell *matHeaderCellDef class="col-sticky-start">
               <button type="button" class="sort-header" (click)="toggleSort('title')">
                 หัวข้อ
                 <mat-icon>{{ sortIcon('title') }}</mat-icon>
               </button>
             </th>
-            <td mat-cell *matCellDef="let row">
+            <td mat-cell *matCellDef="let row" class="col-sticky-start">
               <a
                 class="app-link cell-clip"
                 [routerLink]="['/app/tickets', row.id]"
@@ -85,6 +66,11 @@
               >
                 {{ row.title }}
               </a>
+              @if (isReopened(row)) {
+                <span class="reopen-tag" title="ปัญหาเดิมกลับมา — วันรับเรื่องเป็นวันของรอบล่าสุด">
+                  <mat-icon>history</mat-icon>ปัญหาเดิม
+                </span>
+              }
             </td>
           </ng-container>
 

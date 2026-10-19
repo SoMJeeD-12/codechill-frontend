@@ -21,7 +21,7 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <p class="app-eyebrow">ปัญหา · {{ t.ticketNo || 'ใบ #' + t.id }}</p>
+        <p class="app-eyebrow">ปัญหา</p>
         <h1 class="app-page-title">{{ t.title }}</h1>
         <p class="app-subtitle">
           {{ customerName() }} · {{ projectName() }} ·
@@ -37,14 +37,14 @@
         @if (t.billingType === 'WARRANTY' && t.warrantyId) {
           <p class="ma-link">
             ใช้ใบรับประกัน
-            <a class="app-link" routerLink="/app/warranties" [queryParams]="{ open: t.warrantyId }">{{ t.warrantyNo || 'ดูใบรับประกัน' }}</a>
+            <a class="app-link" routerLink="/app/warranties" [queryParams]="{ open: t.warrantyId }">ดูใบรับประกัน</a>
           </p>
         }
         @if (t.billingType === 'MA_QUOTA') {
           @if (t.maContractId) {
             <p class="ma-link">
               ผูกสัญญา MA
-              <a class="app-link" [routerLink]="['/app/ma', t.maContractId]">{{ t.maContractNo || 'ดูสัญญา' }}</a>
+              <a class="app-link" [routerLink]="['/app/ma', t.maContractId]">ดูสัญญา</a>
             </p>
           } @else {
             <p class="app-warn-banner">
@@ -290,7 +290,7 @@
       <h2 mat-dialog-title>ประวัติงานแก้ไข</h2>
       <mat-dialog-content class="history-dialog">
         <p class="section-sub">
-          {{ t.ticketNo || 'ใบ #' + t.id }} · คลิกดูรายละเอียด
+          คลิกดูรายละเอียด
           @if (resolutionsPager.length() > 0) {
             · ทั้งหมด {{ resolutionsPager.length() }} รอบ
           }

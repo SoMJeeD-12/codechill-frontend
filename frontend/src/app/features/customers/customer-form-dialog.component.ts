@@ -183,14 +183,10 @@ export class CustomerFormDialogComponent {
       .subscribe({
         next: (customer) => {
           this.saving.set(false);
-          const codeHint =
-            !this.isEdit && customer.code?.trim()
-              ? ` · รหัส ${customer.code.trim()}`
-              : '';
           this.snack.open(
-            this.isEdit ? 'บันทึกลูกค้าแล้ว' : `สร้างลูกค้าแล้ว${codeHint}`,
+            this.isEdit ? 'บันทึกลูกค้าแล้ว' : 'สร้างลูกค้าแล้ว',
             'ปิด',
-            { duration: codeHint ? 5000 : 2500 }
+            { duration: 2500 }
           );
           this.ref.close(this.data.returnCustomer ? customer : true);
         },

@@ -47,7 +47,7 @@ export interface CustomerPreviewDialogData {
             <header class="preview-card__head">
               <h3>{{ c.name }}</h3>
               <p class="meta">
-                รหัส {{ c.code || '—' }} · {{ statusLabel(c.status) }}
+                {{ statusLabel(c.status) }}
               </p>
             </header>
 

@@ -68,7 +68,7 @@
               <mat-icon>{{ sortIcon('name') }}</mat-icon>
             </button>
           </th>
-          <td mat-cell *matCellDef="let row" [attr.title]="row.name + (row.code ? ' · รหัส ' + row.code : '')">
+          <td mat-cell *matCellDef="let row" [attr.title]="row.name">
             @if (is360Mode) {
               <a class="cell-fill" [routerLink]="['/app/customer-360', row.id]">{{ row.name }}</a>
             } @else {

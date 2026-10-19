@@ -71,7 +71,6 @@
                 <a [routerLink]="['/app/tickets', ticket.id]">
                   <span class="item-title">{{ ticket.title }}</span>
                   <span class="item-meta">
-                    <span class="col-code">{{ ticket.ticketNo || '—' }}</span>
                     <span class="priority-badge" [attr.data-priority]="ticket.priority">
                       {{ ticketPriorityLabels[ticket.priority] }}
                     </span>

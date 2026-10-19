@@ -119,8 +119,8 @@ export function warrantyMaLinkLabel(w: Pick<Warranty, 'maContractId' | 'maContra
   if (w.maContractId && planName) {
     return `ผูก MA: ${planName}`;
   }
-  if (w.maContractId && w.maContract?.contractNo) {
-    return `ผูก MA: ${w.maContract.contractNo}`;
+  if (w.maContractId) {
+    return 'ผูก MA';
   }
   return 'ไม่ได้ผูก MA';
 }

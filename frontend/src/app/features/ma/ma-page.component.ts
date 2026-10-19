@@ -159,7 +159,6 @@ export class MaPageComponent implements OnInit {
   private readonly quotaTried = new Set<number>();
   readonly statusLabels = MA_STATUS_LABELS;
   readonly columns = [
-    'id',
     'project',
     'plan',
     'period',
@@ -328,10 +327,7 @@ export class MaPageComponent implements OnInit {
 
   /** ไม่มีการลบสัญญา — ยกเลิกด้วยสถานะ CANCELLED */
   cancelContract(row: MaContract): void {
-    const label =
-      row.contractNo?.trim() ||
-      this.projectName(row) ||
-      `สัญญา #${row.id}`;
+    const label = this.projectName(row);
     openConfirmDialog(this.dialog, {
       title: 'ยกเลิกสัญญา MA',
       message: `ต้องการยกเลิก「${label}」หรือไม่? สัญญาจะยังอยู่ในระบบด้วยสถานะ「ยกเลิก」`,
@@ -660,11 +656,8 @@ export class MaFormDialogComponent {
     this.api.create(payload).subscribe({
       next: ({ contract, message }) => {
         this.saving.set(false);
-        const no = contract.contractNo?.trim();
-        const text =
-          message?.trim() ||
-          (no ? `สร้างสัญญาแล้ว · ${no}` : 'สร้างสัญญาแล้ว');
-        this.snack.open(text, 'ปิด', { duration: message || no ? 5000 : 2500 });
+        const text = message?.trim() || 'สร้างสัญญาแล้ว';
+        this.snack.open(text, 'ปิด', { duration: message ? 5000 : 2500 });
         this.ref.close(true);
       },
       error: (err: Error) => {

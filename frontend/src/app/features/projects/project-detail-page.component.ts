@@ -313,7 +313,6 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly taskColumns = ['title', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   readonly deliveryColumns = [
     'title',
-    'deliveryNo',
     'deliveredAt',
     'deliveredBy',
     'acceptedBy',
@@ -322,7 +321,6 @@ export class ProjectDetailPageComponent implements OnInit {
   ];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'assignee', 'actions'];
   readonly warrantyColumns = [
-    'warrantyNo',
     'delivery',
     'period',
     'daysLeft',
@@ -333,7 +331,7 @@ export class ProjectDetailPageComponent implements OnInit {
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly isTicketReopened = isTicketReopened;
   readonly ticketQueueDate = ticketQueueDate;
-  readonly ticketColumns = ['ticketNo', 'title', 'status', 'priority', 'reportedAt', 'actions'];
+  readonly ticketColumns = ['title', 'status', 'priority', 'reportedAt', 'actions'];
   readonly maColumns = ['contractNo', 'plan', 'coverage', 'quota', 'quotaPeriod', 'actions'];
   readonly surveyColumns = ['survey', 'status', 'sentAt', 'answeredAt', 'actions'];
   readonly documentColumns = ['title', 'fileSize', 'uploadedBy', 'createdAt', 'actions'];

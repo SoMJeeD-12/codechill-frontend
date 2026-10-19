@@ -112,7 +112,6 @@ export class AdminQueuePageComponent implements OnInit {
   });
 
   readonly columns = [
-    'ticketNo',
     'title',
     'project',
     'receiver',

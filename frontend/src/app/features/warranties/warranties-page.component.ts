@@ -48,7 +48,6 @@ import {
   WarrantyUpdateInput,
 } from '../../core/services/warranty.service';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
-import { CodeLabelComponent } from '../../shared/components/code-label.component';
 import {
   EntityPickerComponent,
   PickerOption,
@@ -84,7 +83,6 @@ function isEditableWarrantyStatus(status: WarrantyStatus): status is WarrantyEdi
     MatMenuModule,
     MatTooltipModule,
     TablePaginatorComponent,
-    CodeLabelComponent,
     ListLoadingBarComponent,
     ListSkeletonComponent,
   ],
@@ -146,7 +144,7 @@ export class WarrantiesPageComponent implements OnInit {
   readonly searchControl = this.list.searchControl;
   readonly statusLabels = WARRANTY_STATUS_LABELS;
   readonly nearDays = WARRANTY_NEAR_EXPIRY_DAYS;
-  readonly columns = ['warrantyNo', 'project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
+  readonly columns = ['project', 'title', 'period', 'daysLeft', 'maLink', 'status', 'actions'];
   readonly maLinkLabel = warrantyMaLinkLabel;
 
   constructor() {
@@ -536,9 +534,8 @@ export class WarrantyFormDialogComponent {
   }
 
   maContractOptionLabel(c: MaContract): string {
-    const no = c.contractNo?.trim() || `#${c.id}`;
-    const plan = c.plan?.name?.trim() || '—';
-    return `${no} · ${plan} (${maCoverageLabel(c)})`;
+    const plan = c.plan?.name?.trim() || 'สัญญา MA';
+    return `${plan} (${maCoverageLabel(c)})`;
   }
 
   /** สร้างสัญญา MA ของโปรเจกต์นี้แล้วกลับมาเลือกลงในประกัน */
@@ -654,12 +651,7 @@ export class WarrantyFormDialogComponent {
   private onSaved(isEdit: boolean, created?: Warranty): void {
     this.saving.set(false);
     if (!isEdit && created) {
-      const code = created.warrantyNo?.trim();
-      this.snack.open(
-        code ? `สร้างประกันแล้ว · ${code}` : 'สร้างประกันแล้ว',
-        'ปิด',
-        { duration: code ? 5000 : 2500 }
-      );
+      this.snack.open('สร้างประกันแล้ว', 'ปิด', { duration: 2500 });
       this.ref.close(created);
       return;
     }

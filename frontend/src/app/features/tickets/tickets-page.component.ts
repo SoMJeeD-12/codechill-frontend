@@ -118,7 +118,6 @@ export class TicketsPageComponent implements OnInit {
   });
 
   readonly columns = [
-    'ticketNo',
     'priority',
     'title',
     'status',

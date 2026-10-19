@@ -141,7 +141,7 @@ export class TaskReviewDialogComponent implements OnInit {
 
   projectLabel(task: TaskItem): string {
     if (task.project) {
-      return `${task.project.code ? task.project.code + ' · ' : ''}${task.project.name}`;
+      return task.project.name;
     }
     return `#${task.projectId}`;
   }

@@ -279,13 +279,7 @@ export class MaDetailPageComponent implements OnInit {
       this.api.renew(c.id, input).subscribe({
         next: (created) => {
           this.renewing.set(false);
-          this.snack.open(
-            created.contractNo?.trim()
-              ? `ต่ออายุแล้ว · ${created.contractNo.trim()} (สถานะแบบร่าง)`
-              : `ต่ออายุแล้ว · สัญญาใหม่ #${created.id} (สถานะแบบร่าง)`,
-            'ปิด',
-            { duration: 4000 }
-          );
+          this.snack.open('ต่ออายุแล้ว (สถานะแบบร่าง)', 'ปิด', { duration: 4000 });
           void this.router.navigate(['/app/ma', created.id]);
         },
         error: (err: Error) => {
@@ -325,8 +319,7 @@ export interface MaRenewDialogData {
     <h2 mat-dialog-title>ต่ออายุสัญญา MA</h2>
     <mat-dialog-content>
       <p class="lead">
-        สร้างสัญญาฉบับใหม่จาก
-        {{ data.contract.contractNo?.trim() || '#' + data.contract.id }}
+        สร้างสัญญาฉบับใหม่จากแผนนี้
         · สัญญาใหม่เริ่มเป็นแบบร่าง · ฉบับเดิมจะเป็น「ต่ออายุแล้ว」
       </p>
       <form [formGroup]="form" id="ma-renew-form" class="form" (ngSubmit)="submit()">

@@ -169,7 +169,6 @@ export class FollowUpsPageComponent implements OnInit {
   readonly searchControl = this.list.searchControl;
   readonly columns = [
     'title',
-    'projectCode',
     'project',
     'customer',
     'dueDate',
@@ -263,7 +262,7 @@ export class FollowUpsPageComponent implements OnInit {
 
   projectLabel(f: FollowUp): string {
     if (f.project?.name) {
-      return f.project.code ? `${f.project.code} · ${f.project.name}` : f.project.name;
+      return f.project.name;
     }
     if (f.projectId == null) {
       return '—';

@@ -49,11 +49,7 @@ export interface DeliveryPreviewDialogData {
         <header class="preview-card__head">
           <h3>{{ d.title || '—' }}</h3>
           <p class="meta">
-            ส่งมอบ #{{ d.id }}
-            @if (d.deliveryNo) {
-              · {{ d.deliveryNo }}
-            }
-            · {{ acceptanceLabel }}
+            {{ acceptanceLabel }}
           </p>
         </header>
 

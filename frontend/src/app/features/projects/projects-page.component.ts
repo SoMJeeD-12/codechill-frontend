@@ -51,7 +51,6 @@ import { UserService } from '../../core/services/user.service';
 import { parseDateOnly, toDateOnlyString } from '../../core/utils/date.util';
 import { sanitizePhoneDigits, thaiPhoneValidator } from '../../core/utils/phone.util';
 import { ThaiDatePipe } from '../../shared/pipes/thai-date.pipe';
-import { CodeLabelComponent } from '../../shared/components/code-label.component';
 import { TablePaginatorComponent } from '../../shared/components/table-paginator.component';
 import { createServerList } from '../../shared/utils/server-list';
 import {
@@ -91,7 +90,6 @@ import { catchError, debounceTime, distinctUntilChanged, map } from 'rxjs/operat
     MatTooltipModule,
     MatMenuModule,
     TablePaginatorComponent,
-    CodeLabelComponent,
     ListLoadingBarComponent,
     ListSkeletonComponent,
   ],
@@ -134,7 +132,6 @@ export class ProjectsPageComponent implements OnInit {
   readonly statuses = PROJECT_STATUSES;
   readonly priorityLabels = PRIORITY_LABELS;
   readonly columns = [
-    'code',
     'name',
     'customer',
     'status',
@@ -595,11 +592,8 @@ export class ProjectFormDialogComponent {
       .subscribe({
         next: ({ project, message }) => {
           this.saving.set(false);
-          const codeHint = project.code?.trim() ? ` · รหัส ${project.code.trim()}` : '';
-          const text =
-            message?.trim() ||
-            (codeHint ? `สร้างโปรเจกต์แล้ว${codeHint}` : 'บันทึกโปรเจกต์แล้ว');
-          this.snack.open(text, 'ปิด', { duration: message || codeHint ? 5000 : 2500 });
+          const text = message?.trim() || 'บันทึกโปรเจกต์แล้ว';
+          this.snack.open(text, 'ปิด', { duration: message ? 5000 : 2500 });
           this.ref.close(true);
         },
         error: (err: Error) => {

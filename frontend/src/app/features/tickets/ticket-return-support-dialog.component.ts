@@ -63,7 +63,7 @@ const NOTE_MAX = 2000;
       {{ mode() === 'reject' ? 'ตรวจรับงานแก้ · ไม่ผ่าน ส่งกลับให้ผู้แก้' : 'ตรวจรับงานแก้ · ผ่าน ส่งซัพพอร์ต' }}
     </h2>
     <mat-dialog-content>
-      <p class="ref">{{ data.ticketNo }} · {{ data.title }}</p>
+      <p class="ref">{{ data.title }}</p>
 
       @let r = last();
       @if (loading()) {

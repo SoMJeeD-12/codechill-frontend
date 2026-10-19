@@ -23,7 +23,7 @@
           <mat-select formControlName="projectId">
             @for (p of filteredProjects(); track p.id) {
               <mat-option [value]="p.id">
-                {{ p.code ? p.code + ' · ' : '#' + p.id + ' · ' }}{{ p.name }}
+                {{ p.name }}
               </mat-option>
             }
           </mat-select>

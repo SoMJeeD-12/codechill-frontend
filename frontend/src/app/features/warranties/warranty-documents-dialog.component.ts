@@ -69,7 +69,7 @@ export function printWarranty(
     ThaiDatePipe,
   ],
   template: `
-    <h2 mat-dialog-title>เอกสารใบรับประกัน {{ code }}</h2>
+    <h2 mat-dialog-title>เอกสารใบรับประกัน</h2>
     <mat-dialog-content>
       <div class="summary">
         <span class="status" [attr.data-status]="state">{{ statusLabel }}</span>
@@ -154,10 +154,9 @@ export class WarrantyDocumentsDialogComponent {
   private readonly snack = inject(MatSnackBar);
   readonly data = inject<WarrantyDocumentsDialogData>(MAT_DIALOG_DATA);
 
-  readonly code = this.data.warranty.warrantyNo?.trim() || `#${this.data.warranty.id}`;
   readonly state = warrantyDisplayState(this.data.warranty);
   readonly statusLabel = warrantyDisplayLabel(this.data.warranty);
-  readonly noteSuggestion = signal<string | null>(`ใบรับประกัน ${this.code} ที่ลูกค้าเซ็นแล้ว`);
+  readonly noteSuggestion = signal<string | null>('ใบรับประกันที่ลูกค้าเซ็นแล้ว');
   /** เริ่มจาก attachmentCount ของ API แล้วอัปเดตตามรายการไฟล์จริงในกล่อง */
   readonly attachmentCount = signal(this.data.warranty.attachmentCount);
 

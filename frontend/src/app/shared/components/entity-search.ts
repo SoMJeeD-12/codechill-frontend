@@ -27,7 +27,7 @@ export function projectPickerOption(p: ProjectLike): PickerOption {
   const status = p.status ?? null;
   return {
     id: p.id,
-    label: p.code ? `${p.code} · ${p.name}` : p.name,
+    label: p.name,
     code: p.code ?? null,
     badge:
       status && status !== 'IN_PROGRESS'
@@ -45,7 +45,7 @@ export function customerPickerOption(c: CustomerLike): PickerOption {
     id: c.id,
     label: c.name,
     code: c.code ?? null,
-    meta: [c.code, c.phone].filter(Boolean).join(' · ') || null,
+    meta: c.phone?.trim() || null,
   };
 }
 

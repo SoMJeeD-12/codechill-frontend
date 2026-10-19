@@ -232,7 +232,7 @@ export class FollowUpFormDialogComponent {
     if (typeof value === 'string') {
       return value;
     }
-    return value.code ? `${value.code} · ${value.name}` : value.name;
+    return value.name;
   };
 
   projectStatusBadge(p: ProjectPick): string | null {

@@ -199,7 +199,7 @@ export class SupportQueuePageComponent implements OnInit {
       title: 'บอกลูกค้าแล้ว',
       icon: 'campaign',
       message: 'ยืนยันว่าได้แจ้งลูกค้าเรื่องนี้แล้ว',
-      subject: row.ticketNo ? `${row.ticketNo} · ${row.title}` : row.title,
+      subject: row.title,
       note: 'บันทึกในระบบเท่านั้น ไม่ได้ส่งข้อความหาลูกค้าจากแอป พิมพ์ใบแจ้งได้ก่อน แล้วค่อยกดบอกลูกค้าแล้ว',
       confirmLabel: 'บอกลูกค้าแล้ว',
       cancelLabel: 'ยกเลิก',

@@ -235,10 +235,10 @@ export class CustomerDetailPageComponent implements OnInit, OnDestroy {
   ];
   readonly logColumns = ['occurredAt', 'channel', 'subject', 'contact', 'handler', 'actions'];
   readonly projectColumns = ['name', 'status', 'targetEndDate', 'actions'];
-  readonly warrantyColumns = ['warrantyNo', 'title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
+  readonly warrantyColumns = ['title', 'duration', 'maLink', 'status', 'endDate', 'actions'];
   readonly warrantyMaLinkLabel = warrantyMaLinkLabel;
   readonly maColumns = ['id', 'plan', 'status', 'quota', 'actions'];
-  readonly ticketColumns = ['ticketNo', 'title', 'project', 'status', 'priority', 'actions'];
+  readonly ticketColumns = ['title', 'project', 'status', 'priority', 'actions'];
   readonly followUpColumns = ['title', 'status', 'dueDate', 'actions'];
 
   readonly filteredContacts = computed(() => {

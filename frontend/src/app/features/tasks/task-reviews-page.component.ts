@@ -92,8 +92,8 @@ export class TaskReviewsPageComponent implements OnInit {
   readonly sortOrder = signal<'ASC' | 'DESC'>('ASC');
   readonly columns = computed(() =>
     this.tab() === 'PENDING'
-      ? ['projectCode', 'project', 'title', 'submittedBy', 'submittedAt', 'actions']
-      : ['projectCode', 'project', 'title', 'submittedBy', 'submittedAt', 'result', 'reviewedAt', 'reviewNote']
+      ? ['project', 'title', 'submittedBy', 'submittedAt', 'actions']
+      : ['project', 'title', 'submittedBy', 'submittedAt', 'result', 'reviewedAt', 'reviewNote']
   );
 
   private loadSub: Subscription | null = null;

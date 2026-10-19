@@ -342,7 +342,7 @@ export class ReportService {
     const warrantyRows: NearExpiryItem[] = warranties.map((w) => ({
       kind: 'warranty',
       id: w.id,
-      title: w.warrantyNo?.trim() || w.delivery?.title || `ประกัน #${w.id}`,
+      title: w.delivery?.title?.trim() || w.project?.name?.trim() || 'ประกัน',
       meta: [w.project?.customerName, w.project?.name].filter(Boolean).join(' · ') || 'ประกัน',
       endDate: w.endDate,
       daysRemaining: w.daysRemaining,
@@ -352,7 +352,7 @@ export class ReportService {
     const maRows: NearExpiryItem[] = contracts.map((c) => ({
       kind: 'ma',
       id: c.id,
-      title: c.contractNo?.trim() || `สัญญา #${c.id}`,
+      title: c.projectName?.trim() || c.customerName?.trim() || 'สัญญา MA',
       meta: c.customerName?.trim() || c.projectName?.trim() || 'สัญญา MA',
       endDate: c.endDate,
       daysRemaining: c.daysUntilExpiry,

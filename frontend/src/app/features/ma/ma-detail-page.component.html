@@ -15,15 +15,9 @@
           <mat-icon>arrow_back</mat-icon>
           กลับ
         </button>
-        <h1 class="app-page-title">
-          @if (c.contractNo?.trim()) {
-            {{ c.contractNo }}
-          } @else {
-            สัญญา MA #{{ c.id }}
-          }
-        </h1>
+        <h1 class="app-page-title">{{ planName(c) }}</h1>
         <p class="app-subtitle">
-          {{ planName(c) }} · {{ coverageLabel(c) }}
+          {{ coverageLabel(c) }}
           @if (coverageStateOf(c) === 'NOT_STARTED') {
             · เริ่ม {{ c.startDate | thaiDate: 'date' }}
           }

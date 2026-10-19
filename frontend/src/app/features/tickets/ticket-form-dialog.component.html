@@ -82,7 +82,7 @@
             } @else if (t) {
               <div class="old-picked">
                 <div class="old-picked__main">
-                  <strong>{{ t.ticketNo || 'ใบ #' + t.id }} · {{ t.title }}</strong>
+                  <strong>{{ t.title }}</strong>
                   <small>
                     ปิดเมื่อ {{ t.closedAt ? (t.closedAt | thaiDate: 'date') : '—' }}
                     · แก้มาแล้ว {{ t.resolutionCount || 0 }} รอบ
@@ -110,8 +110,7 @@
                     <li>
                       <button type="button" class="old-row" (click)="pickOldTicket(t)">
                         <span class="old-row__main">
-                          <strong>{{ t.ticketNo || 'ใบ #' + t.id }}</strong>
-                          <span class="old-row__title">{{ t.title }}</span>
+                          <strong>{{ t.title }}</strong>
                         </span>
                         <span class="old-row__meta">
                           <span class="old-row__billing" [attr.data-billing]="t.billingType">
@@ -179,10 +178,10 @@
                     {{ billingLabels[t.billingType] }}
                   </span>
                   @if (t.billingType === 'WARRANTY' && t.warrantyId) {
-                    <small>ใบรับประกัน {{ t.warrantyNo || '—' }}</small>
+                    <small>ใช้ใบรับประกัน</small>
                   }
                   @if (t.billingType === 'MA_QUOTA' && t.maContractId) {
-                    <small>สัญญา MA {{ t.maContractNo || '—' }}</small>
+                    <small>ใช้สัญญา MA</small>
                   }
                 </dd>
                 @if (billingSuggestion(); as s) {

@@ -558,7 +558,7 @@ export class TicketDetailPageComponent implements OnInit {
     if (!p) {
       return `#${id}`;
     }
-    return p.code ? `${p.code} · ${p.name}` : p.name;
+    return p.name;
   }
 
   userName(id: number | null): string {
@@ -829,7 +829,7 @@ export class TicketDetailPageComponent implements OnInit {
     openConfirmDialog(this.dialog, {
       title: 'ปิดใบแจ้งปัญหา',
       message: 'ปิดใบนี้แล้วใบจะออกจากคิวงาน — ถ้าปัญหากลับมาเปิดใบเดิมกลับมาได้',
-      subject: `${ticket.ticketNo || 'ใบ #' + ticket.id} · ${ticket.title}`,
+      subject: ticket.title,
       confirmLabel: 'ปิดงาน',
       danger: false,
       icon: 'task_alt',
@@ -2244,11 +2244,8 @@ export function printTicketConfirmationFromPayload(
     (r.resolvedByUserId != null ? `#${r.resolvedByUserId}` : '—');
   const hours =
     r.hoursSpent != null ? `${r.hoursSpent} ชั่วโมง` : '—';
-  const projectLabel = payload.project
-    ? [payload.project.code, payload.project.name].filter(Boolean).join(' · ')
-    : '—';
+  const projectLabel = payload.project?.name?.trim() || '—';
   const contact = payload.reportedByContact;
-  const ticketNo = payload.ticket.ticketNo?.trim() || `ใบ #${payload.ticket.id}`;
   const resolvedAt = formatThaiDateTime(r.resolvedAt) || r.resolvedAt || '—';
   const logoUrl = PRINT_LOGO_SRC;
   const signBlocks = (payload.signatureBlocks?.length
@@ -2265,7 +2262,7 @@ export function printTicketConfirmationFromPayload(
     .join('');
 
   win.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8" />
-<title>${escapeHtml(payload.documentTitle)} · ${escapeHtml(ticketNo)}</title>
+<title>${escapeHtml(payload.documentTitle)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -2273,47 +2270,41 @@ export function printTicketConfirmationFromPayload(
 body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sans-serif}
 .sheet{position:relative;max-width:820px;margin:0 auto 2.5rem;background:#fff;padding:1.75rem 2rem 1.5rem;box-shadow:0 10px 28px rgba(28,43,40,.08)}
 .content{position:relative}
-.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.9rem;border-bottom:3px solid #0f766e}
-.brand{display:flex;align-items:center;gap:.7rem;min-width:0}
-.brand img{width:46px;height:46px;object-fit:contain}
-.brand strong{display:block;font-size:1.05rem}
-.brand span{display:block;color:#5b6762;font-size:.82rem}
+.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.55rem;border-bottom:2px solid #0f766e}
+.brand{display:flex;align-items:center;gap:.55rem;min-width:0}
+.brand img{width:36px;height:36px;object-fit:contain}
+.brand strong{display:block;font-size:1rem}
+.brand span{display:block;color:#5b6762;font-size:.78rem}
 .docno{text-align:right}
 .docno span{display:block;color:#5b6762;font-size:.72rem}
-.docno strong{display:block;color:#0f766e;font-size:1.15rem}
-.party{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:1rem 0 .85rem}
-.box{border:1px solid #d7e0dc;border-radius:10px;padding:.8rem .95rem;background:#f7fbf9}
-.box h3{margin:0 0 .45rem;color:#0f766e;font-size:.75rem;letter-spacing:.04em}
-.who{margin:0 0 .35rem;font-size:1.05rem;font-weight:700}
-.role{margin:0;color:#5b6762;font-size:.85rem}
-.kv{display:grid;grid-template-columns:6.4rem 1fr;gap:.18rem .45rem;margin:0;font-size:.88rem}
+.docno strong{display:block;color:#0f766e;font-size:1.05rem}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin:.7rem 0 .45rem}
+.box h3{margin:0 0 .15rem;color:#5b6762;font-size:.72rem;font-weight:600}
+.who{margin:0 0 .15rem;font-size:1rem;font-weight:700}
+.role{margin:0;color:#5b6762;font-size:.82rem}
+.kv{display:grid;grid-template-columns:5.6rem 1fr;gap:.05rem .4rem;margin:0;font-size:.84rem}
 .kv dt{color:#5b6762}
 .kv dd{margin:0}
-.cover{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:0 0 .9rem;padding:.8rem 1rem;border-radius:10px;background:#ecfdf5;border:1px solid #b7e4d8}
-.cover span{display:block;color:#5b6762;font-size:.75rem}
-.cover strong{font-size:1.02rem}
-.cover em{display:block;margin-top:.15rem;font-style:normal;color:#5b6762;font-size:.78rem}
-.len{flex:0 0 auto;text-align:right;font-weight:700;color:#0f766e;font-size:.95rem}
-.terms{width:100%;border-collapse:collapse}
-.terms th,.terms td{padding:.5rem .1rem;border-bottom:1px solid #e4ebe8;text-align:left;vertical-align:top;font-size:.9rem}
-.terms th{width:28%;color:#5b6762;font-weight:600}
+.terms{width:100%;border-collapse:collapse;margin-top:.35rem}
+.terms th,.terms td{padding:.28rem .1rem;border-bottom:1px solid #e4ebe8;text-align:left;vertical-align:top;font-size:.86rem}
+.terms th{width:24%;color:#5b6762;font-weight:600}
 .terms td{white-space:pre-wrap}
-.scope{margin:.85rem 0 0;padding:.75rem .9rem;border-radius:10px;background:#f7fbf9;border:1px solid #e4ebe8}
-.scope h3{margin:0 0 .3rem;font-size:.75rem;color:#0f766e;letter-spacing:.04em}
-.scope p{margin:0;white-space:pre-wrap;font-size:.9rem}
-.note{margin:.7rem 0 0;color:#5b6762;font-size:.8rem}
-.sign{display:grid;grid-template-columns:1fr 1fr;gap:2.25rem;margin-top:2.1rem}
-.sign-space{height:2.8rem}
-.sign-line{border-top:1px solid #1c2b28;padding-top:.4rem;text-align:center;font-weight:600;font-size:.88rem}
-.sign p{margin:.3rem 0 0;text-align:center;color:#5b6762;font-size:.8rem}
-.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:1.4rem;padding-top:.55rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.72rem}
+.scope{margin:.7rem 0 0}
+.scope h3{margin:0 0 .2rem;font-size:.78rem;color:#1c2b28}
+.scope p{margin:0;white-space:pre-wrap;font-size:.86rem}
+.note{margin:.4rem 0 0;color:#5b6762;font-size:.78rem}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:1.35rem}
+.sign-space{height:1.8rem}
+.sign-line{border-top:1px solid #1c2b28;padding-top:.3rem;text-align:center;font-weight:600;font-size:.86rem}
+.sign p{margin:.2rem 0 0;text-align:center;color:#5b6762;font-size:.78rem}
+.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:.9rem;padding-top:.4rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.7rem}
 .toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:flex-end;padding:.7rem 1rem;background:#e7eeeb}
 .print-btn{border:0;border-radius:999px;padding:.6rem 1.25rem;background:#0f766e;color:#fff;font:600 .95rem Sarabun,sans-serif;cursor:pointer}
-@page{size:A4;margin:12mm}
+@page{size:A4;margin:0}
 @media print{
   body{background:#fff}
   .toolbar{display:none}
-  .sheet{max-width:none;margin:0;padding:0;box-shadow:none}
+  .sheet{max-width:none;margin:0;padding:14mm 16mm;box-shadow:none}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style></head><body>
@@ -2327,10 +2318,6 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
       <span>${escapeHtml(payload.documentTitle)}</span>
     </div>
   </div>
-  <div class="docno">
-    <span>เลขที่ใบปัญหา</span>
-    <strong>${escapeHtml(ticketNo)}</strong>
-  </div>
 </header>
 
 <div class="party">
@@ -2343,7 +2330,6 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
     <h3>ลูกค้า</h3>
     <p class="who">${escapeHtml(payload.customer.name)}</p>
     <dl class="kv">
-      ${payload.customer.code ? `<dt>รหัส</dt><dd>${escapeHtml(payload.customer.code)}</dd>` : ''}
       ${payload.customer.address ? `<dt>ที่อยู่</dt><dd>${escapeHtml(payload.customer.address)}</dd>` : ''}
       <dt>โทร</dt><dd>${escapeHtml(payload.customer.phone || '—')}</dd>
       ${
@@ -2355,17 +2341,9 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
   </section>
 </div>
 
-<div class="cover">
-  <div>
-    <span>งานครั้งที่ ${r.round}</span>
-    <strong>${escapeHtml(payload.ticket.title)}</strong>
-    <em>แก้เสร็จเมื่อ ${escapeHtml(resolvedAt)}</em>
-  </div>
-  <div class="len">${escapeHtml(resultLabel)}</div>
-</div>
-
 <table class="terms">
 <tbody>
+<tr><th>เรื่อง</th><td>${escapeHtml(payload.ticket.title)} · งานครั้งที่ ${r.round} · ${escapeHtml(resultLabel)} · แก้เสร็จเมื่อ ${escapeHtml(resolvedAt)}</td></tr>
 <tr><th>โปรเจกต์</th><td>${escapeHtml(projectLabel)}</td></tr>
 <tr><th>สาเหตุ</th><td>${escapeHtml(r.rootCause?.trim() || '—')}</td></tr>
 <tr><th>วิธีแก้ไข</th><td>${escapeHtml(r.detail || '—')}</td></tr>
@@ -2382,7 +2360,7 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
 <div class="sign">${signBlocks}</div>
 
 <footer class="foot">
-  <span>${escapeHtml(ticketNo)} · งานครั้งที่ ${r.round}</span>
+  <span>งานครั้งที่ ${r.round}</span>
   <span>Code Chill · ${escapeHtml(payload.documentTitle)}</span>
 </footer>
 </div></div>
@@ -2404,7 +2382,7 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
   template: `
     <h2 mat-dialog-title>งานครั้งที่ {{ data.resolution.round }}</h2>
     <mat-dialog-content>
-      <p class="ticket-ref">{{ data.ticketNo }} · {{ data.ticket.title }}</p>
+      <p class="ticket-ref">{{ data.ticket.title }}</p>
 
       @if (data.resolution.steps.length) {
         <ol class="round-steps" aria-label="ลำดับงานครั้งนี้">

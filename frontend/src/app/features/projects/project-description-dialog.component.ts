@@ -35,9 +35,8 @@ export function openProjectDescription(dialog: MatDialog, data: ProjectDescripti
         <span class="kicker">รายละเอียดโปรเจกต์</span>
         <h2>{{ data.name }}</h2>
         <p class="meta">
-          รหัส {{ data.code || '—' }}
           @if (data.customerName) {
-            · {{ data.customerName }}
+            {{ data.customerName }}
           }
         </p>
       </div>

@@ -402,8 +402,6 @@ export class TicketFormDialogComponent {
     }
     const reason = this.reopenSymptom.value.trim();
     const assigneeId = this.canAssign() ? this.reopenAssignee.value : null;
-    const no = t.ticketNo?.trim() || `ใบ #${t.id}`;
-
     this.saving.set(true);
     this.error.set(null);
     this.ticketsApi
@@ -426,8 +424,8 @@ export class TicketFormDialogComponent {
               this.saving.set(false);
               this.snack.open(
                 assigneeId
-                  ? `เปิด ${no} กลับมาแล้ว แต่ยังมอบหมายไม่สำเร็จ: ${err.message}`
-                  : `เปิด ${no} กลับมาแล้ว แต่ยังส่งเข้าคิวแอดมินไม่สำเร็จ: ${err.message}`,
+                  ? `เปิดใบกลับมาแล้ว แต่ยังมอบหมายไม่สำเร็จ: ${err.message}`
+                  : `เปิดใบกลับมาแล้ว แต่ยังส่งเข้าคิวแอดมินไม่สำเร็จ: ${err.message}`,
                 'ปิด',
                 { duration: 6500 }
               );
@@ -442,8 +440,8 @@ export class TicketFormDialogComponent {
           this.saving.set(false);
           this.snack.open(
             assigned
-              ? `เปิด ${no} รอบใหม่แล้ว — ส่งงานให้ผู้รับผิดชอบแล้ว`
-              : `เปิด ${no} กลับมาแล้ว — ส่งเข้าคิวแอดมิน「รอรับ」แล้ว`,
+              ? 'เปิดใบรอบใหม่แล้ว — ส่งงานให้ผู้รับผิดชอบแล้ว'
+              : 'เปิดใบกลับมาแล้ว — ส่งเข้าคิวแอดมิน「รอรับ」แล้ว',
             'ปิด',
             { duration: 4500 }
           );
@@ -679,11 +677,10 @@ export class TicketFormDialogComponent {
           );
         }
         this.persistDemoExtraCharge(created.id, raw.billingType, raw.extraCharge);
-        const no = created.ticketNo?.trim();
-        const opened = no ? `เปิดใบแจ้งปัญหาแล้ว · ${no}` : 'เปิดใบแจ้งปัญหาแล้ว';
+        const opened = 'เปิดใบแจ้งปัญหาแล้ว';
         if (!this.canSendToAdmin()) {
           this.saving.set(false);
-          this.snack.open(opened, 'ปิด', { duration: no ? 5000 : 2800 });
+          this.snack.open(opened, 'ปิด', { duration: 2800 });
           this.ref.close(true);
           return;
         }

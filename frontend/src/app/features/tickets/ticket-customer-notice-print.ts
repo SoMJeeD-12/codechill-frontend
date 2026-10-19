@@ -60,57 +60,49 @@ function buildCustomerNoticeHtml(
   }
 ): string {
   const r = payload.resolution;
-  const ticketNo = payload.ticket.ticketNo?.trim() || ticket.ticketNo?.trim() || `ใบ #${ticket.id}`;
   const resultLabel = RESOLUTION_RESULT_LABELS[r.result as ResolutionResult] ?? r.result;
   const resolvedAt = formatThaiDateTime(r.resolvedAt) || r.resolvedAt || '—';
-  const projectLabel = payload.project
-    ? [payload.project.code, payload.project.name].filter(Boolean).join(' · ')
-    : '—';
+  const projectLabel = payload.project?.name?.trim() || '';
   const advice = latestSupportAdvice(ticket);
   const contact = payload.reportedByContact;
   const logoUrl = PRINT_LOGO_SRC;
 
-  return `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>ใบแจ้งลูกค้า ${escapeHtml(ticketNo)}</title>
+  return `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>ใบแจ้งผลการแก้ไขให้ลูกค้า</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sans-serif}
 .sheet{position:relative;max-width:820px;margin:0 auto 2.5rem;background:#fff;padding:1.75rem 2rem 1.5rem;box-shadow:0 10px 28px rgba(28,43,40,.08)}
-.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.9rem;border-bottom:3px solid #0f766e}
-.brand{display:flex;align-items:center;gap:.7rem}
-.brand img{width:46px;height:46px;object-fit:contain}
-.brand strong{display:block;font-size:1.05rem}
-.brand span{display:block;color:#5b6762;font-size:.82rem}
+.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.55rem;border-bottom:2px solid #0f766e}
+.brand{display:flex;align-items:center;gap:.55rem}
+.brand img{width:36px;height:36px;object-fit:contain}
+.brand strong{display:block;font-size:1rem}
+.brand span{display:block;color:#5b6762;font-size:.78rem}
 .docno{text-align:right}
 .docno span{display:block;color:#5b6762;font-size:.72rem}
-.docno strong{display:block;color:#0f766e;font-size:1.15rem}
-.party{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:1rem 0 .85rem}
-.box{border:1px solid #d7e0dc;border-radius:10px;padding:.8rem .95rem;background:#f7fbf9}
-.box h3{margin:0 0 .45rem;color:#0f766e;font-size:.75rem;letter-spacing:.04em}
-.who{margin:0 0 .35rem;font-size:1.05rem;font-weight:700}
-.kv{display:grid;grid-template-columns:5.2rem 1fr;gap:.18rem .45rem;margin:0;font-size:.88rem}
+.docno strong{display:block;color:#0f766e;font-size:1.05rem}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin:.7rem 0 .45rem}
+.box h3{margin:0 0 .15rem;color:#5b6762;font-size:.72rem;font-weight:600}
+.who{margin:0 0 .15rem;font-size:1rem;font-weight:700}
+.kv{display:grid;grid-template-columns:5.2rem 1fr;gap:.05rem .4rem;margin:0;font-size:.84rem}
 .kv dt{color:#5b6762}
 .kv dd{margin:0}
-.cover{margin:0 0 .9rem;padding:.8rem 1rem;border-radius:10px;background:#ecfdf5;border:1px solid #b7e4d8}
-.cover span{display:block;color:#5b6762;font-size:.75rem}
-.cover strong{display:block;font-size:1.02rem}
-.cover em{display:block;margin-top:.15rem;font-style:normal;color:#0f766e;font-weight:700;font-size:.9rem}
-.terms{width:100%;border-collapse:collapse}
-.terms th,.terms td{padding:.5rem .1rem;border-bottom:1px solid #e4ebe8;text-align:left;vertical-align:top;font-size:.9rem}
-.terms th{width:28%;color:#5b6762;font-weight:600}
+.terms{width:100%;border-collapse:collapse;margin-top:.35rem}
+.terms th,.terms td{padding:.28rem .1rem;border-bottom:1px solid #e4ebe8;text-align:left;vertical-align:top;font-size:.86rem}
+.terms th{width:24%;color:#5b6762;font-weight:600}
 .terms td{white-space:pre-wrap}
-.advice{margin:.9rem 0 0;padding:.8rem .95rem;border-radius:10px;background:#fff7ed;border:1px solid #fdba74}
-.advice h3{margin:0 0 .3rem;font-size:.75rem;color:#9a3412;letter-spacing:.04em}
-.advice p{margin:0;white-space:pre-wrap;font-size:.95rem}
-.note{margin:.7rem 0 0;color:#5b6762;font-size:.8rem}
-.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:1.4rem;padding-top:.55rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.72rem}
+.advice{margin:.55rem 0 0}
+.advice h3{margin:0 0 .15rem;font-size:.78rem;color:#1c2b28}
+.advice p{margin:0;white-space:pre-wrap;font-size:.86rem}
+.note{margin:.4rem 0 0;color:#5b6762;font-size:.78rem}
+.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:.9rem;padding-top:.4rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.7rem}
 .toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:flex-end;padding:.7rem 1rem;background:#e7eeeb}
 .print-btn{border:0;border-radius:999px;padding:.6rem 1.25rem;background:#0f766e;color:#fff;font:600 .95rem Sarabun,sans-serif;cursor:pointer}
-@page{size:A4;margin:12mm}
+@page{size:A4;margin:0}
 @media print{
   body{background:#fff}
   .toolbar{display:none}
-  .sheet{max-width:none;margin:0;padding:0;box-shadow:none}
+  .sheet{max-width:none;margin:0;padding:14mm 16mm;box-shadow:none}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style></head><body>
@@ -121,14 +113,12 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
     <img src="${escapeHtml(logoUrl)}" alt="Code Chill">
     <div><strong>Code Chill</strong><span>ใบแจ้งผลการแก้ไขให้ลูกค้า</span></div>
   </div>
-  <div class="docno"><span>เลขที่ใบปัญหา</span><strong>${escapeHtml(ticketNo)}</strong></div>
 </header>
 <div class="party">
   <section class="box">
     <h3>ลูกค้า</h3>
     <p class="who">${escapeHtml(payload.customer.name)}</p>
     <dl class="kv">
-      ${payload.customer.code ? `<dt>รหัส</dt><dd>${escapeHtml(payload.customer.code)}</dd>` : ''}
       <dt>โทร</dt><dd>${escapeHtml(payload.customer.phone || '—')}</dd>
       ${contact ? `<dt>ผู้แจ้ง</dt><dd>${escapeHtml(contact.name)}${contact.phone ? ' · ' + escapeHtml(contact.phone) : ''}</dd>` : ''}
     </dl>
@@ -139,12 +129,8 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
     <dl class="kv"><dt>แก้เสร็จ</dt><dd>${escapeHtml(resolvedAt)}</dd></dl>
   </section>
 </div>
-<div class="cover">
-  <span>เรื่องที่แจ้ง</span>
-  <strong>${escapeHtml(payload.ticket.title)}</strong>
-  <em>${escapeHtml(projectLabel)}</em>
-</div>
 <table class="terms"><tbody>
+<tr><th>เรื่องที่แจ้ง</th><td>${escapeHtml(payload.ticket.title)}${projectLabel ? ' · ' + escapeHtml(projectLabel) : ''}</td></tr>
 <tr><th>สาเหตุ</th><td>${escapeHtml(r.rootCause?.trim() || '—')}</td></tr>
 <tr><th>สิ่งที่แก้ไข</th><td>${escapeHtml(r.detail?.trim() || '—')}</td></tr>
 </tbody></table>
@@ -154,7 +140,7 @@ ${
     : '<p class="note">ไม่มีคำแนะนำเพิ่มจากแอดมิน — แจ้งผลการแก้ไขด้านบนได้เลย</p>'
 }
 <p class="note">ใบนี้ไว้สำหรับอ่านหรือส่งให้ลูกค้า การกดพิมพ์ไม่ได้บันทึกว่าบอกลูกค้าแล้ว</p>
-<footer class="foot"><span>${escapeHtml(ticketNo)}</span><span>Code Chill · ใบแจ้งผลการแก้ไขให้ลูกค้า</span></footer>
+<footer class="foot"><span>ใบนี้สำหรับแจ้งลูกค้า</span><span>Code Chill · ใบแจ้งผลการแก้ไขให้ลูกค้า</span></footer>
 </div>
 </body></html>`;
 }

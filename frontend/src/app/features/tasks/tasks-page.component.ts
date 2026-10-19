@@ -197,12 +197,12 @@ export class TasksPageComponent implements OnInit {
 
   readonly columns = computed(() => {
     if (this.mode() === 'review') {
-      return ['title', 'projectCode', 'project', 'assignee', 'dueDate', 'actions'];
+      return ['title', 'project', 'assignee', 'dueDate', 'actions'];
     }
     if (this.mode() === 'me') {
-      return ['title', 'projectCode', 'project', 'assigner', 'dueDate', 'status', 'actions'];
+      return ['title', 'project', 'assigner', 'dueDate', 'status', 'actions'];
     }
-    return ['title', 'projectCode', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
+    return ['title', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   });
 
   ngOnInit(): void {

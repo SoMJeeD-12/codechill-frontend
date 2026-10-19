@@ -30,7 +30,7 @@
           } @else if (projectQueryReady()) {
             @for (p of projectSuggestions(); track p.id) {
               <mat-option [value]="p" [disabled]="!!blockedFor(p.id)">
-                {{ p.code ? p.code + ' · ' : '' }}{{ p.name }}
+                {{ p.name }}
                 @if (blockedFor(p.id); as blocking) {
                   <span class="option-muted"> · มีงานติดตามค้าง (ครบ {{ formatDue(blocking.dueDate) }})</span>
                 } @else {

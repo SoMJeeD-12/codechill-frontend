@@ -6,6 +6,7 @@ import {
   SurveyQuestion,
 } from '../../core/models/survey.model';
 import { SurveyService } from '../../core/services/survey.service';
+import { formatThaiDate } from '../../core/utils/date.util';
 import { PRINT_LOGO_SRC } from '../../shared/print/print-logo';
 
 export interface SurveyPrintContext {
@@ -63,36 +64,37 @@ body{margin:0;background:#e7eeeb;color:#1c2b28;font-family:Sarabun,"Segoe UI",sa
 .watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .watermark span{font-size:6.5rem;font-weight:800;color:rgba(185,28,28,.12);transform:rotate(-24deg)}
 .content{position:relative}
-.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.9rem;border-bottom:3px solid #0f766e}
-.brand{display:flex;align-items:center;gap:.7rem}
-.brand img{width:46px;height:46px;object-fit:contain}
-.brand strong{display:block;font-size:1.05rem}
-.brand span{display:block;color:#5b6762;font-size:.82rem}
-.docno{text-align:right;color:#0f766e;font-weight:700}
-.meta{display:grid;grid-template-columns:1fr 1fr;gap:.45rem .9rem;margin:1rem 0;padding:.8rem .95rem;border:1px solid #d7e0dc;border-radius:10px;background:#f7fbf9}
-.meta div{display:grid;grid-template-columns:4.2rem 1fr;gap:.2rem;align-items:end;font-size:.9rem}
+.head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-bottom:.55rem;border-bottom:2px solid #0f766e}
+.brand{display:flex;align-items:center;gap:.55rem}
+.brand img{width:36px;height:36px;object-fit:contain}
+.brand strong{display:block;font-size:1rem}
+.brand span{display:block;color:#5b6762;font-size:.78rem}
+.docno{text-align:right;color:#0f766e;font-weight:700;font-size:.84rem}
+h1{margin:.65rem 0 .15rem;font-size:1.1rem}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:.2rem 1.25rem;margin:.55rem 0 .7rem}
+.meta div{display:grid;grid-template-columns:4.2rem 1fr;gap:.1rem;align-items:end;font-size:.84rem}
 .meta span{color:#5b6762}
-.meta b{font-weight:600;border-bottom:1px dotted #9aada6;min-height:1.2rem}
-.lead{margin:.2rem 0 .9rem;color:#5b6762;font-size:.88rem}
-.q{margin:0 0 .85rem;padding:.75rem .9rem;border:1px solid #e4ebe8;border-radius:10px}
-.q h3{margin:0 0 .15rem;font-size:.95rem}
-.q .type{color:#5b6762;font-size:.75rem}
+.meta b{font-weight:600;border-bottom:1px dotted #9aada6;min-height:1.15rem}
+.lead{margin:.15rem 0 .55rem;color:#5b6762;font-size:.82rem}
+.q{margin:0 0 .55rem;padding:0 0 .45rem;border-bottom:1px solid #e4ebe8}
+.q h3{margin:0 0 .05rem;font-size:.9rem}
+.q .type{color:#5b6762;font-size:.72rem}
 .req{color:#0f766e}
-.choices{list-style:none;margin:.45rem 0 0;padding:0;display:grid;gap:.35rem}
-.choices li{display:flex;align-items:flex-start;gap:.45rem}
-.mark{flex:0 0 auto;width:.95rem;height:.95rem;margin-top:.15rem;border:1.5px solid #1c2b28}
+.choices{list-style:none;margin:.3rem 0 0;padding:0;display:grid;gap:.22rem}
+.choices li{display:flex;align-items:flex-start;gap:.4rem}
+.mark{flex:0 0 auto;width:.9rem;height:.9rem;margin-top:.12rem;border:1.5px solid #1c2b28}
 .mark--round{border-radius:999px}
-.scale{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
-.scale span{display:inline-flex;align-items:center;gap:.3rem}
-.lines div{height:1.6rem;border-bottom:1px dotted #9aada6;margin-top:.35rem}
-.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:1.2rem;padding-top:.55rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.72rem}
+.scale{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.3rem}
+.scale span{display:inline-flex;align-items:center;gap:.25rem}
+.lines div{height:1.25rem;border-bottom:1px dotted #9aada6;margin-top:.2rem}
+.foot{display:flex;justify-content:space-between;gap:1rem;margin-top:.7rem;padding-top:.4rem;border-top:1px solid #e4ebe8;color:#5b6762;font-size:.7rem}
 .toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:flex-end;padding:.7rem 1rem;background:#e7eeeb}
 .print-btn{border:0;border-radius:999px;padding:.6rem 1.25rem;background:#0f766e;color:#fff;font:600 .95rem Sarabun,sans-serif;cursor:pointer}
-@page{size:A4;margin:12mm}
+@page{size:A4;margin:0}
 @media print{
   body{background:#fff}
   .toolbar{display:none}
-  .sheet{max-width:none;margin:0;padding:0;box-shadow:none}
+  .sheet{max-width:none;margin:0;padding:14mm 16mm;box-shadow:none}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style></head><body>
@@ -107,13 +109,13 @@ ${watermark ? `<div class="watermark"><span>${escapeHtml(watermark)}</span></div
   </div>
   <div class="docno">${escapeHtml(SURVEY_STATUS_LABELS[survey.status] ?? survey.status)}</div>
 </header>
-<h1 style="margin:1rem 0 .25rem;font-size:1.25rem">${escapeHtml(survey.title)}</h1>
+<h1>${escapeHtml(survey.title)}</h1>
 ${survey.description?.trim() ? `<p class="lead">${escapeHtml(survey.description.trim())}</p>` : ''}
 <div class="meta">
   <div><span>ลูกค้า</span><b>${escapeHtml(customer)}</b></div>
   <div><span>โปรเจกต์</span><b>${escapeHtml(project)}</b></div>
   <div><span>ผู้ตอบ</span><b>${escapeHtml(contact)}</b></div>
-  <div><span>วันที่</span><b></b></div>
+  <div><span>วันที่</span><b>${escapeHtml(formatThaiDate(new Date()))}</b></div>
 </div>
 ${questions.length ? questions.map((q, i) => questionHtml(q, i + 1)).join('') : '<p class="lead">แบบประเมินนี้ยังไม่มีคำถาม</p>'}
 <footer class="foot"><span>เลือกคำตอบบนกระดาษ แล้วส่งกลับให้ผู้ดูแล</span><span>Code Chill · แบบประเมิน</span></footer>
