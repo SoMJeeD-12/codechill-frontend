@@ -4,8 +4,8 @@ export type { DevAccount };
 
 export const environment = {
   production: false,
-  /** เครื่องเดียวกับ BE — ใช้ IP แลน ไม่ใช้ localhost เพราะมือถือจะเรียกหาตัวเอง */
-  apiBaseUrl: 'http://192.168.1.130:3000/api',
+  /** แบ็กเอนด์บน Tailscale — ห้ามใช้ IP Wi-Fi หรือ IP เครื่องที่รันหน้าเว็บ */
+  apiBaseUrl: 'http://100.126.229.19:3000/api',
   /** บัญชีทดสอบ — อยู่เฉพาะในไฟล์นี้ จะไม่ถูก build ติด production */
   devAccounts: [
     { key: '1', label: 'SuperAdmin', username: 'SuperAdmin', password: 'CchSuperAdmin@2026' },

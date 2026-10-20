@@ -3,11 +3,11 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --host 0.0.0.0 --port 4200",
+    "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "api:gen": "npx ng-openapi-gen --input http://192.168.1.130:3000/api/docs-json --output src/app/api"
+    "api:gen": "npx ng-openapi-gen --input http://100.126.229.19:3000/api/docs-json --output src/app/api"
   },
   "private": true,
   "dependencies": {
