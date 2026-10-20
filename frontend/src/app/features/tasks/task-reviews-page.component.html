@@ -130,6 +130,15 @@
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="assignee">
+            <th mat-header-cell *matHeaderCellDef>ผู้รับผิดชอบ</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="cell-clip" [matTooltip]="row.assigneeName" matTooltipShowDelay="400">
+                {{ row.assigneeName }}
+              </span>
+            </td>
+          </ng-container>
+
           <ng-container matColumnDef="submittedBy">
             <th mat-header-cell *matHeaderCellDef>ผู้ส่ง</th>
             <td mat-cell *matCellDef="let row">{{ row.submittedBy?.fullName || '—' }}</td>

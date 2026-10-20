@@ -200,7 +200,7 @@ export class TasksPageComponent implements OnInit {
       return ['title', 'project', 'assignee', 'dueDate', 'actions'];
     }
     if (this.mode() === 'me') {
-      return ['title', 'project', 'assigner', 'dueDate', 'status', 'actions'];
+      return ['title', 'project', 'assignee', 'assigner', 'dueDate', 'status', 'actions'];
     }
     return ['title', 'project', 'priority', 'assignee', 'dueDate', 'status', 'actions'];
   });

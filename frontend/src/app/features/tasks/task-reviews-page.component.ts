@@ -12,7 +12,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageEvent } from '@angular/material/paginator';
-import { Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subscription, debounceTime, distinctUntilChanged, forkJoin, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import {
   TaskReviewItem,
   TaskReviewResult,
@@ -34,6 +35,8 @@ import { FORM_DIALOG_COMPACT } from '../../shared/utils/form-dialog';
 import { TaskReviewDialogComponent } from '../projects/task-review-dialog.component';
 
 type ResultFilter = 'ALL' | TaskReviewResult;
+
+type ReviewRow = TaskReviewItem & { assigneeName: string };
 
 const RESULT_LABELS: Record<string, string> = {
   APPROVED: 'ผ่าน',
@@ -78,7 +81,7 @@ export class TaskReviewsPageComponent implements OnInit {
   readonly projectId = signal<number | null>(null);
   readonly searchControl = this.fb.nonNullable.control('');
 
-  readonly rows = signal<TaskReviewItem[]>([]);
+  readonly rows = signal<ReviewRow[]>([]);
   readonly total = signal(0);
   readonly pageIndex = signal(0);
   readonly pageSize = signal(10);
@@ -92,8 +95,8 @@ export class TaskReviewsPageComponent implements OnInit {
   readonly sortOrder = signal<'ASC' | 'DESC'>('ASC');
   readonly columns = computed(() =>
     this.tab() === 'PENDING'
-      ? ['project', 'title', 'submittedBy', 'submittedAt', 'actions']
-      : ['project', 'title', 'submittedBy', 'submittedAt', 'result', 'reviewedAt', 'reviewNote']
+      ? ['project', 'title', 'assignee', 'submittedBy', 'submittedAt', 'actions']
+      : ['project', 'title', 'assignee', 'submittedBy', 'submittedAt', 'result', 'reviewedAt', 'reviewNote']
   );
 
   private loadSub: Subscription | null = null;
@@ -196,6 +199,24 @@ export class TaskReviewsPageComponent implements OnInit {
         sortBy: this.sortBy(),
         sortOrder: this.sortOrder(),
       })
+      .pipe(
+        switchMap(({ items, total }) => {
+          if (!items.length) {
+            return of({ items: [] as ReviewRow[], total });
+          }
+          return forkJoin(
+            items.map((row) =>
+              this.projectsApi.getTask(row.task.id).pipe(
+                map((task) => ({
+                  ...row,
+                  assigneeName: task.assignedUser?.fullName?.trim() || '—',
+                })),
+                catchError(() => of({ ...row, assigneeName: '—' })),
+              ),
+            ),
+          ).pipe(map((enriched) => ({ items: enriched, total })));
+        }),
+      )
       .subscribe({
         next: ({ items, total }) => {
           this.rows.set(items);
